@@ -2,11 +2,24 @@ import flet as ft
 
 
 def main(page: ft.Page):
-    page.title = "Tempest Fauna Trail"
-    page.window.width = 1024
-    page.window.height = 768
-    page.add(ft.Text("Tempest Fauna Trail", size=32, weight=ft.FontWeight.BOLD))
+    counter = ft.Text("0", size=50, data=0)
+
+    def increment_click(e):
+        counter.data += 1
+        counter.value = str(counter.data)
+
+    page.floating_action_button = ft.FloatingActionButton(
+        icon=ft.Icons.ADD, on_click=increment_click
+    )
+    page.add(
+        ft.SafeArea(
+            expand=True,
+            content=ft.Container(
+                content=counter,
+                alignment=ft.Alignment.CENTER,
+            ),
+        )
+    )
 
 
-if __name__ == "__main__":
-    ft.app(target=main)
+ft.run(main)
