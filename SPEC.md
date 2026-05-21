@@ -37,7 +37,7 @@ Built with Flet (Python). FH Technikum Wien project — 2 students, 8 weeks.
 ```
 OpenWeather API → WeatherClient → cache.json
                                 ↓
-Route (6 cities) → Node[weather] → Combat(team, enemies, weather) → BattleResult
+Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → BattleResult
                                                                     ↓
                                                               Run.battle_log → viz
 ```
@@ -60,7 +60,7 @@ Route (6 cities) → Node[weather] → Combat(team, enemies, weather) → Battle
 - V.5: Weather state enum: exactly 6 values (Clear, Cloudy, Mist, Rain, Snow, Thunder), mapped 1:1 to OpenWeather id main groups
 - V.6: Each piece (Champion, Enemy) has exactly one `affinity: WeatherState` field; weakness derives from `weather_effects.DEBUFFED_AFFINITIES`
 - V.8: `Champion.traits: list[str]` holds auto-chess synergy tags (Hunter, Mammal, Reptile, etc.). Distinct from `affinity`. Synergy tags are open-ended strings owned by content (T.5); engine treats them as opaque labels for grouping.
-- V.7: Route is fixed sequence of 6 cities + 1 boss city = 7 nodes total
+- V.7: Route is a staged path with multiple stages (target up to 5), with one or more nodes per stage and a final boss fight node in a famous city.
 
 ## T. Tasks
 
@@ -68,7 +68,7 @@ Route (6 cities) → Node[weather] → Combat(team, enemies, weather) → Battle
 |---|---|---|---|---|
 | T.1 | Data models — Champion, Enemy, Node, Run, BattleResult, WeatherState + NodeType/NodeState + combat runtime state + JSON serialization helpers | `game/models.py`, `docs/design/t1_data_models_plan.md`, `docs/design/t1_model_contracts.md` | — | M |
 | T.2 | Weather effects — pentagon affinity matrix (Variant B), per-weather buff/debuff stat packs, shop weight, `apply_modifier` for combat init | `game/weather_effects.py`, `docs/design/t2_weather_effects_plan.md` | T.1 | M |
-| T.3 | Combat engine — turn-by-turn auto-resolve, apply weather modifiers | `game/combat.py` | T.1, T.2 | M |
+| T.3 | Combat engine — tick-based auto-resolve (10ms tick simulation), apply weather modifiers | `game/combat.py` | T.1, T.2 | M |
 | T.4 | City route — define 6+1 cities with coordinates, enemy pools | `game/route.py` | T.1 | S |
 | T.5 | Content — define champion roster (target: 1 per affinity × 10 tiers = ~60 champions; MVP cut OK) + ~5 enemy types with stats + synergy trait catalog | `game/content.py` | T.1 | M |
 | T.6 | OpenWeather client — fetch current weather, parse to WeatherState | `api/weather.py` | T.1 | S |
@@ -81,7 +81,7 @@ Route (6 cities) → Node[weather] → Combat(team, enemies, weather) → Battle
 | T.13 | Run summary visualization — BarChart of damage per battle | `viz/run_summary.py`, `ui/views/summary.py` | T.3, T.8 | M |
 | T.14 | Save/load — JSON serialization of Run state | `game/save.py` | T.1 | S |
 | T.15 | Routing + app wiring — connect all views in main.py | `main.py` | T.9-T.13 | M |
-| T.16 | Unit tests — combat, weather effects, API parsing | `tests/` | T.1-T.7 | M |
+| T.16 | Unit tests — combat, weather effects, API parsing | `tests/` | T.1, T.2, T.3, T.6, T.7 | M |
 | T.17 | Documentation — README, prompting strategy, flow chart | `README.md`, `docs/` | all | M |
 
 **Size**: S = <1h, M = 1-3h, L = 3-6h
@@ -105,6 +105,15 @@ Route (6 cities) → Node[weather] → Combat(team, enemies, weather) → Battle
 ## B. Bugs / Backprop
 
 *(Empty — populated during development)*
+
+## D. Systems Yet To Be Determined
+
+- D.1 Route topology details: exact stage count (up to 5), nodes per stage, and branch/merge rules.
+- D.2 Boss city/content: final famous city choice, boss enemy kit, and finale weather behavior.
+- D.3 Ability framework: piece-specific active ability handlers and registration model.
+- D.4 Passive framework: event taxonomy (`on_hit`, `on_cast`, `on_kill`, etc.) and deterministic resolution order.
+- D.5 Status effects: formal mechanics for `stun`, `silence`, `disarm`, and `root` (meter, action, movement, and mana interactions).
+- D.6 Combat timeout policy: keep hard draw only or introduce sudden-death escalation.
 
 ## Implementation Order
 

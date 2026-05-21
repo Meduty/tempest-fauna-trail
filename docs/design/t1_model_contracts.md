@@ -7,10 +7,11 @@ This document reflects the current implementation in `src/game/models.py`.
 ```python
 class WeatherState(str, Enum):
     CLEAR = "clear"
+    CLOUDY = "cloudy"
+    MIST = "mist"
     RAIN = "rain"
-    STORM = "storm"
-    HEAT = "heat"
-    COLD = "cold"
+    SNOW = "snow"
+    THUNDER = "thunder"
 
 class NodeType(str, Enum):
     FIGHT = "fight"
@@ -34,6 +35,25 @@ class CombatOutcome(str, Enum):
     DRAW = "draw"
 ```
 
+### 1.1 OpenWeather Mapping Helper
+
+`WeatherState` also exposes:
+
+```python
+@classmethod
+def from_openweather_id(weather_id: int) -> WeatherState
+```
+
+Mapping:
+
+- `200-299 -> THUNDER`
+- `300-399` and `500-599 -> RAIN`
+- `600-699 -> SNOW`
+- `700-799 -> MIST`
+- `800 -> CLEAR`
+- `801-899 -> CLOUDY`
+- otherwise raises `ValueError`
+
 ## 2. Dataclasses
 
 ### 2.1 Champion
@@ -41,6 +61,43 @@ class CombatOutcome(str, Enum):
 ```python
 @dataclass(slots=True)
 class Champion:
+    id: str
+    name: str
+    affinity: WeatherState
+    role: str
+    tier: int
+    level: int
+    max_hp: int
+    strength: int
+    intelligence: int
+    attack_speed: int
+    move_speed: int
+    mana_regen: int
+    threat: int
+    armor: int
+    resistance: int
+    attack_range: int
+    active_ability: str
+    passive_ability: str
+    ability_cost: int
+    traits: list[str] = field(default_factory=list)
+```
+
+Validation:
+
+- `tier` in `[1, 10]`
+- `level` in `[1, 3]`
+- `max_hp > 0`
+- `strength`, `intelligence`, `attack_speed`, `move_speed`, `mana_regen`, `threat`, `armor`, `resistance >= 0`
+- `attack_range > 0`
+- `ability_cost > 0`
+- `traits` must be non-empty unique strings
+
+### 2.2 Enemy
+
+```python
+@dataclass(slots=True)
+class Enemy:
     id: str
     name: str
     affinity: WeatherState
@@ -70,34 +127,6 @@ Validation:
 - `strength`, `intelligence`, `attack_speed`, `move_speed`, `mana_regen`, `threat`, `armor`, `resistance >= 0`
 - `attack_range > 0`
 - `ability_cost > 0`
-
-### 2.2 Enemy
-
-```python
-@dataclass(slots=True)
-class Enemy:
-    id: str
-    name: str
-    role: str
-    tier: int
-    level: int
-    max_hp: int
-    strength: int
-    intelligence: int
-    attack_speed: int
-    move_speed: int
-    mana_regen: int
-    threat: int
-    armor: int
-    resistance: int
-    attack_range: int
-    active_ability: str
-    passive_ability: str
-    ability_cost: int
-    weakness: WeatherState | None = None
-```
-
-Validation mirrors `Champion`.
 
 ### 2.3 Node
 
@@ -267,6 +296,7 @@ All models expose `to_dict()` / `from_dict()`. Enum values are stored as their s
       "id": "champ_blaze_fox",
       "name": "Blaze Fox",
       "affinity": "clear",
+      "traits": ["Mammal", "Hunter"],
       "role": "attacker",
       "tier": 3,
       "level": 1,
@@ -291,7 +321,7 @@ All models expose `to_dict()` / `from_dict()`. Enum values are stored as their s
       "id": "node_01",
       "index": 1,
       "city": "Reykjavik",
-      "weather": "cold",
+      "weather": "snow",
       "node_type": "fight",
       "state": "current",
       "enemy_pool_id": "pool_frost",
