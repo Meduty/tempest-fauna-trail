@@ -59,7 +59,7 @@ Route (6 cities) → Node[weather] → Combat(team, enemies, weather) → Battle
 
 | # | Task | Files | Depends | Est |
 |---|---|---|---|---|
-| T.1 | Data models — Champion, Enemy, Node, Run, BattleResult, WeatherState | `game/models.py` | — | S |
+| T.1 | Data models — Champion, Enemy, Node, Run, BattleResult, WeatherState + NodeType/NodeState + combat runtime state + JSON serialization helpers | `game/models.py`, `docs/design/t1_data_models_plan.md`, `docs/design/t1_model_contracts.md` | — | M |
 | T.2 | Weather effects — modifier lookup dict per WeatherState | `game/weather_effects.py` | T.1 | S |
 | T.3 | Combat engine — turn-by-turn auto-resolve, apply weather modifiers | `game/combat.py` | T.1, T.2 | M |
 | T.4 | City route — define 6+1 cities with coordinates, enemy pools | `game/route.py` | T.1 | S |
@@ -78,6 +78,14 @@ Route (6 cities) → Node[weather] → Combat(team, enemies, weather) → Battle
 | T.17 | Documentation — README, prompting strategy, flow chart | `README.md`, `docs/` | all | M |
 
 **Size**: S = <1h, M = 1-3h, L = 3-6h
+
+### T.1 Planning Notes
+
+- T.1 now includes non-combat node typing (`fight`, `reward`, `augment`, `boss_fight`) so route and UI flows can share one node contract.
+- T.1 now includes combat runtime model surfaces needed by the combat proposal.
+- T.1 now includes JSON-friendly serialization contracts to reduce risk for T.14 save/load.
+- Detailed T.1 execution plan: `docs/design/t1_data_models_plan.md`
+- Detailed model schema contracts: `docs/design/t1_model_contracts.md`
 
 ## B. Bugs / Backprop
 
@@ -100,7 +108,7 @@ T.11 → T.13
 ### Phase 5: Polish + Docs (Week 7-8)
 T.14 → T.17
 
-## Content Definitions
+## Content Inspiration
 
 ### Weather States
 | State | Condition IDs | Combat Effect |
@@ -123,7 +131,7 @@ T.14 → T.17
 | Coral Tortoise | Rain | Tank | 10 | 140 |
 | Tundra Bear | Cold | Bruiser | 15 | 110 |
 
-### Cities (6 + boss)
+### Cities (example for one specific stage 6 nodes + boss)
 | Order | City | Region | Enemy Theme |
 |---|---|---|---|
 | 1 | Reykjavik | Iceland | Frost drones |

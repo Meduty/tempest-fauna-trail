@@ -43,6 +43,7 @@ A piece is defined by its **identity** (tier, level), its **stats** (numerical a
 | **Attack Speed (AS)** | Attack/cast frequency | Raw + `1.5 actions/round, acts every 4.0s` |
 | **Move Speed (MS)** | Hex-step frequency | Raw + `2.0 hex-steps/round` |
 | **Mana Regen (MR)** | Mana gained per tick (drives cast throughput) | `1.0 mana/sec (0.01 mana/tick), 0.20 casts/action (1 cast per 5 actions)` |
+| **Threat (THR)** | Auto-attack targeting priority when multiple enemies are valid | Raw stat (primarily modified by abilities/status effects; not items) |
 | Armor | Physical mitigation | Raw + `% damage reduction` |
 | Resistance (RES) | Magical mitigation | Raw + `% damage reduction` |
 | Attack Range | Auto-attack range in hexes | `Melee` / `Range 2` / etc. |
@@ -207,8 +208,33 @@ Mana isn't a triggered meter — it's a state that the action meter checks at re
 ### Action meter resolution (cast or attack)
 
 1. **Cast** — if `mana >= ability_cost` and a valid target exists (per the ability's targeting rules) → cast the ability, `mana -= ability_cost`.
-2. **Auto-attack** — else if at least one enemy is within `attack_range` → attack the chosen target (target selection TBD, see §9.3).
+2. **Auto-attack** — else if at least one enemy is within `attack_range` → attack the designated target (see static Threat targeting rule below).
 3. **Idle** — else, the piece cannot act this trigger. Action energy is **clamped at threshold** (held, not wasted). The piece will attack the instant they get in range, rewarding high AS during repositioning rather than punishing it.
+
+### Target selection (static Threat)
+
+Each piece maintains exactly one designated `target` reference at a time (or `None` if no valid enemy exists).
+
+- Auto-attacks always resolve against this designated target.
+- Targeted abilities also use this designated target by default.
+- Non-targeted abilities (self-buff, ground AOE, global effects, etc.) may use their own ability-specific rules.
+- If the designated target becomes invalid (dead, untargetable, out of allowed ability constraints), the piece reselects a target immediately using the deterministic rules below.
+
+When multiple valid enemies are in auto-attack range, choose the target deterministically:
+
+1. Highest current `Threat (THR)`.
+2. If tied: nearest by hex distance.
+3. If tied: lower current HP%.
+4. If tied: lower absolute HP.
+5. If tied: lower unique piece ID (stable deterministic fallback).
+
+Scope choice for now: Threat is a static combat stat (with temporary ability/status modifiers allowed), not a dynamic "recent damage" meter. This keeps implementation simple, supports taunt-style mechanics, and preserves deterministic replays.
+
+Retarget policy:
+
+1. Keep current designated target while it remains valid.
+2. If invalid, acquire a new designated target from current in-range valid enemies using the deterministic order below.
+3. If no in-range enemies are valid, designated target becomes `None` until one becomes valid.
 
 ### Movement meter resolution (hex step)
 
@@ -227,7 +253,7 @@ When multiple meters trigger on the same tick:
 
 1. Higher `effective_AS` goes first (faster pieces act first when timing collides).
 2. Higher raw AS goes first.
-3. **TBD** — deterministic fallback (deployment order, piece ID, team alternation). Avoid randomness for replay fairness.
+3. Unique Speed Hardcode — deterministic fallback - each piece has a unique hardcode speed ID for ultimate tie breaking
 
 ## 8. UI
 
@@ -273,17 +299,7 @@ Queue does not need to predict cast-vs-auto — that's resolved live when the ac
 
 ## 9. Open Questions and Gaps
 
-Items I want to flag before this becomes spec-locked:
-
-### 9.1 Naming
-- **Magic Resist → Resistance** rename — confirm.
-
-### 9.2 Stat curves
-- **Diminishing returns on STR/INT?** — currently linear in this proposal (raw stat directly enters damage formula). Probably correct for damage stats, but worth a deliberate decision before items are designed.
-
 ### 9.3 Combat behaviors
-- **Auto-attack target selection** when multiple enemies are in range: closest? lowest HP? highest threat? deterministic preference?
-- **Ability targeting**: single-target, AOE, self-buff, etc. Each piece has different targeting; need a unified targeting framework (probably a per-ability config struct).
 - **What happens if an ability has no valid target?** Fall through to auto-attack, or hold action energy and wait for a valid target? Proposal §7 assumes fall-through.
 - **Movement when pathfinding fails** (totally walled in): proposal says hold movement energy. Confirm — alternative is to step toward a partial path or skip entirely.
 - **Idle policy when action triggers but can't act** — proposal recommends clamping action energy at threshold (option A). Confirm this is the desired behavior; option B (reset to 0, "waste" tempo) is the alternative.
@@ -299,7 +315,7 @@ Items I want to flag before this becomes spec-locked:
 - **Starting mana**: same question — per-champion starting mana is a powerful design lever.
 - **Death**: piece removed from board immediately, tile freed up. Confirm.
 - **Mana on damage taken**: currently *not* in the design. TFT uses this. Worth a deliberate decision — keep mana purely regen-driven, or add a damage-taken bonus?
-- **Win condition**: last team standing. Timeout fallback (e.g., 60s → highest total HP% wins)?
+- **Win condition**: last team standing. Timeout fallback: Sudden Death - all pieces take increasing damage on every tick (could be weather dependent).
 
 ### 9.6 Implementation determinism
 - **Tiebreaker on simultaneous actions** — need a deterministic rule. Random breaks replays and feels unfair.
