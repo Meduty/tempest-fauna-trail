@@ -21,7 +21,7 @@ def _make_route() -> list[Node]:
             id="node_01",
             index=1,
             city="Reykjavik",
-            weather=WeatherState.COLD,
+            weather=WeatherState.SNOW,
             node_type=NodeType.FIGHT,
             state=NodeState.CURRENT,
             enemy_pool_id="pool_frost",
@@ -39,7 +39,7 @@ def _make_route() -> list[Node]:
             id="node_03",
             index=3,
             city="New York",
-            weather=WeatherState.STORM,
+            weather=WeatherState.THUNDER,
             node_type=NodeType.BOSS_FIGHT,
             state=NodeState.UPCOMING,
             enemy_pool_id="pool_boss",
@@ -69,6 +69,7 @@ def _make_roster() -> list[Champion]:
             active_ability="Solar Pounce",
             passive_ability="Kindled Claws",
             ability_cost=100,
+            traits=["Mammal", "Hunter"],
         )
     ]
 
@@ -95,7 +96,8 @@ def test_weather_state_roundtrip_through_run_serialization() -> None:
 
     loaded = Run.from_dict(payload)
     assert loaded.roster[0].affinity == WeatherState.CLEAR
-    assert loaded.route[0].weather == WeatherState.COLD
+    assert loaded.roster[0].traits == ["Mammal", "Hunter"]
+    assert loaded.route[0].weather == WeatherState.SNOW
 
 
 def test_invalid_enum_parse_raises_clear_error() -> None:
@@ -128,7 +130,7 @@ def test_run_to_dict_from_dict_roundtrip() -> None:
     run.battle_log.append(
         BattleResult(
             node_id="node_01",
-            weather=WeatherState.COLD,
+            weather=WeatherState.SNOW,
             outcome=CombatOutcome.WIN,
             rounds=1,
             turns=8,

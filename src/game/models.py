@@ -7,10 +7,27 @@ from typing import Any, TypeVar
 
 class WeatherState(str, Enum):
     CLEAR = "clear"
+    CLOUDY = "cloudy"
+    MIST = "mist"
     RAIN = "rain"
-    STORM = "storm"
-    HEAT = "heat"
-    COLD = "cold"
+    SNOW = "snow"
+    THUNDER = "thunder"
+
+    @classmethod
+    def from_openweather_id(cls, weather_id: int) -> "WeatherState":
+        if 200 <= weather_id < 300:
+            return cls.THUNDER
+        if 300 <= weather_id < 400 or 500 <= weather_id < 600:
+            return cls.RAIN
+        if 600 <= weather_id < 700:
+            return cls.SNOW
+        if 700 <= weather_id < 800:
+            return cls.MIST
+        if weather_id == 800:
+            return cls.CLEAR
+        if 800 < weather_id < 900:
+            return cls.CLOUDY
+        raise ValueError(f"Unknown OpenWeather id: {weather_id}")
 
 
 class NodeType(str, Enum):
@@ -87,6 +104,7 @@ class Champion:
     active_ability: str
     passive_ability: str
     ability_cost: int
+    traits: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         _require_range(self.tier, "Champion tier", 1, 10)
@@ -102,6 +120,99 @@ class Champion:
         _require_non_negative_int(self.resistance, "Champion resistance")
         _require_positive_int(self.attack_range, "Champion attack_range")
         _require_positive_int(self.ability_cost, "Champion ability_cost")
+
+        self.traits = list(self.traits)
+        if any(not isinstance(t, str) or not t for t in self.traits):
+            raise ValueError("Champion traits must be non-empty strings.")
+        if len(set(self.traits)) != len(self.traits):
+            raise ValueError("Champion traits must be unique.")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "affinity": self.affinity.value,
+            "traits": list(self.traits),
+            "role": self.role,
+            "tier": self.tier,
+            "level": self.level,
+            "max_hp": self.max_hp,
+            "strength": self.strength,
+            "intelligence": self.intelligence,
+            "attack_speed": self.attack_speed,
+            "move_speed": self.move_speed,
+            "mana_regen": self.mana_regen,
+            "threat": self.threat,
+            "armor": self.armor,
+            "resistance": self.resistance,
+            "attack_range": self.attack_range,
+            "active_ability": self.active_ability,
+            "passive_ability": self.passive_ability,
+            "ability_cost": self.ability_cost,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> Champion:
+        return cls(
+            id=payload["id"],
+            name=payload["name"],
+            affinity=_parse_enum(WeatherState, payload["affinity"], "affinity"),
+            traits=list(payload.get("traits", [])),
+            role=payload["role"],
+            tier=payload["tier"],
+            level=payload["level"],
+            max_hp=payload["max_hp"],
+            strength=payload["strength"],
+            intelligence=payload["intelligence"],
+            attack_speed=payload["attack_speed"],
+            move_speed=payload["move_speed"],
+            mana_regen=payload["mana_regen"],
+            threat=payload["threat"],
+            armor=payload["armor"],
+            resistance=payload["resistance"],
+            attack_range=payload["attack_range"],
+            active_ability=payload["active_ability"],
+            passive_ability=payload["passive_ability"],
+            ability_cost=payload["ability_cost"],
+        )
+
+
+@dataclass(slots=True)
+class Enemy:
+    id: str
+    name: str
+    affinity: WeatherState
+    role: str
+    tier: int
+    level: int
+    max_hp: int
+    strength: int
+    intelligence: int
+    attack_speed: int
+    move_speed: int
+    mana_regen: int
+    threat: int
+    armor: int
+    resistance: int
+    attack_range: int
+    active_ability: str
+    passive_ability: str
+    ability_cost: int
+
+    def __post_init__(self) -> None:
+        _require_range(self.tier, "Enemy tier", 1, 10)
+        _require_range(self.level, "Enemy level", 1, 3)
+        _require_positive_int(self.max_hp, "Enemy max_hp")
+        _require_non_negative_int(self.strength, "Enemy strength")
+        _require_non_negative_int(self.intelligence, "Enemy intelligence")
+        _require_non_negative_int(self.attack_speed, "Enemy attack_speed")
+        _require_non_negative_int(self.move_speed, "Enemy move_speed")
+        _require_non_negative_int(self.mana_regen, "Enemy mana_regen")
+        _require_non_negative_int(self.threat, "Enemy threat")
+        _require_non_negative_int(self.armor, "Enemy armor")
+        _require_non_negative_int(self.resistance, "Enemy resistance")
+        _require_positive_int(self.attack_range, "Enemy attack_range")
+        _require_positive_int(self.ability_cost, "Enemy ability_cost")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -127,7 +238,7 @@ class Champion:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> Champion:
+    def from_dict(cls, payload: dict[str, Any]) -> Enemy:
         return cls(
             id=payload["id"],
             name=payload["name"],
@@ -148,92 +259,6 @@ class Champion:
             active_ability=payload["active_ability"],
             passive_ability=payload["passive_ability"],
             ability_cost=payload["ability_cost"],
-        )
-
-
-@dataclass(slots=True)
-class Enemy:
-    id: str
-    name: str
-    role: str
-    tier: int
-    level: int
-    max_hp: int
-    strength: int
-    intelligence: int
-    attack_speed: int
-    move_speed: int
-    mana_regen: int
-    threat: int
-    armor: int
-    resistance: int
-    attack_range: int
-    active_ability: str
-    passive_ability: str
-    ability_cost: int
-    weakness: WeatherState | None = None
-
-    def __post_init__(self) -> None:
-        _require_range(self.tier, "Enemy tier", 1, 10)
-        _require_range(self.level, "Enemy level", 1, 3)
-        _require_positive_int(self.max_hp, "Enemy max_hp")
-        _require_non_negative_int(self.strength, "Enemy strength")
-        _require_non_negative_int(self.intelligence, "Enemy intelligence")
-        _require_non_negative_int(self.attack_speed, "Enemy attack_speed")
-        _require_non_negative_int(self.move_speed, "Enemy move_speed")
-        _require_non_negative_int(self.mana_regen, "Enemy mana_regen")
-        _require_non_negative_int(self.threat, "Enemy threat")
-        _require_non_negative_int(self.armor, "Enemy armor")
-        _require_non_negative_int(self.resistance, "Enemy resistance")
-        _require_positive_int(self.attack_range, "Enemy attack_range")
-        _require_positive_int(self.ability_cost, "Enemy ability_cost")
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.id,
-            "name": self.name,
-            "role": self.role,
-            "tier": self.tier,
-            "level": self.level,
-            "max_hp": self.max_hp,
-            "strength": self.strength,
-            "intelligence": self.intelligence,
-            "attack_speed": self.attack_speed,
-            "move_speed": self.move_speed,
-            "mana_regen": self.mana_regen,
-            "threat": self.threat,
-            "armor": self.armor,
-            "resistance": self.resistance,
-            "attack_range": self.attack_range,
-            "active_ability": self.active_ability,
-            "passive_ability": self.passive_ability,
-            "ability_cost": self.ability_cost,
-            "weakness": self.weakness.value if self.weakness else None,
-        }
-
-    @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> Enemy:
-        weakness = payload.get("weakness")
-        return cls(
-            id=payload["id"],
-            name=payload["name"],
-            role=payload["role"],
-            tier=payload["tier"],
-            level=payload["level"],
-            max_hp=payload["max_hp"],
-            strength=payload["strength"],
-            intelligence=payload["intelligence"],
-            attack_speed=payload["attack_speed"],
-            move_speed=payload["move_speed"],
-            mana_regen=payload["mana_regen"],
-            threat=payload["threat"],
-            armor=payload["armor"],
-            resistance=payload["resistance"],
-            attack_range=payload["attack_range"],
-            active_ability=payload["active_ability"],
-            passive_ability=payload["passive_ability"],
-            ability_cost=payload["ability_cost"],
-            weakness=_parse_enum(WeatherState, weakness, "weakness") if weakness else None,
         )
 
 

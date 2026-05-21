@@ -23,8 +23,14 @@ Built with Flet (Python). FH Technikum Wien project — 2 students, 8 weeks.
 
 ### OpenWeather API
 - `GET /data/2.5/weather?q={city}&appid={key}&units=metric`
-- Response: `weather[0].main` → game weather state mapping
-- Weather IDs: 200-232 Thunderstorm, 500-531 Rain, 600-622 Snow, 800 Clear, 801-804 Clouds
+- Response: `weather[0].id` → `WeatherState` via `WeatherState.from_openweather_id`
+- Mapping (one `WeatherState` per OpenWeather main group):
+  - `200-232` Thunderstorm → `THUNDER`
+  - `300-321` Drizzle + `500-531` Rain → `RAIN`
+  - `600-622` Snow → `SNOW`
+  - `701-781` Atmosphere (mist/fog/haze/dust/smoke) → `MIST`
+  - `800` Clear → `CLEAR`
+  - `801-804` Clouds → `CLOUDY`
 - Icon URL: `https://openweathermap.org/img/wn/{icon}@2x.png`
 
 ### Internal Data Flow
@@ -51,8 +57,9 @@ Route (6 cities) → Node[weather] → Combat(team, enemies, weather) → Battle
 - V.2: Combat is pure function — `resolve_combat(team, enemies, weather) -> BattleResult`
 - V.3: API failure never crashes app — fallback to cached data or Clear weather
 - V.4: All HTTP calls run on `threading.Thread`, never main thread
-- V.5: Weather state enum: exactly 5 values (Clear, Rain, Storm, Heat, Cold)
-- V.6: Each champion has exactly one weather affinity from V.5
+- V.5: Weather state enum: exactly 6 values (Clear, Cloudy, Mist, Rain, Snow, Thunder), mapped 1:1 to OpenWeather id main groups
+- V.6: Each piece (Champion, Enemy) has exactly one `affinity: WeatherState` field; weakness derives from `weather_effects.DEBUFFED_AFFINITIES`
+- V.8: `Champion.traits: list[str]` holds auto-chess synergy tags (Hunter, Mammal, Reptile, etc.). Distinct from `affinity`. Synergy tags are open-ended strings owned by content (T.5); engine treats them as opaque labels for grouping.
 - V.7: Route is fixed sequence of 6 cities + 1 boss city = 7 nodes total
 
 ## T. Tasks
@@ -60,10 +67,10 @@ Route (6 cities) → Node[weather] → Combat(team, enemies, weather) → Battle
 | # | Task | Files | Depends | Est |
 |---|---|---|---|---|
 | T.1 | Data models — Champion, Enemy, Node, Run, BattleResult, WeatherState + NodeType/NodeState + combat runtime state + JSON serialization helpers | `game/models.py`, `docs/design/t1_data_models_plan.md`, `docs/design/t1_model_contracts.md` | — | M |
-| T.2 | Weather effects — modifier lookup dict per WeatherState | `game/weather_effects.py` | T.1 | S |
+| T.2 | Weather effects — pentagon affinity matrix (Variant B), per-weather buff/debuff stat packs, shop weight, `apply_modifier` for combat init | `game/weather_effects.py`, `docs/design/t2_weather_effects_plan.md` | T.1 | M |
 | T.3 | Combat engine — turn-by-turn auto-resolve, apply weather modifiers | `game/combat.py` | T.1, T.2 | M |
 | T.4 | City route — define 6+1 cities with coordinates, enemy pools | `game/route.py` | T.1 | S |
-| T.5 | Content — define 8 champions, 5 enemy types with stats | `game/content.py` | T.1 | S |
+| T.5 | Content — define champion roster (target: 1 per affinity × 10 tiers = ~60 champions; MVP cut OK) + ~5 enemy types with stats + synergy trait catalog | `game/content.py` | T.1 | M |
 | T.6 | OpenWeather client — fetch current weather, parse to WeatherState | `api/weather.py` | T.1 | S |
 | T.7 | Cache layer — JSON file cache with 1h TTL | `api/cache.py` | T.6 | S |
 | T.8 | Theme + shared components — colors, fonts, champion card, weather badge | `ui/theme.py`, `ui/components/` | — | S |
@@ -86,6 +93,14 @@ Route (6 cities) → Node[weather] → Combat(team, enemies, weather) → Battle
 - T.1 now includes JSON-friendly serialization contracts to reduce risk for T.14 save/load.
 - Detailed T.1 execution plan: `docs/design/t1_data_models_plan.md`
 - Detailed model schema contracts: `docs/design/t1_model_contracts.md`
+
+### T.2 Planning Notes
+
+- Pentagon cycle of 5 active weathers (`Cloudy → Mist → Snow → Rain → Thunder`) + `Clear` as universal neutral.
+- Variant B relationship: each active weather buffs self + 2 cycle neighbours (3 affinities), debuffs 2 diagonals (mutual). All active-active edges either mutual-buff or mutual-debuff (K5).
+- Magnitudes flat ±10% (anti-stack ceiling ~30% team boost with 3 stacked buffed pieces). `Mist` debuff is the only flat-integer effect: `attack_range -1` (min 1).
+- Modifier applies at combat init only (one-shot snapshot, not per-tick).
+- Detailed T.2 plan: `docs/design/t2_weather_effects_plan.md`.
 
 ## B. Bugs / Backprop
 
@@ -111,27 +126,34 @@ T.14 → T.17
 ## Content Inspiration
 
 ### Weather States
-| State | Condition IDs | Combat Effect |
-|---|---|---|
-| Clear | 800 | Fire +20% ATK, normal for others |
-| Rain | 300-531 | Water +20% ATK, Fire -20% ATK |
-| Storm | 200-232 | Air +20% ATK, all accuracy -10% |
-| Heat | temp>35°C | Fire +30% ATK, Water -10% ATK |
-| Cold | 600-622 or temp<0°C | Ice +20% ATK, movement speed -15% |
+| State | OW IDs | Buff (applied to 3 affinities: self + 2 neighbours) | Debuff (applied to 2 diagonal affinities) |
+|---|---|---|---|
+| `CLEAR` | 800 | — (inert) | — (inert) |
+| `CLOUDY` | 801-804 | `HP ×1.10`, `RES ×1.10` | `AS ×0.90` |
+| `MIST` | 701-781 | `MS ×1.10`, `THR ×1.10` | `attack_range -1` (min 1) |
+| `SNOW` | 600-622 | `Armor ×1.10`, `RES ×1.10` | `MS ×0.90` |
+| `RAIN` | 300-321 + 500-531 | `AS ×1.10`, `MR ×1.10` | `STR ×0.90` |
+| `THUNDER` | 200-232 | `STR ×1.10`, `AS ×1.10` | `INT ×0.90`, `MR ×0.90` |
 
-### Champions (8 total, 1 affinity each)
-| Name | Affinity | Role | Base ATK | Base HP |
-|---|---|---|---|---|
-| Blaze Fox | Clear | Attacker | 18 | 80 |
-| Storm Eagle | Storm | Attacker | 16 | 75 |
-| Tide Otter | Rain | Tank | 12 | 120 |
-| Frost Wolf | Cold | Attacker | 17 | 85 |
-| Ember Salamander | Clear | Glass cannon | 22 | 60 |
-| Gale Falcon | Storm | Speed | 14 | 70 |
-| Coral Tortoise | Rain | Tank | 10 | 140 |
-| Tundra Bear | Cold | Bruiser | 15 | 110 |
+Pentagon cycle (CW): `Cloudy → Mist → Snow → Rain → Thunder → Cloudy`. Each active weather buffs self + 2 cycle neighbours; debuffs 2 diagonals. `Clear` is universal neutral (affinity + weather). Full matrix and rationale in `docs/design/t2_weather_effects_plan.md`.
 
-### Cities (example for one specific stage 6 nodes + boss)
+> **Terminology**: `affinity` is the piece's single weather alignment (one of the 6 `WeatherState` values). `traits` are open-ended auto-chess synergy tags (e.g. `Hunter`, `Mammal`, `Reptile`, `Guardian`) — multiple per champion, used for team synergies. Do not confuse the two; weather logic only consumes `affinity`.
+
+### Champions examples
+| Name | Affinity | Synergy Traits | Role | Base ATK | Base HP |
+|---|---|---|---|---|---|
+| Blaze Fox | Clear | Mammal, Hunter | Attacker | 18 | 80 |
+| Ember Salamander | Clear | Reptile, Mystic | Glass cannon | 22 | 60 |
+| Drift Yak | Cloudy | Mammal, Guardian | Bruiser | 14 | 115 |
+| Haze Owl | Mist | Bird, Mystic | Scout | 15 | 70 |
+| Frost Wolf | Snow | Mammal, Hunter | Attacker | 17 | 85 |
+| Tundra Bear | Snow | Mammal, Guardian | Bruiser | 15 | 110 |
+| Tide Otter | Rain | Mammal, Mystic | Tank | 12 | 120 |
+| Storm Eagle | Thunder | Bird, Hunter | Attacker | 16 | 75 |
+
+T.5 expands this to a full roster of ~60 (1 champion per affinity × 10 tiers).
+
+### Cities examples
 | Order | City | Region | Enemy Theme |
 |---|---|---|---|
 | 1 | Reykjavik | Iceland | Frost drones |
@@ -142,11 +164,11 @@ T.14 → T.17
 | 6 | Sydney | Australia | Wildfire units |
 | Boss | New York | USA | All-weather titan |
 
-### Enemy Types (5)
-| Type | Base ATK | Base HP | Weather Weakness |
+### Enemy Types examples
+| Type | Base ATK | Base HP | Affinity |
 |---|---|---|---|
-| Frost Drone | 12 | 60 | Heat |
-| Smog Bot | 14 | 70 | Storm |
-| Heat Mech | 16 | 65 | Rain |
-| Monsoon Walker | 13 | 80 | Cold |
-| Storm Sentinel | 15 | 75 | Clear |
+| Frost Drone | 12 | 60 | Snow |
+| Smog Bot | 14 | 70 | Cloudy |
+| Heat Mech | 16 | 65 | Clear |
+| Monsoon Walker | 13 | 80 | Rain |
+| Storm Sentinel | 15 | 75 | Thunder |
