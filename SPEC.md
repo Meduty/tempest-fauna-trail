@@ -155,11 +155,9 @@ in their T-task plan docs; what remains here is genuinely undecided.
 - D.1 Route branching: the linear 6-stage / 50-node chain is **locked** (T.4);
   whether optional branch/merge paths are added post-MVP is open.
 - D.2 Boss content: per-boss kits, phase-2 ability pairs, exact map-effect
-  mechanics, and the final-boss mid-fight weather cycle (T.21).
+  mechanics (T.21).
 - D.3 Combat board-cell modifiers: boss map effects need a new combat-engine
   cell-modifier mechanic — not yet a task, not yet designed.
-- D.4 Mid-fight weather change: required by the final-boss weather cycle;
-  currently out of combat-engine scope (T.3 deferred).
 
 ### Combat Systems
 
@@ -263,7 +261,7 @@ T.5 expands this to a full roster of ~60 (1 champion per affinity × 10 tiers).
 | 3 | Asia | Tokyo | Japan | Storm sentinels |
 | 4 | Oceania | Sydney | Australia | Wildfire units |
 | 5 | South America | Rio de Janeiro | Brazil | Monsoon walkers |
-| 6 | North America | New York | USA | All-weather titan (boss) |
+| 6 | North America | New York | USA | Grand boss (live NYC weather) |
 
 ### Enemy Types examples
 | Type | Base ATK | Base HP | Affinity |

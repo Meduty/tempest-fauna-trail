@@ -111,7 +111,7 @@ Started from: T1-T3 implemented, T3 journalled. SPEC tasks ran T1-T17.
 - Roster composition 40% current-weather / 40% challenge-weather / 20% random;
   deterministic on `(seed, weather, challenge_index)`. Team sizes 4/5/6/7/8/10.
 - 6 authored bosses, 2 phases (phase 2 grants +1 active +1 passive), one
-  weather-themed map effect each; boss affinity == node weather.
+  weather-themed map effect each; boss affinity == node weather (including final boss).
 
 ### T22 — Meta Progression
 
