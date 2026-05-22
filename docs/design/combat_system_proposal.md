@@ -70,6 +70,12 @@ Standard scaling for damage output:
 - **Auto-attack damage** = `1.0 × STR + 0.2 × INT`
 - **Ability damage** = `0.2 × STR + 4.2 × INT` (default; per-ability overrides allowed)
 
+**Weather affinity multiplier.** Both formulas yield *raw* damage. The weather
+system (T2, defined separately) applies a per-hit
+`damage_modifier(attacker.affinity, defender.affinity)` of `0.90–1.10` before
+mitigation — the affinity damage triangle (System B). See
+`docs/design/t2_weather_effects_plan.md` §6.
+
 The asymmetric scaling encodes the "STR for autoers, INT for casters" identity while keeping the overall stat-point price of STR and INT roughly equal *for the median caster archetype* (1 cast per 5 attacks). Derivation: per 5-auto + 1-cast cycle, 50 STR contributes `5(50) + 1(50×0.2) = 260` and 50 INT contributes `5(50×0.2) + 1(50×4.2) = 260` — equal.
 
 This parity only holds for the *median* auto:cast ratio. A pure autoer (1 cast per 20 attacks) gets disproportionately more from STR; a pure caster (1 cast per 3 attacks) gets disproportionately more from INT. This is desirable — it gives stat investment its own archetype-dependent value.

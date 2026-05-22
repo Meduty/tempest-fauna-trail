@@ -310,6 +310,7 @@ class Node:
 class CombatPieceState:
     piece_id: str
     is_enemy: bool
+    affinity: WeatherState
     tier: int
     level: int
     max_hp: int
@@ -366,6 +367,7 @@ class CombatPieceState:
         return {
             "piece_id": self.piece_id,
             "is_enemy": self.is_enemy,
+            "affinity": self.affinity.value,
             "tier": self.tier,
             "level": self.level,
             "max_hp": self.max_hp,
@@ -395,6 +397,7 @@ class CombatPieceState:
         return cls(
             piece_id=payload["piece_id"],
             is_enemy=payload["is_enemy"],
+            affinity=_parse_enum(WeatherState, payload["affinity"], "affinity"),
             tier=payload["tier"],
             level=payload["level"],
             max_hp=payload["max_hp"],

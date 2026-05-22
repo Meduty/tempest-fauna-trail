@@ -58,7 +58,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - V.3: API failure never crashes app — fallback to cached data or Clear weather
 - V.4: All HTTP calls run on `threading.Thread`, never main thread
 - V.5: Weather state enum: exactly 6 values (Clear, Cloudy, Mist, Rain, Snow, Thunder), mapped 1:1 to OpenWeather id main groups
-- V.6: Each piece (Champion, Enemy) has exactly one `affinity: WeatherState` field; weakness derives from `weather_effects.DEBUFFED_AFFINITIES`
+- V.6: Each piece (Champion, Enemy, CombatPieceState) carries exactly one `affinity: WeatherState` field; it drives both weather systems (node-weather buff/debuff and the affinity damage triangle) — there is no separate weakness field
 - V.8: `Champion.traits: list[str]` holds auto-chess synergy tags (Hunter, Mammal, Reptile, etc.). Distinct from `affinity`. Synergy tags are open-ended strings owned by content (T.5); engine treats them as opaque labels for grouping.
 - V.7: Route is a staged path with multiple stages (one per continent, up to 6), with one or more nodes per stage and a final boss fight node in a famous city.
 
@@ -67,7 +67,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | # | Task | Files | Depends | Est |
 |---|---|---|---|---|
 | T.1 | Data models — Champion, Enemy, Node, Run, BattleResult, WeatherState + NodeType/NodeState + combat runtime state + JSON serialization helpers | `game/models.py`, `docs/design/t1_data_models_plan.md`, `docs/design/t1_model_contracts.md` | — | M |
-| T.2 | Weather effects — pentagon affinity matrix (Variant B), per-weather buff/debuff stat packs, shop weight, `apply_modifier` for combat init | `game/weather_effects.py`, `docs/design/t2_weather_effects_plan.md` | T.1 | M |
+| T.2 | Weather effects — directional predator/prey ring; two decoupled systems (node-weather buff/debuff + affinity damage triangle), per-weather stat packs, shop weight, `apply_weather` for combat init | `game/weather_effects.py`, `docs/design/t2_weather_effects_plan.md` | T.1 | M |
 | T.3 | Combat engine — tick-based auto-resolve (10ms tick simulation), apply weather modifiers | `game/combat.py` | T.1, T.2 | M |
 | T.4 | City route — define 6+1 cities with coordinates, enemy pools | `game/route.py` | T.1 | S |
 | T.5 | Content — define champion roster (target: 1 per affinity × 10 tiers = ~60 champions; MVP cut OK) + ~5 enemy types with stats + synergy trait catalog | `game/content.py` | T.1 | M |
@@ -101,10 +101,11 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 
 ### T.2 Planning Notes
 
-- Pentagon cycle of 5 active weathers (`Cloudy → Mist → Snow → Rain → Thunder`) + `Clear` as universal neutral.
-- Variant B relationship: each active weather buffs self + 2 cycle neighbours (3 affinities), debuffs 2 diagonals (mutual). All active-active edges either mutual-buff or mutual-debuff (K5).
-- Magnitudes flat ±10% (anti-stack ceiling ~30% team boost with 3 stacked buffed pieces). `Mist` debuff is the only flat-integer effect: `attack_range -1` (min 1).
-- Modifier applies at combat init only (one-shot snapshot, not per-tick).
+- Directed predator/prey ring of 5 active weathers (`Mist → Cloudy → Rain → Snow → Thunder`) + `Clear` outside, inert in both systems. Each weather's primary prey is the previous ring member, secondary prey the one before that; predators are the inverse.
+- **Two decoupled systems**, evaluated separately, never summed:
+  - **System A — node weather**: buffs/debuffs each piece by its affinity vs the node weather. 5 tiers — strong/medium/weak buff (self / primary predator / secondary predator) at `+10/+6/+3%`, medium/weak debuff (primary/secondary prey) at `−6/−3%`. Self is the strict maximum; no strong debuff. Applied once at combat init.
+  - **System B — affinity damage triangle**: per-hit multiplier on every damage instance by attacker affinity vs defender affinity — `1.10/1.05/1.00/0.95/0.90` for primary predator / secondary predator / mirror or Clear / secondary prey / primary prey. Resolved per hit in the combat engine.
+- `Mist` System-A debuff is the only flat-integer effect: base `attack_range -1` (min 1), which scales/rounds to `-1` at medium tier and `0` at weak tier.
 - Detailed T.2 plan: `docs/design/t2_weather_effects_plan.md`.
 
 ### T.4 Planning Notes
@@ -133,6 +134,12 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   both `enemy_pool_id` and `reward_table_id`, not a pure non-combat node.
 - B.3 Planned model additions: `CombatPieceState.active_statuses` (T.20) and
   `Run.content_version` (T.19) for procedural-run save stability.
+- B.5 Weather rework (T.2 revision): `CombatPieceState` gains an `affinity:
+  WeatherState` field — the combat engine needs per-piece affinity at damage
+  time for System B (target-dependent, cannot be pre-snapshotted). The shipped
+  `combat.py` damage step gains a System-B multiplier hook; `apply_modifier` is
+  renamed `apply_weather`. Touches `models.py`, `to_dict`/`from_dict`,
+  `combat.py`, `t1_model_contracts.md`, `test_models.py`, `test_combat.py`.
 - B.4 Currency named **Amber**, the team-size XP counter named **Tempest**
   (`1 Amber : 1 Tempest`). The `Run.gold` model field should be renamed
   `Run.amber` — touches `models.py`, `to_dict`/`from_dict`, `test_models.py`,
@@ -212,16 +219,25 @@ T.14 → T.17
 ## Content Inspiration
 
 ### Weather States
-| State | OW IDs | Buff (applied to 3 affinities: self + 2 neighbours) | Debuff (applied to 2 diagonal affinities) |
+
+System-A stat packs per weather (the strong-tier `±10%` base; `combat_modifier`
+scales the deviation by tier — see `docs/design/t2_weather_effects_plan.md`):
+
+| State | OW IDs | Buff stats (self / predators) | Debuff stats (prey) |
 |---|---|---|---|
 | `CLEAR` | 800 | — (inert) | — (inert) |
-| `CLOUDY` | 801-804 | `HP ×1.10`, `RES ×1.10` | `AS ×0.90` |
-| `MIST` | 701-781 | `MS ×1.10`, `THR ×1.10` | `attack_range -1` (min 1) |
-| `SNOW` | 600-622 | `Armor ×1.10`, `RES ×1.10` | `MS ×0.90` |
-| `RAIN` | 300-321 + 500-531 | `AS ×1.10`, `MR ×1.10` | `STR ×0.90` |
-| `THUNDER` | 200-232 | `STR ×1.10`, `AS ×1.10` | `INT ×0.90`, `MR ×0.90` |
+| `CLOUDY` | 801-804 | `HP`, `RES` | `AS` |
+| `MIST` | 701-781 | `MS`, `THR` | `attack_range -1` (min 1) |
+| `SNOW` | 600-622 | `Armor`, `RES` | `MS` |
+| `RAIN` | 300-321 + 500-531 | `AS`, `MR` | `STR` |
+| `THUNDER` | 200-232 | `STR`, `AS` | `INT`, `MR` |
 
-Pentagon cycle (CW): `Cloudy → Mist → Snow → Rain → Thunder → Cloudy`. Each active weather buffs self + 2 cycle neighbours; debuffs 2 diagonals. `Clear` is universal neutral (affinity + weather). Full matrix and rationale in `docs/design/t2_weather_effects_plan.md`.
+Directed predator/prey ring: `Mist → Cloudy → Rain → Snow → Thunder → Mist`.
+Each weather preys on the previous ring members (primary = prev, secondary =
+prev-prev). System A buffs self + predators, debuffs prey (§T.2 notes). System B
+multiplies every hit by the attacker-vs-defender ring relation. `Clear` is
+outside the ring — inert in both systems. Full matrices in
+`docs/design/t2_weather_effects_plan.md`.
 
 > **Terminology**: `affinity` is the piece's single weather alignment (one of the 6 `WeatherState` values). `traits` are open-ended auto-chess synergy tags (e.g. `Hunter`, `Mammal`, `Reptile`, `Guardian`) — multiple per champion, used for team synergies. Do not confuse the two; weather logic only consumes `affinity`.
 

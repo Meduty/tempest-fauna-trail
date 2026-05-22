@@ -73,18 +73,26 @@ escalates with team size to track the expected player team-size cap (T22).
   Thunder): the current-wx and challenge-wx buckets stack → up to 80% one
   affinity. Natural — an unlucky roll.
 - **`CLEAR` is a real affinity** — `CLEAR` spirits exist (generic / holy
-  theme), so no bucket needs a Clear fallback. `CLEAR` weather is inert under
-  T2, so the luck layer is muted for the stage-1 challenge.
-- Live node weather still applies T2 modifiers at fight time — the luck layer
-  (the player is lucky when live weather debuffs the fixed-affinity spirits).
+  theme), so no bucket needs a Clear fallback. `CLEAR` is inert in both weather
+  systems, so the luck/counter layers are muted for the stage-1 challenge.
+- Live node weather still applies the T2 System-A buff/debuff at fight time —
+  the luck layer (the player is lucky when live weather debuffs the
+  fixed-affinity spirits).
+- **System-B counter-pick** — the challenge weather is fixed per stage and
+  known in advance, so it is a strong counter-pick target: the player can
+  pre-build predators of the challenge affinity, who hit the 40%
+  challenge-weather bucket for `1.10×`.
 - **No other modifiers** — composition only.
 
 ## 3. Boss Encounters
 
 - **6 bosses**, one per stage — authored set-pieces, human faction.
-- Boss `affinity == node weather snapshot` → the boss is weather-buffed via T2.
-  Exception: `CLEAR` is inert — `CLEAR`-weather bosses get a flat compensating
-  stat bump instead.
+- Boss `affinity == node weather snapshot` → System A gives the boss the
+  **strong** self-buff — a genuine home-turf edge. The intended counter is the
+  predator of that weather: System B lets predator attackers hit the boss for
+  `1.10×` (they take only the medium System-A buff, trading weather edge for
+  matchup edge). Exception: `CLEAR` is inert in both systems — `CLEAR`-weather
+  bosses get a flat compensating stat bump instead.
 - **2 phases**: at `50%` HP the boss enters phase 2, which grants `+1 active`
   and `+1 passive` ability (requires the T20 registry + phase hook).
 - **1 map effect per boss**, themed by weather:

@@ -59,10 +59,18 @@ def _enemy(**over) -> Enemy:
     return Enemy(**data)
 
 
-def _state(piece_id: str, is_enemy: bool, q: int, r: int, attack_range: int = 1) -> CombatPieceState:
+def _state(
+    piece_id: str,
+    is_enemy: bool,
+    q: int,
+    r: int,
+    attack_range: int = 1,
+    affinity: WeatherState = WeatherState.CLEAR,
+) -> CombatPieceState:
     return CombatPieceState(
         piece_id=piece_id,
         is_enemy=is_enemy,
+        affinity=affinity,
         tier=1,
         level=1,
         max_hp=100,
@@ -239,6 +247,53 @@ def test_weather_modifiers_change_combat_output():
     clear_hit = next(e for e in clear.events if e.event_type == "attack").amount
     thunder_hit = next(e for e in thunder.events if e.event_type == "attack").amount
     assert thunder_hit > clear_hit
+
+
+def test_affinity_damage_triangle_scales_hits():
+    # System B at CLEAR weather (System A inert). Enemy is RAIN-affinity:
+    # SNOW preys on RAIN (predator, x1.10); CLOUDY is RAIN's prey (x0.90).
+    enemies = [
+        _enemy(
+            id="mob",
+            affinity=WeatherState.RAIN,
+            attack_speed=0,
+            move_speed=0,
+            max_hp=1000,
+        )
+    ]
+    predator = [
+        _champ(
+            id="hero",
+            affinity=WeatherState.SNOW,
+            attack_range=12,
+            attack_speed=60_000,
+            strength=50,
+        )
+    ]
+    prey = [
+        _champ(
+            id="hero",
+            affinity=WeatherState.CLOUDY,
+            attack_range=12,
+            attack_speed=60_000,
+            strength=50,
+        )
+    ]
+
+    predator_hit = next(
+        e
+        for e in resolve_combat(predator, enemies, WeatherState.CLEAR).events
+        if e.event_type == "attack"
+    ).amount
+    prey_hit = next(
+        e
+        for e in resolve_combat(prey, enemies, WeatherState.CLEAR).events
+        if e.event_type == "attack"
+    ).amount
+
+    # Raw auto = 1.0 * 50 = 50; enemy armor 0. Predator x1.10 -> 55, prey x0.90 -> 45.
+    assert predator_hit == 55
+    assert prey_hit == 45
 
 
 # --- 6.7 BattleResult integrity ----------------------------------------------

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from src.game.combat import EVENT_ATTACK, EVENT_CAST, EVENT_DEATH, EVENT_MOVE
 from src.game.models import BattleEvent, BattleResult, Champion, Enemy
-from src.game.weather_effects import apply_modifier
+from src.game.weather_effects import apply_weather
 
 
 def group_events_by_tick(result: BattleResult) -> list[tuple[int, list[BattleEvent]]]:
@@ -38,7 +38,7 @@ def _piece_max_hp(
     """Reconstruct each piece's weather-modified max HP for the log's HP trace."""
     max_hp: dict[str, int] = {}
     for source in [*team, *enemies]:
-        state = apply_modifier(source, result.weather)
+        state = apply_weather(source, result.weather)
         max_hp[state.piece_id] = state.max_hp
     return max_hp
 

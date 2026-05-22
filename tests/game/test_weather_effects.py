@@ -4,20 +4,20 @@ import pytest
 
 from src.game.models import Champion, Enemy, WeatherState
 from src.game.weather_effects import (
-    BUFFED_AFFINITIES,
     CYCLE_ORDER,
-    DEBUFFED_AFFINITIES,
+    DAMAGE_MULT,
     IDENTITY,
-    WEATHER_BUFFS,
-    WEATHER_DEBUFFS,
+    TIER_SCALAR,
+    WEATHER_BUFF_BASE,
+    WEATHER_DEBUFF_BASE,
     CombatModifier,
-    Relation,
-    apply_modifier,
+    RingRelation,
+    apply_weather,
     combat_modifier,
-    relation,
+    damage_modifier,
+    ring_relation,
     shop_weight,
 )
-
 
 ACTIVE_WEATHERS = tuple(w for w in WeatherState if w != WeatherState.CLEAR)
 
@@ -71,155 +71,238 @@ def _make_enemy(affinity: WeatherState) -> Enemy:
     )
 
 
-def test_cycle_order_excludes_clear_and_covers_all_active_weathers() -> None:
+# --- Ring --------------------------------------------------------------------
+
+
+def test_cycle_order_is_the_five_active_weathers_in_ring_order() -> None:
+    assert CYCLE_ORDER == (
+        WeatherState.MIST,
+        WeatherState.CLOUDY,
+        WeatherState.RAIN,
+        WeatherState.SNOW,
+        WeatherState.THUNDER,
+    )
     assert WeatherState.CLEAR not in CYCLE_ORDER
     assert set(CYCLE_ORDER) == set(ACTIVE_WEATHERS)
-    assert len(CYCLE_ORDER) == 5
 
 
-def test_active_weathers_buff_three_affinities_each() -> None:
+def test_ring_relation_self_on_diagonal() -> None:
     for weather in ACTIVE_WEATHERS:
-        buffed = BUFFED_AFFINITIES[weather]
-        assert len(buffed) == 3
-        assert weather in buffed
-        assert WeatherState.CLEAR not in buffed
+        assert ring_relation(weather, weather) == RingRelation.SELF
 
 
-def test_active_weathers_debuff_two_affinities_each() -> None:
-    for weather in ACTIVE_WEATHERS:
-        debuffed = DEBUFFED_AFFINITIES[weather]
-        assert len(debuffed) == 2
-        assert weather not in debuffed
-        assert WeatherState.CLEAR not in debuffed
-
-
-def test_clear_has_no_buffs_or_debuffs() -> None:
-    assert BUFFED_AFFINITIES[WeatherState.CLEAR] == frozenset()
-    assert DEBUFFED_AFFINITIES[WeatherState.CLEAR] == frozenset()
-
-
-def test_buff_and_debuff_sets_are_disjoint_per_weather() -> None:
-    for weather in ACTIVE_WEATHERS:
-        assert BUFFED_AFFINITIES[weather].isdisjoint(DEBUFFED_AFFINITIES[weather])
-
-
-def test_buff_edges_are_mutual_among_active_weathers() -> None:
-    for w1 in ACTIVE_WEATHERS:
-        for w2 in BUFFED_AFFINITIES[w1]:
-            assert w1 in BUFFED_AFFINITIES[w2]
-
-
-def test_debuff_edges_are_mutual_among_active_weathers() -> None:
-    for w1 in ACTIVE_WEATHERS:
-        for w2 in DEBUFFED_AFFINITIES[w1]:
-            assert w1 in DEBUFFED_AFFINITIES[w2]
-
-
-def test_every_active_affinity_has_three_strong_and_two_weak_weathers() -> None:
-    for affinity in ACTIVE_WEATHERS:
-        strong = [w for w in ACTIVE_WEATHERS if affinity in BUFFED_AFFINITIES[w]]
-        weak = [w for w in ACTIVE_WEATHERS if affinity in DEBUFFED_AFFINITIES[w]]
-        assert len(strong) == 3
-        assert len(weak) == 2
-
-
-def test_active_pair_is_either_strong_or_weak_never_neutral() -> None:
-    for affinity in ACTIVE_WEATHERS:
-        for weather in ACTIVE_WEATHERS:
-            rel = relation(affinity, weather)
-            assert rel in {Relation.STRONG, Relation.WEAK}
-
-
-def test_clear_affinity_is_neutral_against_all_weathers() -> None:
+def test_ring_relation_neutral_when_clear_involved() -> None:
     for weather in WeatherState:
-        assert relation(WeatherState.CLEAR, weather) == Relation.NEUTRAL
+        assert ring_relation(WeatherState.CLEAR, weather) == RingRelation.NEUTRAL
+        assert ring_relation(weather, WeatherState.CLEAR) == RingRelation.NEUTRAL
 
 
-def test_clear_weather_is_neutral_against_all_affinities() -> None:
-    for affinity in WeatherState:
-        assert relation(affinity, WeatherState.CLEAR) == Relation.NEUTRAL
+def test_ring_relation_predator_prey_are_inverse() -> None:
+    # a is b's primary predator <=> b is a's primary prey (same for secondary).
+    inverse = {
+        RingRelation.PRIMARY_PREDATOR: RingRelation.PRIMARY_PREY,
+        RingRelation.SECONDARY_PREDATOR: RingRelation.SECONDARY_PREY,
+        RingRelation.PRIMARY_PREY: RingRelation.PRIMARY_PREDATOR,
+        RingRelation.SECONDARY_PREY: RingRelation.SECONDARY_PREDATOR,
+        RingRelation.SELF: RingRelation.SELF,
+    }
+    for a in ACTIVE_WEATHERS:
+        for b in ACTIVE_WEATHERS:
+            assert ring_relation(a, b) == inverse[ring_relation(b, a)]
 
 
-def test_self_affinity_is_always_strong_under_own_active_weather() -> None:
+def test_ring_relation_known_pairs() -> None:
+    # Ring: MIST CLOUDY RAIN SNOW THUNDER. SNOW preys on RAIN.
+    assert ring_relation(WeatherState.SNOW, WeatherState.RAIN) == RingRelation.PRIMARY_PREDATOR
+    assert ring_relation(WeatherState.THUNDER, WeatherState.RAIN) == RingRelation.SECONDARY_PREDATOR
+    assert ring_relation(WeatherState.CLOUDY, WeatherState.RAIN) == RingRelation.PRIMARY_PREY
+    assert ring_relation(WeatherState.MIST, WeatherState.RAIN) == RingRelation.SECONDARY_PREY
+
+
+def test_every_active_weather_has_one_self_two_predators_two_prey() -> None:
     for weather in ACTIVE_WEATHERS:
-        assert relation(weather, weather) == Relation.STRONG
+        counts = {relation: 0 for relation in RingRelation}
+        for affinity in ACTIVE_WEATHERS:
+            counts[ring_relation(affinity, weather)] += 1
+        assert counts[RingRelation.SELF] == 1
+        assert counts[RingRelation.PRIMARY_PREDATOR] == 1
+        assert counts[RingRelation.SECONDARY_PREDATOR] == 1
+        assert counts[RingRelation.PRIMARY_PREY] == 1
+        assert counts[RingRelation.SECONDARY_PREY] == 1
 
 
-def test_combat_modifier_returns_identity_when_clear_involved() -> None:
-    for affinity in WeatherState:
-        assert combat_modifier(affinity, WeatherState.CLEAR) is IDENTITY
+# --- System A — combat_modifier ----------------------------------------------
+
+
+def test_combat_modifier_identity_when_clear_involved() -> None:
     for weather in WeatherState:
         assert combat_modifier(WeatherState.CLEAR, weather) is IDENTITY
+    for affinity in WeatherState:
+        assert combat_modifier(affinity, WeatherState.CLEAR) is IDENTITY
 
 
-def test_combat_modifier_returns_weather_buff_for_strong_pair() -> None:
-    assert combat_modifier(WeatherState.RAIN, WeatherState.THUNDER) is WEATHER_BUFFS[WeatherState.THUNDER]
+def test_combat_modifier_self_is_strong_full_buff() -> None:
+    # Self uses the strong tier (scalar 1.0) — the unscaled buff base.
+    assert combat_modifier(WeatherState.THUNDER, WeatherState.THUNDER) is WEATHER_BUFF_BASE[
+        WeatherState.THUNDER
+    ]
 
 
-def test_combat_modifier_returns_weather_debuff_for_weak_pair() -> None:
-    assert combat_modifier(WeatherState.SNOW, WeatherState.THUNDER) is WEATHER_DEBUFFS[WeatherState.THUNDER]
+def test_combat_modifier_predator_tiers_scale_the_buff() -> None:
+    # RAIN buff base: AS x1.10, MR x1.10. Primary predator SNOW -> medium (0.6).
+    primary = combat_modifier(WeatherState.SNOW, WeatherState.RAIN)
+    assert primary.as_mult == pytest.approx(1.06)
+    assert primary.mr_mult == pytest.approx(1.06)
+    # Secondary predator THUNDER -> weak (0.3).
+    secondary = combat_modifier(WeatherState.THUNDER, WeatherState.RAIN)
+    assert secondary.as_mult == pytest.approx(1.03)
+    assert secondary.mr_mult == pytest.approx(1.03)
 
 
-def test_shop_weight_exact_match_doubles_pull() -> None:
-    for weather in ACTIVE_WEATHERS:
-        assert shop_weight(weather, weather) == 2.0
+def test_combat_modifier_prey_tiers_scale_the_debuff() -> None:
+    # RAIN debuff base: STR x0.90. Primary prey CLOUDY -> medium (0.6).
+    primary = combat_modifier(WeatherState.CLOUDY, WeatherState.RAIN)
+    assert primary.str_mult == pytest.approx(0.94)
+    # Secondary prey MIST -> weak (0.3).
+    secondary = combat_modifier(WeatherState.MIST, WeatherState.RAIN)
+    assert secondary.str_mult == pytest.approx(0.97)
 
 
-def test_shop_weight_strong_neighbour_boosts() -> None:
-    assert shop_weight(WeatherState.MIST, WeatherState.CLOUDY) == 1.5
-    assert shop_weight(WeatherState.THUNDER, WeatherState.CLOUDY) == 1.5
+def test_self_is_strict_maximum_buff_tier() -> None:
+    assert TIER_SCALAR[RingRelation.SELF] > TIER_SCALAR[RingRelation.PRIMARY_PREDATOR]
+    assert (
+        TIER_SCALAR[RingRelation.PRIMARY_PREDATOR]
+        > TIER_SCALAR[RingRelation.SECONDARY_PREDATOR]
+    )
 
 
-def test_shop_weight_weak_diagonal_halves() -> None:
-    assert shop_weight(WeatherState.SNOW, WeatherState.CLOUDY) == 0.5
-    assert shop_weight(WeatherState.RAIN, WeatherState.CLOUDY) == 0.5
+def test_no_strong_debuff_tier() -> None:
+    # Debuffs only reach medium — primary prey is the deepest.
+    assert TIER_SCALAR[RingRelation.PRIMARY_PREY] == 0.6
+    assert TIER_SCALAR[RingRelation.SECONDARY_PREY] == 0.3
+
+
+def test_mist_range_debuff_survives_medium_tier_vanishes_at_weak() -> None:
+    # MIST debuff base: attack_range_delta -1. Primary prey of MIST = THUNDER.
+    medium = combat_modifier(WeatherState.THUNDER, WeatherState.MIST)
+    assert medium.attack_range_delta == -1
+    # Secondary prey of MIST = SNOW -> rounds to 0.
+    weak = combat_modifier(WeatherState.SNOW, WeatherState.MIST)
+    assert weak.attack_range_delta == 0
+
+
+def test_combat_modifier_is_deterministic() -> None:
+    first = combat_modifier(WeatherState.SNOW, WeatherState.RAIN)
+    second = combat_modifier(WeatherState.SNOW, WeatherState.RAIN)
+    assert first == second
+
+
+# --- System B — damage_modifier ----------------------------------------------
+
+
+def test_damage_modifier_values_by_relation() -> None:
+    # Enemy RAIN; ring positions around it.
+    assert damage_modifier(WeatherState.SNOW, WeatherState.RAIN) == 1.10
+    assert damage_modifier(WeatherState.THUNDER, WeatherState.RAIN) == 1.05
+    assert damage_modifier(WeatherState.RAIN, WeatherState.RAIN) == 1.00
+    assert damage_modifier(WeatherState.MIST, WeatherState.RAIN) == 0.95
+    assert damage_modifier(WeatherState.CLOUDY, WeatherState.RAIN) == 0.90
+
+
+def test_damage_modifier_clear_is_inert_both_ways() -> None:
+    for weather in WeatherState:
+        assert damage_modifier(WeatherState.CLEAR, weather) == 1.00
+        assert damage_modifier(weather, WeatherState.CLEAR) == 1.00
+
+
+def test_damage_modifier_predator_beats_one_above_prey() -> None:
+    for relation, mult in DAMAGE_MULT.items():
+        if relation in (RingRelation.PRIMARY_PREDATOR, RingRelation.SECONDARY_PREDATOR):
+            assert mult > 1.0
+        elif relation in (RingRelation.PRIMARY_PREY, RingRelation.SECONDARY_PREY):
+            assert mult < 1.0
+        else:
+            assert mult == 1.0
+
+
+def test_damage_modifier_exchange_ratio_is_tamed() -> None:
+    # Primary predator/prey exchange ~1.22x; secondary ~1.11x.
+    primary = damage_modifier(
+        WeatherState.SNOW, WeatherState.RAIN
+    ) / damage_modifier(WeatherState.RAIN, WeatherState.SNOW)
+    secondary = damage_modifier(
+        WeatherState.THUNDER, WeatherState.RAIN
+    ) / damage_modifier(WeatherState.RAIN, WeatherState.THUNDER)
+    assert primary == pytest.approx(1.10 / 0.90)
+    assert secondary == pytest.approx(1.05 / 0.95)
+    assert primary > secondary
+
+
+# --- Shop weight -------------------------------------------------------------
+
+
+def test_shop_weight_by_relation() -> None:
+    assert shop_weight(WeatherState.RAIN, WeatherState.RAIN) == 2.0
+    assert shop_weight(WeatherState.SNOW, WeatherState.RAIN) == 1.5
+    assert shop_weight(WeatherState.THUNDER, WeatherState.RAIN) == 1.2
+    assert shop_weight(WeatherState.MIST, WeatherState.RAIN) == 0.8
+    assert shop_weight(WeatherState.CLOUDY, WeatherState.RAIN) == 0.6
 
 
 def test_shop_weight_neutral_when_clear_involved() -> None:
     for weather in WeatherState:
         assert shop_weight(WeatherState.CLEAR, weather) == 1.0
-    for affinity in WeatherState:
-        assert shop_weight(affinity, WeatherState.CLEAR) == 1.0
+        assert shop_weight(weather, WeatherState.CLEAR) == 1.0
 
 
-def test_apply_modifier_clear_weather_returns_unscaled_stats() -> None:
+# --- apply_weather -----------------------------------------------------------
+
+
+def test_apply_weather_clear_returns_unscaled_stats_and_copies_affinity() -> None:
     champion = _make_champion(WeatherState.RAIN)
-    piece = apply_modifier(champion, WeatherState.CLEAR)
+    piece = apply_weather(champion, WeatherState.CLEAR)
 
     assert piece.piece_id == champion.id
     assert piece.is_enemy is False
+    assert piece.affinity == WeatherState.RAIN
     assert piece.max_hp == champion.max_hp
     assert piece.hp == champion.max_hp
     assert piece.strength == champion.strength
     assert piece.attack_range == champion.attack_range
 
 
-def test_apply_modifier_thunder_buff_scales_str_and_as() -> None:
-    champion = _make_champion(WeatherState.RAIN)
-    piece = apply_modifier(champion, WeatherState.THUNDER)
+def test_apply_weather_self_buff_scales_strong_tier() -> None:
+    champion = _make_champion(WeatherState.THUNDER)
+    piece = apply_weather(champion, WeatherState.THUNDER)
 
     assert piece.strength == round(champion.strength * 1.10)
     assert piece.attack_speed == round(champion.attack_speed * 1.10)
     assert piece.intelligence == champion.intelligence
+    assert piece.affinity == WeatherState.THUNDER
 
 
-def test_apply_modifier_mist_debuff_drops_attack_range_with_floor() -> None:
+def test_apply_weather_mist_debuff_drops_attack_range_with_floor() -> None:
+    # THUNDER is MIST's primary prey -> medium debuff -> range -1.
     champion = _make_champion(WeatherState.THUNDER)
-    piece = apply_modifier(champion, WeatherState.MIST)
+    piece = apply_weather(champion, WeatherState.MIST)
     assert piece.attack_range == champion.attack_range - 1
 
     melee = replace(_make_champion(WeatherState.THUNDER), attack_range=1)
-    melee_piece = apply_modifier(melee, WeatherState.MIST)
+    melee_piece = apply_weather(melee, WeatherState.MIST)
     assert melee_piece.attack_range == 1
 
 
-def test_apply_modifier_works_with_enemy_and_flags_is_enemy() -> None:
-    enemy = _make_enemy(WeatherState.SNOW)
-    piece = apply_modifier(enemy, WeatherState.MIST)
+def test_apply_weather_works_with_enemy_and_flags_is_enemy() -> None:
+    enemy = _make_enemy(WeatherState.MIST)
+    piece = apply_weather(enemy, WeatherState.MIST)
 
     assert piece.is_enemy is True
+    assert piece.affinity == WeatherState.MIST
     assert piece.move_speed == round(enemy.move_speed * 1.10)
     assert piece.threat == round(enemy.threat * 1.10)
+
+
+# --- OpenWeather id mapping --------------------------------------------------
 
 
 def test_from_openweather_id_maps_main_groups() -> None:
@@ -242,13 +325,16 @@ def test_from_openweather_id_raises_on_unknown() -> None:
         WeatherState.from_openweather_id(999)
 
 
-def test_combat_modifier_is_deterministic() -> None:
-    first = combat_modifier(WeatherState.RAIN, WeatherState.THUNDER)
-    second = combat_modifier(WeatherState.RAIN, WeatherState.THUNDER)
-    assert first == second
+# --- CombatModifier dataclass ------------------------------------------------
 
 
-def test_combat_modifier_dataclass_is_hashable_and_frozen() -> None:
+def test_combat_modifier_dataclass_is_frozen() -> None:
     modifier = CombatModifier(str_mult=1.10)
     with pytest.raises(Exception):
         modifier.str_mult = 2.0  # type: ignore[misc]
+
+
+def test_weather_debuff_base_has_an_entry_per_weather() -> None:
+    for weather in WeatherState:
+        assert weather in WEATHER_BUFF_BASE
+        assert weather in WEATHER_DEBUFF_BASE

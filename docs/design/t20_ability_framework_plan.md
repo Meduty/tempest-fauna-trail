@@ -60,8 +60,13 @@ evaluated at start of tick alongside status expiry.
 
 ## 6. Combat Engine Changes
 
-- `CombatPieceState`: `+ active_statuses`.
+- `CombatPieceState`: `+ active_statuses`. (`affinity` is added separately by
+  the T.2 weather rework — SPEC B.5.)
 - Tick loop: status-expiry phase, four gate checks, phase-hook check.
+- Ability damage effects must route through the engine's shared damage function
+  so the weather System-B affinity multiplier (`damage_modifier`) applies to
+  spell damage, not only auto-attacks. Handlers return damage effects tagged
+  with the actor; the reducer resolves the attacker-vs-defender multiplier.
 - T3 MVP behavior is unchanged when no abilities, statuses, or phases are
   present — empty registry == current engine.
 
@@ -91,8 +96,9 @@ evaluated at start of tick alongside status expiry.
 ### 9.1 First passive content — `CLEAR`-weather buff
 
 A concrete first passive for the framework: 1-2 `CLEAR`-affinity pieces gain a
-passive buff while node weather is `CLEAR`. Rationale — `CLEAR` is inert under
-T2 (no weather modifier), so `CLEAR`-affinity pieces otherwise never benefit
-from weather; this passive gives the affinity its identity. The passive owner
-**must** have `CLEAR` affinity. Pairs with the T21 `CLEAR`-boss compensating
-stat bump — both address `CLEAR`'s inertness.
+passive buff while node weather is `CLEAR`. Rationale — `CLEAR` is inert in
+**both** weather systems (no System-A node buff/debuff, no System-B triangle —
+`CLEAR` neither counters nor is countered), so `CLEAR`-affinity pieces otherwise
+never interact with weather; this passive gives the affinity its identity. The
+passive owner **must** have `CLEAR` affinity. Pairs with the T21 `CLEAR`-boss
+compensating stat bump — both address `CLEAR`'s inertness.

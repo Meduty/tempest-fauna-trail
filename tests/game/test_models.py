@@ -196,6 +196,7 @@ def test_combat_piece_state_clamps_hp_to_max() -> None:
     piece = CombatPieceState(
         piece_id="champ_blaze_fox",
         is_enemy=False,
+        affinity=WeatherState.CLEAR,
         tier=3,
         level=1,
         max_hp=100,

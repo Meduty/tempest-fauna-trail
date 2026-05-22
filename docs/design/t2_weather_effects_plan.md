@@ -2,143 +2,187 @@
 
 ## 1. Scope
 
-T2 delivers the weather → combat/shop modifier system. It is pure logic, zero I/O, zero Flet (V.1 holds).
+T2 delivers the weather → combat modifier system. Pure logic, zero I/O, zero
+Flet (V.1 holds).
 
-Primary output:
+Primary output: `src/game/weather_effects.py`
 
-- `src/game/weather_effects.py`
+Test output: `tests/game/test_weather_effects.py`
 
-Secondary touches (required for T2 to be coherent):
+This revision replaces the original symmetric "Variant B" matrix with a
+**directional predator/prey ring** and splits weather into **two decoupled
+systems** (§4). It supersedes the pre-rework §3/§4/§10.
 
-- `src/game/models.py` — extend `WeatherState` to 6 values; rename `Champion.affinity` and `Enemy.weakness` to a single `affinity: WeatherState` field on every piece.
-- `SPEC.md` — update §I (OpenWeather mapping), §V.5/V.6, §Content tables.
+## 2. Weather State Enum (6 values) — implemented
 
-## 2. Weather State Enum (6 values)
-
-Mapped 1:1 to OpenWeather "main group" derived from the condition ID range.
+`WeatherState` already carries the 6 values and `from_openweather_id` (see
+`models.py`). Mapping is unchanged:
 
 | OpenWeather ID range | OW main | `WeatherState` |
 |---|---|---|
 | 200–232 | Thunderstorm | `THUNDER` |
 | 300–321 + 500–531 | Drizzle + Rain | `RAIN` |
 | 600–622 | Snow | `SNOW` |
-| 701–781 | Atmosphere (mist/fog/haze/dust/smoke) | `MIST` |
+| 701–781 | Atmosphere (mist/fog/haze) | `MIST` |
 | 800 | Clear | `CLEAR` |
 | 801–804 | Clouds | `CLOUDY` |
 
-Drizzle merges into Rain (same combat behavior; not worth a 7th state).
+No enum change in this revision.
 
-`WeatherState.from_openweather_id(int) -> WeatherState` lives on the enum in `models.py` so T6 (API client) can use it without importing `weather_effects`.
+## 3. The Affinity Cycle — Directional Predator/Prey Ring
 
-## 3. Affinity Wheel — Pentagon Cycle + Neutral Clear
-
-Each piece has exactly one `affinity: WeatherState`. The 5 active weathers form a pentagon ordered by precipitation life-cycle:
+The 5 active weathers form a **directed ring** ordered as a meteorological
+intensity ramp:
 
 ```
-Cloudy → Mist → Snow → Rain → Thunder → (back to Cloudy)
+MIST → CLOUDY → RAIN → SNOW → THUNDER → (back to MIST)
 ```
 
-`CLEAR` sits OUTSIDE the pentagon as a universal neutral — Clear affinity is immune to all weathers; Clear weather has no effects on any affinity.
+`CLEAR` sits OUTSIDE the ring — no prey, no predator, inert in both systems.
 
-### Relationship rule (Variant B — "both neighbours buff, diagonals debuff")
+For any weather `W` at ring index `i`:
 
-For each active weather W at position `i` in the cycle:
+- **primary prey** = `i-1` (the previous, milder stage `W` overtakes)
+- **secondary prey** = `i-2`
+- **primary predator** = `i+1` (the stage that overtakes `W`)
+- **secondary predator** = `i+2`
 
-- **Buffs** affinity at `i` (self), `i+1` (CW neighbour), `i-1` (CCW neighbour) → 3 affinities buffed.
-- **Debuffs** affinities at `i+2` and `i-2` (the 2 diagonal affinities) → 2 affinities debuffed.
-- All edges are MUTUAL — adjacency on the cycle = mutual buff; diagonal across the pentagon = mutual debuff. No directional asymmetry anywhere.
+In a 5-ring every active pair is related — 2 prey + 2 predators, no neutral
+pair among the active five. Only `CLEAR` is unrelated to everything.
 
-Among active weathers/affinities the relationship graph is `K5` (complete), partitioned cleanly into 5 mutual buff edges + 5 mutual debuff edges.
+| Weather | primary prey | secondary prey | primary predator | secondary predator |
+|---|---|---|---|---|
+| `MIST` | Thunder | Snow | Cloudy | Rain |
+| `CLOUDY` | Mist | Thunder | Rain | Snow |
+| `RAIN` | Cloudy | Mist | Snow | Thunder |
+| `SNOW` | Rain | Cloudy | Thunder | Mist |
+| `THUNDER` | Snow | Rain | Mist | Cloudy |
 
-## 4. Buff / Debuff Matrix
+Single primitive `ring_relation(a, b)` answers "how does `a` stand relative to
+`b`" and feeds **both** systems below. `RingRelation` ∈ {`SELF`,
+`PRIMARY_PREDATOR`, `SECONDARY_PREDATOR`, `SECONDARY_PREY`, `PRIMARY_PREY`,
+`NEUTRAL`}. `NEUTRAL` iff either side is `CLEAR`.
 
-### 4.1 Weather perspective
+```
+d = (index(a) - index(b)) mod 5
+0 -> SELF   1 -> PRIMARY_PREDATOR   2 -> SECONDARY_PREDATOR
+3 -> SECONDARY_PREY                 4 -> PRIMARY_PREY
+```
 
-| Weather | Buffs (self + 2 neighbours) | Debuffs (2 diagonals) |
+## 4. Two Decoupled Systems
+
+Weather contributes **two independent modifiers**. They answer different
+questions and are **never summed into one "best affinity" score**:
+
+- **System A — Node Weather** (§5): does the node's weather suit my piece's
+  affinity? Determined by the piece's affinity vs the *node weather*.
+  **Enemy-independent.** A Rain team always wants Rain weather, no matter who
+  it fights.
+- **System B — Damage Triangle** (§6): does my affinity beat the enemy's
+  affinity? Determined by *attacker affinity vs defender affinity*.
+  **Weather-independent.** A Rain team always dislikes Snow enemies, no matter
+  the weather.
+
+Worked case: a Rain team at a Rain node fighting Snow enemies has **great
+weather (A)** and a **bad matchup (B)** at the same time — both facts hold,
+neither cancels the other. The player evaluates the two axes separately.
+
+## 5. System A — Node Weather → Affinity Buff/Debuff
+
+The node's weather `W` buffs/debuffs every piece by its `affinity` `A`, on five
+tiers. **Self is the strict maximum** — a piece is strongest in its own
+weather, full stop.
+
+| `ring_relation(A, W)` | Tier | Magnitude |
 |---|---|---|
-| `CLOUDY` | Cloudy, Mist, Thunder | Snow, Rain |
-| `MIST` | Mist, Cloudy, Snow | Rain, Thunder |
-| `SNOW` | Snow, Mist, Rain | Thunder, Cloudy |
-| `RAIN` | Rain, Snow, Thunder | Cloudy, Mist |
-| `THUNDER` | Thunder, Rain, Cloudy | Mist, Snow |
-| `CLEAR` | — | — |
+| `SELF` (`A == W`) | strong buff | `+10%` |
+| `PRIMARY_PREDATOR` (`A` hunts `W`) | medium buff | `+6%` |
+| `SECONDARY_PREDATOR` | weak buff | `+3%` |
+| `PRIMARY_PREY` (`W` hunts `A`) | medium debuff | `−6%` |
+| `SECONDARY_PREY` | weak debuff | `−3%` |
+| `NEUTRAL` (Clear on either side) | none | identity |
 
-### 4.2 Affinity perspective (derived, must match above)
+Magnitude = `±10% × tier_scalar`, with `tier_scalar = {strong: 1.0,
+medium: 0.6, weak: 0.3}`. Buffs use all three tiers; debuffs only reach medium
+(no strong debuff — weather is net-kind, a bad-weather node never bricks a team
+on its own).
 
-| Affinity | Strong (3 weathers) | Weak (2 weathers) | Neutral |
+### 5.1 Affinity perspective (what each weather does to each affinity)
+
+| Affinity | strong+ | medium+ | weak+ | medium− | weak− |
+|---|---|---|---|---|---|
+| `MIST` | Mist | Thunder | Snow | Cloudy | Rain |
+| `CLOUDY` | Cloudy | Mist | Thunder | Rain | Snow |
+| `RAIN` | Rain | Cloudy | Mist | Snow | Thunder |
+| `SNOW` | Snow | Rain | Cloudy | Thunder | Mist |
+| `THUNDER` | Thunder | Snow | Rain | Mist | Cloudy |
+| `CLEAR` | — | — | — | — | — |
+
+Narrative: a piece is **strongest at home**, **decent on its hunting grounds**
+(its prey's weather), and **weak in its predator's territory**. `CLEAR`
+affinity is untouched by every weather; `CLEAR` weather touches no affinity.
+
+### 5.2 Per-weather stat effect (unique per weather)
+
+Each weather owns one buff stat-set and one debuff stat-set. The base
+magnitudes below are the **strong tier** (`±10%`); `combat_modifier` scales the
+deviation from `1.0` by `tier_scalar`.
+
+| Weather | Buff stats | Debuff stats | Flavor |
 |---|---|---|---|
-| `CLOUDY` | Cloudy, Mist, Thunder | Snow, Rain | Clear |
-| `MIST` | Mist, Cloudy, Snow | Rain, Thunder | Clear |
-| `SNOW` | Snow, Mist, Rain | Thunder, Cloudy | Clear |
-| `RAIN` | Rain, Snow, Thunder | Cloudy, Mist | Clear |
-| `THUNDER` | Thunder, Rain, Cloudy | Mist, Snow | Clear |
-| `CLEAR` | — | — | all 6 |
+| `CLOUDY` | `HP`, `RES` | `AS` | Insulating cover; haze slows attack cadence |
+| `MIST` | `MS`, `THR` | `attack_range` | Vanish-step + ambush; sight collapses |
+| `SNOW` | `Armor`, `RES` | `MS` | Frosted hide; cold locks limbs |
+| `RAIN` | `AS`, `MR` | `STR` | Slick momentum + mana flow; soaked grip |
+| `THUNDER` | `STR`, `AS` | `INT`, `MR` | Charged power; static jams casting |
 
-### 4.3 Fairness invariants (must hold in tests)
+- `MIST` debuff is the only flat-integer effect: base `attack_range −1`.
+  Scaled-and-rounded it yields `−1` at the medium tier and `0` at the weak
+  tier automatically (`round(-0.6) == -1`, `round(-0.3) == 0`) — no
+  special-case branch needed. Clamp `attack_range ≥ 1`.
+- Applied **at combat init** as a one-shot snapshot (matches the combat
+  proposal — the simulator runs off snapshotted stats). Mid-fight weather
+  change is out of scope.
 
-- Every active affinity has exactly 3 strong + 2 weak weathers, with Clear as the sole neutral.
-- Every active weather buffs exactly 3 affinities + debuffs exactly 2 affinities.
-- All buff edges are mutual: `W buffs affinity T ⇔ T's weather buffs affinity W` (for active weathers).
-- All debuff edges are mutual: same.
-- No affinity is both strong and weak under the same weather.
-- Clear affinity is immune to all weathers; Clear weather has no effect on any affinity. Symmetric inertness.
+## 6. System B — Affinity Damage Triangle
 
-### 4.4 Narrative
+Every instance of damage (auto-attack **and** ability) is flagged with the
+**attacker's affinity**. A single multiplier is applied per hit, from
+`ring_relation(attacker_affinity, defender_affinity)`:
 
-**Buff neighbours (life-cycle siblings — mutual):**
+| Attacker vs defender | × dealt |
+|---|---|
+| `PRIMARY_PREDATOR` | `1.10` |
+| `SECONDARY_PREDATOR` | `1.05` |
+| `SELF` (mirror) / `NEUTRAL` (Clear) | `1.00` |
+| `SECONDARY_PREY` | `0.95` |
+| `PRIMARY_PREY` | `0.90` |
 
-- Cloudy ↔ Mist: atmospheric family (clouds settle into haze, and back)
-- Mist ↔ Snow: cold humidity (haze freezes; snow exhales fog)
-- Snow ↔ Rain: precipitation phases (snow thaws to rain; rain freezes to snow)
-- Rain ↔ Thunder: storm pair (rain feeds the storm)
-- Thunder ↔ Cloudy: storms come from clouds and leave them behind
+One modifier per hit — **not** a double-apply. The predator's edge is emergent:
+its outgoing hits ride `1.10` while the prey's return hits ride `0.90`, so the
+exchange ratio is `1.10 / 0.90 ≈ 1.22×` for a primary counter (`1.05 / 0.95 ≈
+1.11×` for a secondary). A hard counter is a real edge, still beatable —
+deliberately tamer than a raw `±20%` (`1.5×` exchange) would be.
 
-**Debuff diagonals (climate-stage mismatch — mutual):**
+`CLEAR` attackers and `CLEAR` defenders always resolve to `1.00` — `CLEAR`
+neither counters nor is countered.
 
-- Cloudy ↔ Snow, Cloudy ↔ Rain (cloudy = pre-precipitation, active precip outpaces it)
-- Mist ↔ Rain, Mist ↔ Thunder (haze opposes active precipitation/lightning)
-- Snow ↔ Thunder (frozen calm vs energy peak)
+## 7. Shop Drop Weight (Prep Phase)
 
-Uniform frame: "affinity is tuned to its climate stage; weathers two stages away aren't its element → debuffed."
+`shop_weight` biases the Prep shop toward affinities the **upcoming node
+weather** favours (System A only — matchup bias would need an enemy preview,
+deferred). Consumer arrives with the shop task (post-T5).
 
-## 5. Per-Weather Effects (Unique)
+| `ring_relation(affinity, weather)` | weight |
+|---|---|
+| `SELF` | `2.0` |
+| `PRIMARY_PREDATOR` | `1.5` |
+| `SECONDARY_PREDATOR` | `1.2` |
+| `SECONDARY_PREY` | `0.8` |
+| `PRIMARY_PREY` | `0.6` |
+| `NEUTRAL` (Clear either side) | `1.0` |
 
-To keep scope tight: each weather has **one unique buff stat-effect** applied to all buffed pieces, and **one unique debuff stat-effect** applied to all debuffed pieces. Single multiplier path; no per-affinity branching inside a weather.
-
-Magnitudes are flat ±10%. Under Variant B (§3) each weather buffs 3 affinities, so a single team can stack the same weather buff across multiple pieces; ±10% keeps team-wide stacking from running away. Stats from combat proposal §4.2. Clear is omitted — Clear weather is fully inert.
-
-| Weather | Buff (3 buffed affinities) | Debuff (2 debuffed affinities) | Flavor |
-|---|---|---|---|
-| `CLOUDY` | `HP ×1.10`, `RES ×1.10` | `AS ×0.90` | Insulating cover; reduced visibility slows attack cadence |
-| `MIST` | `MS ×1.10`, `THR ×1.10` | `attack_range -1` (min 1) | Vanish-step + ambush priority; sight collapses at range |
-| `SNOW` | `Armor ×1.10`, `RES ×1.10` | `MS ×0.90` | Frosted hide; cold locks limbs and slows movement |
-| `RAIN` | `AS ×1.10`, `MR ×1.10` | `STR ×0.90` | Slick momentum + mana flow; rain-soaked grip kills power |
-| `THUNDER` | `STR ×1.10`, `AS ×1.10` | `INT ×0.90`, `MR ×0.90` | Charged power; static interferes with casting |
-| `CLEAR` | — | — | Inert: no buff, no debuff |
-
-Notes:
-
-- Multipliers apply to the piece's resolved (tier+level) stats at combat init — one-shot snapshot, not per-tick (matches combat proposal §7 which already runs from snapshotted stats).
-- `MIST` debuff is the only flat-integer adjustment (range stat is small-integer; a multiplier would be lossy). Clamp at 1.
-- A piece is never both buffed and debuffed by the same weather (guaranteed by §4 fairness check).
-- A piece can be neither buffed nor debuffed only when (a) the weather is `CLEAR`, or (b) the piece's affinity is `CLEAR`. Otherwise every active weather hits every active piece (Variant B: full K5 coverage).
-
-## 6. Shop Drop Weight (Prep Phase)
-
-Used by future shop roll logic. T2 exposes the function; consumer arrives with the shop task (post-T5).
-
-```
-shop_weight(affinity, weather):
-    if affinity == CLEAR or weather == CLEAR: return 1.0   # Clear is inert
-    if affinity == weather:                   return 2.0   # exact match — strongest pull
-    if relation(affinity, weather) == STRONG: return 1.5   # neighbour (cycle-adjacent) affinity
-    if relation(affinity, weather) == WEAK:   return 0.5   # diagonal — weather counters this affinity
-    return 1.0                                          # only reachable when one side is Clear
-```
-
-`STRONG` here includes the self-match case; the function still distinguishes the two for the 2.0 boost on exact match. Among active (non-Clear) pairs there is no "active neutral" — every pair is either STRONG or WEAK (Variant B fills K5).
-
-## 7. Module API (`src/game/weather_effects.py`)
+## 8. Module API (`src/game/weather_effects.py`)
 
 ```python
 from __future__ import annotations
@@ -146,14 +190,18 @@ from dataclasses import dataclass
 from enum import Enum
 from src.game.models import WeatherState
 
-class Relation(str, Enum):
-    STRONG = "strong"  # piece buffed
-    WEAK = "weak"      # piece debuffed
-    NEUTRAL = "neutral"
+class RingRelation(str, Enum):
+    SELF = "self"
+    PRIMARY_PREDATOR = "primary_predator"
+    SECONDARY_PREDATOR = "secondary_predator"
+    SECONDARY_PREY = "secondary_prey"
+    PRIMARY_PREY = "primary_prey"
+    NEUTRAL = "neutral"                       # Clear on either side
 
-CYCLE_ORDER: tuple[WeatherState, ...]  # (CLOUDY, MIST, SNOW, RAIN, THUNDER)
-BUFFED_AFFINITIES: dict[WeatherState, frozenset[WeatherState]]   # 3 per active weather, empty for CLEAR
-DEBUFFED_AFFINITIES: dict[WeatherState, frozenset[WeatherState]] # 2 per active weather, empty for CLEAR
+CYCLE_ORDER: tuple[WeatherState, ...]         # (MIST, CLOUDY, RAIN, SNOW, THUNDER)
+
+# Tier scalars for System A magnitude.
+TIER_SCALAR: dict[str, float]                 # strong 1.0 / medium 0.6 / weak 0.3
 
 @dataclass(frozen=True, slots=True)
 class CombatModifier:
@@ -168,90 +216,132 @@ class CombatModifier:
     thr_mult: float = 1.0
     attack_range_delta: int = 0
 
-WEATHER_BUFFS: dict[WeatherState, CombatModifier]
-WEATHER_DEBUFFS: dict[WeatherState, CombatModifier]
 IDENTITY: CombatModifier
+WEATHER_BUFF_BASE: dict[WeatherState, CombatModifier]    # strong-tier buff effect
+WEATHER_DEBUFF_BASE: dict[WeatherState, CombatModifier]  # strong-tier debuff effect
+DAMAGE_MULT: dict[RingRelation, float]                   # System B table
 
-def relation(affinity: WeatherState, weather: WeatherState) -> Relation
+def ring_relation(a: WeatherState, b: WeatherState) -> RingRelation
+
+# System A
 def combat_modifier(affinity: WeatherState, weather: WeatherState) -> CombatModifier
+    # picks buff/debuff base by ring_relation, scales deviation by tier scalar
+
+# System B
+def damage_modifier(attacker_affinity: WeatherState,
+                    defender_affinity: WeatherState) -> float
+
 def shop_weight(affinity: WeatherState, weather: WeatherState) -> float
 
-# Apply helper — does NOT mutate piece; returns a stat dict the combat init reads.
-def apply_modifier(piece, weather: WeatherState) -> CombatPieceState
+# Combat-init bridge — System A only. Does NOT mutate the piece; copies
+# piece.affinity into the snapshot so the combat engine can do System B per hit.
+def apply_weather(piece, weather: WeatherState) -> CombatPieceState
 ```
 
-`apply_modifier` is the bridge for T3 (combat). It pulls `piece.affinity`, looks up `combat_modifier(...)`, applies multipliers to the piece's resolved stats, and emits the `CombatPieceState` snapshot the simulator iterates on. Keeps weather logic fully out of T3.
+`apply_weather` (formerly `apply_modifier`) applies **only System A** at combat
+init. **System B is not snapshottable** — its multiplier depends on the
+defender, so it is resolved per hit inside the combat engine via
+`damage_modifier`. This requires the snapshot to carry affinity (§10.1).
 
-## 8. Tests (`tests/game/test_weather_effects.py`)
+## 9. Tests (`tests/game/test_weather_effects.py`)
 
-Fairness invariants:
+Ring + relation:
 
-- `CYCLE_ORDER` contains exactly the 5 active weathers; `CLEAR` is not in it.
-- For every active weather `w`: `len(BUFFED_AFFINITIES[w]) == 3` (self + 2 cycle neighbours).
-- For every active weather `w`: `len(DEBUFFED_AFFINITIES[w]) == 2` (the 2 diagonal affinities).
-- `BUFFED_AFFINITIES[CLEAR]` and `DEBUFFED_AFFINITIES[CLEAR]` are empty sets.
-- Mutual buff edges: for active `w1`, `w2`, `w2 in BUFFED_AFFINITIES[w1] ⇔ w1 in BUFFED_AFFINITIES[w2]`.
-- Mutual debuff edges: same condition on `DEBUFFED_AFFINITIES`.
-- For each active affinity, exactly 3 weathers list it as buffed, exactly 2 list it as debuffed, exactly 1 (`CLEAR`) treats it as neutral.
-- `CLEAR` affinity appears in zero `BUFFED_AFFINITIES`/`DEBUFFED_AFFINITIES` sets across all weathers.
-- No affinity is both buffed and debuffed by the same weather.
+- `CYCLE_ORDER` is exactly `(MIST, CLOUDY, RAIN, SNOW, THUNDER)`; `CLEAR` absent.
+- `ring_relation` returns the correct member for all `6×6` affinity pairs;
+  `NEUTRAL` whenever either side is `CLEAR`; `SELF` on the diagonal.
+- Directionality: `ring_relation(a, b) == PRIMARY_PREDATOR` ⇔
+  `ring_relation(b, a) == PRIMARY_PREY` (same for secondary).
 
-Function behavior:
+System A:
 
-- `relation(affinity, weather)` returns expected `Relation` for representative cases (self-match, neighbour, diagonal, Clear-affinity, Clear-weather).
+- `combat_modifier`: `SELF` → strong (`+10%`), `PRIMARY_PREDATOR` → medium
+  (`+6%`), `SECONDARY_PREDATOR` → weak (`+3%`), `PRIMARY_PREY` → medium
+  (`−6%`), `SECONDARY_PREY` → weak (`−3%`).
+- Self is the strict maximum buff for every affinity.
 - `combat_modifier` returns `IDENTITY` whenever either side is `CLEAR`.
-- `combat_modifier` returns `WEATHER_BUFFS[weather]` when relation is `STRONG`.
-- `combat_modifier` returns `WEATHER_DEBUFFS[weather]` when relation is `WEAK`.
-- `shop_weight` returns 2.0 on exact match, 1.5 on neighbour, 0.5 on diagonal, 1.0 whenever either side is `CLEAR`.
-- `apply_modifier` scales stats correctly and clamps `attack_range >= 1`.
+- §5.1 affinity-perspective matrix matches `combat_modifier` for every pair.
+- `MIST` debuff: `attack_range_delta == -1` at medium tier, `0` at weak tier.
 
-Determinism:
+System B:
 
-- Repeated calls with identical args return identical objects (or equal frozen dataclasses).
+- `damage_modifier`: `1.10 / 1.05 / 1.00 / 0.95 / 0.90` by relation.
+- Mirror (`a == a`) and any `CLEAR` pairing → `1.00`.
+- Monotonic: predator `> 1.0 >` prey; primary magnitude `>` secondary.
+- Exchange ratio `damage_modifier(pred, prey) / damage_modifier(prey, pred)`
+  ≈ `1.22` (primary), `≈ 1.11` (secondary).
 
-## 9. Changes Required Outside `weather_effects.py`
+Other:
 
-### 9.1 `src/game/models.py`
+- `shop_weight`: `2.0 / 1.5 / 1.2 / 0.8 / 0.6` by relation, `1.0` for `CLEAR`.
+- `apply_weather` scales stats by System A, clamps `attack_range ≥ 1`, and
+  copies `piece.affinity` onto the returned `CombatPieceState`.
+- Determinism: repeated calls with identical args return equal objects.
 
-- `WeatherState`: drop `STORM`, `HEAT`; add `CLOUDY`, `MIST`, `SNOW`, `THUNDER`. Keep `CLEAR`, `RAIN`.
-- Add `WeatherState.from_openweather_id(int) -> WeatherState` classmethod (raises on unknown id; T6 catches and falls back to `CLEAR` per V.3).
-- `Champion`: rename `affinity` → `affinity`. Same type.
-- `Enemy`: drop `weakness`; add `affinity: WeatherState`. Weakness now derives from `DEBUFFED_AFFINITIES`.
-- Update `to_dict`/`from_dict` field names accordingly.
+## 10. Changes Required Outside `weather_effects.py`
 
-### 9.2 `SPEC.md`
+### 10.1 `src/game/models.py`
 
-- §I OpenWeather: rewrite mapping table to match §2.
-- §V.5: "Weather state enum: exactly 6 values (Clear, Cloudy, Mist, Rain, Snow, Thunder), mapped 1:1 to OpenWeather id main groups."
-- §V.6: "Each piece (Champion, Enemy) has exactly one `affinity` field with a `WeatherState` value."
-- §Content "Weather States" table: replace with the 6-state version from §5 (buff/debuff summary).
-- §Content "Champions" table: rename `Affinity` column → `Affinity`; remap Storm→Thunder, Heat→Clear (Blaze Fox & Ember Salamander still sun-themed), Cold→Snow. Add a couple Mist/Cloudy affinities for coverage.
-- §T.2 row: bump Est S → M (matrix + per-weather effects + tests, not just a lookup dict).
+- **`CombatPieceState` gains `affinity: WeatherState`** — the combat engine
+  needs each piece's affinity at damage time for System B (target-dependent,
+  cannot be pre-snapshotted). Update `__post_init__`, `to_dict`, `from_dict`.
+- `Champion` / `Enemy` already carry `affinity`; `WeatherState` already has 6
+  values + `from_openweather_id`. No change there.
 
-### 9.3 Existing tests under `tests/game/`
+### 10.2 `src/game/combat.py` (T3 — already implemented)
 
-- Any test referencing `STORM`/`HEAT` or `affinity`/`weakness` needs renaming. Likely small touchup; T1 tests use these names directly.
+- The damage step multiplies raw damage by
+  `damage_modifier(attacker.affinity, defender.affinity)` before armor/resist.
+  New per-hit hook; T3 is shipped → this is an edit + full retest.
+- `apply_modifier` call sites rename to `apply_weather`.
 
-## 10. Locked Decisions
+### 10.3 T20 (ability framework)
 
-- **Matrix structure**: Variant B (both-neighbours buff + diagonal debuffs), pentagon cycle `Cloudy → Mist → Snow → Rain → Thunder`. Clear is universal neutral.
-- **Magnitudes**: flat ±10% across all effects. Chosen because each weather buffs 3 affinities (Variant B), so team-wide stacking would amplify a larger multiplier into runaway team boosts. ±10% × 3 stacked pieces ≈ 30% team boost ceiling — strong but not oppressive.
-- **`MIST` debuff** stays flat `-1 attack_range` (min 1). Only flat-integer effect; flavor justifies the asymmetry.
-- **Modifier application timing**: at combat init only. One-shot snapshot. Mid-fight weather changes are not in scope.
+- Ability damage must route through the same affinity-tagged damage path so
+  System B applies to spells, not only auto-attacks. Note as a T20 dependency.
 
-## 10b. Open Questions (Confirm Before Implementing)
+### 10.4 `SPEC.md`
 
-1. **Naming** — rename `Champion.affinity` and `Enemy.weakness` to `affinity` on both? Or keep `affinity` on Champion (existing) and add `affinity` to Enemy too? `affinity` is more neutral; `affinity` carries the existing meaning. Answer: rename to affinity -> affinity and weakness is implied from it due to global type relation
-2. **Champion content remap** — when SPEC §Content gets rewritten, redistribute affinity counts so every active affinity + Clear has ≥1 champion in the roster of 8, or keep current 2:2:2:1:1 shape and let some affinities be enemy-only? Current roster has no Mist/Cloudy pieces. Answer: we should have at least one champion per affinity per tier which is 6 * 10 = 60 Champs
+- V.5 / V.6 unchanged (enum + single `affinity` field still hold).
+- New B-section backprop entries: `CombatPieceState.affinity` field add; the
+  T3 `combat.py` damage-hook edit + retest.
+- D-section: record the two-system weather model and that System B per-hit
+  resolution is a combat-engine extension.
+- §T.2 row: effort stays M (matrix + two systems + tests).
 
-## 11. Implementation Order
+### 10.5 Existing tests
 
-1. Confirm §10 open questions.
-2. Update `WeatherState` enum + add `from_openweather_id` (models.py).
-3. Rename `affinity`/`weakness` → `affinity` on Champion + Enemy. Fix existing T1 tests.
-4. Write `weather_effects.py` (matrices, modifiers, functions).
-5. Write `tests/game/test_weather_effects.py`.
-6. Update SPEC.md per §9.2.
-7. Re-run `pytest tests/`.
+- `tests/game/test_weather_effects.py` is rewritten for the new ring and the
+  two systems. `test_combat.py` updates for the System B damage hook and the
+  new `CombatPieceState.affinity` field.
 
-Estimated effort: 1–2 hours total (size M per §9.2).
+## 11. Locked Decisions
+
+- **Cycle**: directed ring `MIST → CLOUDY → RAIN → SNOW → THUNDER`; `CLEAR`
+  outside, inert in both systems.
+- **Two decoupled systems**: System A (node weather, enemy-independent) and
+  System B (damage triangle, weather-independent) are evaluated separately,
+  never summed.
+- **System A tiers**: strong / medium / weak buff = `+10% / +6% / +3%` for
+  self / primary predator / secondary predator; medium / weak debuff =
+  `−6% / −3%` for primary / secondary prey. No strong debuff.
+- **System B**: `1.10 / 1.05 / 1.00 / 0.95 / 0.90` per hit, attacker-flagged,
+  one modifier per hit.
+- **Self is the strict System-A maximum** — a piece is strongest in its own
+  weather.
+- **Timing**: System A at combat init (snapshot); System B per hit in the
+  combat engine.
+
+## 12. Implementation Order
+
+1. Add `CombatPieceState.affinity` (models.py) + `to_dict`/`from_dict`.
+2. Rewrite `weather_effects.py`: `CYCLE_ORDER`, `ring_relation`, `RingRelation`,
+   `combat_modifier` (tier-scaled), `damage_modifier`, `shop_weight`,
+   `apply_weather`.
+3. Wire System B into `combat.py` damage resolution; rename `apply_modifier`
+   call sites to `apply_weather`.
+4. Rewrite `tests/game/test_weather_effects.py`; update `test_combat.py`.
+5. Update `SPEC.md` per §10.4.
+6. Re-run `pytest tests/`.
+
+Estimated effort: M.

@@ -1,8 +1,9 @@
 """Tick-based auto-resolved combat engine (T3 MVP).
 
 `resolve_combat` is a pure, deterministic function: identical inputs always
-produce a byte-equal `BattleResult`. Weather modifiers are applied once at
-init via `weather_effects.apply_modifier` and never mutated afterwards.
+produce a byte-equal `BattleResult`. Weather System A is applied once at init
+via `weather_effects.apply_weather`; System B (the affinity damage triangle) is
+resolved per hit during damage application.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from src.game.models import (
     Enemy,
     WeatherState,
 )
-from src.game.weather_effects import apply_modifier
+from src.game.weather_effects import apply_weather, damage_modifier
 
 # --- Engine constants (T3 MVP lock, plan section 3.1) ---
 TICK_MS = 10
@@ -228,6 +229,8 @@ def _apply_hit(
     damage_taken: dict[str, int],
 ) -> None:
     raw = str_coeff * attacker.strength + int_coeff * attacker.intelligence
+    # Weather System B — affinity damage triangle, applied before mitigation.
+    raw *= damage_modifier(attacker.affinity, target.affinity)
     mitigation = target.resistance if damage_type == DMG_MAGICAL else target.armor
     damage = _mitigated_damage(raw, mitigation, damage_type)
 
@@ -388,7 +391,7 @@ def resolve_combat(
     # Init: snapshot roster definitions into weather-modified combat pieces.
     pieces: list[CombatPieceState] = []
     for index, source in enumerate([*team, *enemies]):
-        piece = apply_modifier(source, weather)
+        piece = apply_weather(source, weather)
         piece.speed_tiebreaker = index
         pieces.append(piece)
     _assign_spawns(pieces)

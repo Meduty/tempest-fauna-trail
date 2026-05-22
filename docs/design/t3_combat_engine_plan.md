@@ -34,7 +34,8 @@ resolve_combat(
 ```
 
 - Team and enemy inputs are static roster definitions (`Champion`, `Enemy`).
-- Weather is the node weather and is applied once at combat initialization via `weather_effects.apply_modifier`.
+- Node weather System A is applied once at combat initialization via `weather_effects.apply_weather`.
+- System B (the affinity damage triangle) is resolved per hit during damage application — it depends on the defender, so it cannot be pre-snapshotted.
 - Function is pure and deterministic for identical inputs.
 
 ### 2.2 Output contract
@@ -117,6 +118,14 @@ Deterministic total ordering:
 
 - Auto raw damage: `1.0 * STR + 0.2 * INT`
 - Ability raw damage (default): `0.2 * STR + 4.2 * INT`
+
+Affinity multiplier (weather System B):
+
+- Before mitigation, multiply raw damage by
+  `weather_effects.damage_modifier(attacker.affinity, defender.affinity)` —
+  `1.10 / 1.05 / 1.00 / 0.95 / 0.90` by the attacker-vs-defender ring relation.
+- Applies to auto-attacks and abilities alike. A `Clear` attacker or defender
+  resolves to `1.00`.
 
 Mitigation (MVP):
 
@@ -210,7 +219,7 @@ Create `src/game/combat.py` with:
 
 ### Step 2 - Initialization
 
-- Convert `Champion`/`Enemy` to `CombatPieceState` through `apply_modifier`.
+- Convert `Champion`/`Enemy` to `CombatPieceState` through `apply_weather` — applies System A and copies `affinity` onto the snapshot for System B lookups.
 - Assign deterministic positions and `speed_tiebreaker`.
 - Initialize aggregate trackers for damage and events.
 
@@ -285,7 +294,8 @@ Build `BattleResult` from final state:
 
 ### 6.6 Weather integration
 
-- Modified stats from `apply_modifier` are actually used by combat outcomes.
+- System-A modified stats from `apply_weather` are actually used by combat outcomes.
+- System-B `damage_modifier` is applied per hit: for otherwise-identical pieces, a predator attacker deals more and a prey attacker deals less.
 
 ### 6.7 BattleResult integrity
 
@@ -296,7 +306,7 @@ Build `BattleResult` from final state:
 T3 is complete when all are true:
 
 1. `resolve_combat(...)` exists in `src/game/combat.py` and is pure.
-2. Weather modifiers are applied once at init and never mutated by weather afterward.
+2. System-A weather modifiers are applied once at init and never mutated afterward; System B is applied per hit via `damage_modifier`.
 3. Combat resolves by tick loop with deterministic ordering and no randomness.
 4. `BattleResult` fields are fully populated and coherent.
 5. `tests/game/test_combat.py` passes and verifies determinism + edge cases.
