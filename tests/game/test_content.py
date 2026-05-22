@@ -141,7 +141,7 @@ class TestStatMonotonicity:
 
         by_archetype: dict[tuple, list] = {}
         for d in _CHAMPION_DEFS:
-            key = (d.primary_stat, d.range_, d.durability, d.playstyle)
+            key = (d.primary_stat, d.range_, d.durability, d.playstyle, d.speed)
             by_archetype.setdefault(key, []).append(d)
 
         for key, defs in by_archetype.items():
@@ -164,7 +164,7 @@ class TestStatMonotonicity:
 
         by_archetype: dict[tuple, list] = {}
         for d in _CHAMPION_DEFS:
-            key = (d.primary_stat, d.range_, d.durability, d.playstyle)
+            key = (d.primary_stat, d.range_, d.durability, d.playstyle, d.speed)
             by_archetype.setdefault(key, []).append(d)
 
         for key, defs in by_archetype.items():
@@ -250,3 +250,17 @@ class TestComposeStats:
         assert result["max_hp"] == 600
         assert result["strength"] == 50
         assert result["intelligence"] == 50
+
+    def test_speed_axis_changes_attack_style_stats(self) -> None:
+        speedy = compose_stats("str", "melee", "standard", "auto", 1, speed="speedy")
+        neutral = compose_stats("str", "melee", "standard", "auto", 1, speed="neutral")
+        heavy = compose_stats("str", "melee", "standard", "auto", 1, speed="heavy")
+        assert speedy["attack_speed"] > neutral["attack_speed"] > heavy["attack_speed"]
+        assert speedy["strength"] < neutral["strength"] < heavy["strength"]
+
+    def test_speed_axis_changes_ability_style_stats(self) -> None:
+        speedy = compose_stats("int", "ranged", "standard", "ability", 1, speed="speedy")
+        neutral = compose_stats("int", "ranged", "standard", "ability", 1, speed="neutral")
+        heavy = compose_stats("int", "ranged", "standard", "ability", 1, speed="heavy")
+        assert speedy["resistance"] > neutral["resistance"] > heavy["resistance"]
+        assert speedy["intelligence"] < neutral["intelligence"] < heavy["intelligence"]
