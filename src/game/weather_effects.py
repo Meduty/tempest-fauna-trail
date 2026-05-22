@@ -236,4 +236,6 @@ def apply_weather(piece: Champion | Enemy, weather: WeatherState) -> CombatPiece
         attack_range=attack_range,
         ability_cost=piece.ability_cost,
         crit_chance=piece.crit_chance,
+        penetration=piece.penetration,
+        penetration_pct=piece.penetration_pct,
     )

@@ -81,6 +81,9 @@ class Champion:
     passive_ability: str
     ability_cost: int
     traits: list[str] = field(default_factory=list)
+    crit_chance: float = 0.0
+    penetration: int = 0
+    penetration_pct: float = 0.0
 ```
 
 Validation:
@@ -91,6 +94,8 @@ Validation:
 - `strength`, `intelligence`, `attack_speed`, `move_speed`, `mana_regen`, `threat`, `armor`, `resistance >= 0`
 - `attack_range > 0`
 - `ability_cost > 0`
+- `crit_chance`, `penetration_pct` in `[0.0, 1.0]`
+- `penetration >= 0`
 - `traits` must be non-empty unique strings
 
 ### 2.2 Enemy
@@ -117,6 +122,9 @@ class Enemy:
     active_ability: str
     passive_ability: str
     ability_cost: int
+    crit_chance: float = 0.0
+    penetration: int = 0
+    penetration_pct: float = 0.0
 ```
 
 Validation:
@@ -127,6 +135,8 @@ Validation:
 - `strength`, `intelligence`, `attack_speed`, `move_speed`, `mana_regen`, `threat`, `armor`, `resistance >= 0`
 - `attack_range > 0`
 - `ability_cost > 0`
+- `crit_chance`, `penetration_pct` in `[0.0, 1.0]`
+- `penetration >= 0`
 
 ### 2.3 Node
 
@@ -177,6 +187,11 @@ class CombatPieceState:
     position_r: int = 0
     target_piece_id: str | None = None
     speed_tiebreaker: int = 0
+    crit_chance: float = 0.0
+    ability_can_crit: bool = False
+    crit_counter: int = 0
+    penetration: int = 0
+    penetration_pct: float = 0.0
     alive: bool = True
 ```
 
@@ -194,6 +209,8 @@ Validation:
 - `attack_range > 0`
 - `ability_cost > 0`
 - `mana >= 0`, `action_energy >= 0`, `movement_energy >= 0`, `speed_tiebreaker >= 0`
+- `crit_chance`, `penetration_pct` in `[0.0, 1.0]`
+- `penetration >= 0`
 
 Normalization in `__post_init__`:
 
@@ -212,6 +229,7 @@ class BattleEvent:
     event_type: str
     amount: int = 0
     note: str = ""
+    is_crit: bool = False
 ```
 
 Validation:

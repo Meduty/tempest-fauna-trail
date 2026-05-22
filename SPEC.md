@@ -69,7 +69,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.1 | Data models — Champion, Enemy, Node, Run, BattleResult, WeatherState + NodeType/NodeState + combat runtime state + JSON serialization helpers | `game/models.py`, `docs/design/tasks/t1_data_models_plan.md`, `docs/design/tasks/t1_model_contracts.md` | — | M |
 | T.2 | Weather effects — directional predator/prey ring; two decoupled systems (node-weather buff/debuff + affinity damage triangle), per-weather stat packs, shop weight, `apply_weather` for combat init | `game/weather_effects.py`, `docs/design/tasks/t2_weather_effects_plan.md` | T.1 | M |
 | T.3 | Combat engine — tick-based auto-resolve (10ms tick simulation), apply weather modifiers | `game/combat.py` | T.1, T.2 | M |
-| T.4 | City route — define 6+1 cities with coordinates, enemy pools | `game/route.py` | T.1 | S |
+| T.4 | City route — ~50 cities (one per node) across 6 staged continents, coordinates, stage affinity, enemy pools | `game/route.py` | T.1 | M |
 | T.5 | Content — define champion roster (target: 1 per affinity × 10 tiers = ~60 champions; MVP cut OK) + ~5 enemy types with stats + synergy trait catalog | `game/content.py` | T.1 | M |
 | T.6 | OpenWeather client — fetch current weather, parse to WeatherState | `api/weather.py` | T.1 | S |
 | T.7 | Cache layer — JSON file cache with 1h TTL | `api/cache.py` | T.6 | S |
@@ -110,7 +110,8 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 
 ### T.4 Planning Notes
 
-- Route locked: 6 continent stages, 50 linear nodes, one hub city per stage.
+- Route locked: 6 continent stages, 50 linear nodes, one distinct city per node;
+  each stage carries an authored affinity (one per `WeatherState`).
 - Detailed T.4 plan: `docs/design/tasks/t4_city_route_plan.md`.
 
 ### T.18-T.22 Planning Notes (Systems Expansion)
@@ -144,6 +145,24 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   (`1 Amber : 1 Tempest`). The `Run.gold` model field should be renamed
   `Run.amber` — touches `models.py`, `to_dict`/`from_dict`, `test_models.py`,
   and `t1_model_contracts.md`.
+
+- B.6 Combat gains a **penetration** stat pair — `penetration` (flat) and
+  `penetration_pct` (`[0.0, 1.0]`) on `Champion`, `Enemy`, and
+  `CombatPieceState`. The attacker's penetration erodes the target's
+  Armor/Resistance before mitigation (percent first, then flat, clamped at 0);
+  `true` damage is unaffected. Default `0` — a build-around stat, not a base
+  archetype stat, not power-scaled (`T18`). Touches `models.py`, `combat.py`,
+  `weather_effects.py` (`apply_weather` copy-through), `combat_system_proposal.md`
+  §4.2/§4.4, `t1_model_contracts.md`, `t3_combat_engine_plan.md`,
+  `test_models.py`, `test_combat.py`.
+
+- B.7 Route reworked to **one city per node** — ~50 real cities across 6
+  continent stages (was 6 hub cities, one per stage). A stage carries an
+  authored **affinity** (`StageDef.affinity`, one per `WeatherState`) used by its
+  boss and challenge; each node/city carries its own live weather. The stage-1
+  boss fight moved to Vienna. Supersedes the "~6 cities" content budget. Touches
+  `t4_city_route_plan.md`, `boss_roster.md`, `CLAUDE.md`, and (when built)
+  `route.py`.
 
 ## D. Systems Yet To Be Determined
 
@@ -253,15 +272,21 @@ outside the ring — inert in both systems. Full matrices in
 
 T.5 expands this to a full roster of ~60 (1 champion per affinity × 10 tiers).
 
-### Cities examples
-| Stage | Continent | City | Country | Enemy Theme |
-|---|---|---|---|---|
-| 1 | Europe | London | UK | Smog bots |
-| 2 | Africa | Cairo | Egypt | Heat mechs |
-| 3 | Asia | Tokyo | Japan | Storm sentinels |
-| 4 | Oceania | Sydney | Australia | Wildfire units |
-| 5 | South America | Rio de Janeiro | Brazil | Monsoon walkers |
-| 6 | North America | New York | USA | Grand boss (live NYC weather) |
+### Cities & route
+
+The route is **6 continent stages, ~50 nodes, one distinct real city per node**
+(`docs/design/tasks/t4_city_route_plan.md`). Each stage has an authored
+**affinity** used by its boss/challenge encounters; each node/city carries its
+own **live weather**. Boss cities, one per stage:
+
+| Stage | Continent | Affinity | Boss city |
+|---|---|---|---|
+| 1 | Europe | Clear | Vienna |
+| 2 | Africa | Mist | Cairo |
+| 3 | Asia | Thunder | Tokyo |
+| 4 | Oceania | Cloudy | Sydney |
+| 5 | South America | Rain | Rio de Janeiro |
+| 6 | North America | Snow | New York (grand boss) |
 
 ### Enemy Types examples
 | Type | Base ATK | Base HP | Affinity |

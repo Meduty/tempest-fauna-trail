@@ -216,3 +216,16 @@ def test_combat_piece_state_clamps_hp_to_max() -> None:
 
     assert piece.hp == 100
     assert piece.mana == 100
+
+
+def test_penetration_fields_roundtrip_and_validate() -> None:
+    champ = _make_roster()[0]
+    champ.penetration = 25
+    champ.penetration_pct = 0.4
+
+    loaded = Champion.from_dict(champ.to_dict())
+    assert loaded.penetration == 25
+    assert loaded.penetration_pct == 0.4
+
+    with pytest.raises(ValueError, match="penetration_pct"):
+        Champion.from_dict({**champ.to_dict(), "penetration_pct": 1.5})

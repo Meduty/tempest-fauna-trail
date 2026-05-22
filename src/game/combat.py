@@ -208,12 +208,35 @@ def _next_step_toward(
 # --- Damage ------------------------------------------------------------------
 
 
-def _mitigated_damage(raw: float, mitigation_stat: int, damage_type: str) -> int:
-    """Bounded mitigation; final integer damage clamped to at least 1."""
+def _effective_mitigation(mitigation_stat: int, pen_flat: int, pen_pct: float) -> int:
+    """Target mitigation stat after the attacker's penetration.
+
+    Percent penetration applies first, then flat — `round(stat × (1 − pct)) −
+    flat` — and the result is clamped at 0. Order is documented in
+    `combat_system_proposal.md` §4.4.
+    """
+    after_pct = mitigation_stat * (1.0 - pen_pct)
+    return max(0, round(after_pct) - pen_flat)
+
+
+def _mitigated_damage(
+    raw: float,
+    mitigation_stat: int,
+    damage_type: str,
+    pen_flat: int,
+    pen_pct: float,
+) -> int:
+    """Bounded mitigation; final integer damage clamped to at least 1.
+
+    `pen_flat` / `pen_pct` are the attacker's penetration — they erode the
+    target's mitigation stat before reduction is computed. `true` damage
+    ignores mitigation and therefore penetration too.
+    """
     if damage_type == DMG_TRUE:
         final = raw
     else:
-        reduction = mitigation_stat / (mitigation_stat + MITIGATION_CONSTANT)
+        effective = _effective_mitigation(mitigation_stat, pen_flat, pen_pct)
+        reduction = effective / (effective + MITIGATION_CONSTANT)
         final = raw * (1.0 - reduction)
     return max(1, round(final))
 
@@ -243,7 +266,9 @@ def _apply_hit(
     if is_crit:
         raw *= CRIT_MULTIPLIER
     mitigation = target.resistance if damage_type == DMG_MAGICAL else target.armor
-    damage = _mitigated_damage(raw, mitigation, damage_type)
+    damage = _mitigated_damage(
+        raw, mitigation, damage_type, attacker.penetration, attacker.penetration_pct
+    )
 
     target.hp = max(0, target.hp - damage)
     damage_dealt[attacker.piece_id] += damage

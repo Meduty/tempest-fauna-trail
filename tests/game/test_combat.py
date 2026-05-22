@@ -296,6 +296,37 @@ def test_affinity_damage_triangle_scales_hits():
     assert prey_hit == 45
 
 
+# --- 6.x Penetration ---------------------------------------------------------
+
+
+def test_penetration_erodes_target_mitigation():
+    # Target armor 100 -> reduction 100/200 = 0.5; raw auto STR 50 -> 25 dealt.
+    # Flat pen 50: armor 50 -> 50/150 reduction -> 50 * (2/3) ~= 33.
+    # 100% pen: armor 0 -> no reduction -> 50 dealt.
+    def _first_hit(**champ_over):
+        team = [
+            _champ(
+                id="hero",
+                attack_range=12,
+                attack_speed=60_000,
+                strength=50,
+                **champ_over,
+            )
+        ]
+        enemies = [
+            _enemy(id="mob", attack_speed=0, move_speed=0, max_hp=100_000, armor=100)
+        ]
+        result = resolve_combat(team, enemies, WeatherState.CLEAR)
+        return next(e for e in result.events if e.event_type == "attack").amount
+
+    base = _first_hit()
+    flat = _first_hit(penetration=50)
+    full = _first_hit(penetration_pct=1.0)
+    assert base == 25
+    assert full == 50
+    assert base < flat < full
+
+
 # --- 6.7 BattleResult integrity ----------------------------------------------
 
 

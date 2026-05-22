@@ -111,6 +111,8 @@ class Champion:
     ability_cost: int
     traits: list[str] = field(default_factory=list)
     crit_chance: float = 0.0
+    penetration: int = 0
+    penetration_pct: float = 0.0
 
     def __post_init__(self) -> None:
         _require_range(self.tier, "Champion tier", 1, 10)
@@ -127,6 +129,8 @@ class Champion:
         _require_positive_int(self.attack_range, "Champion attack_range")
         _require_positive_int(self.ability_cost, "Champion ability_cost")
         _require_unit_float(self.crit_chance, "Champion crit_chance")
+        _require_non_negative_int(self.penetration, "Champion penetration")
+        _require_unit_float(self.penetration_pct, "Champion penetration_pct")
 
         self.traits = list(self.traits)
         if any(not isinstance(t, str) or not t for t in self.traits):
@@ -157,6 +161,8 @@ class Champion:
             "passive_ability": self.passive_ability,
             "ability_cost": self.ability_cost,
             "crit_chance": self.crit_chance,
+            "penetration": self.penetration,
+            "penetration_pct": self.penetration_pct,
         }
 
     @classmethod
@@ -183,6 +189,8 @@ class Champion:
             passive_ability=payload["passive_ability"],
             ability_cost=payload["ability_cost"],
             crit_chance=payload.get("crit_chance", 0.0),
+            penetration=payload.get("penetration", 0),
+            penetration_pct=payload.get("penetration_pct", 0.0),
         )
 
 
@@ -208,6 +216,8 @@ class Enemy:
     passive_ability: str
     ability_cost: int
     crit_chance: float = 0.0
+    penetration: int = 0
+    penetration_pct: float = 0.0
 
     def __post_init__(self) -> None:
         _require_range(self.tier, "Enemy tier", 1, 10)
@@ -224,6 +234,8 @@ class Enemy:
         _require_positive_int(self.attack_range, "Enemy attack_range")
         _require_positive_int(self.ability_cost, "Enemy ability_cost")
         _require_unit_float(self.crit_chance, "Enemy crit_chance")
+        _require_non_negative_int(self.penetration, "Enemy penetration")
+        _require_unit_float(self.penetration_pct, "Enemy penetration_pct")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -247,6 +259,8 @@ class Enemy:
             "passive_ability": self.passive_ability,
             "ability_cost": self.ability_cost,
             "crit_chance": self.crit_chance,
+            "penetration": self.penetration,
+            "penetration_pct": self.penetration_pct,
         }
 
     @classmethod
@@ -272,6 +286,8 @@ class Enemy:
             passive_ability=payload["passive_ability"],
             ability_cost=payload["ability_cost"],
             crit_chance=payload.get("crit_chance", 0.0),
+            penetration=payload.get("penetration", 0),
+            penetration_pct=payload.get("penetration_pct", 0.0),
         )
 
 
@@ -348,6 +364,8 @@ class CombatPieceState:
     crit_chance: float = 0.0
     ability_can_crit: bool = False
     crit_counter: int = 0
+    penetration: int = 0
+    penetration_pct: float = 0.0
     alive: bool = True
 
     def __post_init__(self) -> None:
@@ -370,6 +388,8 @@ class CombatPieceState:
         _require_non_negative_int(self.movement_energy, "CombatPieceState movement_energy")
         _require_non_negative_int(self.speed_tiebreaker, "CombatPieceState speed_tiebreaker")
         _require_unit_float(self.crit_chance, "CombatPieceState crit_chance")
+        _require_non_negative_int(self.penetration, "CombatPieceState penetration")
+        _require_unit_float(self.penetration_pct, "CombatPieceState penetration_pct")
 
         if self.hp > self.max_hp:
             self.hp = self.max_hp
@@ -407,6 +427,8 @@ class CombatPieceState:
             "crit_chance": self.crit_chance,
             "ability_can_crit": self.ability_can_crit,
             "crit_counter": self.crit_counter,
+            "penetration": self.penetration,
+            "penetration_pct": self.penetration_pct,
             "alive": self.alive,
         }
 
@@ -440,6 +462,8 @@ class CombatPieceState:
             crit_chance=payload.get("crit_chance", 0.0),
             ability_can_crit=payload.get("ability_can_crit", False),
             crit_counter=payload.get("crit_counter", 0),
+            penetration=payload.get("penetration", 0),
+            penetration_pct=payload.get("penetration_pct", 0.0),
             alive=payload.get("alive", True),
         )
 

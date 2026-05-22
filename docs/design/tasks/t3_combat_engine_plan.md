@@ -149,7 +149,10 @@ if can_crit and attacker.crit_chance > 0.0:
     attacker.crit_counter += 1
     if attacker.crit_counter >= round(1.0 / attacker.crit_chance):
         raw ×= 1.5   # CRIT; reset counter to 0
-damage = mitigate(raw, target.armor_or_res, dmg_type)   # clamped to ≥ 1
+# penetration erodes the target's Armor/Resistance inside mitigate():
+#   effective = max(0, round(mit × (1 − pen_pct)) − pen_flat)
+damage = mitigate(raw, target.armor_or_res, dmg_type,
+                  attacker.penetration, attacker.penetration_pct)   # clamped ≥ 1
 ```
 
 Mitigation (MVP):
@@ -159,6 +162,10 @@ Mitigation (MVP):
 - `magical` damage is mitigated by Resistance.
 - `true` damage bypasses mitigation.
 - Use bounded reduction: `reduction = stat / (stat + 100)`.
+- **Penetration**: the attacker's `penetration` (flat) and `penetration_pct`
+  erode the target's mitigation stat before reduction —
+  `effective = max(0, round(stat × (1 − penetration_pct)) − penetration)`,
+  clamped at 0; percent applies first, then flat. `true` damage ignores it.
 - Final integer damage is rounded and clamped to at least 1 on successful hit.
 
 Type mapping for T3 MVP:

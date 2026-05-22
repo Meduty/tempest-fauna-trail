@@ -74,4 +74,4 @@ tests/                      # pytest, mirrors src/ structure
 
 ## Content Budget
 
-~6 cities, ~8 champions, ~5 enemy types, 5 weather states (Clear, Rain, Storm, Heat, Cold)
+~50 cities (one per node), ~60 champions, ~60 enemies, 6 weather states (Clear, Cloudy, Mist, Rain, Snow, Thunder)

@@ -1,225 +1,253 @@
-# Champion Roster — 60 Skeleton Designs
+# Champion Roster — 60 Animal & Spirit Pieces
 
-A complete first-pass roster of 60 champions, distributed across 10 tiers and 6 weather types, with balanced archetype representation.
+The player's champions are the **uprising**: animals woken to purpose and nature
+spirits risen out of the wounded earth, banding together against the industrial
+colonizers who strip the living world bare (see `enemy_roster.md`). Every
+champion is a *piece* — the exact same combat object as an enemy
+(`Champion`/`Enemy` share a stat block, the ability framework, and all damage
+math). Champions differ only in *operation*: they are drafted, bought, levelled
+by collecting copies, and they carry **traits** for team synergies.
+
+**Status:** first-pass roster — 60 designs across 10 tiers × 6 weather
+affinities. Names, identity hooks, one-line ability *concepts*, and trait tags
+only. No stat blocks, no mana costs, no ranges — those are downstream work
+(`t18_power_scaling_plan.md` for stats, the ability framework for kits). Traits
+are defined in `trait_catalog.md`; the effect substrate in
+`effect_systems_design.md`.
 
 ## Distribution Framework
 
 **Per weather (10 champions each):**
 - 2 Tanks (from 4 subtypes)
-- 2 APCs (burst) (from 4 subtypes)
-- 2 ADCs (sustain) (from 4 subtypes)
+- 2 APCs / burst (from 4 subtypes)
+- 2 ADCs / sustain (from 4 subtypes)
 - 2 SUPs (from 4 subtypes)
 - 2 Hybrids (from 3 subtypes)
 
-**Subtype totals across all 60 champions:**
-- Tank subtypes (HP, ARM+RES, INT, STR): 3 each = 12
-- APC subtypes (INT Mage, STR Mage, INT Assassin, STR Assassin): 3 each = 12
-- ADC subtypes (INT Marksman, STR Marksman, INT Warrior, STR Warrior): 3 each = 12
-- SUP subtypes (Heal, Shield, Buff, Debuff): 3 each = 12
-- Hybrid subtypes (Tank/DMG, INT/STR, APC/ADC): 4 each = 12
+Every archetype subtype appears in 3–4 different weathers, so no single piece is
+a must-pick regardless of the live weather. **Total: 60.**
 
-**Total: 60.** Every subtype appears in 3–4 different weathers, ensuring no piece is a "must-pick" regardless of weather state.
-
-## Archetype Identity Reminder
+## Archetype Identity
 
 | Family | Identity | Default damage source |
 |--------|----------|-----------------------|
-| Tank | Frontline, absorbs damage | Mixed/utility |
+| Tank | Frontline, absorbs damage | Mixed / utility |
 | APC | Burst — high per-cast damage, slow cycle | INT (Mage) or STR (Mage/Assassin variants) |
 | ADC | Sustain — steady auto-attack DPS | STR (default) or INT (on-hit variants) |
-| SUP | Enables team via heal/shield/buff/debuff | N/A |
-| Hybrid | Cross-family identity (bruiser, spellblade, etc.) | Varies per subtype |
+| SUP | Enables the team via heal / shield / buff / debuff | N/A |
+| Hybrid | Cross-family identity (bruiser, spellblade, phase-piece) | Varies per subtype |
+
+Every champion also carries **one Kinship** and **one or two Callings**
+(`trait_catalog.md`). Kinship is what the creature *is*; Calling is how it
+fights. Tier-10s additionally carry the **Primordial** Calling.
 
 ## Master Matrix
 
 | Tier | Clear | Rain | Snow | Cloudy | Mist | Thunder |
 |------|-------|------|------|--------|------|---------|
-| 1 | Acolyte (SUP-Heal) | Tide Acolyte (SUP-Heal) | Frost Cub (Tank-HP) | Stone Acolyte (Tank-HP) | Lost Wisp (SUP-Heal) | Spark Caster (SUP-Debuff) |
-| 2 | Squire (ADC-STR Warrior) | Rivulet Guardian (ADC-STR Warrior) | Snow Acolyte (SUP-Buff) | Shrouded One (SUP-Debuff) | Spectral Apprentice (APC-INT Mage) | Storm Berserker (ADC-STR Warrior) |
-| 3 | Sun Priest (APC-INT Mage) | Tide Conjurer (APC-STR Mage) | Avalanche Caster (APC-STR Mage) | Storm Slinger (APC-STR Mage) | Phantom Blade (APC-INT Assassin) | Voltdancer (APC-STR Assassin) |
-| 4 | Lightbringer (SUP-Buff) | Druid of the Grove (Hybrid-Tank/DMG) | Frostbinder (SUP-Shield) | Stoneform Guardian (SUP-Shield) | Hollow Warden (Tank-INT) | Stormcatcher (SUP-Shield) |
-| 5 | Paladin (Tank-ARM+RES) | Coral Behemoth (Tank-HP) | Glacial Warden (Tank-ARM+RES) | Shadowstep Striker (ADC-INT Warrior) | Mistweaver (SUP-Debuff) | Storm Titan (Tank-ARM+RES) |
-| 6 | Sunblade Warden (Tank-STR) | Wandering Singer (SUP-Buff) | Glaivedancer (ADC-INT Warrior) | Mountain Sage (Tank-INT) | Wraith Knight (Tank-STR) | Stormbringer (APC-INT Mage) |
-| 7 | Solar Crusader (Hybrid-Tank/DMG) | Mire Warden (Tank-INT) | Avalanche Elemental (Hybrid-Tank/DMG) | Dusk Stalker (Hybrid-INT/STR) | Mireborn (Hybrid-Tank/DMG) | Voltkin (Hybrid-INT/STR) |
-| 8 | Dawnstrider (APC-INT Assassin) | Glade Hunter (ADC-INT Marksman) | Frostfang (APC-STR Assassin) | Twilight Reaver (APC-INT Assassin) | Veil Hunter (ADC-INT Warrior) | Thunderclap (Tank-STR) |
-| 9 | Helios Archer (ADC-STR Marksman) | Tide Reaver (APC-STR Assassin) | Icebow Sniper (ADC-STR Marksman) | Skyhunter (ADC-STR Marksman) | Wraithbow (ADC-INT Marksman) | Stormbow (ADC-INT Marksman) |
-| 10 | Aurelius, Lord of Dawn (Hybrid-INT/STR) | Nereus, Tide Sovereign (Hybrid-APC/ADC) | Borealis, Frost Sovereign (Hybrid-INT/STR) | Umbra, Shadow Sovereign (Hybrid-APC/ADC) | Specterking, Pale Lord (Hybrid-APC/ADC) | Aerion, Storm Sovereign (Hybrid-APC/ADC) |
+| 1 | Dawnwisp (SUP-Heal) | Springfrog (SUP-Heal) | Snowpelt Cub (Tank-HP) | Pebbleback Pangolin (Tank-HP) | Lostlight Wisp (SUP-Heal) | Sparkfly (SUP-Debuff) |
+| 2 | Veldt Pronghorn (ADC-STR Warrior) | Reedbank Otter (ADC-STR Warrior) | Wintermoth (SUP-Buff) | Dusk Bat (SUP-Debuff) | Will-o-Fawn (APC-INT Mage) | Thunderhoof Colt (ADC-STR Warrior) |
+| 3 | Ember Salamander (APC-INT Mage) | Torrent Heron (APC-STR Mage) | Permafrost Walrus (APC-STR Mage) | Boulderhide Skink (APC-STR Mage) | Phantom Lynx (APC-INT Assassin) | Voltscale Mamba (APC-STR Assassin) |
+| 4 | Goldcrest Lark (SUP-Buff) | Grovekeeper Tapir (Hybrid-Tank/DMG) | Hoarfrost Owl (SUP-Shield) | Geode Beetle (SUP-Shield) | Hollow Elk (Tank-INT) | Coppercrest Stork (SUP-Shield) |
+| 5 | Aegis Tortoise (Tank-ARM+RES) | Coral Colossus (Tank-HP) | Frostplate Tortoise (Tank-ARM+RES) | Duskstep Marten (ADC-INT Warrior) | Fogveil Moth (SUP-Debuff) | Thunderhide Bison (Tank-ARM+RES) |
+| 6 | Sunmane Lion (Tank-STR) | Marsh Thrush (SUP-Buff) | Iceclaw Lynx (ADC-INT Warrior) | Granite Gorilla (Tank-INT) | Wraithorn Stag (Tank-STR) | Tempest Eel (APC-INT Mage) |
+| 7 | Goldhide Rhino (Hybrid-Tank/DMG) | Mirewarden Toad (Tank-INT) | Glacierback Mammoth (Hybrid-Tank/DMG) | Eclipse Jaguar (Hybrid-INT/STR) | Marshghast Boar (Hybrid-Tank/DMG) | Voltmane Jackal (Hybrid-INT/STR) |
+| 8 | Mirage Caracal (APC-INT Assassin) | Glade Heron (ADC-INT Marksman) | Frostfang Wolverine (APC-STR Assassin) | Nightglass Mantis (APC-INT Assassin) | Veilfang Wolf (ADC-INT Warrior) | Thunderclap Gorilla (Tank-STR) |
+| 9 | Sunspear Falcon (ADC-STR Marksman) | Riptide Caiman (APC-STR Assassin) | Frostquill Porcupine (ADC-STR Marksman) | Cliffeyrie Eagle (ADC-STR Marksman) | Spectral Heron (ADC-INT Marksman) | Storm Eagle (ADC-INT Marksman) |
+| 10 | Aurion, the First Dawn (Hybrid-INT/STR) | Nerei, the Floodmother (Hybrid-APC/ADC) | Borealis, the Pale Aurora (Hybrid-INT/STR) | Umbra, the Mountain's Shadow (Hybrid-APC/ADC) | Mournhollow, the Pale Stag (Hybrid-APC/ADC) | Aerion, the Skybreaker (Hybrid-APC/ADC) |
+
+---
 
 ## Detailed Roster by Weather
 
-Each entry: **Name** (Tier T, *Archetype*) — identity hook · *ability concept*.
+Each entry: **Name** (Tier T, *Archetype*) · [Kinship · Calling(s)] — identity
+hook · *ability concept*. "Cast" = active ability; "passive" = always-on.
 
 ---
 
-### Clear (Sun / Holy faction)
+### Clear — The Sunwild
 
-Themes: light, gold, divine, balance. Generic-feeling faction; strong baseline pieces with few exotic mechanics. Default counter to Cloudy and Mist.
+Sun-warmed plains, high open sky, dawn light. Big cats, hoofed runners, raptors,
+and motes of first light. Clear is the **baseline** faction — strong, honest
+pieces with few exotic mechanics, fitting `CLEAR`'s inert standing in both
+weather systems (it neither counters nor is countered). Pairs well into any
+team. *Weather: `CLEAR` sits outside the predator/prey ring — no node buff, no
+node debuff, no affinity damage triangle.*
 
-- **Acolyte** (T1, *SUP-Heal*) — entry-level healer · *cast: heal lowest-HP ally for moderate INT-scaled health.*
-- **Squire** (T2, *ADC-STR Warrior*) — cheap melee carry · *passive: every 3rd auto deals bonus STR damage.*
-- **Sun Priest** (T3, *APC-INT Mage*) — light-burst mage · *cast: AOE holy damage in line, scales with INT.*
-- **Lightbringer** (T4, *SUP-Buff*) — team STR/INT amplifier · *cast: aura giving allies +20% damage for 4s.*
-- **Paladin** (T5, *Tank-ARM+RES*) — defensive frontline · *passive: reduces damage taken from adjacent attackers.*
-- **Sunblade Warden** (T6, *Tank-STR*) — aggressive tank, frontline counter · *cast: short STR-scaling cleave, gain shield equal to damage dealt.*
-- **Solar Crusader** (T7, *Hybrid-Tank/DMG*) — bruiser, sustains in fights · *passive: heals on auto-attack, scales with own HP.*
-- **Dawnstrider** (T8, *APC-INT Assassin*) — burst assassin, holy damage · *cast: blink to lowest-HP enemy, INT-scaled execute.*
-- **Helios Archer** (T9, *ADC-STR Marksman*) — fast-attacking sunbow · *passive: every auto applies a sun-mark, marked targets take +X% damage from autos.*
-- **Aurelius, Lord of Dawn** (T10, *Hybrid-INT/STR*) — legendary; auto-attacks scale with both stats · *cast: blinding nova that disarms and deals hybrid damage; passive: gains 1 INT and 1 STR per second alive.*
-
----
-
-### Rain (Water / Druid faction)
-
-Themes: water, growth, healing, mobility. Mid-defense, high sustain. Strong against Thunder; counters Snow's slow-imposing kits via mobility.
-
-- **Tide Acolyte** (T1, *SUP-Heal*) — basic water-priest healer · *cast: heal target ally over 3s (HoT).*
-- **Rivulet Guardian** (T2, *ADC-STR Warrior*) — riverbank warrior · *passive: gains MS for 2s after attacking.*
-- **Tide Conjurer** (T3, *APC-STR Mage*) — STR-scaling water mage; abilities summon water spears · *cast: throws three water spears in a cone, scales with STR (the water has weight).*
-- **Druid of the Grove** (T4, *Hybrid-Tank/DMG*) — nature bruiser, regenerates · *passive: regenerates 2% HP/sec; cast: roots target in vines, deals STR-scaled damage over duration.*
-- **Coral Behemoth** (T5, *Tank-HP*) — massive HP pool · *passive: gains 50 HP per second below 50% HP; cast: shell-up for 3s of damage immunity.*
-- **Wandering Singer** (T6, *SUP-Buff*) — bard-style buffer · *cast: grants allies +30% MS and AS for 5s.*
-- **Mire Warden** (T7, *Tank-INT*) — magic-damage tank, slow zone · *passive: creates a slowing aura around self; cast: pulls all enemies in range toward self.*
-- **Glade Hunter** (T8, *ADC-INT Marksman*) — magical archer, on-hit poison · *passive: autos apply poison stacks scaling with INT.*
-- **Tide Reaver** (T9, *APC-STR Assassin*) — water-blade burst assassin · *cast: dash through enemy, deal heavy STR damage; passive: refunds 30% mana on kill.*
-- **Nereus, Tide Sovereign** (T10, *Hybrid-APC/ADC*) — legendary; alternates auto/cast roles · *passive: every cast empowers next 3 autos with INT scaling; cast: AOE tidal wave.*
+- **Dawnwisp** (T1, *SUP-Heal*) · [Spirit · Mender] — a mote of first light · *cast: knit a wound on the lowest-HP ally, INT-scaled heal.*
+- **Veldt Pronghorn** (T2, *ADC-STR Warrior*) · [Beast · Skirmisher] — tireless plains runner · *passive: every 3rd auto strikes twice as the pronghorn wheels and gores.*
+- **Ember Salamander** (T3, *APC-INT Mage*) · [Scaled · Mystic] — sun-basking firestarter · *cast: a line of kindling light, INT-scaled, that burns the ground for several ticks.*
+- **Goldcrest Lark** (T4, *SUP-Buff*) · [Skyborn · Warden] — its dawn-song lifts the flock · *cast: a rallying song — allies gain damage and Attack Speed for one round (600 ticks).*
+- **Aegis Tortoise** (T5, *Tank-ARM+RES*) · [Scaled · Guardian] — an ancient walking shield · *passive: reduces damage taken from every attacker adjacent to it.*
+- **Sunmane Lion** (T6, *Tank-STR*) · [Beast · Bruiser] — the pride's roaring frontline · *cast: a STR-scaled cleave; the lion shields itself for a share of the damage it deals.*
+- **Goldhide Rhino** (T7, *Hybrid-Tank/DMG*) · [Beast · Bruiser · Mender] — unstoppable once it builds momentum · *passive: heals on every auto, scaling with its own max HP; the longer it lives the harder it is to kill.*
+- **Mirage Caracal** (T8, *APC-INT Assassin*) · [Beast · Stalker] — strikes from a shimmer of heat-haze · *cast: blink to the lowest-HP enemy, INT-scaled execute that hits harder the lower their HP.*
+- **Sunspear Falcon** (T9, *ADC-STR Marksman*) · [Skyborn · Hunter] — a stooping dive of pure speed · *passive: every auto sets a sun-mark; marked targets take bonus auto damage.*
+- **Aurion, the First Dawn** (T10, *Hybrid-INT/STR*) · [Spirit · Primordial · Channeler] — the great sun-lion spirit, the light the land was born under · *passive: gains a point of STR and a point of INT every tick alive — autos scale with both; cast: a blinding solar nova that disarms all enemies hit.*
 
 ---
 
-### Snow (Ice / Frost faction)
+### Rain — The Tidewild
 
-Themes: cold, mountain, defense, slows. Tanky and controlling. Counters Rain via freezing; weak to Thunder's burst.
+Rivers, rainforest canopy, flooded marsh. Otters, herons, frogs, and slow river
+spirits. Rain is **sustain incarnate** — heals over time, regeneration, heavy
+slow attacks. *Weather: Rain hunts Cloudy and Mist; it is hunted by Snow and
+Thunder (storm-water grounds itself, frost stills the river).* 
 
-- **Frost Cub** (T1, *Tank-HP*) — sturdy starter tank · *passive: gains 10% HP at start of round.*
-- **Snow Acolyte** (T2, *SUP-Buff*) — basic frost-themed buffer · *cast: grants ally +AS for 4s.*
-- **Avalanche Caster** (T3, *APC-STR Mage*) — STR-scaling ice mage; throws frozen boulders · *cast: hurls heavy ice projectile, STR-scaling impact damage in small AOE.*
-- **Frostbinder** (T4, *SUP-Shield*) — encases allies in ice shells · *cast: shield target ally; shield breaks deal AOE slow.*
-- **Glacial Warden** (T5, *Tank-ARM+RES*) — heavy ice armor · *passive: each hit taken reduces incoming damage by 1% (stacking up to 30%).*
-- **Glaivedancer** (T6, *ADC-INT Warrior*) — INT-scaling spinning melee · *passive: autos deal +INT magic damage and slow target briefly.*
-- **Avalanche Elemental** (T7, *Hybrid-Tank/DMG*) — bruiser frost giant · *passive: grows in size as fight progresses, gaining HP and STR; cast: AOE knockback.*
-- **Frostfang** (T8, *APC-STR Assassin*) — ice-dagger burst killer · *cast: leap behind target, deal massive STR damage; passive: critical strikes against frozen targets.*
-- **Icebow Sniper** (T9, *ADC-STR Marksman*) — long-range frost archer · *passive: autos slow target; deals bonus damage to slowed enemies.*
-- **Borealis, Frost Sovereign** (T10, *Hybrid-INT/STR*) — legendary; ice queen with mixed scaling · *passive: aura freezes nearest enemy briefly every 3s; cast: blizzard AOE scaling with INT+STR.*
-
----
-
-### Cloudy (Shadow / Stone faction)
-
-Themes: shadow, mountain, mystery, deception. Strong against APC backline (assassins reach them); weak to ADC sustain.
-
-- **Stone Acolyte** (T1, *Tank-HP*) — basic mountain tank · *passive: rooted in place; reduces damage taken while stationary.*
-- **Shrouded One** (T2, *SUP-Debuff*) — obscures enemy targeting · *cast: reduces target enemy's AS by 40% for 3s.*
-- **Storm Slinger** (T3, *APC-STR Mage*) — STR-scaling stone-thrower · *cast: hurls boulder dealing STR damage in line.*
-- **Stoneform Guardian** (T4, *SUP-Shield*) — turns allies temporarily invulnerable · *cast: grants target ally a stone-skin shield blocking the next big attack.*
-- **Shadowstep Striker** (T5, *ADC-INT Warrior*) — INT melee with mobility · *passive: autos cause a small shadow-step, repositioning behind target on every Nth hit.*
-- **Mountain Sage** (T6, *Tank-INT*) — magic-damage tank · *passive: returns 20% damage taken as INT magic damage to attacker.*
-- **Dusk Stalker** (T7, *Hybrid-INT/STR*) — blade-mage hybrid · *passive: alternates auto-attacks between STR and INT scaling; cast: dual-element burst.*
-- **Twilight Reaver** (T8, *APC-INT Assassin*) — shadow burst-killer · *cast: brief stealth, then INT-scaled execute on lowest-HP enemy.*
-- **Skyhunter** (T9, *ADC-STR Marksman*) — high-perch silent archer · *passive: first attack each combat deals 300% STR damage.*
-- **Umbra, Shadow Sovereign** (T10, *Hybrid-APC/ADC*) — legendary; transforms mid-fight · *passive: every 5th auto becomes an empowered cast; cast: shadow clones that auto-attack.*
+- **Springfrog** (T1, *SUP-Heal*) · [Tidekin · Mender] — a small bright river-frog · *cast: a healing rain on one ally, restoring health over several ticks.*
+- **Reedbank Otter** (T2, *ADC-STR Warrior*) · [Tidekin · Skirmisher] — never still in the shallows · *passive: gains Move Speed for a short window after every attack.*
+- **Torrent Heron** (T3, *APC-STR Mage*) · [Skyborn · Mystic] — hurls spears of weighted water · *cast: three water-spears in a cone; the water has heft, so the damage scales with STR.*
+- **Grovekeeper Tapir** (T4, *Hybrid-Tank/DMG*) · [Beast · Bruiser · Mender] — a mossy-backed warden of the grove · *passive: regenerates HP every few ticks; cast: a snare of living vines, STR-scaled damage over its duration.*
+- **Coral Colossus** (T5, *Tank-HP*) · [Tidekin · Guardian · Mender] — a reef given legs · *passive: the lower its HP, the faster it regenerates; cast: pull into its shell — brief damage immunity.*
+- **Marsh Thrush** (T6, *SUP-Buff*) · [Skyborn · Warden] — a wandering songbird of the wetlands · *cast: a travelling song — allies gain Move Speed and Attack Speed for several ticks.*
+- **Mirewarden Toad** (T7, *Tank-INT*) · [Tidekin · Guardian] — a vast bog-toad, half-sunk and patient · *passive: a slowing mire aura around it; cast: a sweep of its tongue drags all nearby enemies toward it.*
+- **Glade Heron** (T8, *ADC-INT Marksman*) · [Skyborn · Hunter · Trickster] — a long-billed venom-hunter · *passive: autos plant poison stacks that tick for INT-scaled damage.*
+- **Riptide Caiman** (T9, *APC-STR Assassin*) · [Scaled · Stalker] — death from below the waterline · *cast: a dashing death-roll through an enemy, heavy STR damage; passive: refunds mana on a takedown.*
+- **Nerei, the Floodmother** (T10, *Hybrid-APC/ADC*) · [Spirit · Primordial · Channeler] — the great river-serpent spirit, the flood that remembers · *passive: every cast empowers her next 3 autos with INT scaling; cast: a board-spanning tidal wave.*
 
 ---
 
-### Mist (Ghost / Ethereal faction)
+### Snow — The Frostwild
 
-Themes: stealth, ethereal, fog, vision. Anti-positioning; bypasses frontlines. Weak to AOE that ignores stealth.
+Tundra, glacier, the silent winter peaks. Bears, lynx, mammoths, owls — thick
+hide and slow patience. Snow is **durable and controlling**: armor, slows, the
+long grind. *Weather: Snow hunts Rain and Cloudy; it is hunted by Thunder and
+Mist (lightning shatters ice, fog smothers the white).*
 
-- **Lost Wisp** (T1, *SUP-Heal*) — ghostly healer · *cast: places a healing wisp on lowest-HP ally; wisp heals over time.*
-- **Spectral Apprentice** (T2, *APC-INT Mage*) — illusion mage · *cast: spawns a temporary illusion that mimics target ally's auto-attacks.*
-- **Phantom Blade** (T3, *APC-INT Assassin*) — ghost burst-killer · *cast: phases through target, dealing INT damage and ignoring 50% Resistance.*
-- **Hollow Warden** (T4, *Tank-INT*) — spirit-form tank · *passive: 20% of incoming damage is converted to mana.*
-- **Mistweaver** (T5, *SUP-Debuff*) — blinds enemies · *cast: targets enemy now has 50% miss chance for 3s (autos can miss).*
-- **Wraith Knight** (T6, *Tank-STR*) — aggressive ghost frontline · *passive: phases through pieces while moving (ignores collision for movement); cast: STR-scaled spectral cleave.*
-- **Mireborn** (T7, *Hybrid-Tank/DMG*) — swamp-bound bruiser · *passive: at <50% HP, gains stealth for 2s and refunds 50% mana.*
-- **Veil Hunter** (T8, *ADC-INT Warrior*) — on-hit ghost melee · *passive: autos deal +75% INT as magic damage and reduce target's RES.*
-- **Wraithbow** (T9, *ADC-INT Marksman*) — ethereal archer · *passive: arrows pass through pieces, hitting all in line (line-AOE auto-attacks).*
-- **Specterking, Pale Lord** (T10, *Hybrid-APC/ADC*) — legendary; alternates phases · *passive: every other action is a free auto-attack at INT scaling; cast: AOE haunt that fears enemies.*
+- **Snowpelt Cub** (T1, *Tank-HP*) · [Beast · Guardian] — a stubborn bear cub that will not fall · *passive: gains a chunk of max HP at the start of each round.*
+- **Wintermoth** (T2, *SUP-Buff*) · [Swarm · Warden] — pale wings that beat warmth into allies · *cast: grants one ally a lasting Attack-Speed buff.*
+- **Permafrost Walrus** (T3, *APC-STR Mage*) · [Tidekin · Mystic] — heaves slabs of pack-ice · *cast: hurls a compacted ice-boulder, STR-scaled impact damage in a small splash.*
+- **Hoarfrost Owl** (T4, *SUP-Shield*) · [Skyborn · Warden] — sheathes the flock in ice · *cast: an ice-shell shield on an ally; when the shell breaks it bursts into a slowing chill.*
+- **Frostplate Tortoise** (T5, *Tank-ARM+RES*) · [Scaled · Guardian] — armor of layered glacier · *passive: each hit it takes stacks a small, lasting damage-reduction (up to a cap).*
+- **Iceclaw Lynx** (T6, *ADC-INT Warrior*) · [Beast · Skirmisher · Trickster] — a blur of cold claws · *passive: autos deal bonus INT-magic damage and briefly slow the target.*
+- **Glacierback Mammoth** (T7, *Hybrid-Tank/DMG*) · [Beast · Bruiser] — it grows colder and vaster as the fight drags · *passive: gains HP and STR every round it survives; cast: a ground-quaking stomp that knocks enemies back.*
+- **Frostfang Wolverine** (T8, *APC-STR Assassin*) · [Beast · Stalker] — small, rabid, lethal · *cast: a leap behind the target, massive STR burst; passive: its strikes critically hit any target afflicted by a freeze or slow.*
+- **Frostquill Porcupine** (T9, *ADC-STR Marksman*) · [Beast · Hunter · Trickster] — fires a hail of ice quills · *passive: autos slow the target and deal bonus damage to already-slowed enemies.*
+- **Borealis, the Pale Aurora** (T10, *Hybrid-INT/STR*) · [Spirit · Primordial · Mystic] — the great winter spirit, the hush before the white · *passive: an aura briefly freezes the nearest enemy every round; cast: a blizzard across the board scaling with INT and STR.*
 
 ---
 
-### Thunder (Lightning / Storm faction)
+### Cloudy — The Cragwild
 
-Themes: speed, burst, chain effects, electricity. High-tempo, high-risk. Strong against Snow; weak to Rain (water grounds lightning).
+Sheer mountains, cave-dark, twilight, and old stone. Bats, pangolins, mountain
+apes, cliff eagles, and stone-patient creatures. Cloudy plays **deceptive and
+defensive** — shadow, ambush, things hard to see and hard to move. *Weather:
+Cloudy hunts Mist and Thunder; it is hunted by Rain and Snow.*
 
-- **Spark Caster** (T1, *SUP-Debuff*) — basic shock debuff · *cast: applies a brief stun to target enemy.*
-- **Storm Berserker** (T2, *ADC-STR Warrior*) — fast-attacking berserker · *passive: gains +5% AS every time auto-attacked (stacking, decays out of combat).*
-- **Voltdancer** (T3, *APC-STR Assassin*) — physical lightning-assassin · *cast: dashes through target leaving a STR-scaled electric trail.*
-- **Stormcatcher** (T4, *SUP-Shield*) — lightning-rod shield support · *cast: grants ally a shield that redirects 30% incoming damage as lightning to attacker.*
-- **Storm Titan** (T5, *Tank-ARM+RES*) — lightning-resistant heavy tank · *passive: chain-resistance — first instance of magic damage each round is reduced 80%.*
-- **Stormbringer** (T6, *APC-INT Mage*) — classic lightning mage · *cast: chain lightning hitting up to 4 enemies, INT scaling.*
-- **Voltkin** (T7, *Hybrid-INT/STR*) — hybrid lightning warrior-mage · *passive: STR and INT contribute equally to autos (replaces default formula); cast: discharge based on highest stat.*
-- **Thunderclap** (T8, *Tank-STR*) — aggressive electric frontline · *cast: shockwave knocking nearby enemies back, STR-scaled stun.*
-- **Stormbow** (T9, *ADC-INT Marksman*) — chain-lightning archer · *passive: every 3rd auto chains to 2 additional targets, INT-scaled chain damage.*
-- **Aerion, Storm Sovereign** (T10, *Hybrid-APC/ADC*) — legendary; speed + burst hybrid · *passive: at 100 mana, next 5 autos become free casts at reduced scaling; cast: ultimate AOE storm.*
+- **Pebbleback Pangolin** (T1, *Tank-HP*) · [Scaled · Guardian] — curls into an unbreakable ball · *passive: while it has not moved this round, it takes heavily reduced damage.*
+- **Dusk Bat** (T2, *SUP-Debuff*) · [Beast · Trickster] — a flurry of wings in the enemy's eyes · *cast: blinds one enemy — sharply reduced Attack Speed for several ticks.*
+- **Boulderhide Skink** (T3, *APC-STR Mage*) · [Scaled · Mystic] — a heavy cliff-lizard that throws the cliff · *cast: rolls a boulder down a line, STR-scaled damage to everything it crosses.*
+- **Geode Beetle** (T4, *SUP-Shield*) · [Swarm · Warden] — its crystal shell can be lent out · *cast: a stone-skin shield on an ally that blocks the next large hit outright.*
+- **Duskstep Marten** (T5, *ADC-INT Warrior*) · [Beast · Skirmisher · Stalker] — never where the blade expects · *passive: every few autos it shadow-steps behind its target before striking.*
+- **Granite Gorilla** (T6, *Tank-INT*) · [Beast · Guardian] — answers every blow with the mountain's weight · *passive: returns a share of damage taken to the attacker as INT-magic damage.*
+- **Eclipse Jaguar** (T7, *Hybrid-INT/STR*) · [Beast · Stalker · Channeler] — light and shadow in one body · *passive: alternates auto-attacks between STR and INT scaling; cast: a twinned strike that lands both at once.*
+- **Nightglass Mantis** (T8, *APC-INT Assassin*) · [Swarm · Stalker] — a sliver of darkness with blades · *cast: vanish for a brief window, then an INT-scaled execute on the lowest-HP enemy.*
+- **Cliffeyrie Eagle** (T9, *ADC-STR Marksman*) · [Skyborn · Hunter] — watches, unseen, from the high crag · *passive: its first auto each combat strikes for vastly amplified STR damage.*
+- **Umbra, the Mountain's Shadow** (T10, *Hybrid-APC/ADC*) · [Spirit · Primordial · Stalker] — the great shadow the peaks cast at dusk, given hunger · *passive: every 5th auto becomes an empowered free cast; cast: splits off shadow-clones that auto-attack for a time.*
+
+---
+
+### Mist — The Hazewild
+
+Fog-drowned forest, will-o'-wisps, the half-real. Ghost-stags, pale wolves,
+moths, and drifting spirits — Mist is the most spirit-heavy faction by far.
+Mist **ignores positioning**: it phases, it bypasses the frontline, it strikes
+the backline directly. *Weather: Mist hunts Thunder and Snow; it is hunted by
+Cloudy and Rain.*
+
+- **Lostlight Wisp** (T1, *SUP-Heal*) · [Spirit · Mender] — a flicker that tends the fallen · *cast: sets a healing wisp on the lowest-HP ally that mends them over several ticks.*
+- **Will-o-Fawn** (T2, *APC-INT Mage*) · [Spirit · Mystic] — a fawn of cold marsh-fire · *cast: conjures a fleeting double of an ally that mirrors their auto-attacks.*
+- **Phantom Lynx** (T3, *APC-INT Assassin*) · [Spirit · Stalker] — a ghost-cat that walks through walls of flesh · *cast: phases through the target for INT damage, ignoring a large share of their Resistance.*
+- **Hollow Elk** (T4, *Tank-INT*) · [Spirit · Guardian · Channeler] — a hollow-eyed spirit-stag, more breath than body · *passive: converts a share of all incoming damage into mana.*
+- **Fogveil Moth** (T5, *SUP-Debuff*) · [Swarm · Trickster] — beats blinding fog from its wings · *cast: shrouds one enemy so its auto-attacks may simply miss for several ticks.*
+- **Wraithorn Stag** (T6, *Tank-STR*) · [Spirit · Bruiser] — antlers of grave-light, a frontline that cannot be walled out · *passive: phases through pieces while moving (ignores collision); cast: a STR-scaled spectral gore.*
+- **Marshghast Boar** (T7, *Hybrid-Tank/DMG*) · [Spirit · Bruiser · Stalker] — a swamp-ghost that vanishes when cornered · *passive: on dropping below half HP, turns briefly untargetable and refunds a chunk of mana.*
+- **Veilfang Wolf** (T8, *ADC-INT Warrior*) · [Spirit · Skirmisher] — its bite leaves the soul thin · *passive: autos deal bonus INT-magic damage and shred the target's Resistance.*
+- **Spectral Heron** (T9, *ADC-INT Marksman*) · [Spirit · Hunter] — looses arrows that pass clean through the living · *passive: autos are line-shots, striking every enemy behind the first.*
+- **Mournhollow, the Pale Stag** (T10, *Hybrid-APC/ADC*) · [Spirit · Primordial · Channeler] — the great mist-stag, the grief the forest never set down · *passive: every other action is a free auto-attack at INT scaling; cast: a board-wide haunt that fears all enemies.*
+
+---
+
+### Thunder — The Stormwild
+
+Open storm-skies and the fast hot savanna beneath them. Cheetah-quick beasts,
+storm-birds, electric eels, things that move before the eye does. Thunder is
+**high-tempo, high-risk** — burst, chains, speed, glass. *Weather: Thunder hunts
+Snow and Rain; it is hunted by Mist and Cloudy.*
+
+- **Sparkfly** (T1, *SUP-Debuff*) · [Swarm · Trickster] — a single bright jolt · *cast: a brief stun on one enemy.*
+- **Thunderhoof Colt** (T2, *ADC-STR Warrior*) · [Beast · Skirmisher] — a young storm-horse, all nerve · *passive: gains a stacking burst of Attack Speed each time it is auto-attacked.*
+- **Voltscale Mamba** (T3, *APC-STR Assassin*) · [Scaled · Stalker] — a strike like a closed circuit · *cast: a dash through the target leaving a STR-scaled electric trail across the tiles it crossed.*
+- **Coppercrest Stork** (T4, *SUP-Shield*) · [Skyborn · Warden] — draws the lightning so allies need not · *cast: shields an ally; the shield redirects a share of incoming damage back to the attacker as lightning.*
+- **Thunderhide Bison** (T5, *Tank-ARM+RES*) · [Beast · Guardian] — storm-grounded, heavy, immovable · *passive: the first instance of magic damage it takes each round is almost entirely absorbed.*
+- **Tempest Eel** (T6, *APC-INT Mage*) · [Tidekin · Mystic] — the classic arc of chain-lightning · *cast: a bolt that leaps between several enemies, INT-scaled, weaker with each jump.*
+- **Voltmane Jackal** (T7, *Hybrid-INT/STR*) · [Beast · Skirmisher · Channeler] — a warrior wired to the storm · *passive: STR and INT contribute equally to its autos; cast: a discharge that scales off whichever stat is higher.*
+- **Thunderclap Gorilla** (T8, *Tank-STR*) · [Beast · Bruiser] — drums the ground into a shockwave · *cast: a STR-scaled shockwave that knocks back and briefly stuns nearby enemies.*
+- **Storm Eagle** (T9, *ADC-INT Marksman*) · [Skyborn · Hunter · Channeler] — its talons trail living current · *passive: every 3rd auto forks to two extra targets for INT-scaled chain damage.*
+- **Aerion, the Skybreaker** (T10, *Hybrid-APC/ADC*) · [Spirit · Primordial · Hunter] — the great storm-spirit, the first thunder that ever rolled · *passive: at full mana its next several autos become free casts at reduced scaling; cast: a sky-splitting storm over the whole board.*
 
 ---
 
 ## Tier Philosophy
 
-The tier-by-tier feel, intended as guidance for designing kit complexity:
-
 | Tier | Role | Kit complexity |
 |------|------|----------------|
-| 1–2 | Entry-level pieces; cheap fillers for early rounds | Single simple ability, minimal passive |
+| 1–2 | Entry pieces; cheap early-round fillers | One simple ability, minimal passive |
 | 3–4 | Foundational archetypes; recognizable identities | Active + simple passive |
-| 5–6 | Mid-game power pieces; comp anchors | More complex passives, conditional triggers |
-| 7–8 | High-impact pieces with distinctive mechanics | Multi-step abilities, transformative passives |
-| 9 | Premium carries; build-around pieces | Specialized kits, requires synergy |
-| 10 | Legendary pieces; unique mechanics not seen elsewhere | Game-defining; one per weather |
+| 5–6 | Mid-game power; comp anchors | Conditional passives, escalating effects |
+| 7–8 | High-impact pieces; distinctive mechanics | Multi-step abilities, transformative passives |
+| 9 | Premium carries; build-around pieces | Specialized kits that want synergy |
+| 10 | Legendary Primordials; unique mechanics | Set-defining; one per weather |
 
-**Tier 10 are all hybrids by design** — they're the most complex pieces and hybrid archetypes inherently require more bespoke kit design. Each Tier 10 should feel like a "set-defining" piece that comps can be built around.
+All six **Tier-10s are Hybrids** and all carry the **Primordial** Calling
+(`trait_catalog.md` §3). They are the great nature spirits — the oldest,
+largest expressions of the uprising — and each should anchor a comp built
+around it.
 
-## Balance and Distribution Notes
+## Weather Counter Reference
 
-### Subtype frequency verification
+Champions live and die by the live weather. The predator/prey ring
+(`weather_effects.py`: `MIST → CLOUDY → RAIN → SNOW → THUNDER → MIST`) decides
+who is buffed and who is prey. Field a champion whose affinity *hunts* the
+node weather and it takes the medium System-A buff **and** lands System-B hits
+at up to `1.10×`.
 
-| Subtype | Count | Weathers |
-|---------|-------|----------|
-| Tank-HP | 3 | Rain, Snow, Cloudy |
-| Tank-ARM+RES | 3 | Clear, Snow, Thunder |
-| Tank-INT | 3 | Rain, Cloudy, Mist |
-| Tank-STR | 3 | Clear, Mist, Thunder |
-| APC-INT Mage | 3 | Clear, Mist, Thunder |
-| APC-STR Mage | 3 | Rain, Snow, Cloudy |
-| APC-INT Assassin | 3 | Clear, Cloudy, Mist |
-| APC-STR Assassin | 3 | Rain, Snow, Thunder |
-| ADC-INT Marksman | 3 | Rain, Mist, Thunder |
-| ADC-STR Marksman | 3 | Clear, Snow, Cloudy |
-| ADC-INT Warrior | 3 | Snow, Cloudy, Mist |
-| ADC-STR Warrior | 3 | Clear, Rain, Thunder |
-| SUP-Heal | 3 | Clear, Rain, Mist |
-| SUP-Shield | 3 | Snow, Cloudy, Thunder |
-| SUP-Buff | 3 | Clear, Rain, Snow |
-| SUP-Debuff | 3 | Cloudy, Mist, Thunder |
-| Hybrid-Tank/DMG | 4 | Clear, Rain, Snow, Mist |
-| Hybrid-INT/STR | 4 | Clear, Snow, Cloudy, Thunder |
-| Hybrid-APC/ADC | 4 | Rain, Cloudy, Mist, Thunder |
+| Affinity | Hunts (good vs.) | Hunted by (bad vs.) |
+|---|---|---|
+| Mist | Thunder, Snow | Cloudy, Rain |
+| Cloudy | Mist, Thunder | Rain, Snow |
+| Rain | Cloudy, Mist | Snow, Thunder |
+| Snow | Rain, Cloudy | Thunder, Mist |
+| Thunder | Snow, Rain | Mist, Cloudy |
+| Clear | — (inert) | — (inert) |
 
-### Weather counters (proposed)
+> This corrects the earlier draft's counter table, which predated the
+> implemented ring in `weather_effects.py`. `CLEAR` is outside the ring: a
+> `CLEAR` champion is never buffed or debuffed by node weather and never gains
+> or suffers an affinity damage multiplier — its identity comes from its kit and
+> traits, not from weather (see `t20_ability_framework_plan.md` §9.1).
 
-These define how the weather-rotation system encourages team swaps:
+## Critical Strikes
 
-- **Clear → counters Mist & Cloudy** (light reveals what shadow hides)
-- **Rain → counters Thunder** (water grounds lightning)
-- **Snow → counters Rain** (freezes water-based kits)
-- **Cloudy → counters Clear** (shadow over sun)
-- **Mist → counters Snow** (fog disrupts visibility advantage)
-- **Thunder → counters Snow & Mist** (lightning pierces both)
+All champions ship with `crit_chance = 0.0` and abilities that cannot crit.
+Crit is a **build-around**, not a baseline — it is unlocked only by traits
+(Mystic @4 sets `ability_can_crit`), augments, items (`item_catalog.md`), or a
+champion's own passive. Frostfang Wolverine is the roster's reference case: its
+"critically hit frozen/slowed targets" passive flips `ability_can_crit` while
+the target is afflicted, rather than carrying a base crit stat.
 
-This is a soft suggestion; the actual weather effect mechanics live in a separate proposal.
+## Open Gaps & Follow-ups
 
-### Open gaps and follow-ups
-
-- **Critical strikes.** All champions ship with `crit_chance = 0.0` by default — no
-  piece starts with innate crit probability. Active abilities also cannot crit unless
-  an augment or passive sets the `ability_can_crit` flag at runtime. Crit is intentionally
-  a build-around mechanic, not a universal scaling path. Example: Frostfang's passive
-  (*critical strikes against frozen targets*) is implemented as a passive listener that
-  sets `ability_can_crit = True` while the target has the frozen status — not as a base
-  stat. Any champion whose kit concept mentions crits should be treated similarly.
-- **Naming.** All names are placeholders. Cohesive renaming pass needed once worldbuilding crystallizes.
-- **Kit details.** Identity hooks and one-line ability concepts only — full kit design (mana cost, scaling, ranges, targeting) per piece is a follow-up.
-- **Stat blocks.** Base stats per tier × per archetype not yet defined. See §9.9 of the combat proposal.
-- **Trait/synergy system.** Pieces will likely also have non-weather traits (e.g., "Mage" trait giving bonus INT to all Mage subtypes regardless of weather). Untouched here.
-- **Tier 10 mechanics.** Each legendary needs a hand-tuned signature mechanic; the descriptions above are deliberately suggestive rather than locked.
-- **STR Mages and INT Warriors** are the rarest archetypes. Verify in playtesting whether the 3-per-subtype-distribution gives them enough representation, or if some cells should be re-archetyped.
-- **Visual/thematic cohesion.** Pieces within a weather should feel like a faction. Some current names lean elemental (Frost Cub, Storm Titan); others lean role-titular (Acolyte, Squire). A second-pass naming sweep should commit to one convention per weather.
+- **Trait distribution is first-pass.** Kinship counts run ~Beast 18 / Spirit 15
+  / Skyborn 9 / Scaled 7 / Tidekin 6 / Swarm 5; Calling counts are balanced by
+  giving sustain/disruption champions a second Calling. Verify against the
+  `trait_catalog.md` §4 budget once breakpoints are tuned.
+- **Stat blocks.** Per-tier × per-archetype base stats are unbuilt — `P = 1`
+  archetype bases scaled by `t18_power_scaling_plan.md`.
+- **Kit details.** Identity hooks and one-line concepts only; mana cost,
+  scaling coefficients, ranges, and targeting are a per-piece follow-up against
+  the ability framework.
+- **Tier-10 signature mechanics.** Each Primordial needs a hand-tuned signature;
+  the concepts above are suggestive, not locked.
+- **STR Mages and INT Warriors** remain the rarest archetypes — confirm in
+  playtest that 3 carriers each is enough representation.

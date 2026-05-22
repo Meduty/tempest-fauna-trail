@@ -48,6 +48,8 @@ A piece is defined by its **identity** (tier, level), its **stats** (numerical a
 | Resistance (RES) | Magical mitigation | Raw + `% damage reduction` |
 | Attack Range | Auto-attack range in hexes | `Melee` / `Range 2` / etc. |
 | **Crit Chance** | Probability an auto-attack critically strikes | `0%` default; displayed as `%` |
+| **Penetration (PEN)** | Flat cut to the target's Armor/Resistance before mitigation | `0` default; raw stat |
+| **% Penetration (PEN%)** | Percentage cut to the target's Armor/Resistance before mitigation | `0%` default; displayed as `%` |
 
 > ⚠ **Naming collision flag:** the natural abbreviation for both Mana Regen and Magic Resist is "MR." This proposal renames magic resist to **Resistance (RES)** to avoid the clash. Recommended short forms: **MR** for Mana Regen, **RES** for Resistance.
 
@@ -106,6 +108,24 @@ This parity only holds for the *median* auto:cast ratio. A pure autoer (1 cast p
 **Per-piece ability scaling.** Slow heavy nukers may use higher Y (e.g., `0.2 × STR + 8.0 × INT` with a higher mana cost), fast spammy debuffers lower Y (`0.2 × STR + 2.0 × INT` with low mana cost). The number `Y − X = 4` is the "average mage" balance point and a useful default for new pieces.
 
 **Damage type and mitigation.** STR-scaled damage routes through **Armor**, INT-scaled damage routes through **Resistance**. So a heavily-armored target effectively reduces the STR contribution of any damage instance, while a high-Resistance target reduces the INT contribution. This means the "STR ≈ INT in price" equivalence only holds against an average target — comp-aware itemization is a real decision lever.
+
+**Penetration.** Two stats let a piece punch through that mitigation:
+**Penetration (PEN)**, a flat reduction, and **% Penetration (PEN%)**, a
+percentage reduction. Both erode the *target's* relevant mitigation stat (Armor
+for physical, Resistance for magical) before the bounded-reduction formula is
+applied — they are part of the `mitigate` step, not the raw-damage step. `true`
+damage ignores mitigation, so penetration never affects it.
+
+Order — percent first, then flat, clamped at zero:
+
+```
+effective_mitigation = max(0, round(mitigation × (1 − PEN%)) − PEN)
+reduction            = effective_mitigation / (effective_mitigation + 100)
+```
+
+Both default to `0` / `0%` on every piece. Penetration is a **build-around**
+acquired from items, augments, or passives — never a base archetype stat and
+never scaled by the power curve (`T18`), the same stance as Crit Chance.
 
 ## 5. Frequency Curves
 
