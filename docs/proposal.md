@@ -26,7 +26,7 @@ Turn-based strategy games rarely connect to the real world in a meaningful way. 
 **User Value:** No two runs play the same. A team built around Snow champions dominates when it's snowing in Tokyo but struggles if the weather shifts to Thunder — forcing players to adapt strategy to real-world conditions they cannot control.
 
 ### 2. Global Route Map with Staged Progression
-**What:** A fixed route of 6 continent stages (Europe → Africa → Asia → Oceania → South America → North America) spanning ~50 nodes, visualized as an interactive canvas map. Each stage hub city displays its current real weather icon, and encounters scale in difficulty toward a final all-weather boss in New York.
+**What:** A fixed route of 6 continent stages (Europe → Africa → Asia → Oceania → South America → North America) spanning ~50 nodes, visualized as an interactive canvas map. Each stage hub city displays its current real weather icon, and encounters scale in difficulty toward a powerful final boss in New York whose affinity matches the city's live weather — the same rule as every other boss, just harder.
 
 **User Value:** Players experience a sense of world travel and escalating challenge. The visual map with live weather overlays makes the journey feel tangible and connected to the real world, while staged difficulty provides clear progression.
 
