@@ -199,20 +199,16 @@ def compose_stats(
     speed_weights = _SPEED[speed]
     if playstyle == "ability":
         stats["resistance"] = stats["resistance"] * speed_weights["resistance"]
-    elif playstyle in {"auto", "hybrid"}:
-        stats["attack_speed"] = stats["attack_speed"] * speed_weights["attack_speed"]
     else:
-        raise ValueError(f"Unknown playstyle axis value: {playstyle!r}")
+        stats["attack_speed"] = stats["attack_speed"] * speed_weights["attack_speed"]
 
     if primary_stat == "str":
         stats["strength"] = stats["strength"] * speed_weights["primary_stat"]
     elif primary_stat == "int":
         stats["intelligence"] = stats["intelligence"] * speed_weights["primary_stat"]
-    elif primary_stat == "hybrid":
+    else:
         stats["strength"] = stats["strength"] * speed_weights["primary_stat"]
         stats["intelligence"] = stats["intelligence"] * speed_weights["primary_stat"]
-    else:
-        raise ValueError(f"Unknown primary_stat axis value: {primary_stat!r}")
     stats["ability_cost"] = ability_cost
 
     s = stat_multiplier(tier, 1)
