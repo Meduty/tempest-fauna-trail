@@ -101,9 +101,20 @@ Spirit rewards an ability-driven team.
 
 Six affinity traits, one per weather state. These are **count-based** and
 always-on once a breakpoint is met; they never check live weather. Each mirrors
-that weather's System-A stat identity so mono-affinity comps can "double down"
+that weather's **Weather Favor** stat identity (local name for weather
+**System A**) so mono-affinity comps can "double down"
 when the node weather also matches. **Shrouded** intentionally includes a small
 ethereal rider in addition to stat scaling.
+
+For naming consistency across docs:
+- **Weather Favor** = node-weather affinity buff/debuff layer (formerly "System A").
+- **Affinity Clash** = affinity-vs-affinity damage multiplier layer (formerly
+  "System B").
+
+For content/debug consistency, each affinity breakpoint should emit a named
+`EffectBundle` using a stable id pattern:
+- `trait.affinity.<name>@2|4|6` for trait-breakpoint ids
+- `bundle.affinity.<name>.minor|moderate|major` for the stat/effect bundle id
 
 | Affinity trait | Source affinity | Breakpoint shape (concept) |
 |---|---|---|
