@@ -209,6 +209,13 @@ This is a soft suggestion; the actual weather effect mechanics live in a separat
 
 ### Open gaps and follow-ups
 
+- **Critical strikes.** All champions ship with `crit_chance = 0.0` by default — no
+  piece starts with innate crit probability. Active abilities also cannot crit unless
+  an augment or passive sets the `ability_can_crit` flag at runtime. Crit is intentionally
+  a build-around mechanic, not a universal scaling path. Example: Frostfang's passive
+  (*critical strikes against frozen targets*) is implemented as a passive listener that
+  sets `ability_can_crit = True` while the target has the frozen status — not as a base
+  stat. Any champion whose kit concept mentions crits should be treated similarly.
 - **Naming.** All names are placeholders. Cohesive renaming pass needed once worldbuilding crystallizes.
 - **Kit details.** Identity hooks and one-line ability concepts only — full kit design (mana cost, scaling, ranges, targeting) per piece is a follow-up.
 - **Stat blocks.** Base stats per tier × per archetype not yet defined. See §9.9 of the combat proposal.

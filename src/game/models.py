@@ -83,6 +83,11 @@ def _require_range(value: int, field_name: str, min_value: int, max_value: int) 
         raise ValueError(f"{field_name} must be in range [{min_value}, {max_value}].")
 
 
+def _require_unit_float(value: float, field_name: str) -> None:
+    if not 0.0 <= value <= 1.0:
+        raise ValueError(f"{field_name} must be in range [0.0, 1.0].")
+
+
 @dataclass(slots=True)
 class Champion:
     id: str
@@ -105,6 +110,7 @@ class Champion:
     passive_ability: str
     ability_cost: int
     traits: list[str] = field(default_factory=list)
+    crit_chance: float = 0.0
 
     def __post_init__(self) -> None:
         _require_range(self.tier, "Champion tier", 1, 10)
@@ -120,6 +126,7 @@ class Champion:
         _require_non_negative_int(self.resistance, "Champion resistance")
         _require_positive_int(self.attack_range, "Champion attack_range")
         _require_positive_int(self.ability_cost, "Champion ability_cost")
+        _require_unit_float(self.crit_chance, "Champion crit_chance")
 
         self.traits = list(self.traits)
         if any(not isinstance(t, str) or not t for t in self.traits):
@@ -149,6 +156,7 @@ class Champion:
             "active_ability": self.active_ability,
             "passive_ability": self.passive_ability,
             "ability_cost": self.ability_cost,
+            "crit_chance": self.crit_chance,
         }
 
     @classmethod
@@ -174,6 +182,7 @@ class Champion:
             active_ability=payload["active_ability"],
             passive_ability=payload["passive_ability"],
             ability_cost=payload["ability_cost"],
+            crit_chance=payload.get("crit_chance", 0.0),
         )
 
 
@@ -198,6 +207,7 @@ class Enemy:
     active_ability: str
     passive_ability: str
     ability_cost: int
+    crit_chance: float = 0.0
 
     def __post_init__(self) -> None:
         _require_range(self.tier, "Enemy tier", 1, 10)
@@ -213,6 +223,7 @@ class Enemy:
         _require_non_negative_int(self.resistance, "Enemy resistance")
         _require_positive_int(self.attack_range, "Enemy attack_range")
         _require_positive_int(self.ability_cost, "Enemy ability_cost")
+        _require_unit_float(self.crit_chance, "Enemy crit_chance")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -235,6 +246,7 @@ class Enemy:
             "active_ability": self.active_ability,
             "passive_ability": self.passive_ability,
             "ability_cost": self.ability_cost,
+            "crit_chance": self.crit_chance,
         }
 
     @classmethod
@@ -259,6 +271,7 @@ class Enemy:
             active_ability=payload["active_ability"],
             passive_ability=payload["passive_ability"],
             ability_cost=payload["ability_cost"],
+            crit_chance=payload.get("crit_chance", 0.0),
         )
 
 
@@ -332,6 +345,9 @@ class CombatPieceState:
     position_r: int = 0
     target_piece_id: str | None = None
     speed_tiebreaker: int = 0
+    crit_chance: float = 0.0
+    ability_can_crit: bool = False
+    crit_counter: int = 0
     alive: bool = True
 
     def __post_init__(self) -> None:
@@ -352,9 +368,8 @@ class CombatPieceState:
         _require_non_negative_int(self.mana, "CombatPieceState mana")
         _require_non_negative_int(self.action_energy, "CombatPieceState action_energy")
         _require_non_negative_int(self.movement_energy, "CombatPieceState movement_energy")
-        _require_non_negative_int(
-            self.speed_tiebreaker, "CombatPieceState speed_tiebreaker"
-        )
+        _require_non_negative_int(self.speed_tiebreaker, "CombatPieceState speed_tiebreaker")
+        _require_unit_float(self.crit_chance, "CombatPieceState crit_chance")
 
         if self.hp > self.max_hp:
             self.hp = self.max_hp
@@ -389,6 +404,9 @@ class CombatPieceState:
             "position_r": self.position_r,
             "target_piece_id": self.target_piece_id,
             "speed_tiebreaker": self.speed_tiebreaker,
+            "crit_chance": self.crit_chance,
+            "ability_can_crit": self.ability_can_crit,
+            "crit_counter": self.crit_counter,
             "alive": self.alive,
         }
 
@@ -419,6 +437,9 @@ class CombatPieceState:
             position_r=payload.get("position_r", 0),
             target_piece_id=payload.get("target_piece_id"),
             speed_tiebreaker=payload.get("speed_tiebreaker", 0),
+            crit_chance=payload.get("crit_chance", 0.0),
+            ability_can_crit=payload.get("ability_can_crit", False),
+            crit_counter=payload.get("crit_counter", 0),
             alive=payload.get("alive", True),
         )
 
@@ -431,6 +452,7 @@ class BattleEvent:
     event_type: str
     amount: int = 0
     note: str = ""
+    is_crit: bool = False
 
     def __post_init__(self) -> None:
         if self.tick < 0:
@@ -444,6 +466,7 @@ class BattleEvent:
             "event_type": self.event_type,
             "amount": self.amount,
             "note": self.note,
+            "is_crit": self.is_crit,
         }
 
     @classmethod
@@ -455,6 +478,7 @@ class BattleEvent:
             event_type=payload["event_type"],
             amount=payload.get("amount", 0),
             note=payload.get("note", ""),
+            is_crit=payload.get("is_crit", False),
         )
 
 

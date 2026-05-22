@@ -52,6 +52,8 @@ DMG_PHYSICAL = "physical"
 DMG_MAGICAL = "magical"
 DMG_TRUE = "true"
 
+CRIT_MULTIPLIER: float = 1.5
+
 # --- Event log types ---
 EVENT_MOVE = "move"
 EVENT_ATTACK = "attack"
@@ -227,10 +229,19 @@ def _apply_hit(
     events: list[BattleEvent],
     damage_dealt: dict[str, int],
     damage_taken: dict[str, int],
+    can_crit: bool,
 ) -> None:
     raw = str_coeff * attacker.strength + int_coeff * attacker.intelligence
     # Weather System B — affinity damage triangle, applied before mitigation.
     raw *= damage_modifier(attacker.affinity, target.affinity)
+    is_crit = False
+    if can_crit and attacker.crit_chance > 0.0:
+        attacker.crit_counter += 1
+        if attacker.crit_counter >= round(1.0 / attacker.crit_chance):
+            is_crit = True
+            attacker.crit_counter = 0
+    if is_crit:
+        raw *= CRIT_MULTIPLIER
     mitigation = target.resistance if damage_type == DMG_MAGICAL else target.armor
     damage = _mitigated_damage(raw, mitigation, damage_type)
 
@@ -245,6 +256,7 @@ def _apply_hit(
             event_type=event_type,
             amount=damage,
             note=damage_type,
+            is_crit=is_crit,
         )
     )
 
@@ -336,6 +348,7 @@ def _resolve_action(
             _apply_hit(
                 piece, target, ABILITY_STR_COEFF, ABILITY_INT_COEFF, DMG_MAGICAL,
                 EVENT_CAST, tick, events, damage_dealt, damage_taken,
+                can_crit=piece.ability_can_crit,
             )
             piece.mana = 0
             piece.action_energy -= ENERGY_THRESHOLD
@@ -358,6 +371,7 @@ def _resolve_action(
         _apply_hit(
             piece, target, AUTO_STR_COEFF, AUTO_INT_COEFF, DMG_PHYSICAL,
             EVENT_ATTACK, tick, events, damage_dealt, damage_taken,
+            can_crit=True,
         )
         piece.action_energy -= ENERGY_THRESHOLD
         return

@@ -47,6 +47,7 @@ A piece is defined by its **identity** (tier, level), its **stats** (numerical a
 | Armor | Physical mitigation | Raw + `% damage reduction` |
 | Resistance (RES) | Magical mitigation | Raw + `% damage reduction` |
 | Attack Range | Auto-attack range in hexes | `Melee` / `Range 2` / etc. |
+| **Crit Chance** | Probability an auto-attack critically strikes | `0%` default; displayed as `%` |
 
 > ⚠ **Naming collision flag:** the natural abbreviation for both Mana Regen and Magic Resist is "MR." This proposal renames magic resist to **Resistance (RES)** to avoid the clash. Recommended short forms: **MR** for Mana Regen, **RES** for Resistance.
 
@@ -75,6 +76,28 @@ system (T2, defined separately) applies a per-hit
 `damage_modifier(attacker.affinity, defender.affinity)` of `0.90–1.10` before
 mitigation — the affinity damage triangle (System B). See
 `docs/design/t2_weather_effects_plan.md` §6.
+
+**Critical strikes.** A critical hit multiplies raw damage by `1.5` *after* the
+weather affinity multiplier and *before* mitigation. Rules:
+
+- **Default `crit_chance`**: `0.0` (0%) for all pieces — champions and enemies alike.
+- **Auto-attacks** can always crit (gated on `crit_chance > 0`).
+- **Abilities** cannot crit by default. The runtime flag `ability_can_crit` (default
+  `False`) unlocks crit for a piece's active ability; this flag is set by an augment
+  or passive, never by a base stat.
+- **Deterministic cadence**: crits are not random. A piece with `crit_chance = c` crits
+  on every `round(1/c)`-th eligible hit and resets the counter. `c = 0.25` → crit on
+  hits 4, 8, 12, … `c = 0.5` → hits 2, 4, 6, … `c = 1.0` → every hit crits.
+  Counter (`crit_counter`) lives on `CombatPieceState`; it is shared between autos
+  and casts (when `ability_can_crit = True`).
+- **Pipeline order**: `raw = base_formula → × weather_modifier → × 1.5 if crit → mitigate`.
+- No RNG is involved; `resolve_combat` remains fully deterministic with no seed.
+
+Piece-specific passives (e.g., Frostfang — *critical strikes against frozen targets*)
+can set `ability_can_crit = True` or raise `crit_chance` as an on-trigger effect,
+but neither the base stat block nor the item system is expected to ship `crit_chance > 0`
+without intentional design. This keeps crit a build-around rather than a universal
+scaling path.
 
 The asymmetric scaling encodes the "STR for autoers, INT for casters" identity while keeping the overall stat-point price of STR and INT roughly equal *for the median caster archetype* (1 cast per 5 attacks). Derivation: per 5-auto + 1-cast cycle, 50 STR contributes `5(50) + 1(50×0.2) = 260` and 50 INT contributes `5(50×0.2) + 1(50×4.2) = 260` — equal.
 

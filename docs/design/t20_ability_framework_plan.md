@@ -102,3 +102,26 @@ passive buff while node weather is `CLEAR`. Rationale — `CLEAR` is inert in
 never interact with weather; this passive gives the affinity its identity. The
 passive owner **must** have `CLEAR` affinity. Pairs with the T21 `CLEAR`-boss
 compensating stat bump — both address `CLEAR`'s inertness.
+
+### 9.2 Critical strike hooks
+
+Critical strikes are implemented in the combat engine (see T3 §3.6), but the
+ability/augment framework is the sole path to enabling non-default crit behavior.
+Two mechanisms:
+
+**Raise `crit_chance`** — a passive registered on `on_tick` or `on_attack_landed`
+can write to `actor.crit_chance` (a `float` in `[0.0, 1.0]`). The engine will then
+crit every `round(1/crit_chance)` eligible hits deterministically. Example:
+an augment that permanently grants 25% crit on a piece sets `piece.crit_chance = 0.25`
+at combat init via a setup hook — piece crits on every 4th auto.
+
+**Set `ability_can_crit`** — a passive registered on `on_cast` or as a status
+condition can set `actor.ability_can_crit = True` for the duration of a condition.
+Example: Frostfang's passive (*critical strikes against frozen targets*) listens on
+`on_attack_landed`, checks whether the target has the `frozen` status, and sets
+`actor.ability_can_crit = True` for that tick's cast resolution before resetting it.
+
+Both flags live on `CombatPieceState` (runtime only — not in `Champion`/`Enemy` base
+stats). The reducer applies flag mutations before the damage step so the order is:
+passive fires → flag set → `_apply_hit` reads flag → crit resolved → flag reset if
+conditional. Permanent augment buffs skip the reset step.

@@ -46,6 +46,7 @@ Enemies share the **archetype system, stat block, ability framework, and damage 
 - **Not bought, spawned.** Enemies appear in pre-scripted PvE waves, not from a shop. No combination mechanic; no level-up via 3-of-a-kind. Encounter difficulty is set by which enemies and how many.
 - **Tier ≠ rarity.** Tier here means raw power level / encounter difficulty, not shop rarity. A T7 enemy is roughly as strong as a T7 champion at level 1.
 - **No items.** Enemies arrive with fixed stat blocks, no equipment slots. (Bosses may have an exception — see below.)
+- **Critical strikes.** All enemies default to `crit_chance = 0.0` — the same rule as champions. Boss kits may raise `crit_chance` via their passive or phase hook as a deliberate design choice; standard wave enemies do not.
 - **Bosses scale to player.** Recommended: Tier 10 boss stats scale with the player's current "stage" so they remain challenging across a long run. Optional encounter modifier — TBD.
 - **Encounter composition.** Each PvE round is a curated mix from this roster. Encounter design is its own discipline (out of scope for this document) but this roster is the ingredient list.
 

@@ -127,6 +127,31 @@ Affinity multiplier (weather System B):
 - Applies to auto-attacks and abilities alike. A `Clear` attacker or defender
   resolves to `1.00`.
 
+Critical strike (applied after weather multiplier, before mitigation):
+
+- `CRIT_MULTIPLIER = 1.5`
+- Default `crit_chance = 0.0` for all pieces. No crit logic executes when `crit_chance == 0`.
+- **Deterministic cadence**: a piece crits every `round(1/crit_chance)` eligible hits.
+  `crit_counter` on `CombatPieceState` increments on each `can_crit=True` hit; when it
+  reaches the threshold it fires a crit and resets to `0`. No RNG involved.
+- **Auto-attacks**: `can_crit=True` always.
+- **Abilities**: `can_crit=attacker.ability_can_crit` (default `False`).
+  The `ability_can_crit` flag is set at runtime by passives/augments.
+- `_apply_hit` receives `can_crit: bool`; crit state is recorded on `BattleEvent.is_crit`.
+- `resolve_combat` has no `rng` parameter; function remains fully deterministic.
+
+Full pipeline per hit:
+
+```
+raw = str_coeff × STR + int_coeff × INT
+raw ×= damage_modifier(attacker.affinity, defender.affinity)
+if can_crit and attacker.crit_chance > 0.0:
+    attacker.crit_counter += 1
+    if attacker.crit_counter >= round(1.0 / attacker.crit_chance):
+        raw ×= 1.5   # CRIT; reset counter to 0
+damage = mitigate(raw, target.armor_or_res, dmg_type)   # clamped to ≥ 1
+```
+
 Mitigation (MVP):
 
 - All outgoing damage is explicitly typed as one of: `physical`, `magical`, `true`.
@@ -297,7 +322,16 @@ Build `BattleResult` from final state:
 - System-A modified stats from `apply_weather` are actually used by combat outcomes.
 - System-B `damage_modifier` is applied per hit: for otherwise-identical pieces, a predator attacker deals more and a prey attacker deals less.
 
-### 6.7 BattleResult integrity
+### 6.7 Critical strikes
+
+- With `crit_chance=0.0` (default): no crits fire, `BattleEvent.is_crit` always `False`.
+- With `crit_chance=0.25`: 4th auto is a crit (`crit_counter` resets after each crit).
+- With `crit_chance=1.0`: every auto is a crit (`round(1/1.0) = 1`).
+- Abilities with `ability_can_crit=False`: never crit regardless of `crit_chance`.
+- Abilities with `ability_can_crit=True` and `crit_chance=0.5`: every 2nd eligible hit (auto or cast) crits.
+- `crit_counter` persists across the whole battle; first crit fires on exactly hit `round(1/crit_chance)`.
+
+### 6.8 BattleResult integrity
 
 - `rounds`, `turns`, survivor ids, and damage maps are consistent with event stream.
 
