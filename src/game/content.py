@@ -202,12 +202,9 @@ def compose_stats(
     else:
         stats["attack_speed"] = stats["attack_speed"] * speed_weights["attack_speed"]
 
-    if primary_stat == "str":
+    if primary_stat in {"str", "hybrid"}:
         stats["strength"] = stats["strength"] * speed_weights["primary_stat"]
-    elif primary_stat == "int":
-        stats["intelligence"] = stats["intelligence"] * speed_weights["primary_stat"]
-    else:
-        stats["strength"] = stats["strength"] * speed_weights["primary_stat"]
+    if primary_stat in {"int", "hybrid"}:
         stats["intelligence"] = stats["intelligence"] * speed_weights["primary_stat"]
     stats["ability_cost"] = ability_cost
 

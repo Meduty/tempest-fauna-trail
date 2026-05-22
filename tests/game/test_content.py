@@ -269,6 +269,24 @@ class TestComposeStats:
         with pytest.raises(ValueError, match="Unknown speed axis value"):
             compose_stats("str", "melee", "standard", "auto", 1, speed="ultra")
 
+    @pytest.mark.parametrize(
+        ("primary_stat", "range_", "durability", "msg"),
+        [
+            ("vigor", "melee", "standard", "Unknown primary_stat axis value"),
+            ("str", "sniper", "standard", "Unknown range axis value"),
+            ("str", "melee", "glass", "Unknown durability axis value"),
+        ],
+    )
+    def test_invalid_axis_values_raise_value_error(
+        self,
+        primary_stat: str,
+        range_: str,
+        durability: str,
+        msg: str,
+    ) -> None:
+        with pytest.raises(ValueError, match=msg):
+            compose_stats(primary_stat, range_, durability, "auto", 1, speed="neutral")
+
     def test_invalid_playstyle_axis_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Unknown playstyle axis value"):
             compose_stats("str", "melee", "standard", "burst", 1, speed="neutral")
