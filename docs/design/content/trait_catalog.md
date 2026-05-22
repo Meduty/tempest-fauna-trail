@@ -107,11 +107,11 @@ when the node weather also matches.
 | Affinity trait | Source affinity | Breakpoint shape (concept) |
 |---|---|---|
 | **Sunlit** | Clear | @2 minor flat all-around stats · @4 moderate all-around stats · @6 major all-around stat pack (Clear's trait identity baseline). |
-| **Overcast** | Cloudy | @2 minor HP + Resistance · @4 moderate HP + Resistance · @6 major HP + Resistance pack. |
-| **Shrouded** | Mist | @2 minor Move Speed + Threat · @4 moderate Move Speed + Threat and a brief phase-like opener · @6 major Move Speed + Threat and longer phase-like opener. |
-| **Stormfed** | Rain | @2 minor Attack Speed + Mana Regen · @4 moderate Attack Speed + Mana Regen · @6 major Attack Speed + Mana Regen pack. |
-| **Frostbound** | Snow | @2 minor Armor + Resistance · @4 moderate Armor + Resistance · @6 major Armor + Resistance pack. |
-| **Galvanized** | Thunder | @2 minor Strength + Attack Speed · @4 moderate Strength + Attack Speed · @6 major Strength + Attack Speed pack. |
+| **Overcast** | Cloudy | @2 minor HP + Resistance · @4 moderate HP + Resistance · @6 major HP + Resistance stat pack. |
+| **Shrouded** | Mist | @2 minor Move Speed + Threat · @4 moderate Move Speed + Threat plus a brief phase-like opener · @6 major Move Speed + Threat stat pack plus a longer phase-like opener. |
+| **Stormfed** | Rain | @2 minor Attack Speed + Mana Regen · @4 moderate Attack Speed + Mana Regen · @6 major Attack Speed + Mana Regen stat pack. |
+| **Frostbound** | Snow | @2 minor Armor + Resistance · @4 moderate Armor + Resistance · @6 major Armor + Resistance stat pack. |
+| **Galvanized** | Thunder | @2 minor Strength + Attack Speed · @4 moderate Strength + Attack Speed · @6 major Strength + Attack Speed stat pack. |
 
 ---
 
