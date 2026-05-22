@@ -60,7 +60,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - V.5: Weather state enum: exactly 6 values (Clear, Cloudy, Mist, Rain, Snow, Thunder), mapped 1:1 to OpenWeather id main groups
 - V.6: Each piece (Champion, Enemy) has exactly one `affinity: WeatherState` field; weakness derives from `weather_effects.DEBUFFED_AFFINITIES`
 - V.8: `Champion.traits: list[str]` holds auto-chess synergy tags (Hunter, Mammal, Reptile, etc.). Distinct from `affinity`. Synergy tags are open-ended strings owned by content (T.5); engine treats them as opaque labels for grouping.
-- V.7: Route is a staged path with multiple stages (target up to 5), with one or more nodes per stage and a final boss fight node in a famous city.
+- V.7: Route is a staged path with multiple stages (one per continent, up to 6), with one or more nodes per stage and a final boss fight node in a famous city.
 
 ## T. Tasks
 
@@ -83,6 +83,11 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.15 | Routing + app wiring — connect all views in main.py | `main.py` | T.9-T.13 | M |
 | T.16 | Unit tests — combat, weather effects, API parsing | `tests/` | T.1, T.2, T.3, T.6, T.7 | M |
 | T.17 | Documentation — README, prompting strategy, flow chart | `README.md`, `docs/` | all | M |
+| T.18 | Power & scaling model — `P` formula, `√P` stat coupling, economy cost curve | `game/scaling.py`, `docs/design/t18_power_scaling_plan.md` | T.1 | S |
+| T.19 | Encounter generation — seed-deterministic squad/offer fill, enemy power clustering, node budgets | `game/encounter.py`, `docs/design/t19_encounter_generation_plan.md` | T.1, T.4, T.5, T.18 | M |
+| T.20 | Ability/passive/status framework — registry, typed event bus, status gates, boss phase hook | `game/abilities.py`, `game/combat.py`, `docs/design/t20_ability_framework_plan.md` | T.3 | L |
+| T.21 | Challenge & boss encounters — spirit challenges, 2-phase bosses, weather-themed map effects | `game/encounter.py`, `game/content.py`, `docs/design/t21_challenge_boss_plan.md` | T.19, T.20 | M |
+| T.22 | Meta progression — augment, supply, economy, team-size cap | `game/augments.py`, `game/economy.py`, `docs/design/t22_meta_progression_plan.md` | T.1, T.18 | M |
 
 **Size**: S = <1h, M = 1-3h, L = 3-6h
 
@@ -102,23 +107,95 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - Modifier applies at combat init only (one-shot snapshot, not per-tick).
 - Detailed T.2 plan: `docs/design/t2_weather_effects_plan.md`.
 
+### T.4 Planning Notes
+
+- Route locked: 6 continent stages, 50 linear nodes, one hub city per stage.
+- Detailed T.4 plan: `docs/design/t4_city_route_plan.md`.
+
+### T.18-T.22 Planning Notes (Systems Expansion)
+
+- T.18 power scalar `P = 1.5 ** ((T-1)/2 + (L-1))` drives encounter budgets and
+  piece stat generation; "two tiers == one level".
+- T.19 generates encounters deterministically from `Run.seed` via per-node
+  sub-seeds; squads/offers are regenerated lazily, not stored.
+- T.20 builds the ability/passive/status framework (resolves D.3-D.5); bosses
+  are its first consumer.
+- T.21 layers spirit challenges and 2-phase bosses on the T.19 generator.
+- T.22 covers augment/supply choices, the Amber economy, and team-size cap.
+- Detailed plans: `docs/design/t18_power_scaling_plan.md` through
+  `t22_meta_progression_plan.md`.
+
 ## B. Bugs / Backprop
 
-*(Empty — populated during development)*
+- B.1 `NodeType` extended with `SUPPLY` and `CHALLENGE` for the T.4 route
+  vocabulary; `docs/design/t1_model_contracts.md` must be synced.
+- B.2 `Reward` node redefined as an easy fight with guaranteed loot — it carries
+  both `enemy_pool_id` and `reward_table_id`, not a pure non-combat node.
+- B.3 Planned model additions: `CombatPieceState.active_statuses` (T.20) and
+  `Run.content_version` (T.19) for procedural-run save stability.
+- B.4 Currency named **Amber**, the team-size XP counter named **Tempest**
+  (`1 Amber : 1 Tempest`). The `Run.gold` model field should be renamed
+  `Run.amber` — touches `models.py`, `to_dict`/`from_dict`, `test_models.py`,
+  and `t1_model_contracts.md`.
 
 ## D. Systems Yet To Be Determined
 
-- D.1 Route topology details: exact stage count (up to 5), nodes per stage, and branch/merge rules.
-- D.2 Boss city/content: final famous city choice, boss enemy kit, and finale weather behavior.
-- D.3 Ability framework: piece-specific active ability handlers and registration model.
-- D.4 Passive framework: event taxonomy (`on_hit`, `on_cast`, `on_kill`, etc.) and deterministic resolution order.
-- D.5 Status effects: formal mechanics for `stun`, `silence`, `disarm`, and `root` (meter, action, movement, and mana interactions).
-- D.6 Combat timeout policy: keep hard draw only or introduce sudden-death escalation.
+Live backlog of big design decisions still open. Items now locked are recorded
+in their T-task plan docs; what remains here is genuinely undecided.
+
+### Route & Encounters
+
+- D.1 Route branching: the linear 6-stage / 50-node chain is **locked** (T.4);
+  whether optional branch/merge paths are added post-MVP is open.
+- D.2 Boss content: per-boss kits, phase-2 ability pairs, exact map-effect
+  mechanics, and the final-boss mid-fight weather cycle (T.21).
+- D.3 Combat board-cell modifiers: boss map effects need a new combat-engine
+  cell-modifier mechanic — not yet a task, not yet designed.
+- D.4 Mid-fight weather change: required by the final-boss weather cycle;
+  currently out of combat-engine scope (T.3 deferred).
+
+### Combat Systems
+
+- D.5 Ability / passive / status framework: **designed in T.20**; per-champion
+  ability and passive *content* (kits) is still open.
+- D.6 Combat timeout policy: keep hard draw only or add sudden-death escalation.
+- D.7 HP carryover: whether champion HP persists across nodes or resets per
+  fight (`views_spec.md` Trail panel assumes "carry-over if persistent").
+
+### Content
+
+- D.8 Synergy traits: V.8 reserves `Champion.traits` as auto-chess synergy tags,
+  but which synergies exist and what bonuses they grant is undesigned.
+- D.9 Item system: items are referenced by `SUPPLY` combos, `REWARD` drops, and
+  the prep inventory, but no item model, pool, or effects exist — undesigned.
+- D.10 Champion / enemy archetypes: the ~6-8 role archetypes and their `P = 1`
+  base stats, enemy power tags, and the spirit roster (T.5 / T.18).
+- D.11 Augment content: the augment pool, the 4 quality tiers, and per-augment
+  effects (T.22).
+- D.12 Drop tables: `REWARD`-node loot content (Amber / item / champion weights).
+
+### Economy & Meta
+
+- D.13 Champion economy: Amber sources/sinks, `Cost(T) = T` tuning, reroll costs
+  (augment reroll is free once; shop reroll undecided), and sell values.
+- D.14 Team-size cap: `Tempest` counter (the XP analogue) — start at rank `1`,
+  `+2` Tempest per fight, raise rank `N` at `2N` Tempest; Amber can complete a
+  rank-up instantly at `1 Amber : 1 Tempest`, full remaining cost only,
+  all-or-nothing (T.22).
+- D.15 Shop: lives in the Prep view (`views_spec.md` §6.4); its inventory model,
+  refresh rule, and stage availability gating are open (T.22).
+
+### UI / Flow
+
+- D.16 View/route drift: SPEC's Flet route table (`/recruit`, `/map`,
+  `/summary`) is stale against `views_spec.md` (`/trail`, `/prep`); a single
+  canonical route set must be chosen. `views_spec.md` §11 is also stale
+  (7-node route, 4-value `NodeType`) and needs a sync pass.
 
 ## Implementation Order
 
-### Phase 1: Core Logic (Week 1-2)
-T.1 → T.2 → T.3 → T.4 → T.5 → T.16 (game tests)
+### Phase 1: Core Logic (Week 1-3)
+T.1 → T.2 → T.3 → T.4 → T.18 → T.5 → T.19 → T.20 → T.21 → T.16 (game tests)
 
 ### Phase 2: API + Data (Week 2-3)
 T.6 → T.7 → T.16 (API tests)
@@ -163,15 +240,14 @@ Pentagon cycle (CW): `Cloudy → Mist → Snow → Rain → Thunder → Cloudy`.
 T.5 expands this to a full roster of ~60 (1 champion per affinity × 10 tiers).
 
 ### Cities examples
-| Order | City | Region | Enemy Theme |
-|---|---|---|---|
-| 1 | Reykjavik | Iceland | Frost drones |
-| 2 | London | UK | Smog bots |
-| 3 | Cairo | Egypt | Heat mechs |
-| 4 | Mumbai | India | Monsoon walkers |
-| 5 | Tokyo | Japan | Storm sentinels |
-| 6 | Sydney | Australia | Wildfire units |
-| Boss | New York | USA | All-weather titan |
+| Stage | Continent | City | Country | Enemy Theme |
+|---|---|---|---|---|
+| 1 | Europe | London | UK | Smog bots |
+| 2 | Africa | Cairo | Egypt | Heat mechs |
+| 3 | Asia | Tokyo | Japan | Storm sentinels |
+| 4 | Oceania | Sydney | Australia | Wildfire units |
+| 5 | South America | Rio de Janeiro | Brazil | Monsoon walkers |
+| 6 | North America | New York | USA | All-weather titan (boss) |
 
 ### Enemy Types examples
 | Type | Base ATK | Base HP | Affinity |
