@@ -195,9 +195,11 @@ def compose_stats(
         stats["strength"] = stats["strength"] * speed_weights["primary_stat"]
     elif primary_stat == "int":
         stats["intelligence"] = stats["intelligence"] * speed_weights["primary_stat"]
-    else:
+    elif primary_stat == "hybrid":
         stats["strength"] = stats["strength"] * speed_weights["primary_stat"]
         stats["intelligence"] = stats["intelligence"] * speed_weights["primary_stat"]
+    else:
+        raise ValueError(f"Unknown primary_stat axis value: {primary_stat!r}")
     stats["ability_cost"] = ability_cost
 
     s = stat_multiplier(tier, 1)
@@ -247,7 +249,7 @@ def _build_champion(d: ChampionDef) -> Champion:
         armor=max(0, stats["armor"]),
         resistance=max(0, stats["resistance"]),
         attack_speed=round(stats["attack_speed"]),
-        mana_regen=int(stats["mana_regen"]),
+        mana_regen=round(stats["mana_regen"]),
         move_speed=d.move_speed,
         threat=d.threat,
         attack_range=stats["attack_range"],
@@ -283,7 +285,7 @@ def _build_enemy(d: EnemyDef) -> Enemy:
         armor=max(0, stats["armor"]),
         resistance=max(0, stats["resistance"]),
         attack_speed=round(stats["attack_speed"]),
-        mana_regen=int(stats["mana_regen"]),
+        mana_regen=round(stats["mana_regen"]),
         move_speed=d.move_speed,
         threat=d.threat,
         attack_range=stats["attack_range"],
