@@ -172,6 +172,17 @@ def compose_stats(
     speed: str = "neutral",
     ability_cost: int = 36_000,
 ) -> dict[str, Any]:
+    if primary_stat not in _PRIMARY_STAT:
+        raise ValueError(f"Unknown primary_stat axis value: {primary_stat!r}")
+    if range_ not in _RANGE:
+        raise ValueError(f"Unknown range axis value: {range_!r}")
+    if durability not in _DURABILITY:
+        raise ValueError(f"Unknown durability axis value: {durability!r}")
+    if playstyle not in _PLAYSTYLE:
+        raise ValueError(f"Unknown playstyle axis value: {playstyle!r}")
+    if speed not in _SPEED:
+        raise ValueError(f"Unknown speed axis value: {speed!r}")
+
     stats = dict(_BASE_STATS)
     for axis_weights in (
         _PRIMARY_STAT[primary_stat],
@@ -188,8 +199,10 @@ def compose_stats(
     speed_weights = _SPEED[speed]
     if playstyle == "ability":
         stats["resistance"] = stats["resistance"] * speed_weights["resistance"]
-    else:
+    elif playstyle in {"auto", "hybrid"}:
         stats["attack_speed"] = stats["attack_speed"] * speed_weights["attack_speed"]
+    else:
+        raise ValueError(f"Unknown playstyle axis value: {playstyle!r}")
 
     if primary_stat == "str":
         stats["strength"] = stats["strength"] * speed_weights["primary_stat"]

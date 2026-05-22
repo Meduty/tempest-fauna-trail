@@ -264,3 +264,11 @@ class TestComposeStats:
         heavy = compose_stats("int", "ranged", "standard", "ability", 1, speed="heavy")
         assert speedy["resistance"] > neutral["resistance"] > heavy["resistance"]
         assert speedy["intelligence"] < neutral["intelligence"] < heavy["intelligence"]
+
+    def test_invalid_speed_axis_raises_value_error(self) -> None:
+        with pytest.raises(ValueError, match="Unknown speed axis value"):
+            compose_stats("str", "melee", "standard", "auto", 1, speed="ultra")
+
+    def test_invalid_playstyle_axis_raises_value_error(self) -> None:
+        with pytest.raises(ValueError, match="Unknown playstyle axis value"):
+            compose_stats("str", "melee", "standard", "burst", 1, speed="neutral")
