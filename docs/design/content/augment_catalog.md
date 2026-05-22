@@ -58,8 +58,8 @@ build-shaping picks.
 
 | Augment | Scope | Effect concept |
 |---|---|---|
-| **Stormchaser's Pact** | Team | Allies whose affinity *hunts* the live node weather deal bonus damage (amplifies their System-B edge). |
-| **Stubborn Roots** | Team | Allies that are *prey* to the live weather ignore the System-A stat debuff. |
+| **Stormchaser's Pact** | Team | Allies whose affinity *hunts* the live node weather deal bonus damage (amplifies their Affinity Clash edge). |
+| **Stubborn Roots** | Team | Allies that are *prey* to the live weather ignore the Weather Favor stat debuff. |
 | **Slow Burn** | Team | Allies gain stacking power every few hundred ticks they stay alive — rewards surviving the opening. |
 | **Adrenal Glands** | Team | Each champion's first cast of every combat is empowered. |
 | **Glass Fang** | Team | Allies gain large Strength and Intelligence but lose some Health. |
@@ -80,8 +80,8 @@ Strong, identity-defining — archetype power spikes and the system build-around
 
 | Augment | Scope | Effect concept |
 |---|---|---|
-| **Apex Predators** | Team | The team's System-B predator damage multipliers are amplified — you hit your prey markedly harder. |
-| **Eye of the Storm** | Team | At combat start the node weather's System-A buff is applied as the affinity that suits the *most* of your team. |
+| **Apex Predators** | Team | The team's Affinity Clash predator damage multipliers are amplified — you hit your prey markedly harder. |
+| **Eye of the Storm** | Team | At combat start the node weather's Weather Favor buff is applied as the affinity that suits the *most* of your team. |
 | **Doldrums Blessing** | Team | While the node weather is `CLEAR` (inert), the whole team gains a large stat pack — turns dead weather into an upside. |
 | **Built Different** | Piece | Champions with no *active* Kinship or Calling breakpoint gain large stats — rewards a no-synergy board. |
 | **Living Tide** | Team | Allies heal for a share of all damage they deal. |

@@ -54,7 +54,7 @@ phases**; the phase-2 beast always shares the commander's element.
   Leviathan is always Rain, Strand's Caged Storm always Thunder. A live-affinity
   rule produced absurdities (a "Leviathan" in Snow weather).
 - **Variance.** Under a live-affinity rule a boss's affinity *equalled* the
-  weather, so System A *always* gave it the strong self-buff — a permanent,
+  weather, so Weather Favor *always* gave it the strong self-buff — a permanent,
   varianceless tax. With fixed affinity the live weather sometimes buffs and
   **sometimes debuffs** the boss (§1.2) — a real swing the player can read and
   exploit.
@@ -69,7 +69,7 @@ Stage affinity is fixed; the **live node weather** is the run's variable. They
 interact in three layers, all readable in advance because the stage's affinity
 is known from the start:
 
-1. **Boss vs. weather (System A).** The live weather resolves
+1. **Boss vs. weather (Weather Favor).** The live weather resolves
    `combat_modifier(boss.affinity, weather)`:
    - weather **==** boss affinity → boss takes the **strong self-buff** (home turf);
    - weather is **hunted by** the boss affinity → boss takes a medium/weak buff;
@@ -83,9 +83,9 @@ is known from the start:
 2. **The player's prep fork.** Knowing the stage affinity, the player chooses
    what to build:
    - **Weather-fit** — champions whose affinity suits the *live node weather*,
-     for their own System-A self-buff; or
+     for their own Weather Favor self-buff; or
    - **Type-advantage** — champions whose affinity **hunts the boss's fixed
-     affinity**, landing System-B `1.10×` on the boss every hit *and* taking
+     affinity**, landing Affinity Clash `1.10×` on the boss every hit *and* taking
      only `0.90×` back from it.
    These often pull apart: the predator of the boss may itself be prey to the
    live weather. That tension is the boss-prep minigame.

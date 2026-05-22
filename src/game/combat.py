@@ -1,8 +1,8 @@
 """Tick-based auto-resolved combat engine (T3 MVP).
 
 `resolve_combat` is a pure, deterministic function: identical inputs always
-produce a byte-equal `BattleResult`. Weather System A is applied once at init
-via `weather_effects.apply_weather`; System B (the affinity damage triangle) is
+produce a byte-equal `BattleResult`. Weather Weather Favor is applied once at init
+via `weather_effects.apply_weather`; Affinity Clash (the affinity damage triangle) is
 resolved per hit during damage application.
 """
 
@@ -255,7 +255,7 @@ def _apply_hit(
     can_crit: bool,
 ) -> None:
     raw = str_coeff * attacker.strength + int_coeff * attacker.intelligence
-    # Weather System B — affinity damage triangle, applied before mitigation.
+    # Weather Affinity Clash — affinity damage triangle, applied before mitigation.
     raw *= damage_modifier(attacker.affinity, target.affinity)
     is_crit = False
     if can_crit and attacker.crit_chance > 0.0:

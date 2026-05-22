@@ -209,7 +209,7 @@ around it.
 Champions live and die by the live weather. The predator/prey ring
 (`weather_effects.py`: `MIST → CLOUDY → RAIN → SNOW → THUNDER → MIST`) decides
 who is buffed and who is prey. Field a champion whose affinity *hunts* the
-node weather and it takes the medium System-A buff **and** lands System-B hits
+node weather and it takes the medium Weather Favor buff **and** lands Affinity Clash hits
 at up to `1.10×`.
 
 | Affinity | Hunts (good vs.) | Hunted by (bad vs.) |

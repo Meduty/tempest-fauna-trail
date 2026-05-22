@@ -16,13 +16,13 @@ Started from: T2/T3 already implemented (symmetric "Variant B" pentagon).
    **my own error**: I had summed the two systems into one ranking.
 
 2. **Decoupling correction.** User: the two systems are decoupled, never summed.
-   System A (node weather) is enemy-independent; System B (damage triangle) is
-   weather-independent. Self is the strict System-A maximum. Re-derived the
+   Weather Favor (node weather) is enemy-independent; Affinity Clash (damage triangle) is
+   weather-independent. Self is the strict Weather Favor maximum. Re-derived the
    model on that basis.
 
 3. **Magnitude tuning.** User flagged the predator/prey exchange as too swingy
-   at `1.2/0.8` (1.5× exchange). Settled System B at `1.10/1.05/1.00/0.95/0.90`
-   (primary exchange ~1.22×). System A locked to strong/medium/weak buff +
+   at `1.2/0.8` (1.5× exchange). Settled Affinity Clash at `1.10/1.05/1.00/0.95/0.90`
+   (primary exchange ~1.22×). Weather Favor locked to strong/medium/weak buff +
    medium/weak debuff.
 
 4. **Plan rewrite.** Rewrote `t2_weather_effects_plan.md` end to end.
@@ -45,9 +45,9 @@ Started from: T2/T3 already implemented (symmetric "Variant B" pentagon).
   `t19_encounter_generation_plan.md`, `combat_system_proposal.md`,
   `views_spec.md`.
 - Modified code: `src/game/models.py` (`CombatPieceState += affinity`),
-  `src/game/combat.py` (System-B damage hook, `apply_weather` rename),
+  `src/game/combat.py` (Affinity Clash damage hook, `apply_weather` rename),
   `src/game/combat_log.py` (`apply_weather` rename).
-- Modified tests: `test_combat.py` (`_state` gains `affinity`, new System-B
+- Modified tests: `test_combat.py` (`_state` gains `affinity`, new Affinity Clash
   test), `test_models.py` (`CombatPieceState` ctor gains `affinity`).
 - Added: this journal.
 
@@ -62,17 +62,17 @@ Started from: T2/T3 already implemented (symmetric "Variant B" pentagon).
 
 ### Two decoupled systems
 
-- **System A — node weather.** Buffs/debuffs each piece by affinity vs node
+- **Weather Favor — node weather.** Buffs/debuffs each piece by affinity vs node
   weather. 5 tiers: strong/medium/weak buff (self / primary predator /
   secondary predator) `+10/+6/+3%`; medium/weak debuff (primary/secondary prey)
   `−6/−3%`. Self is the strict maximum; no strong debuff (weather is net-kind).
   Applied once at combat init.
-- **System B — affinity damage triangle.** Per-hit multiplier on every damage
+- **Affinity Clash — affinity damage triangle.** Per-hit multiplier on every damage
   instance by attacker vs defender affinity: `1.10/1.05/1.00/0.95/0.90`.
   Resolved per hit in the combat engine — depends on the defender, cannot be
   pre-snapshotted.
-- The systems are **never summed**. System A asks "does the weather suit me?";
-  System B asks "do I beat this enemy?". They are evaluated separately.
+- The systems are **never summed**. Weather Favor asks "does the weather suit me?";
+  Affinity Clash asks "do I beat this enemy?". They are evaluated separately.
 
 ### Implementation
 
@@ -80,12 +80,12 @@ Started from: T2/T3 already implemented (symmetric "Variant B" pentagon).
   (`1.0/0.6/0.3`). `Mist`'s flat `attack_range −1` survives the medium tier and
   rounds away at the weak tier.
 - `CombatPieceState` gained an `affinity` field (SPEC B.5) so the engine can
-  resolve System B per hit. `apply_modifier` renamed `apply_weather`.
+  resolve Affinity Clash per hit. `apply_modifier` renamed `apply_weather`.
 
 ## Open Items / Deferred
 
 - T20: ability damage must route through the engine's shared damage path so
-  System B applies to spell damage (noted in the T20 plan).
+  Affinity Clash applies to spell damage (noted in the T20 plan).
 - `views_spec.md` weather panels updated only minimally — the doc is still
   flagged stale for the broader D.16 sync.
 - Magnitude tuning is locked but unplaytested — no balance pass yet.
@@ -94,7 +94,7 @@ Started from: T2/T3 already implemented (symmetric "Variant B" pentagon).
 
 - `pytest tests/` — **61 passed**. Per file: `test_weather_effects` 28,
   `test_combat` 19, `test_models` 7, `test_combat_log` 7.
-- System-B behavior checked end to end: RAIN enemy (armor 0), raw auto 50 →
+- Affinity Clash behavior checked end to end: RAIN enemy (armor 0), raw auto 50 →
   SNOW predator hits `55` (×1.10), CLOUDY prey hits `45` (×0.90).
 - `CLEAR`-affinity pieces verified inert in both systems — existing combat and
   combat-log golden tests unchanged.

@@ -64,7 +64,7 @@ evaluated at start of tick alongside status expiry.
   the T.2 weather rework — SPEC B.5.)
 - Tick loop: status-expiry phase, four gate checks, phase-hook check.
 - Ability damage effects must route through the engine's shared damage function
-  so the weather System-B affinity multiplier (`damage_modifier`) applies to
+  so the weather Affinity Clash affinity multiplier (`damage_modifier`) applies to
   spell damage, not only auto-attacks. Handlers return damage effects tagged
   with the actor; the reducer resolves the attacker-vs-defender multiplier.
 - T3 MVP behavior is unchanged when no abilities, statuses, or phases are
@@ -96,7 +96,7 @@ evaluated at start of tick alongside status expiry.
 
 A concrete first passive for the framework: 1-2 `CLEAR`-affinity pieces gain a
 passive buff while node weather is `CLEAR`. Rationale — `CLEAR` is inert in
-**both** weather systems (no System-A node buff/debuff, no System-B triangle —
+**both** weather systems (no Weather Favor node buff/debuff, no Affinity Clash triangle —
 `CLEAR` neither counters nor is countered), so `CLEAR`-affinity pieces otherwise
 never interact with weather; this passive gives the affinity its identity. The
 passive owner **must** have `CLEAR` affinity. Pairs with the T21 `CLEAR`-boss

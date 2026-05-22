@@ -74,11 +74,11 @@ d = (index(a) - index(b)) mod 5
 Weather contributes **two independent modifiers**. They answer different
 questions and are **never summed into one "best affinity" score**:
 
-- **System A — Node Weather** (§5): does the node's weather suit my piece's
+- **Weather Favor — Node Weather** (§5): does the node's weather suit my piece's
   affinity? Determined by the piece's affinity vs the *node weather*.
   **Enemy-independent.** A Rain team always wants Rain weather, no matter who
   it fights.
-- **System B — Damage Triangle** (§6): does my affinity beat the enemy's
+- **Affinity Clash — Damage Triangle** (§6): does my affinity beat the enemy's
   affinity? Determined by *attacker affinity vs defender affinity*.
   **Weather-independent.** A Rain team always dislikes Snow enemies, no matter
   the weather.
@@ -87,7 +87,7 @@ Worked case: a Rain team at a Rain node fighting Snow enemies has **great
 weather (A)** and a **bad matchup (B)** at the same time — both facts hold,
 neither cancels the other. The player evaluates the two axes separately.
 
-## 5. System A — Node Weather → Affinity Buff/Debuff
+## 5. Weather Favor — Node Weather → Affinity Buff/Debuff
 
 The node's weather `W` buffs/debuffs every piece by its `affinity` `A`, on five
 tiers. **Self is the strict maximum** — a piece is strongest in its own
@@ -144,7 +144,7 @@ deviation from `1.0` by `tier_scalar`.
   proposal — the simulator runs off snapshotted stats). Mid-fight weather
   change is out of scope.
 
-## 6. System B — Affinity Damage Triangle
+## 6. Affinity Clash — Affinity Damage Triangle
 
 Every instance of damage (auto-attack **and** ability) is flagged with the
 **attacker's affinity**. A single multiplier is applied per hit, from
@@ -170,7 +170,7 @@ neither counters nor is countered.
 ## 7. Shop Drop Weight (Prep Phase)
 
 `shop_weight` biases the Prep shop toward affinities the **upcoming node
-weather** favours (System A only — matchup bias would need an enemy preview,
+weather** favours (Weather Favor only — matchup bias would need an enemy preview,
 deferred). Consumer arrives with the shop task (post-T5).
 
 | `ring_relation(affinity, weather)` | weight |
@@ -200,7 +200,7 @@ class RingRelation(str, Enum):
 
 CYCLE_ORDER: tuple[WeatherState, ...]         # (MIST, CLOUDY, RAIN, SNOW, THUNDER)
 
-# Tier scalars for System A magnitude.
+# Tier scalars for Weather Favor magnitude.
 TIER_SCALAR: dict[str, float]                 # strong 1.0 / medium 0.6 / weak 0.3
 
 @dataclass(frozen=True, slots=True)
@@ -219,27 +219,27 @@ class CombatModifier:
 IDENTITY: CombatModifier
 WEATHER_BUFF_BASE: dict[WeatherState, CombatModifier]    # strong-tier buff effect
 WEATHER_DEBUFF_BASE: dict[WeatherState, CombatModifier]  # strong-tier debuff effect
-DAMAGE_MULT: dict[RingRelation, float]                   # System B table
+DAMAGE_MULT: dict[RingRelation, float]                   # Affinity Clash table
 
 def ring_relation(a: WeatherState, b: WeatherState) -> RingRelation
 
-# System A
+# Weather Favor
 def combat_modifier(affinity: WeatherState, weather: WeatherState) -> CombatModifier
     # picks buff/debuff base by ring_relation, scales deviation by tier scalar
 
-# System B
+# Affinity Clash
 def damage_modifier(attacker_affinity: WeatherState,
                     defender_affinity: WeatherState) -> float
 
 def shop_weight(affinity: WeatherState, weather: WeatherState) -> float
 
-# Combat-init bridge — System A only. Does NOT mutate the piece; copies
-# piece.affinity into the snapshot so the combat engine can do System B per hit.
+# Combat-init bridge — Weather Favor only. Does NOT mutate the piece; copies
+# piece.affinity into the snapshot so the combat engine can do Affinity Clash per hit.
 def apply_weather(piece, weather: WeatherState) -> CombatPieceState
 ```
 
-`apply_weather` (formerly `apply_modifier`) applies **only System A** at combat
-init. **System B is not snapshottable** — its multiplier depends on the
+`apply_weather` (formerly `apply_modifier`) applies **only Weather Favor** at combat
+init. **Affinity Clash is not snapshottable** — its multiplier depends on the
 defender, so it is resolved per hit inside the combat engine via
 `damage_modifier`. This requires the snapshot to carry affinity (§10.1).
 
@@ -253,7 +253,7 @@ Ring + relation:
 - Directionality: `ring_relation(a, b) == PRIMARY_PREDATOR` ⇔
   `ring_relation(b, a) == PRIMARY_PREY` (same for secondary).
 
-System A:
+Weather Favor:
 
 - `combat_modifier`: `SELF` → strong (`+10%`), `PRIMARY_PREDATOR` → medium
   (`+6%`), `SECONDARY_PREDATOR` → weak (`+3%`), `PRIMARY_PREY` → medium
@@ -263,7 +263,7 @@ System A:
 - §5.1 affinity-perspective matrix matches `combat_modifier` for every pair.
 - `MIST` debuff: `attack_range_delta == -1` at medium tier, `0` at weak tier.
 
-System B:
+Affinity Clash:
 
 - `damage_modifier`: `1.10 / 1.05 / 1.00 / 0.95 / 0.90` by relation.
 - Mirror (`a == a`) and any `CLEAR` pairing → `1.00`.
@@ -274,7 +274,7 @@ System B:
 Other:
 
 - `shop_weight`: `2.0 / 1.5 / 1.2 / 0.8 / 0.6` by relation, `1.0` for `CLEAR`.
-- `apply_weather` scales stats by System A, clamps `attack_range ≥ 1`, and
+- `apply_weather` scales stats by Weather Favor, clamps `attack_range ≥ 1`, and
   copies `piece.affinity` onto the returned `CombatPieceState`.
 - Determinism: repeated calls with identical args return equal objects.
 
@@ -283,7 +283,7 @@ Other:
 ### 10.1 `src/game/models.py`
 
 - **`CombatPieceState` gains `affinity: WeatherState`** — the combat engine
-  needs each piece's affinity at damage time for System B (target-dependent,
+  needs each piece's affinity at damage time for Affinity Clash (target-dependent,
   cannot be pre-snapshotted). Update `__post_init__`, `to_dict`, `from_dict`.
 - `Champion` / `Enemy` already carry `affinity`; `WeatherState` already has 6
   values + `from_openweather_id`. No change there.
@@ -298,38 +298,38 @@ Other:
 ### 10.3 T20 (ability framework)
 
 - Ability damage must route through the same affinity-tagged damage path so
-  System B applies to spells, not only auto-attacks. Note as a T20 dependency.
+  Affinity Clash applies to spells, not only auto-attacks. Note as a T20 dependency.
 
 ### 10.4 `SPEC.md`
 
 - V.5 / V.6 unchanged (enum + single `affinity` field still hold).
 - New B-section backprop entries: `CombatPieceState.affinity` field add; the
   T3 `combat.py` damage-hook edit + retest.
-- D-section: record the two-system weather model and that System B per-hit
+- D-section: record the two-system weather model and that Affinity Clash per-hit
   resolution is a combat-engine extension.
 - §T.2 row: effort stays M (matrix + two systems + tests).
 
 ### 10.5 Existing tests
 
 - `tests/game/test_weather_effects.py` is rewritten for the new ring and the
-  two systems. `test_combat.py` updates for the System B damage hook and the
+  two systems. `test_combat.py` updates for the Affinity Clash damage hook and the
   new `CombatPieceState.affinity` field.
 
 ## 11. Locked Decisions
 
 - **Cycle**: directed ring `MIST → CLOUDY → RAIN → SNOW → THUNDER`; `CLEAR`
   outside, inert in both systems.
-- **Two decoupled systems**: System A (node weather, enemy-independent) and
-  System B (damage triangle, weather-independent) are evaluated separately,
+- **Two decoupled systems**: Weather Favor (node weather, enemy-independent) and
+  Affinity Clash (damage triangle, weather-independent) are evaluated separately,
   never summed.
-- **System A tiers**: strong / medium / weak buff = `+10% / +6% / +3%` for
+- **Weather Favor tiers**: strong / medium / weak buff = `+10% / +6% / +3%` for
   self / primary predator / secondary predator; medium / weak debuff =
   `−6% / −3%` for primary / secondary prey. No strong debuff.
-- **System B**: `1.10 / 1.05 / 1.00 / 0.95 / 0.90` per hit, attacker-flagged,
+- **Affinity Clash**: `1.10 / 1.05 / 1.00 / 0.95 / 0.90` per hit, attacker-flagged,
   one modifier per hit.
-- **Self is the strict System-A maximum** — a piece is strongest in its own
+- **Self is the strict Weather Favor maximum** — a piece is strongest in its own
   weather.
-- **Timing**: System A at combat init (snapshot); System B per hit in the
+- **Timing**: Weather Favor at combat init (snapshot); Affinity Clash per hit in the
   combat engine.
 
 ## 12. Implementation Order
@@ -338,7 +338,7 @@ Other:
 2. Rewrite `weather_effects.py`: `CYCLE_ORDER`, `ring_relation`, `RingRelation`,
    `combat_modifier` (tier-scaled), `damage_modifier`, `shop_weight`,
    `apply_weather`.
-3. Wire System B into `combat.py` damage resolution; rename `apply_modifier`
+3. Wire Affinity Clash into `combat.py` damage resolution; rename `apply_modifier`
    call sites to `apply_weather`.
 4. Rewrite `tests/game/test_weather_effects.py`; update `test_combat.py`.
 5. Update `SPEC.md` per §10.4.

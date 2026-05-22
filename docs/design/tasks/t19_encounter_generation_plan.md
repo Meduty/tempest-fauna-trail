@@ -40,7 +40,7 @@ Each enemy archetype (T5 content) carries:
 | field | use |
 |---|---|
 | `faction` | `human` / `spirit` — node type selects |
-| `affinity` | `WeatherState` — continent theming; drives weather System A/B at fight time |
+| `affinity` | `WeatherState` — continent theming; drives weather Weather Favor/B at fight time |
 | `role` | frontline / ranged / caster / swarm |
 | `power` | `P` from T18 — the budget cost |
 

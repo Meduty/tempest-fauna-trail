@@ -64,11 +64,11 @@ Birds and winged creatures. Skyborn rewards tempo and reach.
 ### Scaled — *cold blood, hard plates, weatherproof*
 Reptiles. Scaled rewards a defensive, weather-agnostic core.
 - **@2** — Scaled gain Armor and Resistance.
-- **@4** — Scaled are **immune to the weather System-A debuff** — being the
-  weather's prey no longer lowers their stats (they still take System-B hit
+- **@4** — Scaled are **immune to the weather Weather Favor debuff** — being the
+  weather's prey no longer lowers their stats (they still take Affinity Clash hit
   multipliers).
 - **@6** — Scaled additionally treat *every* node weather as a self-buff,
-  gaining the strong-tier System-A stat pack regardless of affinity.
+  gaining the strong-tier Weather Favor stat pack regardless of affinity.
 
 ### Tidekin — *water, sustain, and the slow tide*
 Aquatic creatures and amphibians. Tidekin rewards a healing-anchored team.
@@ -102,14 +102,13 @@ Spirit rewards an ability-driven team.
 Six affinity traits, one per weather state. These are **count-based** and
 always-on once a breakpoint is met; they never check live weather. Each mirrors
 that weather's **Weather Favor** stat identity (local name for weather
-**System A**) so mono-affinity comps can "double down"
+**Weather Favor**) so mono-affinity comps can "double down"
 when the node weather also matches. **Shrouded** intentionally includes a small
 ethereal rider in addition to stat scaling.
 
 For naming consistency across docs:
-- **Weather Favor** = node-weather affinity buff/debuff layer (formerly "System A").
-- **Affinity Clash** = affinity-vs-affinity damage multiplier layer (formerly
-  "System B").
+- **Weather Favor** = node-weather affinity buff/debuff layer.
+- **Affinity Clash** = affinity-vs-affinity damage multiplier layer.
 
 For content/debug consistency, each affinity breakpoint should emit a named
 `EffectBundle` using a stable id pattern:

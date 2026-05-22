@@ -197,7 +197,7 @@ class CombatPieceState:
 
 `affinity` is copied from the source `Champion`/`Enemy` by
 `weather_effects.apply_weather`; the combat engine reads it per hit for the
-System-B affinity damage triangle (T.2 rework, SPEC B.5).
+Affinity Clash affinity damage triangle (T.2 rework, SPEC B.5).
 
 Validation:
 
