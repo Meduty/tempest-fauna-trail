@@ -1,7 +1,7 @@
 """Tick-based auto-resolved combat engine (T3 MVP).
 
 `resolve_combat` is a pure, deterministic function: identical inputs always
-produce a byte-equal `BattleResult`. Weather Weather Favor is applied once at init
+produce a byte-equal `BattleResult`. Weather Favor is applied once at init
 via `weather_effects.apply_weather`; Affinity Clash (the affinity damage triangle) is
 resolved per hit during damage application.
 """
