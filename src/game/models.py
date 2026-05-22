@@ -34,6 +34,8 @@ class NodeType(str, Enum):
     FIGHT = "fight"
     REWARD = "reward"
     AUGMENT = "augment"
+    SUPPLY = "supply"
+    CHALLENGE = "challenge"
     BOSS_FIGHT = "boss_fight"
 
 

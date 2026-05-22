@@ -16,6 +16,7 @@ dev = [
     "flet-cli>=0.84.0",
     "flet-desktop>=0.84.0",
     "flet-web>=0.84.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [tool.flet]
@@ -27,3 +28,9 @@ copyright = "Copyright (C) 2023-2026 by Flet"
 
 [tool.flet.app]
 path = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: live API tests (require OPENWEATHER_API_KEY; skipped when absent)",
+]
