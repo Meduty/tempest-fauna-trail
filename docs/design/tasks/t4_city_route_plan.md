@@ -212,7 +212,7 @@ Additive only — no existing value changes, so `Node.to_dict()` / `from_dict()`
 need no code change (they already round-trip the enum by value). Required
 synchronization:
 
-- Update `docs/design/t1_model_contracts.md` §1 to list the two new members.
+- Update `docs/design/tasks/t1_model_contracts.md` §1 to list the two new members.
 - Add a `tests/game/test_models.py` case round-tripping `SUPPLY` and
   `CHALLENGE` if the existing enum coverage is value-specific.
 - Add a SPEC.md §B (Bugs / Backprop) entry recording the enum extension and its

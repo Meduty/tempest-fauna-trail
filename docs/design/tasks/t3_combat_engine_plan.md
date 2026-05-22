@@ -367,5 +367,5 @@ T3 is complete when all are true:
 
 ## 10. Open Model Hygiene Item (Documentation Drift)
 
-- `docs/design/t1_model_contracts.md` currently contains stale enum and enemy-field definitions compared to `src/game/models.py`.
+- `docs/design/tasks/t1_model_contracts.md` currently contains stale enum and enemy-field definitions compared to `src/game/models.py`.
 - Treat contract sync as a prerequisite cleanup before broad T3 implementation merges.

@@ -8,7 +8,7 @@
 
 The two systems are decoupled — System A asks "does the weather suit me?",
 System B asks "do I beat this enemy?". They are never summed. `CLEAR` sits
-outside the ring and is inert in both. See `docs/design/t2_weather_effects_plan.md`.
+outside the ring and is inert in both. See `docs/design/tasks/t2_weather_effects_plan.md`.
 """
 
 from __future__ import annotations

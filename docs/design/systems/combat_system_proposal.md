@@ -75,7 +75,7 @@ Standard scaling for damage output:
 system (T2, defined separately) applies a per-hit
 `damage_modifier(attacker.affinity, defender.affinity)` of `0.90–1.10` before
 mitigation — the affinity damage triangle (System B). See
-`docs/design/t2_weather_effects_plan.md` §6.
+`docs/design/tasks/t2_weather_effects_plan.md` §6.
 
 **Critical strikes.** A critical hit multiplies raw damage by `1.5` *after* the
 weather affinity multiplier and *before* mitigation. Rules:

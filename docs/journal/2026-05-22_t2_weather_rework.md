@@ -36,7 +36,7 @@ Started from: T2/T3 already implemented (symmetric "Variant B" pentagon).
 
 ## Repo Changes Summary
 
-- Rewrote: `docs/design/t2_weather_effects_plan.md` (full),
+- Rewrote: `docs/design/tasks/t2_weather_effects_plan.md` (full),
   `src/game/weather_effects.py` (full), `tests/game/test_weather_effects.py`
   (full, 28 tests).
 - Modified docs: `SPEC.md` (V.6, T.2 row + notes, B.5 backprop, weather table),

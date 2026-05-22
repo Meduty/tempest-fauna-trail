@@ -56,7 +56,7 @@ Holds route progression, roster state, and battle history.
 
 Detailed field-level contract is in:
 
-- `docs/design/t1_model_contracts.md`
+- `docs/design/tasks/t1_model_contracts.md`
 
 ## 4. File-Level Work Breakdown
 

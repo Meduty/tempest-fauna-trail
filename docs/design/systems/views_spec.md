@@ -12,7 +12,7 @@ Define the four core game views and how the player moves between them:
 This spec aligns with:
 
 - `SPEC.md` (fixed city route, weather-driven combat, Flet route stack)
-- `docs/design/combat_system_proposal.md` (prep/combat UI expectations)
+- `docs/design/systems/combat_system_proposal.md` (prep/combat UI expectations)
 
 ## 2. Core UX Flow
 

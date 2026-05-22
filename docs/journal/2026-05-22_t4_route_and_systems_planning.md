@@ -15,7 +15,7 @@ Started from: T1-T3 implemented, T3 journalled. SPEC tasks ran T1-T17.
    `t1_model_contracts.md`, `models.py`. Asked the user three questions (route
    layout, node types, coordinates). Answers: 6 continent stages with authored
    node sequences, all node types (placeholder-first), real-world lat/lon. Wrote
-   `docs/design/t4_city_route_plan.md`.
+   `docs/design/tasks/t4_city_route_plan.md`.
 
 2. **Encounter-generation brainstorm.** User asked how encounter generation
    could work and to brainstorm Challenge/Boss. Established the core split:
@@ -54,12 +54,12 @@ Started from: T1-T3 implemented, T3 journalled. SPEC tasks ran T1-T17.
 
 ## Repo Changes Summary
 
-- Added: `docs/design/t4_city_route_plan.md`
-- Added: `docs/design/t18_power_scaling_plan.md`
-- Added: `docs/design/t19_encounter_generation_plan.md`
-- Added: `docs/design/t20_ability_framework_plan.md`
-- Added: `docs/design/t21_challenge_boss_plan.md`
-- Added: `docs/design/t22_meta_progression_plan.md`
+- Added: `docs/design/tasks/t4_city_route_plan.md`
+- Added: `docs/design/tasks/t18_power_scaling_plan.md`
+- Added: `docs/design/tasks/t19_encounter_generation_plan.md`
+- Added: `docs/design/tasks/t20_ability_framework_plan.md`
+- Added: `docs/design/tasks/t21_challenge_boss_plan.md`
+- Added: `docs/design/tasks/t22_meta_progression_plan.md`
 - Added: `docs/journal/2026-05-22_t4_route_and_systems_planning.md` (this file)
 - Modified: `SPEC.md` — T-table rows T.18-T.22, V.7 (6 stages), full D-section
   rewrite, B-section entries B.1-B.3, T.4/T.18-T.22 planning notes,

@@ -6,9 +6,9 @@ Session goal: plan and implement T2 (weather effects), reframe the weather state
 
 ## Chronological Protocol
 
-1. Read `SPEC.md`, `docs/design/combat_system_proposal.md`, `docs/design/views_spec.md`, and `src/game/models.py` to ground T2 scope.
+1. Read `SPEC.md`, `docs/design/systems/combat_system_proposal.md`, `docs/design/systems/views_spec.md`, and `src/game/models.py` to ground T2 scope.
 2. Drafted an initial proposal: 6 `WeatherState` values mapped 1:1 to OpenWeather id main groups (Clear, Cloudy, Mist, Rain, Snow, Thunder), per-piece weather affinity, per-weather buff/debuff stat packs, and a shop-drop-weight multiplier driven by the same relations.
-3. Wrote first plan file `docs/design/t2_weather_effects_plan.md` using a "3 mutual allied pairs" matrix (Clear↔Cloudy, Rain↔Thunder, Snow↔Mist) + 2-strong/2-weak per affinity at ±15%.
+3. Wrote first plan file `docs/design/tasks/t2_weather_effects_plan.md` using a "3 mutual allied pairs" matrix (Clear↔Cloudy, Rain↔Thunder, Snow↔Mist) + 2-strong/2-weak per affinity at ±15%.
 4. User pushed back: Clear-as-debuff for everyone was unfair, Cloudy was never a buff weather, and reciprocity felt off. Asked to brainstorm structural alternatives.
 5. Re-derived the matrix as a 5-element cycle of active weathers plus Clear as a universal neutral (both affinity and weather). Cycle order locked as `Cloudy → Mist → Snow → Rain → Thunder` ("precipitation life-cycle"). Surfaced multiple structural options (pentagon CW-buff + diagonal-debuff, directed both rings, intensity ladder, tag axes, hand-crafted).
 6. User proposed pentagon "buff self + CW, debuff the 2 diagonals" to eliminate asymmetric reciprocity. Validated structurally: buff cycle directed CW, debuff star fully mutual.
@@ -32,12 +32,12 @@ Session goal: plan and implement T2 (weather effects), reframe the weather state
     - `weather_effects.py`: `piece.trait` → `piece.affinity`, `BUFFED_TRAITS`/`DEBUFFED_TRAITS` → `BUFFED_AFFINITIES`/`DEBUFFED_AFFINITIES`, function param names follow.
     - Tests: bulk renames; added `traits=["Mammal", "Hunter"]` example to test champions.
     - `SPEC.md`: V.6 reworded, added V.8 covering synergy traits, refreshed Champion examples table with separate Affinity + Synergy Traits columns, added a Terminology note distinguishing the two.
-    - `docs/design/t2_weather_effects_plan.md`: bulk rename `trait`/`Trait`/`traits` → `affinity`/`Affinity`/`affinities`; macros to `BUFFED_AFFINITIES`/`DEBUFFED_AFFINITIES`.
+    - `docs/design/tasks/t2_weather_effects_plan.md`: bulk rename `trait`/`Trait`/`traits` → `affinity`/`Affinity`/`affinities`; macros to `BUFFED_AFFINITIES`/`DEBUFFED_AFFINITIES`.
 15. Test suite green (34/34) after rename.
 
 ## Repo Changes Summary
 
-- Added: `docs/design/t2_weather_effects_plan.md`
+- Added: `docs/design/tasks/t2_weather_effects_plan.md`
 - Added: `src/game/weather_effects.py`
 - Added: `tests/game/test_weather_effects.py`
 - Updated: `src/game/models.py` (enum, `from_openweather_id`, Champion/Enemy field rename, added `Champion.traits` list)

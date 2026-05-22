@@ -2,11 +2,11 @@
 
 ## Scope and User Intent
 
-Session goal: implement T3 (combat engine) against `docs/design/t3_combat_engine_plan.md`. Plan was already written and locked in a prior session. No design iteration this session — pure implementation against the plan document.
+Session goal: implement T3 (combat engine) against `docs/design/tasks/t3_combat_engine_plan.md`. Plan was already written and locked in a prior session. No design iteration this session — pure implementation against the plan document.
 
 ## Chronological Protocol
 
-1. Read `docs/design/t3_combat_engine_plan.md`, `SPEC.md`, `src/game/models.py`, and `src/game/weather_effects.py` to establish the full input/output contract and all pre-existing structures.
+1. Read `docs/design/tasks/t3_combat_engine_plan.md`, `SPEC.md`, `src/game/models.py`, and `src/game/weather_effects.py` to establish the full input/output contract and all pre-existing structures.
 2. Confirmed all T1 + T2 outputs available: `Champion`, `Enemy`, `CombatPieceState`, `BattleEvent`, `BattleResult`, `CombatOutcome`, `WeatherState`, and `apply_modifier`. Test suite green at 34/34 before touching anything.
 3. Implemented `src/game/combat.py`:
    - Module-level constants: `TICK_MS=10`, `ROUND_TICKS=600`, `ENERGY_THRESHOLD=60_000`, `MAX_TICKS=7_200`, `BOARD_WIDTH=10`, `BOARD_HEIGHT=7`.

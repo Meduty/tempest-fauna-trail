@@ -66,8 +66,8 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 
 | # | Task | Files | Depends | Est |
 |---|---|---|---|---|
-| T.1 | Data models — Champion, Enemy, Node, Run, BattleResult, WeatherState + NodeType/NodeState + combat runtime state + JSON serialization helpers | `game/models.py`, `docs/design/t1_data_models_plan.md`, `docs/design/t1_model_contracts.md` | — | M |
-| T.2 | Weather effects — directional predator/prey ring; two decoupled systems (node-weather buff/debuff + affinity damage triangle), per-weather stat packs, shop weight, `apply_weather` for combat init | `game/weather_effects.py`, `docs/design/t2_weather_effects_plan.md` | T.1 | M |
+| T.1 | Data models — Champion, Enemy, Node, Run, BattleResult, WeatherState + NodeType/NodeState + combat runtime state + JSON serialization helpers | `game/models.py`, `docs/design/tasks/t1_data_models_plan.md`, `docs/design/tasks/t1_model_contracts.md` | — | M |
+| T.2 | Weather effects — directional predator/prey ring; two decoupled systems (node-weather buff/debuff + affinity damage triangle), per-weather stat packs, shop weight, `apply_weather` for combat init | `game/weather_effects.py`, `docs/design/tasks/t2_weather_effects_plan.md` | T.1 | M |
 | T.3 | Combat engine — tick-based auto-resolve (10ms tick simulation), apply weather modifiers | `game/combat.py` | T.1, T.2 | M |
 | T.4 | City route — define 6+1 cities with coordinates, enemy pools | `game/route.py` | T.1 | S |
 | T.5 | Content — define champion roster (target: 1 per affinity × 10 tiers = ~60 champions; MVP cut OK) + ~5 enemy types with stats + synergy trait catalog | `game/content.py` | T.1 | M |
@@ -83,11 +83,11 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.15 | Routing + app wiring — connect all views in main.py | `main.py` | T.9-T.13 | M |
 | T.16 | Unit tests — combat, weather effects, API parsing | `tests/` | T.1, T.2, T.3, T.6, T.7 | M |
 | T.17 | Documentation — README, prompting strategy, flow chart | `README.md`, `docs/` | all | M |
-| T.18 | Power & scaling model — `P` formula, `√P` stat coupling, economy cost curve | `game/scaling.py`, `docs/design/t18_power_scaling_plan.md` | T.1 | S |
-| T.19 | Encounter generation — seed-deterministic squad/offer fill, enemy power clustering, node budgets | `game/encounter.py`, `docs/design/t19_encounter_generation_plan.md` | T.1, T.4, T.5, T.18 | M |
-| T.20 | Ability/passive/status framework — registry, typed event bus, status gates, boss phase hook | `game/abilities.py`, `game/combat.py`, `docs/design/t20_ability_framework_plan.md` | T.3 | L |
-| T.21 | Challenge & boss encounters — spirit challenges, 2-phase bosses, weather-themed map effects | `game/encounter.py`, `game/content.py`, `docs/design/t21_challenge_boss_plan.md` | T.19, T.20 | M |
-| T.22 | Meta progression — augment, supply, economy, team-size cap | `game/augments.py`, `game/economy.py`, `docs/design/t22_meta_progression_plan.md` | T.1, T.18 | M |
+| T.18 | Power & scaling model — `P` formula, `√P` stat coupling, economy cost curve | `game/scaling.py`, `docs/design/tasks/t18_power_scaling_plan.md` | T.1 | S |
+| T.19 | Encounter generation — seed-deterministic squad/offer fill, enemy power clustering, node budgets | `game/encounter.py`, `docs/design/tasks/t19_encounter_generation_plan.md` | T.1, T.4, T.5, T.18 | M |
+| T.20 | Ability/passive/status framework — registry, typed event bus, status gates, boss phase hook | `game/abilities.py`, `game/combat.py`, `docs/design/tasks/t20_ability_framework_plan.md` | T.3 | L |
+| T.21 | Challenge & boss encounters — spirit challenges, 2-phase bosses, weather-themed map effects | `game/encounter.py`, `game/content.py`, `docs/design/tasks/t21_challenge_boss_plan.md` | T.19, T.20 | M |
+| T.22 | Meta progression — augment, supply, economy, team-size cap | `game/augments.py`, `game/economy.py`, `docs/design/tasks/t22_meta_progression_plan.md` | T.1, T.18 | M |
 
 **Size**: S = <1h, M = 1-3h, L = 3-6h
 
@@ -96,8 +96,8 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - T.1 now includes non-combat node typing (`fight`, `reward`, `augment`, `boss_fight`) so route and UI flows can share one node contract.
 - T.1 now includes combat runtime model surfaces needed by the combat proposal.
 - T.1 now includes JSON-friendly serialization contracts to reduce risk for T.14 save/load.
-- Detailed T.1 execution plan: `docs/design/t1_data_models_plan.md`
-- Detailed model schema contracts: `docs/design/t1_model_contracts.md`
+- Detailed T.1 execution plan: `docs/design/tasks/t1_data_models_plan.md`
+- Detailed model schema contracts: `docs/design/tasks/t1_model_contracts.md`
 
 ### T.2 Planning Notes
 
@@ -106,12 +106,12 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   - **System A — node weather**: buffs/debuffs each piece by its affinity vs the node weather. 5 tiers — strong/medium/weak buff (self / primary predator / secondary predator) at `+10/+6/+3%`, medium/weak debuff (primary/secondary prey) at `−6/−3%`. Self is the strict maximum; no strong debuff. Applied once at combat init.
   - **System B — affinity damage triangle**: per-hit multiplier on every damage instance by attacker affinity vs defender affinity — `1.10/1.05/1.00/0.95/0.90` for primary predator / secondary predator / mirror or Clear / secondary prey / primary prey. Resolved per hit in the combat engine.
 - `Mist` System-A debuff is the only flat-integer effect: base `attack_range -1` (min 1), which scales/rounds to `-1` at medium tier and `0` at weak tier.
-- Detailed T.2 plan: `docs/design/t2_weather_effects_plan.md`.
+- Detailed T.2 plan: `docs/design/tasks/t2_weather_effects_plan.md`.
 
 ### T.4 Planning Notes
 
 - Route locked: 6 continent stages, 50 linear nodes, one hub city per stage.
-- Detailed T.4 plan: `docs/design/t4_city_route_plan.md`.
+- Detailed T.4 plan: `docs/design/tasks/t4_city_route_plan.md`.
 
 ### T.18-T.22 Planning Notes (Systems Expansion)
 
@@ -123,13 +123,13 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   are its first consumer.
 - T.21 layers spirit challenges and 2-phase bosses on the T.19 generator.
 - T.22 covers augment/supply choices, the Amber economy, and team-size cap.
-- Detailed plans: `docs/design/t18_power_scaling_plan.md` through
+- Detailed plans: `docs/design/tasks/t18_power_scaling_plan.md` through
   `t22_meta_progression_plan.md`.
 
 ## B. Bugs / Backprop
 
 - B.1 `NodeType` extended with `SUPPLY` and `CHALLENGE` for the T.4 route
-  vocabulary; `docs/design/t1_model_contracts.md` must be synced.
+  vocabulary; `docs/design/tasks/t1_model_contracts.md` must be synced.
 - B.2 `Reward` node redefined as an easy fight with guaranteed loot — it carries
   both `enemy_pool_id` and `reward_table_id`, not a pure non-combat node.
 - B.3 Planned model additions: `CombatPieceState.active_statuses` (T.20) and
@@ -219,7 +219,7 @@ T.14 → T.17
 ### Weather States
 
 System-A stat packs per weather (the strong-tier `±10%` base; `combat_modifier`
-scales the deviation by tier — see `docs/design/t2_weather_effects_plan.md`):
+scales the deviation by tier — see `docs/design/tasks/t2_weather_effects_plan.md`):
 
 | State | OW IDs | Buff stats (self / predators) | Debuff stats (prey) |
 |---|---|---|---|
@@ -235,7 +235,7 @@ Each weather preys on the previous ring members (primary = prev, secondary =
 prev-prev). System A buffs self + predators, debuffs prey (§T.2 notes). System B
 multiplies every hit by the attacker-vs-defender ring relation. `Clear` is
 outside the ring — inert in both systems. Full matrices in
-`docs/design/t2_weather_effects_plan.md`.
+`docs/design/tasks/t2_weather_effects_plan.md`.
 
 > **Terminology**: `affinity` is the piece's single weather alignment (one of the 6 `WeatherState` values). `traits` are open-ended auto-chess synergy tags (e.g. `Hunter`, `Mammal`, `Reptile`, `Guardian`) — multiple per champion, used for team synergies. Do not confuse the two; weather logic only consumes `affinity`.
 
