@@ -138,7 +138,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - B.5 Weather rework (T.2 revision): `CombatPieceState` gains an `affinity:
   WeatherState` field — the combat engine needs per-piece affinity at damage
   time for Affinity Clash (target-dependent, cannot be pre-snapshotted). The shipped
-  `combat.py` damage step gains a Affinity Clash multiplier hook; `apply_modifier` is
+  `combat.py` damage step gains an Affinity Clash multiplier hook; `apply_modifier` is
   renamed `apply_weather`. Touches `models.py`, `to_dict`/`from_dict`,
   `combat.py`, `t1_model_contracts.md`, `test_models.py`, `test_combat.py`.
 - B.4 Currency named **Amber**, the team-size XP counter named **Tempest**
