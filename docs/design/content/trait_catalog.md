@@ -111,8 +111,8 @@ For naming consistency across docs:
 
 For content/debug consistency, each affinity breakpoint should emit a named
 `EffectBundle` using a stable id pattern:
-- `trait.affinity.<name>@{2,4,6}` for trait-breakpoint ids
-- `bundle.affinity.<name>.{minor,moderate,major}` for the stat/effect bundle id
+- `trait.affinity.<name>@<2|4|6>` for trait-breakpoint ids
+- `bundle.affinity.<name>.<minor|moderate|major>` for the stat/effect bundle id
 
 | Affinity trait | Source affinity | Breakpoint shape (concept) |
 |---|---|---|
