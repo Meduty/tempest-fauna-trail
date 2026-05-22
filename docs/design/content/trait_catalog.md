@@ -15,10 +15,10 @@ every champion its Kinship + Calling(s).
 
 ## 1. Design rules
 
-- **Two trait families.** Every champion has exactly **one Kinship** (what kind
-  of creature/spirit it is) and **one or two Callings** (how it fights).
-  Tier-10 legendaries carry the **Primordial** Calling on top of their normal
-  Calling.
+- **Three trait families.** Every champion contributes exactly **one Affinity**
+  (its weather element), exactly **one Kinship** (what kind of creature/spirit
+  it is), and **one or two Callings** (how it fights). Tier-10 legendaries
+  carry the **Primordial** Calling on top of their normal Calling.
 - **Counting rule.** Breakpoints count **unique champion ids**, not copies —
   two copies of the same champion count once (TFT convention,
   `effect_systems_design.md` §7.1).
@@ -26,13 +26,13 @@ every champion its Kinship + Calling(s).
   threshold is the only one that applies (it supersedes lower ones).
 - **Emblems.** The six Kinships are emblem-able: a **Spirit Gem** + an item
   component crafts that Kinship's emblem, letting any champion count toward it
-  (`item_catalog.md` §4, `effect_systems_design.md` §7.3). Callings have no
-  emblems.
-- **Affinity is not a trait.** A champion's `affinity` (its `WeatherState`)
-  drives the weather systems and is *separate* from traits (SPEC V.6, V.8).
-  Traits never read weather; weather never reads traits. A handful of traits
-  *thematically* echo weather (e.g. Scaled's storm-hardening) but resolve purely
-  off trait membership.
+  (`item_catalog.md` §4, `effect_systems_design.md` §7.3). Callings and
+  Affinities have no emblems.
+- **Affinity traits are derived, weather-independent counts.** A champion's
+  `affinity` (its `WeatherState`) is still the source of weather systems
+  (SPEC V.6, V.8), and affinity traits are computed from *how many fielded
+  champions share an affinity* (`@2/@4/@6`) rather than from live weather.
+  Affinity traits never read node weather or weather-state transitions.
 - **Enemies and traits.** Enemies are the same kind of piece as champions and
   run on the same combat substrate, but traits are a **player-board mechanic** —
   enemy squads do not light up breakpoints. Enemy pieces may still carry trait
@@ -64,11 +64,11 @@ Birds and winged creatures. Skyborn rewards tempo and reach.
 ### Scaled — *cold blood, hard plates, weatherproof*
 Reptiles. Scaled rewards a defensive, weather-agnostic core.
 - **@2** — Scaled gain Armor and Resistance.
-- **@4** — Scaled are **immune to the weather System-A debuff** — being the
-  weather's prey no longer lowers their stats (they still take System-B hit
+- **@4** — Scaled are **immune to the Weather Favor debuff** — being the
+  weather's prey no longer lowers their stats (they still take Affinity Clash hit
   multipliers).
 - **@6** — Scaled additionally treat *every* node weather as a self-buff,
-  gaining the strong-tier System-A stat pack regardless of affinity.
+  gaining the strong-tier Weather Favor stat pack regardless of affinity.
 
 ### Tidekin — *water, sustain, and the slow tide*
 Aquatic creatures and amphibians. Tidekin rewards a healing-anchored team.
@@ -97,7 +97,35 @@ Spirit rewards an ability-driven team.
 
 ---
 
-## 3. Callings (class traits)
+## 3. Affinities (element traits)
+
+Six affinity traits, one per weather state. These are **count-based** and
+always-on once a breakpoint is met; they never check live weather. Each mirrors
+that weather state's **Weather Favor** stat identity so mono-affinity comps can "double down"
+when the node weather also matches. **Shrouded** intentionally includes a small
+ethereal rider in addition to stat scaling.
+
+For naming consistency across docs:
+- **Weather Favor** = node-weather affinity buff/debuff layer.
+- **Affinity Clash** = affinity-vs-affinity damage multiplier layer.
+
+For content/debug consistency, each affinity breakpoint should emit a named
+`EffectBundle` using a stable id pattern:
+- `trait.affinity.<name>@<2|4|6>` for trait-breakpoint ids
+- `bundle.affinity.<name>.<minor|moderate|major>` for the stat/effect bundle id
+
+| Affinity trait | Source affinity | Breakpoint shape (concept) |
+|---|---|---|
+| **Sunlit** | Clear | @2 minor flat all-around stats · @4 moderate flat all-around stats · @6 major flat all-around stat pack. |
+| **Overcast** | Cloudy | @2 minor HP + Resistance · @4 moderate HP + Resistance · @6 major HP + Resistance stat pack. |
+| **Shrouded** | Mist | @2 minor Move Speed + Threat · @4 moderate Move Speed + Threat plus a brief untargetable opener · @6 major Move Speed + Threat stat pack plus a longer untargetable opener. |
+| **Stormfed** | Rain | @2 minor Attack Speed + Mana Regen · @4 moderate Attack Speed + Mana Regen · @6 major Attack Speed + Mana Regen stat pack. |
+| **Frostbound** | Snow | @2 minor Armor + Resistance · @4 moderate Armor + Resistance · @6 major Armor + Resistance stat pack. |
+| **Galvanized** | Thunder | @2 minor Strength + Attack Speed · @4 moderate Strength + Attack Speed · @6 major Strength + Attack Speed stat pack. |
+
+---
+
+## 4. Callings (class traits)
 
 Twelve Callings. A Calling answers *"what does it do in the fight?"* They cut
 across Kinships and across the archetype taxonomy in `champion_roster.md` —
@@ -120,13 +148,19 @@ deliberately, so a synergy board never collapses into one archetype.
 
 ---
 
-## 4. Trait-to-roster map (intended carriers)
+## 5. Trait-to-roster map (intended carriers)
 
 Approximate carrier counts so breakpoints are reachable. Final assignment lives
 in `champion_roster.md`; this is the budget it is balanced against.
 
 | Trait | Family | Target carriers | Notes |
 |---|---|---|---|
+| Sunlit | Affinity | 10 | All Clear-affinity champions. |
+| Overcast | Affinity | 10 | All Cloudy-affinity champions. |
+| Shrouded | Affinity | 10 | All Mist-affinity champions. |
+| Stormfed | Affinity | 10 | All Rain-affinity champions. |
+| Frostbound | Affinity | 10 | All Snow-affinity champions. |
+| Galvanized | Affinity | 10 | All Thunder-affinity champions. |
 | Beast | Kinship | ~15 | The default land animal; spread across all weathers. |
 | Spirit | Kinship | ~13 | Mist-heavy; every Tier-10 is a Spirit. |
 | Skyborn | Kinship | ~9 | Birds; tempo-leaning weathers. |
@@ -148,11 +182,13 @@ in `champion_roster.md`; this is the budget it is balanced against.
 
 ---
 
-## 5. Open questions
+## 6. Open questions
 
 - **Breakpoint values vs. set size.** With a ~3-champion starting board and a
   board cap that climbs to 10 (T22 Tempest), @6 traits only matter very late.
-  Confirm whether some traits should breakpoint at 2/3/4 instead of 2/4/6.
+  Confirm whether some traits should breakpoint at 2/3/4 instead of 2/4/6, and
+  whether Affinity should stay at modest 2/4/6 to avoid over-punishing team
+  rotation.
 - **Two-Kinship hybrids.** Tier-10s and a few Tier-7 hybrids could carry two
   Kinships (TFT does this). Currently every champion has exactly one; revisit if
   draft flexibility feels thin.

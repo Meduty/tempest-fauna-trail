@@ -1,13 +1,13 @@
 """Weather effects (T2) — directional predator/prey ring, two decoupled systems.
 
-- **System A** (`combat_modifier` / `apply_weather`): the node weather buffs or
+- **Weather Favor** (`combat_modifier` / `apply_weather`): the node weather buffs or
   debuffs each piece by its affinity, on five tiers. Applied once at combat init.
-- **System B** (`damage_modifier`): a per-hit multiplier on every damage
+- **Affinity Clash** (`damage_modifier`): a per-hit multiplier on every damage
   instance, by attacker affinity vs defender affinity. Resolved per hit in the
   combat engine — it depends on the defender, so it cannot be pre-snapshotted.
 
-The two systems are decoupled — System A asks "does the weather suit me?",
-System B asks "do I beat this enemy?". They are never summed. `CLEAR` sits
+The two systems are decoupled — Weather Favor asks "does the weather suit me?",
+Affinity Clash asks "do I beat this enemy?". They are never summed. `CLEAR` sits
 outside the ring and is inert in both. See `docs/design/tasks/t2_weather_effects_plan.md`.
 """
 
@@ -62,7 +62,7 @@ def ring_relation(a: WeatherState, b: WeatherState) -> RingRelation:
     return _RELATION_BY_DISTANCE[distance]
 
 
-# --- System A — node weather buff/debuff -------------------------------------
+# --- Weather Favor — node weather buff/debuff -------------------------------------
 
 # Tier scalar: strong (self) full, medium (primary) 0.6, weak (secondary) 0.3.
 # Applied to a modifier's deviation from 1.0. Buffs use all three tiers; debuffs
@@ -85,7 +85,7 @@ TIER_SCALAR: dict[RingRelation, float] = {
 
 @dataclass(frozen=True, slots=True)
 class CombatModifier:
-    """Multiplicative stat modifier from System A. `1.0` / `0` is no change."""
+    """Multiplicative stat modifier from Weather Favor. `1.0` / `0` is no change."""
 
     str_mult: float = 1.0
     int_mult: float = 1.0
@@ -147,7 +147,7 @@ def _scale_modifier(modifier: CombatModifier, scalar: float) -> CombatModifier:
 
 
 def combat_modifier(affinity: WeatherState, weather: WeatherState) -> CombatModifier:
-    """System A — the node weather's stat modifier for a piece of `affinity`."""
+    """Weather Favor — the node weather's stat modifier for a piece of `affinity`."""
     relation = ring_relation(affinity, weather)
     if relation == RingRelation.NEUTRAL:
         return IDENTITY
@@ -162,7 +162,7 @@ def combat_modifier(affinity: WeatherState, weather: WeatherState) -> CombatModi
     return _scale_modifier(base, scalar)
 
 
-# --- System B — affinity damage triangle -------------------------------------
+# --- Affinity Clash — affinity damage triangle -------------------------------------
 
 DAMAGE_MULT: dict[RingRelation, float] = {
     RingRelation.PRIMARY_PREDATOR: 1.10,
@@ -177,7 +177,7 @@ DAMAGE_MULT: dict[RingRelation, float] = {
 def damage_modifier(
     attacker_affinity: WeatherState, defender_affinity: WeatherState
 ) -> float:
-    """System B — per-hit damage multiplier for attacker vs defender affinity."""
+    """Affinity Clash — per-hit damage multiplier for attacker vs defender affinity."""
     return DAMAGE_MULT[ring_relation(attacker_affinity, defender_affinity)]
 
 
@@ -206,10 +206,10 @@ def _scale_int(value: int, mult: float) -> int:
 
 
 def apply_weather(piece: Champion | Enemy, weather: WeatherState) -> CombatPieceState:
-    """Snapshot a roster piece into a `CombatPieceState` with System A applied.
+    """Snapshot a roster piece into a `CombatPieceState` with Weather Favor applied.
 
     Copies `affinity` onto the snapshot so the combat engine can resolve
-    System B (`damage_modifier`) per hit. Does not mutate `piece`.
+    Affinity Clash (`damage_modifier`) per hit. Does not mutate `piece`.
     """
     modifier = combat_modifier(piece.affinity, weather)
     is_enemy = isinstance(piece, Enemy)

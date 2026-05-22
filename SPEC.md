@@ -105,9 +105,9 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 
 - Directed predator/prey ring of 5 active weathers (`Mist → Cloudy → Rain → Snow → Thunder`) + `Clear` outside, inert in both systems. Each weather's primary prey is the previous ring member, secondary prey the one before that; predators are the inverse.
 - **Two decoupled systems**, evaluated separately, never summed:
-  - **System A — node weather**: buffs/debuffs each piece by its affinity vs the node weather. 5 tiers — strong/medium/weak buff (self / primary predator / secondary predator) at `+10/+6/+3%`, medium/weak debuff (primary/secondary prey) at `−6/−3%`. Self is the strict maximum; no strong debuff. Applied once at combat init.
-  - **System B — affinity damage triangle**: per-hit multiplier on every damage instance by attacker affinity vs defender affinity — `1.10/1.05/1.00/0.95/0.90` for primary predator / secondary predator / mirror or Clear / secondary prey / primary prey. Resolved per hit in the combat engine.
-- `Mist` System-A debuff is the only flat-integer effect: base `attack_range -1` (min 1), which scales/rounds to `-1` at medium tier and `0` at weak tier.
+  - **Weather Favor — node weather**: buffs/debuffs each piece by its affinity vs the node weather. 5 tiers — strong/medium/weak buff (self / primary predator / secondary predator) at `+10/+6/+3%`, medium/weak debuff (primary/secondary prey) at `−6/−3%`. Self is the strict maximum; no strong debuff. Applied once at combat init.
+  - **Affinity Clash — affinity damage triangle**: per-hit multiplier on every damage instance by attacker affinity vs defender affinity — `1.10/1.05/1.00/0.95/0.90` for primary predator / secondary predator / mirror or Clear / secondary prey / primary prey. Resolved per hit in the combat engine.
+- `Mist` Weather Favor debuff is the only flat-integer effect: base `attack_range -1` (min 1), which scales/rounds to `-1` at medium tier and `0` at weak tier.
 - Detailed T.2 plan: `docs/design/tasks/t2_weather_effects_plan.md`.
 
 ### T.4 Planning Notes
@@ -145,8 +145,8 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   `Run.content_version` (T.19) for procedural-run save stability.
 - B.5 Weather rework (T.2 revision): `CombatPieceState` gains an `affinity:
   WeatherState` field — the combat engine needs per-piece affinity at damage
-  time for System B (target-dependent, cannot be pre-snapshotted). The shipped
-  `combat.py` damage step gains a System-B multiplier hook; `apply_modifier` is
+  time for Affinity Clash (target-dependent, cannot be pre-snapshotted). The shipped
+  `combat.py` damage step gains an Affinity Clash multiplier hook; `apply_modifier` is
   renamed `apply_weather`. Touches `models.py`, `to_dict`/`from_dict`,
   `combat.py`, `t1_model_contracts.md`, `test_models.py`, `test_combat.py`.
 - B.4 Currency named **Amber**, the team-size XP counter named **Tempest**
@@ -245,7 +245,7 @@ T.14 → T.17
 
 ### Weather States
 
-System-A stat packs per weather (the strong-tier `±10%` base; `combat_modifier`
+Weather Favor stat packs per weather (the strong-tier `±10%` base; `combat_modifier`
 scales the deviation by tier — see `docs/design/tasks/t2_weather_effects_plan.md`):
 
 | State | OW IDs | Buff stats (self / predators) | Debuff stats (prey) |
@@ -259,7 +259,7 @@ scales the deviation by tier — see `docs/design/tasks/t2_weather_effects_plan.
 
 Directed predator/prey ring: `Mist → Cloudy → Rain → Snow → Thunder → Mist`.
 Each weather preys on the previous ring members (primary = prev, secondary =
-prev-prev). System A buffs self + predators, debuffs prey (§T.2 notes). System B
+prev-prev). Weather Favor buffs self + predators, debuffs prey (§T.2 notes). Affinity Clash
 multiplies every hit by the attacker-vs-defender ring relation. `Clear` is
 outside the ring — inert in both systems. Full matrices in
 `docs/design/tasks/t2_weather_effects_plan.md`.

@@ -131,7 +131,7 @@ def test_every_active_weather_has_one_self_two_predators_two_prey() -> None:
         assert counts[RingRelation.SECONDARY_PREY] == 1
 
 
-# --- System A — combat_modifier ----------------------------------------------
+# --- Weather Favor — combat_modifier ----------------------------------------------
 
 
 def test_combat_modifier_identity_when_clear_involved() -> None:
@@ -197,7 +197,7 @@ def test_combat_modifier_is_deterministic() -> None:
     assert first == second
 
 
-# --- System B — damage_modifier ----------------------------------------------
+# --- Affinity Clash — damage_modifier ----------------------------------------------
 
 
 def test_damage_modifier_values_by_relation() -> None:

@@ -91,7 +91,7 @@ Show route progression, current position, future nodes, and high-level team read
 	- Resolution state (`cleared`, `current`, `upcoming`)
 - Current node focus panel:
 	- Enemy theme preview (high level)
-	- Weather impact summary — how the node weather buffs/debuffs each affinity (System A); affinity matchup vs the previewed enemies (System B) where enemy affinities are known
+	- Weather impact summary — how the node weather buffs/debuffs each affinity (Weather Favor); affinity matchup vs the previewed enemies (Affinity Clash) where enemy affinities are known
 	- Rewards preview (if known)
 - Team summary panel:
 	- Champions (portrait/name/role)
@@ -148,7 +148,7 @@ Pre-combat planning layer where player positions team, reviews enemies, and spen
 - Show enemy piece list with at least:
 	- Name/type
 	- Estimated role/threat indicator
-	- Affinity matchup hint — the System-B predator/prey relation of each enemy vs the player's affinities
+	- Affinity matchup hint — the Affinity Clash predator/prey relation of each enemy vs the player's affinities
 - Show uncertainty marker if preview is intentionally incomplete.
 
 #### Economy and Loadout

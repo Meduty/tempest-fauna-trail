@@ -250,7 +250,7 @@ def test_weather_modifiers_change_combat_output():
 
 
 def test_affinity_damage_triangle_scales_hits():
-    # System B at CLEAR weather (System A inert). Enemy is RAIN-affinity:
+    # Affinity Clash at CLEAR weather (Weather Favor inert). Enemy is RAIN-affinity:
     # SNOW preys on RAIN (predator, x1.10); CLOUDY is RAIN's prey (x0.90).
     enemies = [
         _enemy(
