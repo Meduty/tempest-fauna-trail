@@ -8,7 +8,7 @@ A complete first-pass roster of 60 enemies, organized by tier and weather affini
 
 Rationale: enemies are predominantly human/industrial — soldiers, engineers, mages of the Empire — and humans are mechanically and thematically *less* coupled to weather than the spirit champions are. A "human soldier" doesn't gain or lose much from rain. Weather-aligned enemies are monsters, spirits, and elementals that share an affinity with one of the five non-Clear weather types.
 
-**Bosses always have a weather affinity.** Each weather (including Clear) has exactly one Tier 10 boss. The Clear boss is the human final boss — the Iron Emperor figure — while the other five are creature/spirit bosses tied to their elemental domain.
+**Bosses always have a weather affinity.** Each weather (including Clear) has exactly one Tier 10 boss. The final boss in New York uses the city's live weather as its affinity — the same rule as every other stage boss, just with higher stats and more complex mechanics. The other five T10 bosses are creature/spirit bosses tied to their elemental domain.
 
 ### Composition
 
@@ -200,4 +200,4 @@ Themes: speed, chain damage, high-burst, fragile. Glass cannons.
 
 ## Summary
 
-60 enemies skewed 50% Clear (humans/industrial) with 10% each across the five non-Clear weathers (monsters/spirits). Mechanically identical to champions — same archetype taxonomy, same combat math, same ability framework — differing only in operational role (spawned in PvE waves, no shop, no combination). Tier 10 holds six bosses, one per weather, with the Clear boss being the human-empire final boss and the others being the apex monster/spirit of each elemental faction. The full roster gives the encounter designer 60 ingredients to mix and match into PvE rounds, with thematic cohesion provided by weather grouping and tier appropriate for difficulty scaling.
+60 enemies skewed 50% Clear (humans/industrial) with 10% each across the five non-Clear weathers (monsters/spirits). Mechanically identical to champions — same archetype taxonomy, same combat math, same ability framework — differing only in operational role (spawned in PvE waves, no shop, no combination). Tier 10 holds six bosses, one per weather. The final boss in New York takes its affinity from the city's live weather at fight time — the same weather-dependent rule as every other boss, just with significantly higher power. The other five T10 bosses are the apex monster/spirit of each elemental faction. The full roster gives the encounter designer 60 ingredients to mix and match into PvE rounds, with thematic cohesion provided by weather grouping and tier appropriate for difficulty scaling.

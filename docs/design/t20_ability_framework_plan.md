@@ -90,8 +90,7 @@ evaluated at start of tick alongside status expiry.
 ## 9. Dependencies & Open Items
 
 - Depends: T3. Resolves SPEC D.3, D.4, D.5.
-- Open: full ability content (per-champion kits); whether the event bus also
-  drives mid-fight weather changes for the T21 final boss.
+- Open: full ability content (per-champion kits).
 
 ### 9.1 First passive content — `CLEAR`-weather buff
 

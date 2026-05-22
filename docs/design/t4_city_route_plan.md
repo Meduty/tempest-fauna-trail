@@ -77,7 +77,7 @@ Six stages, one per continent, played in fixed order:
 | 3 | Asia | Tokyo | Japan | Storm sentinels |
 | 4 | Oceania | Sydney | Australia | Wildfire units |
 | 5 | South America | Rio de Janeiro | Brazil | Monsoon walkers |
-| 6 | North America | New York | United States | All-weather titan (grand boss) |
+| 6 | North America | New York | United States | Grand boss (live NYC weather) |
 
 One hub city per stage keeps the city catalog at six, inside the SPEC content
 budget (~6 cities). All nodes within a stage are located at that stage's hub
@@ -342,7 +342,8 @@ T4 is complete when all are true:
 - **D.1**: route topology is now locked as a linear 6-stage / 50-node chain.
   Branch/merge remains deferred — D.1 narrowed to "branching only".
 - **D.2**: boss city locked to New York; per-stage boss pools named. Boss enemy
-  *kits* and finale weather behavior stay open (T5 / ability framework).
+  *kits* and finale mechanics stay open (T5 / ability framework). The final boss
+  uses live NYC weather like all other bosses — no special weather cycling.
 - **SPEC "Cities examples" table**: refresh to the six chosen hubs (drops
   Reykjavik and Mumbai, adds Rio de Janeiro for South America).
 - **`Node.shop_pool_id`**: a future field for per-node supply/shop content.

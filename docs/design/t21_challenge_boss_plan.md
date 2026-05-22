@@ -108,9 +108,10 @@ escalates with team size to track the expected player team-size cap (T22).
 
 - Map effects require board-cell modifier support — a new combat-engine
   mechanic (note this dependency on a combat extension).
-- **Final boss** (New York, stage 6): the grand boss; optionally cycles through
-  weather states mid-fight — depends on mid-fight weather change, currently
-  out of T3 scope.
+- **Final boss** (New York, stage 6): the grand boss; uses the live New York
+  weather like every other boss — same `affinity == node weather` rule, just
+  significantly higher stats and more complex phase-2 mechanics. The real-world
+  unpredictability of NYC weather *is* the climax tension.
 
 ## 4. Test Plan
 
@@ -130,5 +131,4 @@ escalates with team size to track the expected player team-size cap (T22).
 ## 6. Dependencies & Open Items
 
 - Depends: T19, T20; map effects need a combat board-modifier extension.
-- Open: boss kits and map-effect exact mechanics; final-boss weather cycle
-  (needs mid-fight weather).
+- Open: boss kits and map-effect exact mechanics.
