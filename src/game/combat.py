@@ -255,7 +255,7 @@ def _apply_hit(
     can_crit: bool,
 ) -> None:
     raw = str_coeff * attacker.strength + int_coeff * attacker.intelligence
-    # Weather Affinity Clash — affinity damage triangle, applied before mitigation.
+    # Affinity Clash — affinity damage triangle, applied before mitigation.
     raw *= damage_modifier(attacker.affinity, target.affinity)
     is_crit = False
     if can_crit and attacker.crit_chance > 0.0:
