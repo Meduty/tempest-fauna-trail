@@ -54,16 +54,27 @@ would double-count and snowball.
 
 ## 4. Archetype-Driven Roster
 
-T5 authors a small set of **role archetypes** (≈6-8: one per affinity, plus
-role variants) with base stats defined at `P = 1` (`T1, L1`). The concrete
-60-champion roster (`6 affinity × 10 tier`) is **derived**, not hand-tuned:
+T5 authors a set of **axis tag combinations** (§4 of T5 plan) that drive
+`compose_stats()` to produce a **tier-correct baseline stat block** for each
+piece. The concrete 60-champion + 60-enemy roster is built from these baselines:
 
 ```
 concrete_stat = round(archetype_base_stat * stat_multiplier(T, L))
 ```
 
+Each unit then carries a `stat_overrides: dict[str, int]` — additive deltas
+applied on top of the baseline — to express per-unit flavor (e.g. glass-cannon
+INT bias, or HP-heavy bruiser variant). Overrides are authored in T5 and must
+stay within ±15% of the baseline's total scalable-stat budget (enforced by a
+module-level assertion at import time).
+
+This keeps the power budget consistent across all units of the same tier while
+allowing meaningful stat variation between individual pieces.
+
 Level-up (`L → L+1`) multiplies `P` by `1.5`, so every scaled stat grows
-`×√1.5 ≈ ×1.225`.
+`×√1.5 ≈ ×1.225`. `stat_overrides` are applied once at `level=1`; level-up
+re-applies `stat_multiplier(T, L)` to the **pre-override baseline** — overrides
+do not compound with level-ups.
 
 ## 5. Economy Cost (analysis — implemented in T22)
 

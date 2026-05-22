@@ -54,6 +54,7 @@ DMG_TRUE = "true"
 
 CRIT_MULTIPLIER: float = 1.5
 
+
 # --- Event log types ---
 EVENT_MOVE = "move"
 EVENT_ATTACK = "attack"

@@ -105,8 +105,8 @@ def test_cast_and_move_lines_render():
             attack_range=1,
             attack_speed=60_000,
             move_speed=60_000,
-            mana_regen=100,
-            ability_cost=100,
+            mana_regen=1,
+            ability_cost=6,
             intelligence=20,
             strength=0,
         )
@@ -114,6 +114,7 @@ def test_cast_and_move_lines_render():
     enemies = [_enemy(id="mob", attack_speed=0, move_speed=0, max_hp=1000, resistance=0)]
     result = resolve_combat(team, enemies, WeatherState.CLEAR)
     text = render_combat_log(result, team=team, enemies=enemies)
+    # T3 MVP fallback: 0.2*0 + 4.2*20 = 84 (ability handlers own scaling in T20)
     assert "hero casts at mob — 84 magical" in text
     assert "hero moves to (" in text
 

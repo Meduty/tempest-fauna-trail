@@ -360,8 +360,8 @@ def test_cast_path_consumes_mana_and_deals_magic_damage():
             id="hero",
             attack_range=12,
             attack_speed=60_000,
-            mana_regen=50,
-            ability_cost=100,
+            mana_regen=1,
+            ability_cost=6,
             intelligence=20,
             strength=0,
         )
@@ -370,7 +370,8 @@ def test_cast_path_consumes_mana_and_deals_magic_damage():
     result = resolve_combat(team, enemies, WeatherState.CLEAR)
     casts = [e for e in result.events if e.event_type == "cast"]
     assert casts, "expected at least one cast"
-    # Ability raw damage = 0.2*STR + 4.2*INT = 84 with STR 0, INT 20.
+    # T3 MVP fallback: raw damage = ABILITY_STR_COEFF*STR + ABILITY_INT_COEFF*INT
+    # = 0.2*0 + 4.2*20 = 84 (T20 ability handlers will own their own scaling formula)
     assert casts[0].amount == 84
 
 
