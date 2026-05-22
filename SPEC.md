@@ -88,6 +88,8 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.20 | Ability/passive/status framework — registry, typed event bus, status gates, boss phase hook | `game/abilities.py`, `game/combat.py`, `docs/design/tasks/t20_ability_framework_plan.md` | T.3 | L |
 | T.21 | Challenge & boss encounters — spirit challenges, 2-phase bosses, weather-themed map effects | `game/encounter.py`, `game/content.py`, `docs/design/tasks/t21_challenge_boss_plan.md` | T.19, T.20 | M |
 | T.22 | Meta progression — augment, supply, economy, team-size cap | `game/augments.py`, `game/economy.py`, `docs/design/tasks/t22_meta_progression_plan.md` | T.1, T.18 | M |
+| T.23 | Prep formation snapshot integration — lock player board placement in Prep, validate deployment constraints, pass explicit coordinates into combat init | `ui/views/prep.py`, `game/models.py`, `game/combat.py`, `docs/design/tasks/t23_prep_formation_snapshot_plan.md` | T.1, T.3, T.15 | M |
+| T.24 | Enemy formation policy — deterministic role-aware spawn planner (frontline forward, backline protected, size-aware packing) with safe fallback | `game/formation.py`, `game/combat.py`, `docs/design/tasks/t24_enemy_formation_plan.md` | T.3, T.5, T.23 | M |
 
 **Size**: S = <1h, M = 1-3h, L = 3-6h
 
@@ -114,7 +116,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   each stage carries an authored affinity (one per `WeatherState`).
 - Detailed T.4 plan: `docs/design/tasks/t4_city_route_plan.md`.
 
-### T.18-T.22 Planning Notes (Systems Expansion)
+### T.18-T.24 Planning Notes (Systems Expansion)
 
 - T.18 power scalar `P = 1.5 ** ((T-1)/2 + (L-1))` drives encounter budgets and
   piece stat generation; "two tiers == one level".
@@ -124,8 +126,14 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   are its first consumer.
 - T.21 layers spirit challenges and 2-phase bosses on the T.19 generator.
 - T.22 covers augment/supply choices, the Amber economy, and team-size cap.
+- T.23 makes Prep placement authoritative: board coordinates from Prep become
+  combat init input; combat no longer overwrites player layout when a valid
+  placement snapshot is provided.
+- T.24 introduces deterministic enemy formation heuristics by role and team
+  size, replacing index-only right-side packing while preserving replay
+  determinism.
 - Detailed plans: `docs/design/tasks/t18_power_scaling_plan.md` through
-  `t22_meta_progression_plan.md`.
+  `t24_enemy_formation_plan.md`.
 
 ## B. Bugs / Backprop
 
@@ -219,13 +227,13 @@ in their T-task plan docs; what remains here is genuinely undecided.
 ## Implementation Order
 
 ### Phase 1: Core Logic (Week 1-3)
-T.1 → T.2 → T.3 → T.4 → T.18 → T.5 → T.19 → T.20 → T.21 → T.16 (game tests)
+T.1 → T.2 → T.3 → T.4 → T.18 → T.5 → T.19 → T.20 → T.21 → T.24 → T.16 (game tests)
 
 ### Phase 2: API + Data (Week 2-3)
 T.6 → T.7 → T.16 (API tests)
 
 ### Phase 3: UI + Combat (Week 3-5)
-T.8 → T.9 → T.10 → T.12 → T.15
+T.8 → T.9 → T.10 → T.12 → T.15 → T.23
 
 ### Phase 4: Visualizations (Week 5-7)
 T.11 → T.13
