@@ -336,9 +336,12 @@ def roll_squad(
         raise ValueError("roll_squad requires a non-empty enemy pool")
     if min_count > max_count:
         raise ValueError("roll_squad requires min_count <= max_count")
-    unique_enemy_count = len({enemy.id for enemy in pool})
-    if unique_enemy_count * max_dupes < min_count:
-        raise ValueError("roll_squad cannot satisfy min_count with the given max_dupes and pool")
+    unique_pool_size = len({enemy.id for enemy in pool})
+    if unique_pool_size * max_dupes < min_count:
+        raise ValueError(
+            f"roll_squad cannot satisfy min_count={min_count} "
+            f"with max_dupes={max_dupes} and {unique_pool_size} unique enemies in pool"
+        )
 
     best_squad: list[tuple[EnemyDef, int]] | None = None
     best_cost: float = 0.0
