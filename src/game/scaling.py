@@ -2,10 +2,10 @@
 
 P(T, L) = TIER_UP_MOD^(T-1) * LEVEL_UP_MOD^triplings(L)
 
-where LEVEL_UP_MOD = 1.5, TIER_UP_MOD = sqrt(1.5), and
+where LEVEL_UP_MOD = 2, TIER_UP_MOD = cbrt(2), and
 triplings = {L1: 0, L2: 1, L3: 3}.
 
-Equivalently: P(T, L) = 1.5 ^ ((T-1)/2 + triplings(L)).
+Equivalently: P(T, L) = 2 ^ ((T-1)/3 + triplings(L)).
 
 Level-ups use a "tripling" mechanic — you need 3 copies to go from L1→L2
 (1 tripling), then 3 more L2 copies to reach L3 (3 total triplings fed in).
@@ -14,25 +14,25 @@ This gives an *accelerating* curve: L2 is a modest bump, L3 is a big spike.
 Stat multiplier is sqrt(P) so that HP*DPS (≈combat value) grows linearly
 with P, keeping encounter budgets linear.
 
-Per-tier stat gain:  1.5^0.25 ≈ 1.107 (≈11% per tier)
-L1→L2 stat gain:    1.5^0.5  ≈ 1.225
-L2→L3 stat gain:    1.5^1.0  = 1.500
-L1→L3 stat gain:    1.5^1.5  ≈ 1.837
-Total T1L1→T10L3:   1.5^3.75 ≈ 4.57× in stats
+Per-tier stat gain:  2^(1/6) ≈ 1.122 (≈12% per tier)
+L1→L2 stat gain:    2^0.5   ≈ 1.414
+L2→L3 stat gain:    2^1.0   = 2.000
+L1→L3 stat gain:    2^1.5   ≈ 2.828
+Total T1L1→T10L3:   2^3.0   = 8.0× in stats
 """
 import math
 
 # Base multiplier per "tripling" of copies (mirrors TFT's 3-to-1 combine).
-LEVEL_UP_MOD: float = 1.5
+LEVEL_UP_MOD: float = 2.0
 
-# Per-tier power multiplier = sqrt(LEVEL_UP_MOD).
-TIER_UP_MOD: float = math.sqrt(LEVEL_UP_MOD)  # ≈ 1.2247
+# Per-tier power multiplier = cbrt(LEVEL_UP_MOD). Three tiers = one level in power.
+TIER_UP_MOD: float = LEVEL_UP_MOD ** (1 / 3)  # ≈ 1.2599
 
 # Cumulative triplings fed to reach each level.
 # L1 = base (0), L2 = 1 tripling, L3 = 3 triplings (1 tripling of L2 copies).
 TRIPLINGS: dict[int, int] = {1: 0, 2: 1, 3: 3}
 
-# Legacy aliases — these now equal LEVEL_UP_MOD / TIER_UP_MOD (1.5 / √1.5).
+# Legacy aliases — these now equal LEVEL_UP_MOD / TIER_UP_MOD (2 / ∛2).
 # Previously LEVEL_STEP was 3.375 and TIER_STEP was √3.375; downstream code
 # that relied on specific numeric values should migrate to the new names.
 LEVEL_STEP: float = LEVEL_UP_MOD
@@ -53,7 +53,7 @@ def power(tier: int, level: int) -> float:
     """Abstract power scalar for a piece at *tier* T and *level* L.
 
     P(T, L) = TIER_UP_MOD^(T-1) * LEVEL_UP_MOD^triplings(L)
-            = 1.5 ^ ((T-1)/2 + triplings[L])
+            = 2 ^ ((T-1)/3 + triplings[L])
 
     Args:
         tier:  Piece tier, integer in [1, 10].
@@ -69,8 +69,8 @@ def power(tier: int, level: int) -> float:
         raise ValueError(f"tier must be in [1, 10], got {tier}")
     if not (1 <= level <= 3):
         raise ValueError(f"level must be in [1, 3], got {level}")
-    exponent = (tier - 1) / 2 + TRIPLINGS[level]
-    return 1.5**exponent
+    exponent = (tier - 1) / 3 + TRIPLINGS[level]
+    return LEVEL_UP_MOD**exponent
 
 
 def stat_multiplier(tier: int, level: int) -> float:

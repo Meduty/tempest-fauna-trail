@@ -25,29 +25,29 @@ class TestPower:
         assert power(1, 1) == 1.0
 
     def test_l2_is_1_tripling(self):
-        # L2 = 1 tripling → P = 1.5^1 = 1.5
-        assert power(1, 2) == pytest.approx(1.5)
+        # L2 = 1 tripling → P = 2^1 = 2
+        assert power(1, 2) == pytest.approx(2.0)
 
     def test_l3_is_3_triplings(self):
-        # L3 = 3 triplings → P = 1.5^3 = 3.375
-        assert power(1, 3) == pytest.approx(3.375)
+        # L3 = 3 triplings → P = 2^3 = 8
+        assert power(1, 3) == pytest.approx(8.0)
 
     def test_t10_l3(self):
-        # exponent = (10-1)/2 + 3 = 7.5 → P = 1.5^7.5
-        assert power(10, 3) == pytest.approx(1.5**7.5, rel=1e-6)
+        # exponent = (10-1)/3 + 3 = 6 → P = 2^6 = 64
+        assert power(10, 3) == pytest.approx(2**6, rel=1e-6)
 
     def test_tier_step_constant(self):
-        """Each tier increments P by TIER_UP_MOD = sqrt(1.5)."""
+        """Each tier increments P by TIER_UP_MOD = cbrt(2)."""
         for t in range(1, 10):
             ratio = power(t + 1, 1) / power(t, 1)
             assert ratio == pytest.approx(TIER_UP_MOD, rel=1e-9)
 
     def test_triplings_drive_levels(self):
-        """Power ratio between levels matches 1.5^(delta_triplings)."""
-        # L1→L2: 1 tripling diff → ratio = 1.5^1
-        assert power(1, 2) / power(1, 1) == pytest.approx(1.5**1, rel=1e-9)
-        # L2→L3: 2 triplings diff → ratio = 1.5^2
-        assert power(1, 3) / power(1, 2) == pytest.approx(1.5**2, rel=1e-9)
+        """Power ratio between levels matches 2^(delta_triplings)."""
+        # L1→L2: 1 tripling diff → ratio = 2^1
+        assert power(1, 2) / power(1, 1) == pytest.approx(2**1, rel=1e-9)
+        # L2→L3: 2 triplings diff → ratio = 2^2
+        assert power(1, 3) / power(1, 2) == pytest.approx(2**2, rel=1e-9)
 
     def test_monotone_in_tier(self):
         for t in range(1, 10):
@@ -125,10 +125,10 @@ class TestScaleStat:
         for l in range(1, 3):
             assert scale_stat(base, 1, l) <= scale_stat(base, 1, l + 1)
 
-    def test_t10_l3_approx_4_57x_base(self):
-        # scale_stat(100, 10, 3) ≈ round(100 * sqrt(1.5**7.5)) ≈ 457
+    def test_t10_l3_approx_8x_base(self):
+        # scale_stat(100, 10, 3) ≈ round(100 * sqrt(2**6)) = round(100 * 8) = 800
         result = scale_stat(100, 10, 3)
-        assert 455 <= result <= 460
+        assert 795 <= result <= 805
 
 
 # ---------------------------------------------------------------------------
