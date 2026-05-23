@@ -49,6 +49,7 @@ CH_SUPPLY   = 2   # SUPPLY offer roll
 CH_REROLL   = 3   # Reroll variant (augment / supply)
 CH_CHALLENGE = 4  # Challenge encounter (T21)
 CH_BOSS     = 5   # Boss supporting cast (T21)
+CH_SHOP     = 6   # Champion shop offers (T22)
 
 def derive_seed(run_seed: int, node_index: int, channel: int) -> int:
     """Deterministic sub-seed. Integer-only, no hash()."""
@@ -91,8 +92,10 @@ Each enemy in the `ENEMY_ROSTER` (from `content.py` / `enemy_roster.md`) carries
 
 ### 3.2 Faction filtering
 
-- **`FIGHT` and `REWARD` nodes:** draw from `human`-tagged enemies only (the
-  Reclamation's mundane force).
+- **`FIGHT` and `REWARD` nodes:** draw from the **full pool** of enemies
+  (all factions). This avoids a contradiction where players would exclusively
+  face CLEAR-affinity enemies (the human roster is predominantly CLEAR),
+  undermining the theme-weight system in §3.4.
 - **`CHALLENGE` nodes (T21):** draw from `spirit`-tagged enemies (weather
   elementals).
 - **`BOSS_FIGHT` nodes (T21):** supporting cast drawn from mixed
@@ -100,32 +103,30 @@ Each enemy in the `ENEMY_ROSTER` (from `content.py` / `enemy_roster.md`) carries
 
 ### 3.3 Tier eligibility by stage
 
-Not every tier is available at every stage. Enemy tiers are **gated by stage
-difficulty** to maintain progression feel:
+Tier gates are **soft** — all tiers are eligible at all stages but heavily
+weighted toward stage-appropriate ones. The real balancing factor is the
+**power budget** (§4), not tier gating. The soft-gate weighting gives a
+natural difficulty ramp while allowing occasional variety:
 
-| Stage | Eligible enemy tiers | Rationale |
+| Stage | Preferred tier centre | Weight distribution |
 |---|---|---|
-| 1 | 1–3 | Tutorial — cheap infantry + first corrupted |
-| 2 | 1–4 | Introduce mid-tier specialists |
-| 3 | 2–5 | Drop T1 filler, add T5 mid-elites |
-| 4 | 3–6 | Professional core enters |
-| 5 | 4–7 | Senior officers, hybrid corrupted |
-| 6 | 5–9 | Full elite range (T10 is bosses only) |
+| 1 | T1–3 | Strong preference for T1–3, diminishing for T4+ |
+| 2 | T2–4 | Strong preference for T2–4 |
+| 3 | T3–5 | Strong preference for T3–5 |
+| 4 | T4–6 | Strong preference for T4–6 |
+| 5 | T5–7 | Strong preference for T5–7 |
+| 6 | T6–9 | Strong preference for T6–9 (T10 reserved for bosses) |
 
-> **⚠ DECISION NEEDED:** These tier gates are a suggestion. An alternative is
-> to allow all tiers but weight heavily toward stage-appropriate ones (e.g.
-> 80% weight on tiers within ±1 of stage). The hard-gate approach is simpler
-> and makes early stages feel distinct; the weighted approach produces
-> occasional surprising variety. **Recommendation:** hard-gate for MVP, add
-> weighted off-tier "wild card" slots in a later pass.
+Implementation: tier weight = `1.0` if within preferred range, `0.3` if ±1
+of range, `0.1` if further out. T10 enemies never appear in standard
+encounter generation (boss-only).
 
 ### 3.4 Affinity theming
 
-For `FIGHT`/`REWARD` squads (human faction), most enemies are `CLEAR`-affinity
-(the bulk of the human roster — 50% of all enemies). The remaining 10% per
-non-Clear weather are drawn based on the **stage's authored affinity**:
+For `FIGHT`/`REWARD` squads, the full enemy pool is available but weighted by
+affinity theme to maintain continental identity:
 
-- **50% of squad slots:** `CLEAR`-affinity humans (weather-indifferent core).
+- **50% of squad slots:** `CLEAR`-affinity enemies (weather-indifferent core).
 - **30% of squad slots:** enemies whose affinity matches the **stage affinity**
   (the corrupted wildlife thematic to this continent).
 - **20% of squad slots:** enemies with **any** non-Clear affinity (variety).
@@ -137,15 +138,9 @@ stage_slots = max(1, round(0.3 * team_size))
 clear_slots = team_size - any_slots - stage_slots
 ```
 
-> **⚠ DECISION NEEDED:** Whether to use the stage affinity or the **live node
-> weather** for the 30% themed slots. Using stage affinity is more predictable
-> for the player and thematically consistent (Africa always has Mist-corrupted
-> creatures). Using live weather adds run-to-run variety but muddies the
-> continental identity. **Recommendation:** stage affinity — it matches the
-> boss/challenge theming and keeps the "continent = element" identity clean.
-> Live weather already influences combat through Weather Favor / Affinity
-> Clash at fight time, so encounter *composition* doesn't need to react to it
-> as well.
+Stage affinity is used (not live weather) — it matches boss/challenge theming
+and keeps the "continent = element" identity clean. Live weather already
+influences combat through Weather Favor / Affinity Clash at fight time.
 
 ---
 
@@ -172,34 +167,62 @@ tracked by the Tempest progression (T22) but never read by encounter generation.
 
 ### 4.2 Stage base curve
 
-The `stage_base` values should produce a smooth exponential ramp that
-tracks the expected player team power at each stage. Given:
-- Player starts at Tempest rank 1 (1 deployed champion)
-- By stage 6 end, rank ~8–10 (8–10 deployed champions)
-- Champions average tier ~T3 at stage 1, ~T7 at stage 6
-- `P(T3,L1) ≈ 1.84`, `P(T7,L1) ≈ 4.13`
+The `stage_base` values account for the fact that players retain some mid-tier
+champions throughout the game (T5–7 pieces kept from earlier stages), and by
+mid-game most pieces are L2 (P × 2.0). All squad size maxes are +1 from the
+naive estimate. Stage base is multiplied by a **Difficulty Coefficient (DC)**
+which defaults to 1.0 and is the primary player-facing difficulty dial.
 
-**Proposed `stage_base` values (total enemy P budget per FIGHT node):**
+After each completed playthrough, a new DC tier is unlocked: DC × 1.1 with
+name "DC +N" (where N is the increment count). This allows escalating
+challenge for experienced players.
 
-| Stage | Expected player team P | Suggested `stage_base` | Squad size (est.) |
+**Proposed `stage_base` values (total enemy P budget per FIGHT node at DC=1.0):**
+
+| Stage | Expected player team P | `stage_base` | Squad size max |
 |---|---|---|---|
-| 1 | ~2–4 P (1–3 T2–3 champs) | **3.0** | 2–3 enemies |
-| 2 | ~6–10 P (3–4 T3–4 champs) | **7.0** | 3–4 enemies |
-| 3 | ~12–18 P (5–6 T4–5 champs) | **14.0** | 4–5 enemies |
-| 4 | ~20–28 P (6–7 T5–6 champs) | **23.0** | 5–6 enemies |
-| 5 | ~30–40 P (7–8 T6–7 champs) | **34.0** | 6–7 enemies |
-| 6 | ~45–65 P (8–10 T7–9 champs) | **52.0** | 7–9 enemies |
+| 1 | ~2–4 P (1–3 T2–3 champs) | **3.5** | 4 |
+| 2 | ~8–12 P (3–4 T3–4, some L2) | **9.0** | 5 |
+| 3 | ~16–22 P (5–6 T4–5, mostly L2) | **18.0** | 6 |
+| 4 | ~25–35 P (6–7 T5–6, L2) | **28.0** | 7 |
+| 5 | ~38–50 P (7–8 T6–7, L2) | **42.0** | 8 |
+| 6 | ~55–80 P (8–10 T7–9, L2+kept pieces) | **65.0** | 10 |
 
-> **⚠ DECISION NEEDED:** These stage_base numbers are derived from rough power
-> projections. The exact values are a **tuning job** that requires playtesting.
-> The formula `stage_base ≈ 3.0 × 1.6^(stage-1)` gives a smooth exponential
-> that roughly matches the above. **Recommendation:** ship the formula as the
-> default with a `STAGE_BASE_OVERRIDE: dict[int, float]` for hand-tuning
-> after playtest.
+The formula `stage_base ≈ 3.5 × 1.8^(stage-1)` approximates these.
+`STAGE_BASE_OVERRIDE: dict[int, float]` is available for hand-tuning.
+
+**DC application:** `effective_base = stage_base[stage] × DC`
+
+DC is stored on the `Run` and defaults to `1.0`. The settings/meta-progression
+system (T22) manages unlocking higher DC tiers.
 
 ### 4.3 Squad packing algorithm
 
-`roll_squad` fills a squad against the budget using a **weighted greedy** approach:
+Instead of a weighted greedy approach (which tends to produce 1 expensive + 1
+cheap pick), `roll_squad` uses a **template-based smart-pick** algorithm:
+
+1. **Select a composition template** based on squad size. Templates define
+   target distributions for role-tags, tier spread, and levels. Example
+   templates: "balanced" (DPS ≈ Tank+Warrior, +1 SUP), "rush" (heavy DPS),
+   "fortress" (tank-heavy + sup).
+
+2. **Fill template slots** by picking from the pool with fuzzy acceptance:
+   - Each slot has a target role/tier/affinity
+   - Pick candidates matching the target; if none fit, widen criteria
+   - If a rolled team doesn't meet composition criteria, **reroll** (up to
+     5 attempts) using incremented sub-seeds
+
+3. **Budget validation** — the composed squad's total P must be within
+   budget ± tolerance. If over-budget after template fill, swap the most
+   expensive piece for a cheaper alternative.
+
+Generic composition target: `(DPS ≈ Tank + Warrior) + 1 SUP` with fuzzy
+logic allowing deviation for interesting encounters. No rigid role matrix.
+
+**Determinism:** All encounter lists are generated at trail creation time.
+This is achieved via per-node seed derivation — encounters can be lazily
+regenerated from seed at any point, or pre-generated and stored as enemy IDs
+in the run save file.
 
 ```python
 def roll_squad(
@@ -209,73 +232,38 @@ def roll_squad(
     *,
     min_count: int = 2,
     max_count: int = 10,
+    max_dupes: int = 2,
 ) -> list[Enemy]:
-    """Pack enemies into a budget. Deterministic given rng state."""
-    squad: list[Enemy] = []
-    remaining = budget
-
-    while remaining > 0 and len(squad) < max_count:
-        # Filter pool to affordable enemies
-        affordable = [e for e in pool if power(e.tier, 1) <= remaining + BUDGET_TOLERANCE]
-        if not affordable:
-            break
-
-        # Weight toward enemies closer to remaining budget (prefer filling cleanly)
-        weights = [_budget_weight(e, remaining) for e in affordable]
-        pick = rng.choices(affordable, weights=weights, k=1)[0]
-
-        squad.append(instantiate_enemy(pick, level=1))
-        remaining -= power(pick.tier, 1)
-
-    # Ensure minimum squad size
-    if len(squad) < min_count:
-        if not pool:
-            raise ValueError("roll_squad requires a non-empty enemy pool")
-        cheapest = min(pool, key=lambda e: e.tier)
-        while len(squad) < min_count:
-            squad.append(instantiate_enemy(cheapest, level=1))
-
-    return squad
+    """Template-based squad generation. Deterministic given rng state."""
+    ...
 ```
 
-**Budget weight function:** enemies whose P cost is close to the remaining
-budget are weighted higher, producing tight budget-filling without systematic
-over-/under-spend:
-
-```python
-BUDGET_TOLERANCE = 0.5  # Allow slight overshoot
-
-def _budget_weight(enemy_def: EnemyDef, remaining: float) -> float:
-    cost = power(enemy_def.tier, 1)
-    if cost > remaining + BUDGET_TOLERANCE:
-        return 0.0
-    # Prefer enemies that fill ~40-80% of remaining budget
-    fill_ratio = cost / max(remaining, 0.01)
-    if fill_ratio < 0.2:
-        return 0.3    # very cheap filler — low preference
-    if fill_ratio <= 0.8:
-        return 1.0    # good fit
-    return 0.7        # expensive — acceptable but not first choice
-```
-
-> **⚠ DECISION NEEDED:** Whether to use `rng.choices` (weighted random) or a
-> deterministic greedy "pick highest affordable tier" approach. Weighted random
-> produces more varied squads across nodes; greedy produces tighter budgets.
-> **Recommendation:** weighted random — variety is more important than
-> pixel-perfect budget adherence, and the ±15% variance roll already fuzzes
-> budgets.
+> **Champion shop touchpoint:** The champion shop (T22) also needs pre-drawn
+> seeds for its random offers. Since shop contents change based on player
+> leveling choices, the shop uses a **seed channel per shop visit** (derived
+> from run_seed + visit_index + CH_SHOP). The shop pool is filtered by
+> unlocked tiers at visit time, but the RNG sequence is fixed. This means
+> a player who levels differently sees different champions but the randomness
+> is still reproducible from (seed, visit_index, tier_unlock_state).
 
 ### 4.4 Enemy leveling within squads
 
-All enemies in standard `FIGHT`/`REWARD` encounters spawn at **level 1**.
-Higher difficulty is expressed through higher-tier enemies, not leveled-up
-copies.
+The **full roster of enemy levels (L1–L3)** is applicable for squad generation.
+Since enemies exist at all levels in the content system, the encounter
+generator uses them all. Level is selected as part of the template-based
+picking: early stages favour L1, mid-game introduces L2, and late-game can
+include L3 elites. The power budget naturally constrains this — an L2 enemy
+costs more P, so fewer fit in the budget.
 
-> **⚠ DECISION NEEDED:** Whether late-stage encounters (stage 5–6) should
-> sometimes include **level-2** enemies (representing elite versions). This
-> adds variety and threat but complicates the budget math (a L2 T5 enemy costs
-> P=3.38, same as a L1 T7). **Recommendation:** defer to post-MVP. Keep L1
-> only for now; the tier gate already provides sufficient difficulty scaling.
+Level selection weights by stage:
+| Stage | L1 weight | L2 weight | L3 weight |
+|---|---|---|---|
+| 1 | 1.0 | 0.0 | 0.0 |
+| 2 | 0.8 | 0.2 | 0.0 |
+| 3 | 0.5 | 0.5 | 0.0 |
+| 4 | 0.3 | 0.6 | 0.1 |
+| 5 | 0.1 | 0.7 | 0.2 |
+| 6 | 0.0 | 0.6 | 0.4 |
 
 ---
 
@@ -287,10 +275,10 @@ The bread-and-butter encounter. Pure combat, no reward beyond Amber and
 Tempest progression.
 
 ```python
-def generate_fight(run_seed: int, node_index: int, stage: StageDef) -> list[Enemy]:
+def generate_fight(run_seed: int, node_index: int, stage: StageDef, dc: float = 1.0) -> list[Enemy]:
     rng = Random(derive_seed(run_seed, node_index, CH_ENEMIES))
-    budget = stage_base(stage.index) * 1.0 * rng.uniform(0.85, 1.15)
-    pool = filter_pool(stage, faction="human")
+    budget = stage_base(stage.index) * dc * 1.0 * rng.uniform(0.85, 1.15)
+    pool = filter_pool(stage)
     return roll_squad(rng, budget, pool)
 ```
 
@@ -300,10 +288,10 @@ An easy fight with guaranteed loot. Budget is halved; drop table rolled
 separately.
 
 ```python
-def generate_reward(run_seed: int, node_index: int, stage: StageDef) -> tuple[list[Enemy], RewardDrop]:
+def generate_reward(run_seed: int, node_index: int, stage: StageDef, dc: float = 1.0) -> tuple[list[Enemy], RewardDrop]:
     rng = Random(derive_seed(run_seed, node_index, CH_ENEMIES))
-    budget = stage_base(stage.index) * 0.5 * rng.uniform(0.85, 1.15)
-    pool = filter_pool(stage, faction="human")
+    budget = stage_base(stage.index) * dc * 0.5 * rng.uniform(0.85, 1.15)
+    pool = filter_pool(stage)
     squad = roll_squad(rng, budget, pool)
 
     # Drop table is a separate seed channel for isolation
@@ -341,18 +329,16 @@ random pile of stat-sticks. The following composition rules apply:
 
 ### 6.1 Role distribution targets
 
-Each squad aims for a role mix based on squad size:
+Generic composition target: **(DPS ≈ Tank + Warrior) + 1 SUP**. The system
+uses fuzzy logic and allows deviation for interesting encounters — no rigid
+role matrix.
 
-| Squad size | Tanks | DPS (ADC/APC) | Support | Hybrid |
-|---|---|---|---|---|
-| 2–3 | 1 | 1–2 | 0 | 0 |
-| 4–5 | 1–2 | 2–3 | 0–1 | 0 |
-| 6–7 | 2 | 3–4 | 1 | 0–1 |
-| 8–10 | 2–3 | 4–5 | 1–2 | 1 |
-
-**Implementation:** the packing algorithm fills role **slots** before budget
-slots. First, ensure minimum role counts (at least 1 tank for squads ≥3, at
-least 1 support for squads ≥5), then fill remaining slots freely.
+Guidelines (soft, not enforced as hard constraints):
+- At least 1 "tanky" piece (tanky_hp or tanky_arm durability) for squads ≥ 3
+- At least 1 "support" piece (ability-focused int/ranged) for squads ≥ 5
+- Remaining slots filled freely with DPS-oriented pieces
+- Occasional "all-DPS rush" or "double-tank fortress" compositions are allowed
+  for variety (the template system picks these ~20% of the time)
 
 ### 6.2 Duplicate limits
 
@@ -392,9 +378,8 @@ On save-load, if `content_version` mismatches:
 - **Current node (mid-fight):** warn the player; optionally offer to restart
   the current node.
 
-> **⚠ DECISION NEEDED:** Whether `content_version` lands now (T19) or at T14
-> (save/load). **Recommendation:** define the field in T19 models, populate it
-> from a constant in `content.py`, but defer the mismatch-handling UI to T14.
+**Decision:** Define the `content_version` field in T19 models, populate it
+from a constant in `content.py`. Mismatch-handling UI deferred to T14.
 
 ---
 
@@ -434,20 +419,24 @@ def roll_squad(
     *,
     min_count: int = 2,
     max_count: int = 10,
-    role_targets: dict[str, int] | None = None,
     max_dupes: int = 2,
+    stage_index: int = 1,
 ) -> list[Enemy]: ...
 
 # --- Per-node generators ---
-def generate_fight(run_seed: int, node_index: int, stage: StageDef) -> list[Enemy]: ...
-def generate_reward(run_seed: int, node_index: int, stage: StageDef) -> tuple[list[Enemy], RewardDrop]: ...
+def generate_fight(run_seed: int, node_index: int, stage: StageDef, dc: float = 1.0) -> list[Enemy]: ...
+def generate_reward(run_seed: int, node_index: int, stage: StageDef, dc: float = 1.0) -> list[Enemy]: ...
 
 # --- Seed-only helpers for T22 ---
 def augment_seed(run_seed: int, node_index: int, rerolled: bool = False) -> int: ...
 def supply_seed(run_seed: int, node_index: int, rerolled: bool = False) -> int: ...
 
 # --- Pool filtering ---
-def filter_pool(stage: StageDef, *, faction: str, tier_range: tuple[int, int] | None = None) -> list[EnemyDef]: ...
+def filter_pool(stage: StageDef, *, tier_range: tuple[int, int] | None = None) -> list[EnemyDef]: ...
+
+# --- Difficulty ---
+DEFAULT_DC: float  # 1.0
+def next_dc(current_dc: float) -> float: ...  # current × 1.1
 ```
 
 All functions are **pure, zero Flet imports** (V.1).
@@ -486,11 +475,36 @@ See T.16 plan for full test details. Summary:
 
 ## 12. Open Items Summary
 
-| # | Question | Recommendation | Impact if deferred |
+| # | Question | Decision | Notes |
 |---|---|---|---|
-| 1 | Hard tier gates vs. weighted off-tier slots | Hard-gate for MVP | Low — can soften later |
-| 2 | Affinity theming: stage affinity vs. live weather | Stage affinity | Low — live weather affects combat, not composition |
-| 3 | Exact `stage_base` curve values | Formula `3.0 × 1.6^(s-1)` + override dict | Must be tuned in playtest |
-| 4 | Greedy vs. weighted-random squad packing | Weighted random | Low — either is deterministic |
-| 5 | Enemy leveling (L2 in late stages) | Defer to post-MVP | Low — tier gates suffice |
-| 6 | `content_version` timing (T19 vs. T14) | Define field in T19, handle UI in T14 | Low — field is cheap |
+| 1 | Hard tier gates vs. weighted off-tier slots | **Soft gates (weighted)** | Power budget is the balancing factor |
+| 2 | Affinity theming: stage affinity vs. live weather | **Stage affinity** | Live weather affects combat, not composition |
+| 3 | Exact `stage_base` curve values | **Formula + DC scaling** | DC × 1.1 unlocked per playthrough |
+| 4 | Greedy vs. template-based squad packing | **Template-based with fuzzy reroll** | Better variety and composition quality |
+| 5 | Enemy leveling (L1-only vs. all levels) | **Full L1–L3 roster used** | Stage-weighted level selection |
+| 6 | `content_version` timing (T19 vs. T14) | **Field in T19, UI in T14** | Cheap addition now |
+| 7 | Faction filtering for FIGHT/REWARD | **Full pool (all factions)** | Avoids CLEAR-only contradiction |
+
+---
+
+## 13. Champion Shop Touchpoints (Brainstorm)
+
+The champion shop system (planned for T22) has significant interaction with
+T19's seed/determinism model:
+
+**Touch points:**
+- Shop offers use `CH_SHOP = 6` seed channel, derived per shop-visit index
+- Shop pool filtered by player's current tier-unlock state (progression-dependent)
+- The *sequence* of RNG draws is fixed per seed, but *which* draws are valid
+  depends on player state at visit time
+
+**Suggested implementation timing:**
+- T19 defines `CH_SHOP` channel constant (done here)
+- T22 implements the actual shop logic using `derive_seed(run_seed, visit_index, CH_SHOP)`
+- Shop randomness is reproducible from `(seed, visit_index, tier_unlock_bitmap)`
+
+**Handling non-determinism from player choices:**
+- The shop seed is fixed, but the pool filter varies with player progression
+- This is acceptable: two players with same seed but different choices see
+  different shops (the randomness is still seeded, just filtered differently)
+- For replay/spectate features, the full choice history would need to be saved
