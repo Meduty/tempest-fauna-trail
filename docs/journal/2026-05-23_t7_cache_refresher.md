@@ -25,8 +25,10 @@ which is untenable for 50 nodes on a free-tier key (60 calls/min limit).
 
 - **3-stream selection per tick**:
   - A: sequential round-robin over all 50 cities (guarantees ≤ 50 min staleness)
-  - B: round-robin over a lookahead window `[current+1 .. current+6]`
-    (count-clamped at trail end)
+  - B: round-robin over a lookahead window `[current_idx0+1 .. current_idx0+6]`
+    where `current_idx0 = Run.current_node_index - 1` (i.e., `Run.current_node_index`
+    is 1-based; the refresher converts to a 0-based list offset internally before
+    computing the window). Window is count-clamped at trail end.
   - C: uniform random pick from all 50
 - **Dedup**: A picks first, B skips if duplicate, C skips if duplicate → ≤ 3
   unique fetches per tick.

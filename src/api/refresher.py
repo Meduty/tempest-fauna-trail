@@ -35,11 +35,15 @@ class WeatherRefresher:
         Args:
             cache: The shared WeatherCache instance.
             client: WeatherClient for API calls.
-            get_current_node_index: Callable returning current 0-based index
-                into the cache's city_ids list.
+            get_current_node_index: Callable returning the current 1-based node
+                index (matches ``Run.current_node_index``). The refresher
+                converts this to a 0-based list offset internally.
             tick_interval: Seconds between ticks (default 60).
             rng_seed: Optional seed for C-stream random (for testing).
         """
+        if tick_interval <= 0:
+            raise ValueError(f"tick_interval must be > 0, got {tick_interval!r}")
+
         self._cache = cache
         self._client = client
         self._get_current_node_index = get_current_node_index
@@ -48,6 +52,9 @@ class WeatherRefresher:
 
         self._city_ids = cache.city_ids
         self._num_cities = len(self._city_ids)
+
+        if self._num_cities == 0:
+            raise ValueError("WeatherCache must manage at least one city.")
 
         # Stream pointers
         self._a_pointer: int = 0  # round-robin over all cities
@@ -94,9 +101,10 @@ class WeatherRefresher:
         selected.append(a_city)
         seen.add(a_city)
 
-        # Stream B: round-robin over window [current+1 .. current+6] (0-based)
-        current_idx = self._get_current_node_index()
-        window_start = current_idx + 1
+        # Stream B: round-robin over window [current+1 .. current+6] (0-based list offset).
+        # get_current_node_index() returns the 1-based node index; convert to 0-based.
+        current_idx0 = self._get_current_node_index() - 1
+        window_start = current_idx0 + 1
         window_end = min(window_start + 6, self._num_cities)
         window = self._city_ids[window_start:window_end]
 
@@ -119,7 +127,7 @@ class WeatherRefresher:
             try:
                 fetch_and_cache(self._cache, self._client, city_id, city_def)
             except Exception:  # noqa: BLE001
-                logger.warning("Refresher fetch failed for %s", city_id)
+                logger.warning("Refresher fetch failed for %s", city_id, exc_info=True)
 
         return selected
 

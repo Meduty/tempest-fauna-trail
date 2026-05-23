@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import threading
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from src.api.cache import CacheEntry, CacheState, WeatherCache, fetch_and_cache
+from src.api.cache import CacheState, WeatherCache, fetch_and_cache
 from src.api.weather import WeatherResult
 from src.game.models import WeatherState
 from src.game.route import CityDef

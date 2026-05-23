@@ -120,7 +120,7 @@ class WeatherCache:
         """Initialize all cities to UNKNOWN state."""
 
     def get(self, city_id: str) -> CacheEntry:
-        """Return the current cache entry for a city. Never raises."""
+        """Return the current cache entry for a city. Raises KeyError for unknown city IDs."""
 
     def set_live(self, city_id: str, result: WeatherResult) -> None:
         """Mark city as LIVE with fresh weather data."""
@@ -167,8 +167,10 @@ class WeatherRefresher:
         Args:
             cache: The shared WeatherCache instance.
             client: WeatherClient for API calls.
-            get_current_node_index: Callable returning current 0-based index
-                into the cache's city_ids list.
+            get_current_node_index: Callable returning the current **1-based**
+                node index (matches ``Run.current_node_index``). The refresher
+                converts to a 0-based list offset internally via
+                ``current_idx0 = get_current_node_index() - 1``.
             tick_interval: Seconds between ticks (default 60).
         """
 
@@ -197,7 +199,8 @@ class WeatherRefresher:
 ```
 A_pointer: cycles 0..49, advances +1 per tick
 B_pointer: cycles 0..min(5, remaining_nodes-1), advances +1 per tick
-           window = city_ids[current_node_index .. current_node_index+6] (clamped)
+           current_idx0 = get_current_node_index() - 1  # convert 1-based → 0-based
+           window = city_ids[current_idx0+1 .. current_idx0+7] (clamped, exclusive upper)
 C_index:   random.randint(0, 49) per tick (no freshness check, no re-roll)
 ```
 
@@ -206,9 +209,11 @@ Fetch each in order.
 
 ### 5.2 B-Stream Window Clamping
 
-All indices are 0-based into the `city_ids` list.
+`get_current_node_index()` returns a **1-based** node index (e.g., `Run.current_node_index`).
+The refresher converts to a 0-based list offset before slicing:
 
-`window_start = current_node_index + 1` (first city *ahead* of current)
+`current_idx0 = get_current_node_index() - 1`
+`window_start = current_idx0 + 1` (first city *ahead* of current)
 `window_end = min(window_start + 6, len(city_ids))` (exclusive upper bound)
 `window = city_ids[window_start : window_end]` → up to 6 cities
 

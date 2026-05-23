@@ -1,12 +1,12 @@
 """Unit tests for src/api/refresher.py — 3-stream weather refresher."""
 from __future__ import annotations
 
-import time
-from unittest.mock import MagicMock, patch
+import threading
+from unittest.mock import MagicMock
 
 import pytest
 
-from src.api.cache import CacheState, WeatherCache, fetch_and_cache
+from src.api.cache import CacheState, WeatherCache
 from src.api.refresher import WeatherRefresher
 from src.api.weather import WeatherResult
 from src.game.models import WeatherState
@@ -46,7 +46,7 @@ def refresher(cache: WeatherCache, mock_client: MagicMock) -> WeatherRefresher:
     return WeatherRefresher(
         cache=cache,
         client=mock_client,
-        get_current_node_index=lambda: 0,
+        get_current_node_index=lambda: 1,
         tick_interval=60.0,
         rng_seed=42,
     )
@@ -86,7 +86,7 @@ class TestStreamA:
         refresher = WeatherRefresher(
             cache=cache,
             client=mock_client,
-            get_current_node_index=lambda: 0,
+            get_current_node_index=lambda: 1,
             rng_seed=42,
         )
         a_cities: list[str] = []
@@ -104,7 +104,7 @@ class TestStreamA:
         refresher = WeatherRefresher(
             cache=cache,
             client=mock_client,
-            get_current_node_index=lambda: 0,
+            get_current_node_index=lambda: 1,
             rng_seed=42,
         )
         first_pass: list[str] = []
@@ -127,38 +127,43 @@ class TestStreamB:
         self, cache: WeatherCache, mock_client: MagicMock, city_ids: list[str]
     ) -> None:
         """B stream picks cities from the window ahead of current node."""
-        current_idx = 10
+        # 1-based node index 11 → 0-based index 10; window covers positions 11..16.
+        # A-stream starts at position 0 and advances; for the first 11 ticks A
+        # stays at positions 0..10, which never overlap the window, so result[1]
+        # is always the B selection.
+        current_node = 11
         refresher = WeatherRefresher(
             cache=cache,
             client=mock_client,
-            get_current_node_index=lambda: current_idx,
+            get_current_node_index=lambda: current_node,
             rng_seed=42,
         )
-        # Run several ticks, collect B cities (index 1 in result if present and != A)
-        window = city_ids[current_idx + 1 : current_idx + 7]
-        b_cities: set[str] = set()
+        # Window = city_ids[11:17] (6 cities ahead of 0-based index 10)
+        window = city_ids[current_node : current_node + 6]
+        b_cities: list[str] = []
 
-        for _ in range(20):
+        for _ in range(6):
             result = refresher.tick()
-            # B city would be the second if it's in the window
-            for cid in result[1:]:
-                if cid in window:
-                    b_cities.add(cid)
+            # A is in positions 0..10, so result[1] is definitely B
+            assert len(result) >= 2, "Expected B to contribute a selection"
+            assert result[1] in window, (
+                f"B selection {result[1]!r} not in window {window}"
+            )
+            b_cities.append(result[1])
 
-        # B should have selected from the window
-        assert b_cities.issubset(set(window))
-        # Over 20 ticks, B should cover at least some of the window
-        assert len(b_cities) > 0
+        # B round-robins through the full 6-city window
+        assert set(b_cities) == set(window)
 
     def test_b_clamps_at_trail_end(
         self, cache: WeatherCache, mock_client: MagicMock, city_ids: list[str]
     ) -> None:
         """B stream produces nothing when current is at the last node."""
-        last_idx = len(city_ids) - 1
+        # 1-based: last node index == len(city_ids)
+        last_node = len(city_ids)
         refresher = WeatherRefresher(
             cache=cache,
             client=mock_client,
-            get_current_node_index=lambda: last_idx,
+            get_current_node_index=lambda: last_node,
             rng_seed=42,
         )
         # Window is empty, so B contributes nothing
@@ -170,14 +175,16 @@ class TestStreamB:
         self, cache: WeatherCache, mock_client: MagicMock, city_ids: list[str]
     ) -> None:
         """B stream window clamps when fewer than 6 cities remain."""
-        near_end_idx = len(city_ids) - 3  # only 2 cities ahead
+        # 1-based: 3rd-from-last node → only 2 cities ahead
+        near_end_node = len(city_ids) - 2
         refresher = WeatherRefresher(
             cache=cache,
             client=mock_client,
-            get_current_node_index=lambda: near_end_idx,
+            get_current_node_index=lambda: near_end_node,
             rng_seed=42,
         )
-        expected_window = city_ids[near_end_idx + 1:]
+        # 0-based index = near_end_node - 1; window = city_ids[near_end_node - 1 + 1:]
+        expected_window = city_ids[near_end_node:]
         assert len(expected_window) == 2
 
         b_cities: set[str] = set()
@@ -199,20 +206,29 @@ class TestStreamC:
     def test_c_picks_from_all_cities(
         self, cache: WeatherCache, mock_client: MagicMock, city_ids: list[str]
     ) -> None:
-        """C stream can pick any city (verified over many ticks)."""
+        """C stream can pick any city (verified over many ticks).
+
+        By tracking only result[2] — the definite C slot when all three streams
+        contribute a unique city — we assert specifically on C-stream coverage.
+        """
+        # Node 1 (1-based) → 0-based idx 0; window = city_ids[1:7].
+        # A starts at position 0 and advances; when all three are distinct,
+        # result has 3 elements and result[2] is C.
         refresher = WeatherRefresher(
             cache=cache,
             client=mock_client,
-            get_current_node_index=lambda: 0,
+            get_current_node_index=lambda: 1,
             rng_seed=123,
         )
-        all_fetched: set[str] = set()
+        c_fetched: set[str] = set()
         for _ in range(500):
             result = refresher.tick()
-            all_fetched.update(result)
+            # result[2] is present only when C was not a duplicate of A or B
+            if len(result) == 3:
+                c_fetched.add(result[2])
 
-        # Over 500 ticks, C (random) should have covered most cities
-        assert len(all_fetched) == len(city_ids)
+        # Over 500 ticks, C (uniform random) should have covered all cities
+        assert len(c_fetched) == len(city_ids)
 
 
 # ---------------------------------------------------------------------------
@@ -227,7 +243,7 @@ class TestDedup:
         refresher = WeatherRefresher(
             cache=cache,
             client=mock_client,
-            get_current_node_index=lambda: 0,
+            get_current_node_index=lambda: 1,
             rng_seed=42,
         )
         for _ in range(100):
@@ -247,7 +263,7 @@ class TestFetchIntegration:
         refresher = WeatherRefresher(
             cache=cache,
             client=mock_client,
-            get_current_node_index=lambda: 0,
+            get_current_node_index=lambda: 1,
             rng_seed=42,
         )
         result = refresher.tick()
@@ -260,7 +276,7 @@ class TestFetchIntegration:
         refresher = WeatherRefresher(
             cache=cache,
             client=mock_client,
-            get_current_node_index=lambda: 0,
+            get_current_node_index=lambda: 1,
             rng_seed=42,
         )
         result = refresher.tick()
@@ -298,17 +314,31 @@ class TestLifecycle:
     def test_timer_fires_tick(
         self, cache: WeatherCache, mock_client: MagicMock
     ) -> None:
-        """Verify the timer actually fires a tick after the interval."""
+        """Verify the timer fires a tick; uses threading.Event instead of time.sleep."""
+        tick_event = threading.Event()
+
         refresher = WeatherRefresher(
             cache=cache,
             client=mock_client,
-            get_current_node_index=lambda: 0,
+            get_current_node_index=lambda: 1,
             tick_interval=0.05,  # 50ms for fast test
             rng_seed=42,
         )
+
+        # Wrap tick() on the instance so we can signal when it fires.
+        _real_tick = type(refresher).tick  # unbound class method
+
+        def tick_spy() -> list[str]:
+            result = _real_tick(refresher)
+            tick_event.set()
+            return result
+
+        refresher.tick = tick_spy  # instance attribute shadows the class method
+
         refresher.start()
-        time.sleep(0.15)  # Wait for at least 1 tick
+        fired = tick_event.wait(timeout=2.0)
         refresher.stop()
 
+        assert fired, "Timer did not fire within timeout"
         # At least one fetch should have happened
         assert mock_client.fetch_weather.call_count >= 1
