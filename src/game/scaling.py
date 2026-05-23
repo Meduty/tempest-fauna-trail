@@ -25,16 +25,14 @@ import math
 # Base multiplier per "tripling" of copies (mirrors TFT's 3-to-1 combine).
 LEVEL_UP_MOD: float = 2.0
 
-# Per-tier power multiplier = cbrt(LEVEL_UP_MOD). Three tiers = one level in power.
+# Per-tier power multiplier = cbrt(LEVEL_UP_MOD). Three tier-ups = one tripling step in power.
 TIER_UP_MOD: float = LEVEL_UP_MOD ** (1 / 3)  # ≈ 1.2599
 
 # Cumulative triplings fed to reach each level.
 # L1 = base (0), L2 = 1 tripling, L3 = 3 triplings (1 tripling of L2 copies).
 TRIPLINGS: dict[int, int] = {1: 0, 2: 1, 3: 3}
 
-# Legacy aliases — these now equal LEVEL_UP_MOD / TIER_UP_MOD (2 / ∛2).
-# Previously LEVEL_STEP was 3.375 and TIER_STEP was √3.375; downstream code
-# that relied on specific numeric values should migrate to the new names.
+# Legacy aliases for backward compatibility.
 LEVEL_STEP: float = LEVEL_UP_MOD
 TIER_STEP: float = TIER_UP_MOD
 
