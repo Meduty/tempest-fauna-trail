@@ -23,7 +23,8 @@ Planned and implemented T6: the OpenWeather API client (`src/api/weather.py`).
 - **Synchronous** — callers thread it (V.4); keeps the client simple and
   testable.
 - **`WeatherResult` dataclass** — carries `state`, `temperature`, `icon_code`,
-  `description`, and raw `weather_id` for downstream use (UI icons, tooltips).
+  `description`, raw `weather_id`, and fallback observability fields
+  `is_fallback` / `error` for downstream handling of degraded data.
 
 ### No blockers encountered
 

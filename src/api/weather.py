@@ -17,6 +17,14 @@ logger = logging.getLogger(__name__)
 
 _BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 _TIMEOUT = 10  # seconds
+_FALLBACK_WEATHER = {
+    WeatherState.CLEAR: ("01d", 800),
+    WeatherState.CLOUDY: ("03d", 803),
+    WeatherState.MIST: ("50d", 701),
+    WeatherState.RAIN: ("10d", 500),
+    WeatherState.SNOW: ("13d", 600),
+    WeatherState.THUNDER: ("11d", 200),
+}
 
 
 @dataclass(frozen=True)
@@ -34,12 +42,13 @@ class WeatherResult:
 
 def _fallback_result(fallback: WeatherState, error: str) -> WeatherResult:
     """Build a safe fallback result when the API call fails."""
+    icon_code, weather_id = _FALLBACK_WEATHER[fallback]
     return WeatherResult(
         state=fallback,
         temperature=0.0,
-        icon_code="01d",
+        icon_code=icon_code,
         description="unknown",
-        weather_id=800,
+        weather_id=weather_id,
         is_fallback=True,
         error=error,
     )

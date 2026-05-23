@@ -53,6 +53,8 @@ class WeatherResult:
     icon_code: str            # e.g. "10d" — for UI icon URL
     description: str          # e.g. "light rain"
     weather_id: int           # raw OW weather condition id
+    is_fallback: bool = False # True when produced after a failed fetch
+    error: str | None = None  # Human-readable failure reason for fallback results
 
 class WeatherClient:
     """Synchronous OpenWeather API client."""
@@ -92,8 +94,8 @@ Extract from JSON response:
 
 Wrap entire fetch+parse in try/except. On any exception:
 1. Log warning (to stderr or logging module).
-2. Return `WeatherResult(state=fallback, temperature=0.0, icon_code="01d",
-   description="unknown", weather_id=800)`.
+2. Return `WeatherResult(state=fallback, temperature=0.0, icon_code=<fallback icon>,
+   description="unknown", weather_id=<fallback id>, is_fallback=True, error=<reason>)`.
 
 ### 5.4 Timeout
 
@@ -135,6 +137,7 @@ All tests mock `requests.get` — no real network calls.
 - [x] `WeatherClient` can be instantiated with explicit key or env var.
 - [x] `fetch_weather()` returns correct `WeatherResult` on happy path.
 - [x] `fetch_weather()` never raises — returns fallback on any failure.
+- [x] Fallback results expose observability via `is_fallback=True` and `error`.
 - [x] All 6 weather states map correctly from sample OW ids.
 - [x] Unit tests pass with mocked HTTP.
 - [x] No Flet imports (V.1 — this is in `api/`, not `game/`).

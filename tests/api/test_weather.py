@@ -209,7 +209,8 @@ class TestFallbackResult:
         result = _fallback_result(WeatherState.THUNDER, error="some error")
         assert result.state == WeatherState.THUNDER
         assert result.temperature == 0.0
-        assert result.icon_code == "01d"
+        assert result.icon_code == "11d"
+        assert result.weather_id == 200
         assert result.is_fallback is True
         assert result.error == "some error"
         assert isinstance(result, WeatherResult)
