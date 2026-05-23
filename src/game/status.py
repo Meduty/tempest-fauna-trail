@@ -42,6 +42,7 @@ class StatusDef:
     gates: tuple[StatusGate, ...] = ()
     dot_per_tick: float = 0.0  # Damage per tick (burn, poison)
     dot_scales_with_stacks: bool = False  # Poison: damage * stacks
+    decay_stacks_per_tick: bool = False  # Poison: each tick removes one stack
 
 
 # ---------------------------------------------------------------------------
@@ -97,7 +98,8 @@ POISON = _register(StatusDef(
     display_name="Poison",
     stack_behaviour=StackBehaviour.STACK,
     dot_per_tick=1.5,
-    dot_scales_with_stacks=True,  # damage * stacks, stacks decay one per tick
+    dot_scales_with_stacks=True,
+    decay_stacks_per_tick=True,  # One stack removed per tick after DOT is applied
 ))
 
 SLOW = _register(StatusDef(

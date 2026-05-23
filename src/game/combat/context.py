@@ -210,7 +210,7 @@ class CombatContext:
         raw = self._bus.fire_reducing("on_damage_pre", pre_event, raw, cast_id=self._current_cast_id, ctx=self)
 
         # Mitigation
-        if tag == SourceTag.TRUE:
+        if tag == SourceTag.TRUE or damage_type == "true":
             final = raw
         else:
             pen_flat = attacker.stat("penetration") if hasattr(attacker, "stat") else 0.0
@@ -269,6 +269,9 @@ class CombatContext:
         """Apply a status effect to a target."""
         if not target.alive:
             return
+
+        if status_id not in STATUS_DEFS:
+            raise ValueError(f"Unknown status_id {status_id!r} — not found in STATUS_DEFS")
 
         status_def = STATUS_DEFS.get(status_id)
         existing = target.get_status(status_id)

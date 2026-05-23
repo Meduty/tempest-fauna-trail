@@ -27,6 +27,8 @@ MAX_TICKS = 7_200
 
 # Sudden death: kicks in at MAX_TICKS, escalating DOT per tick
 SUDDEN_DEATH_TICK_START = MAX_TICKS
+# Hard cap — sudden-death DOT will resolve combat well before this
+HARD_CAP_TICKS = MAX_TICKS + 2_000
 
 
 # ---------------------------------------------------------------------------
@@ -72,6 +74,11 @@ def process_statuses(ctx: CombatContext, pieces: list[Piece]) -> None:
                 if status_def.dot_scales_with_stacks:
                     dot_amount *= status.stacks
                 ctx.deal_damage(piece, piece, dot_amount, SourceTag.DOT, damage_type="true")
+                # Decay stacks after DOT (e.g. POISON loses one stack per tick)
+                if status_def.decay_stacks_per_tick and status.stacks > 0:
+                    status.stacks -= 1
+                    if status.stacks == 0:
+                        expired.append(i)
 
         # Remove expired statuses (in reverse order to maintain indices)
         for i in reversed(expired):
@@ -104,6 +111,8 @@ def expire_modifiers(ctx: CombatContext, pieces: list[Piece]) -> None:
 
 def process_casts(ctx: CombatContext, piece: Piece) -> None:
     """Check if any ability slots are ready to cast. Multi-slot support."""
+    from src.game.registries import ABILITY_REGISTRY
+
     if piece.is_gated(StatusGate.BLOCKS_CAST):
         return
     if not piece.alive:
@@ -117,6 +126,9 @@ def process_casts(ctx: CombatContext, piece: Piece) -> None:
     for slot_idx in sorted_indices:
         slot = piece.actives[slot_idx]
         if slot.current_mana < slot.cost:
+            continue
+        # Skip unregistered abilities without spending mana
+        if slot.ability_id not in ABILITY_REGISTRY:
             continue
         # Spend mana and cast
         slot.current_mana = 0.0
@@ -143,7 +155,7 @@ def run(ctx: CombatContext) -> str:
         team_alive = any(p.alive and not p.is_enemy for p in pieces)
         return "team" if team_alive else "enemy"
 
-    for tick in range(1, MAX_TICKS + 1):
+    for tick in range(1, HARD_CAP_TICKS + 1):
         ctx.current_tick = tick
 
         if ctx.combat_ended:
@@ -151,6 +163,14 @@ def run(ctx: CombatContext) -> str:
 
         # Fire on_tick
         ctx.bus.fire("on_tick", TickEvent(tick=tick), ctx=ctx)
+
+        # Sudden death: apply escalating DOT to all living pieces once MAX_TICKS is passed
+        if tick >= SUDDEN_DEATH_TICK_START:
+            for piece in pieces:
+                if piece.alive:
+                    # Short duration ensures the status stays active between ticks
+                    # (re-applied each tick; STACK behaviour accumulates stacks)
+                    ctx.apply_status(piece, "sudden_death", 3)
 
         # Process statuses (expire, DOT)
         process_statuses(ctx, pieces)

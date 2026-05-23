@@ -1,19 +1,14 @@
 """Loadout compiler — the isolation boundary (T20).
 
 This is the ONLY module that imports both content registries and combat types.
-It compiles a team + items + traits + augments into an initialised combat context.
+It compiles a team + enemies into combat-ready Pieces and an EventBus.
 
-Application order (deterministic, per effect_systems_design.md §10.1):
-1. Deep-copy input pieces (combat doesn't mutate Run state)
-2. Apply items' granted_traits FIRST (emblems visible to trait counting)
-3. Resolve trait breakpoints (count unique champion ids)
-4. Apply trait bundles (per-trait-piece or team-wide)
-5. Apply item bundles (modifiers + hooks)
-6. Apply augment bundles (PIECE-filtered, then TEAM)
-7. Apply champion passive bundles
-8. Apply boss phase-1 passives
-9. Wire quest trackers for active RUN-scope augments
-10. Fire on_combat_start
+Currently implements:
+1. Build Pieces from Champion/Enemy models (fresh instances, not deep-copies of Run state)
+2. Apply champion/enemy passive bundles
+
+Full application order (items, traits, augments, boss phase-1 passives, etc.) is
+planned per effect_systems_design.md §10.1 and will be added as those systems are built.
 """
 
 from __future__ import annotations
@@ -25,6 +20,7 @@ from src.game.models import Champion, Enemy, WeatherState
 from src.game.piece import ActiveSlot, Piece
 from src.game.registries import ABILITY_REGISTRY, PASSIVE_REGISTRY
 from src.game.status import StatusInstance
+from src.game import abilities as _abilities  # noqa: F401 — triggers @register decorators
 
 DEFAULT_ABILITY_COST = 36_000
 

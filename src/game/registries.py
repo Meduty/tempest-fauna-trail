@@ -95,10 +95,10 @@ class SimpleActive:
     """
     target: str = "primary"  # TargetSelector key
     damage: float = 0.0
-    scaling: str = ""  # e.g. "str*1.5" or "int*2.0"
+    scaling: str = ""  # e.g. "strength*1.5" or "intelligence*2.0"
     tag: SourceTag = SourceTag.ABILITY
     heal_amount: float = 0.0
-    heal_scaling: str = ""
+    heal_scaling: str = ""  # e.g. "intelligence*0.5"
     heal_target: str = ""  # "lowest_hp_ally" etc.
 
 
@@ -127,7 +127,25 @@ def register_active_simple(ability_id: str, spec: SimpleActive) -> None:
 
 
 def _eval_scaling(base: float, scaling: str, actor: Any) -> float:
-    """Evaluate a scaling expression like 'str*1.5' or 'int*2.0+100'."""
+    """Evaluate a scaling expression like 'strength*1.5' or 'intelligence*2.0+100'.
+
+    Stat name aliases are supported for convenience (e.g. 'str' → 'strength',
+    'int' → 'intelligence').  Unknown stat names produce a zero contribution so
+    that typos are silent no-ops rather than exceptions; they will be flagged as
+    a ValueError if strict validation is ever required.
+    """
+    # Short-hand → canonical stat name mapping
+    _STAT_ALIASES: dict[str, str] = {
+        "str": "strength",
+        "int": "intelligence",
+        "atk": "attack_speed",
+        "spd": "move_speed",
+        "mr": "mana_regen",
+        "arm": "armor",
+        "res": "resistance",
+        "pen": "penetration",
+    }
+
     if not scaling:
         return base
 
@@ -140,6 +158,7 @@ def _eval_scaling(base: float, scaling: str, actor: Any) -> float:
         if "*" in part:
             stat_name, coeff = part.split("*", 1)
             stat_name = stat_name.strip()
+            stat_name = _STAT_ALIASES.get(stat_name, stat_name)
             coeff_val = float(coeff.strip())
             stat_val = actor.stat(stat_name) if hasattr(actor, "stat") else 0.0
             total += stat_val * coeff_val
