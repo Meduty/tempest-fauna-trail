@@ -32,7 +32,7 @@ TIER_UP_MOD: float = LEVEL_UP_MOD ** (1 / 3)  # ≈ 1.2599
 # L1 = base (0), L2 = 1 tripling, L3 = 3 triplings (1 tripling of L2 copies).
 TRIPLINGS: dict[int, int] = {1: 0, 2: 1, 3: 3}
 
-# Legacy aliases for backward compatibility.
+# Legacy aliases kept for backward compatibility with callers using old names.
 LEVEL_STEP: float = LEVEL_UP_MOD
 TIER_STEP: float = TIER_UP_MOD
 
