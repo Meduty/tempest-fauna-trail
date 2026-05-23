@@ -167,7 +167,8 @@ class WeatherRefresher:
         Args:
             cache: The shared WeatherCache instance.
             client: WeatherClient for API calls.
-            get_current_node_index: Callable returning current 1-based node index.
+            get_current_node_index: Callable returning current 0-based index
+                into the cache's city_ids list.
             tick_interval: Seconds between ticks (default 60).
         """
 
@@ -205,11 +206,13 @@ Fetch each in order.
 
 ### 5.2 B-Stream Window Clamping
 
-`window_start = current_node_index` (0-based index into city_ids list)
-`window_end = min(window_start + 6, len(city_ids))`
-`window = city_ids[window_start : window_end]`
+All indices are 0-based into the `city_ids` list.
 
-If window is empty (player at last node), B produces nothing for that tick.
+`window_start = current_node_index + 1` (first city *ahead* of current)
+`window_end = min(window_start + 6, len(city_ids))` (exclusive upper bound)
+`window = city_ids[window_start : window_end]` → up to 6 cities
+
+If window is empty (player at or past last node), B produces nothing for that tick.
 
 B round-robin wraps within its own window slice, not globally.
 
