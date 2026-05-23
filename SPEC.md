@@ -55,12 +55,17 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 
 - V.1: `game/` has zero Flet imports — pure logic, no UI coupling
 - V.2: Combat is pure function — `resolve_combat(team, enemies, weather) -> BattleResult`
-- V.3: API failure never crashes app — fallback to cached data or Clear weather
+- V.3: API failure never crashes app — failed fetch leaves node `unknown` (never-succeeded) or `substitute` (holds `CITIES[city_id].default_weather`); refresher streams keep retrying, never escalate
 - V.4: All HTTP calls run on `threading.Thread`, never main thread
 - V.5: Weather state enum: exactly 6 values (Clear, Cloudy, Mist, Rain, Snow, Thunder), mapped 1:1 to OpenWeather id main groups
 - V.6: Each piece (Champion, Enemy, CombatPieceState) carries exactly one `affinity: WeatherState` field; it drives both weather systems (node-weather buff/debuff and the affinity damage triangle) — there is no separate weakness field
 - V.8: `Champion.traits: list[str]` holds auto-chess synergy tags (Hunter, Mammal, Reptile, etc.). Distinct from `affinity`. Synergy tags are open-ended strings owned by content (T.5); engine treats them as opaque labels for grouping.
 - V.7: Route is a staged path with multiple stages (one per continent, up to 6), with one or more nodes per stage and a final boss fight node in a famous city.
+- V.9: Cache always populated post-init — every node ∈ {`unknown`, `live`, `substitute`}; engine never reads `None`
+- V.10: Cache + refresher stateless re: game — refresher reads `Run.current_node` only for B-stream window, never writes game state
+- V.11: Refresher tick = 1/min, fires 3 streams (A: full RR 50; B: RR window `[current+1 .. current+6]` count-clamped at trail end; C: uniform random 50), deduped per tick → ≤3 API calls/min; A alone bounds staleness ≤ 50 min
+- V.12: Locked node weather = frozen snapshot in `Run`; cache may refresh same city, engine ignores cache for that node and reads `Run`
+- V.13: Advance to `unknown` triggers one synchronous fetch + lock; on fetch fail, lock `substitute` with `CITIES[city_id].default_weather`
 
 ## T. Tasks
 
@@ -72,7 +77,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.4 | City route — ~50 cities (one per node) across 6 staged continents, coordinates, stage affinity, enemy pools | `game/route.py` | T.1 | M |
 | T.5 | Content — define champion roster (target: 1 per affinity × 10 tiers = ~60 champions; MVP cut OK) + ~5 enemy types with stats + synergy trait catalog | `game/content.py` | T.1 | M |
 | T.6 | OpenWeather client — fetch current weather, parse to WeatherState | `api/weather.py` | T.1 | S |
-| T.7 | Cache layer — JSON file cache with 1h TTL | `api/cache.py` | T.6 | S |
+| T.7 | Cache + refresher — stateless per-city cache (`unknown` / `live`+`fetched_at` / `substitute` holding city-default weather), 3-stream refresher (A full RR 50, B window `[current+1..+6]` count-clamped, C uniform random) ticks 1/min deduped → ≤3 calls/min, sync fetch on advance-to-`unknown` | `api/cache.py`, `api/refresher.py`, `docs/design/tasks/t7_cache_refresher_plan.md` | T.6 | M |
 | T.8 | Theme + shared components — colors, fonts, champion card, weather badge | `ui/theme.py`, `ui/components/` | — | S |
 | T.9 | Main menu view — new game, load game, quit | `ui/views/menu.py`, `main.py` | T.8 | S |
 | T.10 | Team recruit view — pick 3 champions from roster | `ui/views/recruit.py` | T.5, T.8 | M |
@@ -115,6 +120,17 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - Route locked: 6 continent stages, 50 linear nodes, one distinct city per node;
   each stage carries an authored affinity (one per `WeatherState`).
 - Detailed T.4 plan: `docs/design/tasks/t4_city_route_plan.md`.
+
+### T.7 Planning Notes
+
+- Cache state per city: `unknown` (initial), `live` (fetched ok + `fetched_at` age), `substitute` (fetch failed, holds `CITIES[city_id].default_weather`). Substitutes retry every tick; success flips to `live`.
+- 3 streams per 1-min tick, dedupe order A→B→C: A = full RR over 50; B = RR over `[current+1..+6]` (count-clamped at trail end, modbus-style base+count, no wrap, no pad); C = uniform random over 50 (no freshness re-roll). A alone ⇒ ≤ 50 min staleness everywhere.
+- Run init: alloc cache as 50× `unknown`, fire tick #1 sync (fetches nodes 0, 1, + 1 random), then start. Node 0 locks from tick-1 result.
+- Lock semantics: on advance, snapshot cache entry into `Run`. Cache keeps refreshing same city (harmless). Engine reads `Run` for locked nodes, cache for unlocked.
+- Advance-to-`unknown` = single sync fetch + lock; on fail, lock substitute. Rare path: tick beats player advance speed.
+- No backoff on repeated fetch fails; streams keep firing at 3/min.
+- UI age warnings (subtle top-right indicator when any `substitute` present or any `live` aged > 2h, hover lists affected cities) deferred — see D.17.
+- Detailed plan: `docs/design/tasks/t7_cache_refresher_plan.md`.
 
 ### T.18-T.24 Planning Notes (Systems Expansion)
 
@@ -223,6 +239,9 @@ in their T-task plan docs; what remains here is genuinely undecided.
   `/summary`) is stale against `views_spec.md` (`/trail`, `/prep`); a single
   canonical route set must be chosen. `views_spec.md` §11 is also stale
   (7-node route, 4-value `NodeType`) and needs a sync pass.
+- D.17 Cache health UX: warn indicator surface when any node is `substitute`
+  or any `live` weather aged > 2h; hover shows affected cities; smart
+  failsafe copy when many nodes degraded. Polish layer over T.7 cache states.
 
 ## Implementation Order
 
