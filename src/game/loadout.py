@@ -26,6 +26,8 @@ from src.game.piece import ActiveSlot, Piece
 from src.game.registries import ABILITY_REGISTRY, PASSIVE_REGISTRY
 from src.game.status import StatusInstance
 
+DEFAULT_ABILITY_COST = 36_000
+
 
 def apply_bundle(
     target: Piece,
@@ -56,10 +58,9 @@ def apply_bundle(
 
     for ability_id in bundle.granted_abilities:
         # Look up cost from registry meta if available
-        cost = 36_000  # Default cost
         target.actives.append(ActiveSlot(
             ability_id=ability_id,
-            cost=cost,
+            cost=DEFAULT_ABILITY_COST,
         ))
 
     for hook in bundle.hooks:
