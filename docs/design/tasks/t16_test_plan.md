@@ -71,14 +71,14 @@ tests/
 ```python
 def test_same_seed_same_squad():
     """Identical (seed, node_index, channel) → byte-equal enemy squads."""
-    squad_a = generate_fight(seed=42, node_index=5, stage=STAGES[2])
-    squad_b = generate_fight(seed=42, node_index=5, stage=STAGES[2])
+    squad_a = generate_fight(run_seed=42, node_index=5, stage=STAGES[2])
+    squad_b = generate_fight(run_seed=42, node_index=5, stage=STAGES[2])
     assert_squads_equal(squad_a, squad_b)
 
 def test_different_seed_different_squad():
     """Different seeds → different squads (with high probability)."""
-    squad_a = generate_fight(seed=42, node_index=5, stage=STAGES[2])
-    squad_b = generate_fight(seed=99, node_index=5, stage=STAGES[2])
+    squad_a = generate_fight(run_seed=42, node_index=5, stage=STAGES[2])
+    squad_b = generate_fight(run_seed=99, node_index=5, stage=STAGES[2])
     assert squad_a != squad_b
 
 def test_pythonhashseed_stability():
@@ -95,12 +95,12 @@ def test_pythonhashseed_stability():
 def test_subseed_isolation():
     """Changing node 4's outcome does not shift node 5."""
     # Generate squad for node 5 normally
-    squad_5a = generate_fight(seed=42, node_index=5, stage=STAGES[2])
+    squad_5a = generate_fight(run_seed=42, node_index=5, stage=STAGES[2])
 
     # Hypothetically "change" node 4 by using a different seed for node 4
     # (simulating a different player choice at node 4)
     # Node 5's squad must be identical because sub-seeds are independent
-    squad_5b = generate_fight(seed=42, node_index=5, stage=STAGES[2])
+    squad_5b = generate_fight(run_seed=42, node_index=5, stage=STAGES[2])
     assert_squads_equal(squad_5a, squad_5b)
 
 def test_channel_isolation():
@@ -117,7 +117,7 @@ def test_budget_adherence():
     """Total enemy power ≤ node_budget + BUDGET_TOLERANCE."""
     for stage in STAGES:
         for node_idx in range(len(stage.node_cities)):
-            squad = generate_fight(seed=42, node_index=node_idx, stage=stage)
+            squad = generate_fight(run_seed=42, node_index=node_idx, stage=stage)
             total_power = sum(power(e.tier, 1) for e in squad)
             expected_budget = stage_base(stage.index) * 1.15  # max variance
             assert total_power <= expected_budget + BUDGET_TOLERANCE
@@ -134,14 +134,14 @@ def test_minimum_squad_size():
 def test_tier_gating():
     """No enemy tier appears outside its stage-eligible range."""
     for stage in STAGES:
-        squad = generate_fight(seed=42, node_index=0, stage=stage)
+        squad = generate_fight(run_seed=42, node_index=0, stage=stage)
         min_tier, max_tier = TIER_GATES[stage.index]
         for enemy in squad:
             assert min_tier <= enemy.tier <= max_tier
 
 def test_duplicate_limit():
     """No more than max_dupes copies of the same enemy type."""
-    squad = generate_fight(seed=42, node_index=0, stage=STAGES[4])
+    squad = generate_fight(run_seed=42, node_index=0, stage=STAGES[4])
     from collections import Counter
     counts = Counter(e.id for e in squad)
     for enemy_id, count in counts.items():
@@ -154,7 +154,7 @@ def test_affinity_distribution():
     stage_count = 0
     other_count = 0
     for seed in range(100):
-        squad = generate_fight(seed=seed, node_index=3, stage=STAGES[2])
+        squad = generate_fight(run_seed=seed, node_index=3, stage=STAGES[2])
         for e in squad:
             if e.affinity == WeatherState.CLEAR:
                 clear_count += 1
@@ -498,8 +498,8 @@ def test_frontline_ahead_of_backline():
     """Frontline average column < backline average column (closer to player)."""
     enemies = make_mixed_squad()
     formation = plan_enemy_formation(enemies)
-    frontline_cols = [formation[e.id][0] for e in enemies if classify_role(e) == PlacementRole.FRONTLINE]
-    backline_cols = [formation[e.id][0] for e in enemies if classify_role(e) == PlacementRole.BACKLINE]
+    frontline_cols = [formation[e.piece_id][0] for e in enemies if classify_role(e) == PlacementRole.FRONTLINE]
+    backline_cols = [formation[e.piece_id][0] for e in enemies if classify_role(e) == PlacementRole.BACKLINE]
     if frontline_cols and backline_cols:
         assert mean(frontline_cols) < mean(backline_cols)
 
@@ -507,7 +507,7 @@ def test_center_out_packing():
     """Pieces in the same column cluster around center row."""
     enemies = make_frontline_squad(size=3)
     formation = plan_enemy_formation(enemies)
-    rows = [formation[e.id][1] for e in enemies]
+    rows = [formation[e.piece_id][1] for e in enemies]
     center = BOARD_HEIGHT // 2
     assert center in rows  # Center row is used
 
@@ -539,14 +539,14 @@ def test_boss_at_authored_position():
     boss = make_boss_piece()
     minions = make_enemy_squad(size=5)
     formation = plan_enemy_formation([boss] + minions)
-    assert formation[boss.id] == BOSS_POSITION
+    assert formation[boss.piece_id] == BOSS_POSITION
 
 def test_overflow_handling():
     """Column overflow spills to adjacent column."""
     # Create 8 frontline enemies (more than 7 rows)
     enemies = make_frontline_squad(size=8)
     formation = plan_enemy_formation(enemies)
-    cols = [formation[e.id][0] for e in enemies]
+    cols = [formation[e.piece_id][0] for e in enemies]
     assert 8 in cols  # At least one spilled to column 8
 ```
 
@@ -686,14 +686,14 @@ class TestDeterminism:
 
     def test_encounter_determinism(self):
         """Same run seed → identical encounter sequence across all nodes."""
-        nodes_a = [generate_fight(seed=42, node_index=i, stage=STAGES[i//10]) for i in range(50)]
-        nodes_b = [generate_fight(seed=42, node_index=i, stage=STAGES[i//10]) for i in range(50)]
+        nodes_a = [generate_fight(run_seed=42, node_index=i, stage=STAGES[i//10]) for i in range(50)]
+        nodes_b = [generate_fight(run_seed=42, node_index=i, stage=STAGES[i//10]) for i in range(50)]
         for a, b in zip(nodes_a, nodes_b):
             assert_squads_equal(a, b)
 
     def test_formation_determinism(self):
         """Same squad → same formation."""
-        squad = generate_fight(seed=42, node_index=5, stage=STAGES[2])
+        squad = generate_fight(run_seed=42, node_index=5, stage=STAGES[2])
         pieces = [to_combat_state(e) for e in squad]
         f1 = plan_enemy_formation(pieces)
         f2 = plan_enemy_formation(pieces)
@@ -702,7 +702,7 @@ class TestDeterminism:
     def test_full_pipeline_determinism(self):
         """Full pipeline: encounter gen → formation → combat → same result."""
         for seed in range(10):
-            squad = generate_fight(seed=seed, node_index=3, stage=STAGES[1])
+            squad = generate_fight(run_seed=seed, node_index=3, stage=STAGES[1])
             team = generate_team(seed=seed)
             pieces_a = [to_combat_state(e) for e in squad]
             pieces_b = [to_combat_state(e) for e in squad]

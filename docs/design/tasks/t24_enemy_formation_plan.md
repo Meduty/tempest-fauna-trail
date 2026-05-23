@@ -77,8 +77,10 @@ for max squad size (~10–11).
 
 ### 4.1 Role classification from piece data
 
-Each enemy piece carries `primary_stat`, `range_`, and `durability` fields from
-`content.py`. These are mapped to **placement roles**:
+`CombatPieceState` is runtime combat data and does not carry archetype fields
+like `range_` / `durability`. Role classification therefore reads those fields
+from the originating `EnemyDef` in `content.py`, looked up by `piece_id`.
+These are mapped to **placement roles**:
 
 ```python
 class PlacementRole(Enum):
@@ -91,10 +93,10 @@ class PlacementRole(Enum):
 **Classification rules:**
 
 ```python
-def classify_role(enemy: EnemyDef | Enemy) -> PlacementRole:
+def classify_role(enemy_def: EnemyDef) -> PlacementRole:
     # Use archetype tags from content.py
-    durability = enemy.durability
-    range_ = enemy.range_
+    durability = enemy_def.durability
+    range_ = enemy_def.range_
 
     # Tanks go front
     if durability in ("tanky_hp", "tanky_arm"):
@@ -186,7 +188,7 @@ def place_flankers(flankers: list, occupied: set[tuple[int, int]]) -> dict[str, 
         if (col, row) in occupied:
             # Spill to adjacent unoccupied cell
             row = _nearest_free_row(col, row, occupied)
-        placements[piece.id] = (col, row)
+        placements[piece.piece_id] = (col, row)
         occupied.add((col, row))
     return placements
 ```
@@ -204,6 +206,7 @@ nearest column:
 ```python
 def plan_enemy_formation(
     enemies: list[CombatPieceState],
+    enemy_defs_by_piece_id: dict[str, EnemyDef],
     *,
     board_width: int = BOARD_WIDTH,
     board_height: int = BOARD_HEIGHT,
@@ -215,23 +218,44 @@ def plan_enemy_formation(
     # 1. Classify roles
     buckets: dict[PlacementRole, list] = {role: [] for role in PlacementRole}
     for enemy in sorted(enemies, key=lambda e: (e.piece_id,)):  # deterministic order
-        role = classify_role(enemy)
+        enemy_def = enemy_defs_by_piece_id.get(enemy.piece_id)
+        if enemy_def is None:
+            raise ValueError(f"Missing EnemyDef for piece_id={enemy.piece_id!r}")
+        role = classify_role(enemy_def)
         buckets[role].append(enemy)
 
     occupied: set[tuple[int, int]] = set()
     placements: dict[str, tuple[int, int]] = {}
 
     # 2. Place frontline (column 7, center-out)
-    _place_band(buckets[PlacementRole.FRONTLINE], col=7, occupied, placements, board_height)
+    _place_band(
+        buckets[PlacementRole.FRONTLINE],
+        col=7,
+        occupied=occupied,
+        placements=placements,
+        board_height=board_height,
+    )
 
     # 3. Place flankers (edges of columns 7-8)
     _place_flankers(buckets[PlacementRole.FLANK], occupied, placements, board_height)
 
     # 4. Place midline (column 8, center-out)
-    _place_band(buckets[PlacementRole.MIDLINE], col=8, occupied, placements, board_height)
+    _place_band(
+        buckets[PlacementRole.MIDLINE],
+        col=8,
+        occupied=occupied,
+        placements=placements,
+        board_height=board_height,
+    )
 
     # 5. Place backline (column 9, center-out)
-    _place_band(buckets[PlacementRole.BACKLINE], col=9, occupied, placements, board_height)
+    _place_band(
+        buckets[PlacementRole.BACKLINE],
+        col=9,
+        occupied=occupied,
+        placements=placements,
+        board_height=board_height,
+    )
 
     return placements
 ```

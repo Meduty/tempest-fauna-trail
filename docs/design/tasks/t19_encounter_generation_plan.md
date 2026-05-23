@@ -229,6 +229,8 @@ def roll_squad(
 
     # Ensure minimum squad size
     if len(squad) < min_count:
+        if not pool:
+            raise ValueError("roll_squad requires a non-empty enemy pool")
         cheapest = min(pool, key=lambda e: e.tier)
         while len(squad) < min_count:
             squad.append(instantiate_enemy(cheapest, level=1))

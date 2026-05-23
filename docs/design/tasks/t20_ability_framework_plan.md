@@ -210,7 +210,7 @@ target filtering:
 @register_active("storm_surge")
 def storm_surge(ctx, actor, targets):
     base = 50 + compute_stat(actor, "ability_power", ctx) * 2.0
-    damage = base * 1.5 if ctx.weather is WeatherState.THUNDER else base
+    damage = base * 1.5 if ctx.weather == WeatherState.THUNDER else base
     for t in targets:
         ctx.deal_damage(actor, t, damage, SourceTag.ABILITY)
 ```
@@ -259,7 +259,7 @@ returns an `EffectBundle` whose hooks close over the owner:
 @register_passive("static_buildup")
 def static_buildup(owner):
     def hook(ctx, ev):
-        if ev.attacker is owner and ctx.weather is WeatherState.THUNDER:
+        if ev.attacker is owner and ctx.weather == WeatherState.THUNDER:
             ctx.apply_status(ev.target, "charged", duration_ticks=200, stacks=1)
     return EffectBundle(hooks=[Hook("on_attack_landed", hook)])
 ```
@@ -434,7 +434,7 @@ identity, T20 ships a reference passive:
 def sunlit_vigor(owner):
     """CLEAR-affinity pieces gain a stat buff when node weather is CLEAR."""
     def hook(ctx, ev):
-        if ctx.weather is WeatherState.CLEAR and owner.affinity == WeatherState.CLEAR:
+        if ctx.weather == WeatherState.CLEAR and owner.affinity == WeatherState.CLEAR:
             ctx.apply_modifier(owner, Modifier("strength", "add", 15, Lifetime.COMBAT, "passive:sunlit_vigor"))
             ctx.apply_modifier(owner, Modifier("intelligence", "add", 15, Lifetime.COMBAT, "passive:sunlit_vigor"))
     return EffectBundle(hooks=[Hook("on_combat_start", hook, scope=HookScope.ONCE_PER_COMBAT)])
