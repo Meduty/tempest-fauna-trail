@@ -579,6 +579,8 @@ class Run:
     battle_log: list[BattleResult] = field(default_factory=list)
     inventory: dict[str, int] = field(default_factory=dict)
     gold: int = 0
+    content_version: str = "1.0.0"
+    difficulty_coefficient: float = 1.0
 
     def __post_init__(self) -> None:
         if self.schema_version < 1:
@@ -677,6 +679,8 @@ class Run:
             "bench": [champion.to_dict() for champion in self.bench],
             "route": [node.to_dict() for node in self.route],
             "battle_log": [result.to_dict() for result in self.battle_log],
+            "content_version": self.content_version,
+            "difficulty_coefficient": self.difficulty_coefficient,
         }
 
     @classmethod
@@ -699,4 +703,6 @@ class Run:
             ],
             inventory=dict(payload.get("inventory", {})),
             gold=payload.get("gold", 0),
+            content_version=payload.get("content_version", "1.0.0"),
+            difficulty_coefficient=payload.get("difficulty_coefficient", 1.0),
         )
