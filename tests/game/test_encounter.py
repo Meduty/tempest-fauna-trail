@@ -56,21 +56,21 @@ class TestFilterPool:
     """Pool filtering respects tier/faction constraints."""
 
     def test_no_t10_enemies(self):
-        for stage in STAGES:
-            pool = filter_pool(stage)
+        for _stage in STAGES:
+            pool = filter_pool()
             assert all(d.tier != 10 for d in pool), "T10 should be excluded"
 
     def test_faction_filter(self):
-        pool = filter_pool(STAGES[0], faction="human")
+        pool = filter_pool(faction="human")
         assert all("human" in d.tags for d in pool)
 
     def test_tier_range_filter(self):
-        pool = filter_pool(STAGES[0], tier_range=(3, 5))
+        pool = filter_pool(tier_range=(3, 5))
         assert all(3 <= d.tier <= 5 for d in pool)
 
     def test_full_pool_not_empty(self):
-        for stage in STAGES:
-            pool = filter_pool(stage)
+        for _stage in STAGES:
+            pool = filter_pool()
             assert len(pool) > 0
 
 
@@ -78,7 +78,7 @@ class TestRollSquad:
     """Squad generation respects budget, composition, and determinism."""
 
     def test_deterministic(self):
-        pool = filter_pool(STAGES[0])
+        pool = filter_pool()
         rng1 = Random(derive_seed(42, 1, CH_ENEMIES))
         rng2 = Random(derive_seed(42, 1, CH_ENEMIES))
         s1 = roll_squad(rng1, 5.0, pool, stage_index=1)
@@ -86,24 +86,33 @@ class TestRollSquad:
         assert [(e.id, e.tier, e.level) for e in s1] == [(e.id, e.tier, e.level) for e in s2]
 
     def test_respects_min_count(self):
-        pool = filter_pool(STAGES[0])
+        pool = filter_pool()
         rng = Random(1)
         squad = roll_squad(rng, 0.1, pool, min_count=2, stage_index=1)
         assert len(squad) >= 2
 
     def test_respects_max_count(self):
-        pool = filter_pool(STAGES[5])
+        pool = filter_pool()
         rng = Random(1)
         squad = roll_squad(rng, 999.0, pool, max_count=5, stage_index=6)
         assert len(squad) <= 5
 
     def test_max_dupes(self):
-        pool = filter_pool(STAGES[0])
+        pool = filter_pool()
         rng = Random(42)
         squad = roll_squad(rng, 10.0, pool, max_dupes=2, stage_index=1)
         from collections import Counter
         counts = Counter(e.id for e in squad)
         assert all(c <= 2 for c in counts.values()), f"Dupe violation: {counts}"
+
+    def test_invalid_min_max_count_raises(self):
+        with pytest.raises(ValueError, match="min_count <= max_count"):
+            roll_squad(Random(1), 5.0, filter_pool(), min_count=3, max_count=2, stage_index=1)
+
+    def test_impossible_duplicate_cap_raises(self):
+        single_enemy_pool = filter_pool(tier_range=(1, 1))[:1]
+        with pytest.raises(ValueError, match="cannot satisfy min_count"):
+            roll_squad(Random(1), 0.1, single_enemy_pool, min_count=2, max_count=2, max_dupes=1, stage_index=1)
 
     def test_empty_pool_raises(self):
         with pytest.raises(ValueError, match="non-empty"):
@@ -112,7 +121,7 @@ class TestRollSquad:
     def test_budget_adherence(self):
         """Total squad power should be roughly within budget."""
         for seed in range(10):
-            pool = filter_pool(STAGES[2])
+            pool = filter_pool()
             rng = Random(derive_seed(seed, 15, CH_ENEMIES))
             budget = 18.0
             squad = roll_squad(rng, budget, pool, stage_index=3)

@@ -189,7 +189,6 @@ challenge for experienced players.
 | 6 | ~55–80 P (8–10 T7–9, L2+kept pieces) | **65.0** | 10 |
 
 The formula `stage_base ≈ 3.5 × 1.8^(stage-1)` approximates these.
-`STAGE_BASE_OVERRIDE: dict[int, float]` is available for hand-tuning.
 
 **DC application:** `effective_base = stage_base[stage] × DC`
 
@@ -210,7 +209,7 @@ cheap pick), `roll_squad` uses a **template-based smart-pick** algorithm:
    - Each slot has a target role/tier/affinity
    - Pick candidates matching the target; if none fit, widen criteria
    - If a rolled team doesn't meet composition criteria, **reroll** (up to
-     5 attempts) using incremented sub-seeds
+     5 attempts) by continuing the same deterministic RNG stream
 
 3. **Budget validation** — the composed squad's total P must be within
    budget ± tolerance. If over-budget after template fill, swap the most
@@ -278,7 +277,7 @@ Tempest progression.
 def generate_fight(run_seed: int, node_index: int, stage: StageDef, dc: float = 1.0) -> list[Enemy]:
     rng = Random(derive_seed(run_seed, node_index, CH_ENEMIES))
     budget = stage_base(stage.index) * dc * 1.0 * rng.uniform(0.85, 1.15)
-    pool = filter_pool(stage)
+    pool = filter_pool()
     return roll_squad(rng, budget, pool)
 ```
 
@@ -291,7 +290,7 @@ separately.
 def generate_reward(run_seed: int, node_index: int, stage: StageDef, dc: float = 1.0) -> tuple[list[Enemy], RewardDrop]:
     rng = Random(derive_seed(run_seed, node_index, CH_ENEMIES))
     budget = stage_base(stage.index) * dc * 0.5 * rng.uniform(0.85, 1.15)
-    pool = filter_pool(stage)
+    pool = filter_pool()
     squad = roll_squad(rng, budget, pool)
 
     # Drop table is a separate seed channel for isolation
@@ -432,7 +431,7 @@ def augment_seed(run_seed: int, node_index: int, rerolled: bool = False) -> int:
 def supply_seed(run_seed: int, node_index: int, rerolled: bool = False) -> int: ...
 
 # --- Pool filtering ---
-def filter_pool(stage: StageDef, *, tier_range: tuple[int, int] | None = None) -> list[EnemyDef]: ...
+def filter_pool(*, tier_range: tuple[int, int] | None = None) -> list[EnemyDef]: ...
 
 # --- Difficulty ---
 DEFAULT_DC: float  # 1.0

@@ -52,7 +52,7 @@ Implementation lives in T22.
 
 ## Implementation Notes
 
-- `src/game/encounter.py`: ~330 lines, pure functions, zero Flet imports
+- `src/game/encounter.py`: ~480 lines, pure functions, zero Flet imports
 - All randomness via `Random(derive_seed(...))` — local, never shared
 - `_ENEMY_DEFS` from content.py used directly for pool access
 - `_instantiate_enemy` handles level scaling by ratio-adjusting stats

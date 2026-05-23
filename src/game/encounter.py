@@ -11,12 +11,9 @@ from __future__ import annotations
 from random import Random
 from typing import Final
 
-from .content import (
-    EnemyDef, _ENEMY_DEFS, _build_enemy, ENEMY_ROSTER,
-    compose_stats, _ROLE_FROM_AXES, _apply_stat_overrides,
-)
+from .content import EnemyDef, _ENEMY_DEFS, compose_stats, _ROLE_FROM_AXES, _apply_stat_overrides
 from .models import Enemy, WeatherState
-from .route import StageDef, STAGES
+from .route import StageDef
 from .scaling import power
 
 # ---------------------------------------------------------------------------
@@ -142,12 +139,11 @@ def derive_seed(run_seed: int, node_index: int, channel: int) -> int:
 
 
 def filter_pool(
-    stage: StageDef,
     *,
     faction: str | None = None,
     tier_range: tuple[int, int] | None = None,
 ) -> list[EnemyDef]:
-    """Filter enemy defs by stage/faction/tier. Never returns T10 enemies."""
+    """Filter enemy defs by faction/tier. Never returns T10 enemies."""
     pool: list[EnemyDef] = []
     for d in _ENEMY_DEFS:
         if d.tier == 10:
@@ -338,6 +334,11 @@ def roll_squad(
     """
     if not pool:
         raise ValueError("roll_squad requires a non-empty enemy pool")
+    if min_count > max_count:
+        raise ValueError("roll_squad requires min_count <= max_count")
+    unique_enemy_count = len({enemy.id for enemy in pool})
+    if unique_enemy_count * max_dupes < min_count:
+        raise ValueError("roll_squad cannot satisfy min_count with the given max_dupes and pool")
 
     best_squad: list[tuple[EnemyDef, int]] | None = None
     best_cost: float = 0.0
@@ -368,14 +369,12 @@ def roll_squad(
                 # Any non-clear
                 aff_pool = [d for d in pool if d.affinity != WeatherState.CLEAR]
 
-            # Fallback to full pool if affinity filter leaves nothing
-            if not aff_pool:
-                aff_pool = pool
-
             # Apply dupe limits
             aff_pool = [d for d in aff_pool if dupe_counts.get(d.id, 0) < max_dupes]
             if not aff_pool:
-                aff_pool = pool  # last resort
+                aff_pool = [d for d in pool if dupe_counts.get(d.id, 0) < max_dupes]
+            if not aff_pool:
+                break
 
             pick = _weighted_pick(rng, aff_pool, stage_index, remaining)
             if pick is None:
@@ -394,8 +393,11 @@ def roll_squad(
             dupe_counts[pick.id] = dupe_counts.get(pick.id, 0) + 1
 
         # Ensure minimum squad size
-        while len(squad_defs) < min_count:
-            cheapest = min(pool, key=lambda e: e.tier)
+        while len(squad_defs) < min_count and len(squad_defs) < max_count:
+            padding_pool = [d for d in pool if dupe_counts.get(d.id, 0) < max_dupes]
+            if not padding_pool:
+                break
+            cheapest = min(padding_pool, key=lambda e: e.tier)
             squad_defs.append(cheapest)
             squad_levels.append(1)
             dupe_counts[cheapest.id] = dupe_counts.get(cheapest.id, 0) + 1
@@ -404,14 +406,16 @@ def roll_squad(
         comp_ok = _check_composition(squad_defs, len(squad_defs))
         total_cost = sum(power(d.tier, l) for d, l in zip(squad_defs, squad_levels))
 
-        if comp_ok or attempt == MAX_REROLLS - 1:
+        if comp_ok:
             # Accept this squad
             best_squad = list(zip(squad_defs, squad_levels))
             best_cost = total_cost
             break
-        elif best_squad is None or abs(total_cost - budget) < abs(best_cost - budget):
+        if best_squad is None or abs(total_cost - budget) < abs(best_cost - budget):
             best_squad = list(zip(squad_defs, squad_levels))
             best_cost = total_cost
+        if attempt == MAX_REROLLS - 1:
+            break
 
     # Build final Enemy instances
     assert best_squad is not None
@@ -431,7 +435,7 @@ def generate_fight(
     """Generate an enemy squad for a FIGHT node."""
     rng = Random(derive_seed(run_seed, node_index, CH_ENEMIES))
     budget = STAGE_BASE[stage.index] * dc * TYPE_MULT["fight"] * rng.uniform(0.85, 1.15)
-    pool = filter_pool(stage)
+    pool = filter_pool()
     max_squad = STAGE_MAX_SQUAD[stage.index]
     return roll_squad(
         rng, budget, pool,
@@ -450,7 +454,7 @@ def generate_reward(
     """Generate an enemy squad for a REWARD node (half budget)."""
     rng = Random(derive_seed(run_seed, node_index, CH_ENEMIES))
     budget = STAGE_BASE[stage.index] * dc * TYPE_MULT["reward"] * rng.uniform(0.85, 1.15)
-    pool = filter_pool(stage)
+    pool = filter_pool()
     max_squad = STAGE_MAX_SQUAD[stage.index]
     return roll_squad(
         rng, budget, pool,
