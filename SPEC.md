@@ -89,7 +89,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.16 | Unit tests — combat, weather effects, API parsing | `tests/` | T.1, T.2, T.3, T.6, T.7 | M | ✅ Done |
 | T.17 | Documentation — README, prompting strategy, flow chart | `README.md`, `docs/` | all | M | 🔶 Partial |
 | T.18 | Power & scaling model — `P` formula, `√P` stat coupling, economy cost curve | `game/scaling.py`, `docs/design/tasks/t18_power_scaling_plan.md` | T.1 | S | ✅ Done |
-| T.19 | Encounter generation — seed-deterministic squad/offer fill, enemy power clustering, node budgets | `game/encounter.py`, `docs/design/tasks/t19_encounter_generation_plan.md` | T.1, T.4, T.5, T.18 | M | ❌ Not started |
+| T.19 | Encounter generation — seed-deterministic squad/offer fill, enemy power clustering, node budgets | `game/encounter.py`, `docs/design/tasks/t19_encounter_generation_plan.md` | T.1, T.4, T.5, T.18 | M | ✅ Done |
 | T.20 | Ability/passive/status framework — registry, typed event bus, status gates, boss phase hook | `game/abilities.py`, `game/combat.py`, `docs/design/tasks/t20_ability_framework_plan.md` | T.3 | L | ❌ Not started |
 | T.21 | Challenge & boss encounters — spirit challenges, 2-phase bosses, weather-themed map effects | `game/encounter.py`, `game/content.py`, `docs/design/tasks/t21_challenge_boss_plan.md` | T.19, T.20 | M | ❌ Not started |
 | T.22 | Meta progression — augment, supply, economy, team-size cap | `game/augments.py`, `game/economy.py`, `docs/design/tasks/t22_meta_progression_plan.md` | T.1, T.18 | M | ❌ Not started |
