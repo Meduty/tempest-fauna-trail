@@ -11,7 +11,10 @@ from __future__ import annotations
 from random import Random
 from typing import Final
 
-from .content import EnemyDef, _ENEMY_DEFS, _build_enemy, ENEMY_ROSTER
+from .content import (
+    EnemyDef, _ENEMY_DEFS, _build_enemy, ENEMY_ROSTER,
+    compose_stats, _ROLE_FROM_AXES, _apply_stat_overrides,
+)
 from .models import Enemy, WeatherState
 from .route import StageDef, STAGES
 from .scaling import power
@@ -49,7 +52,10 @@ def next_dc(current_dc: float) -> float:
 
 def dc_name(dc: float) -> str:
     """Human-readable DC label, e.g. 'DC +0', 'DC +1'."""
-    steps = round((dc - DEFAULT_DC) / (DC_STEP - DEFAULT_DC)) if dc > DEFAULT_DC else 0
+    import math
+    if dc <= DEFAULT_DC:
+        return "DC +0"
+    steps = round(math.log(dc / DEFAULT_DC) / math.log(DC_STEP))
     return f"DC +{steps}"
 
 # ---------------------------------------------------------------------------
@@ -163,7 +169,7 @@ def _affinity_slots(team_size: int, stage_affinity: WeatherState) -> list[Weathe
     """Return a list of target affinities per slot (None = any non-clear)."""
     any_slots = max(1, round(0.2 * team_size))
     stage_slots = max(1, round(0.3 * team_size))
-    clear_slots = team_size - any_slots - stage_slots
+    clear_slots = max(0, team_size - any_slots - stage_slots)
 
     slots: list[WeatherState | None] = []
     slots.extend([WeatherState.CLEAR] * clear_slots)
@@ -249,7 +255,6 @@ def _weighted_pick(
 
 def _instantiate_enemy(d: EnemyDef, level: int) -> Enemy:
     """Build an Enemy instance at the given level."""
-    from .content import compose_stats, _ROLE_FROM_AXES, _apply_stat_overrides
     from .scaling import stat_multiplier as sm
 
     base = compose_stats(
@@ -395,7 +400,7 @@ def roll_squad(
             squad_levels.append(1)
             dupe_counts[cheapest.id] = dupe_counts.get(cheapest.id, 0) + 1
 
-        # Check composition (fuzzy) — accept with 80% chance even if check fails
+        # Check composition — accept if ok, or accept unconditionally on last attempt
         comp_ok = _check_composition(squad_defs, len(squad_defs))
         total_cost = sum(power(d.tier, l) for d, l in zip(squad_defs, squad_levels))
 
