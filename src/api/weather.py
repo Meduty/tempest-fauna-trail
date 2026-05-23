@@ -28,9 +28,11 @@ class WeatherResult:
     icon_code: str  # e.g. "10d"
     description: str  # e.g. "light rain"
     weather_id: int  # raw OW weather condition id
+    is_fallback: bool = False  # True when the result came from a failed fetch
+    error: str | None = None  # Human-readable error reason when is_fallback is True
 
 
-def _fallback_result(fallback: WeatherState) -> WeatherResult:
+def _fallback_result(fallback: WeatherState, error: str) -> WeatherResult:
     """Build a safe fallback result when the API call fails."""
     return WeatherResult(
         state=fallback,
@@ -38,6 +40,8 @@ def _fallback_result(fallback: WeatherState) -> WeatherResult:
         icon_code="01d",
         description="unknown",
         weather_id=800,
+        is_fallback=True,
+        error=error,
     )
 
 
@@ -96,4 +100,4 @@ class WeatherClient:
 
         except Exception as exc:  # noqa: BLE001
             logger.warning("Weather fetch failed (lat=%.2f, lon=%.2f): %s", lat, lon, exc)
-            return _fallback_result(fallback)
+            return _fallback_result(fallback, error=str(exc))

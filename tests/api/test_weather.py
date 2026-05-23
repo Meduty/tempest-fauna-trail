@@ -83,6 +83,8 @@ class TestSuccessfulFetch:
         assert result.icon_code == "10d"
         assert result.description == "light rain"
         assert result.weather_id == 500
+        assert result.is_fallback is False
+        assert result.error is None
 
     @patch("src.api.weather.requests.get")
     def test_passes_correct_params(self, mock_get: MagicMock, client: WeatherClient) -> None:
@@ -112,6 +114,8 @@ class TestFailureModes:
 
         assert result.state == WeatherState.CLOUDY
         assert result.temperature == 0.0
+        assert result.is_fallback is True
+        assert result.error is not None
 
     @patch("src.api.weather.requests.get")
     def test_timeout_returns_fallback(self, mock_get: MagicMock, client: WeatherClient) -> None:
@@ -120,6 +124,8 @@ class TestFailureModes:
         result = client.fetch_weather(0.0, 0.0)
 
         assert result.state == WeatherState.CLEAR  # default fallback
+        assert result.is_fallback is True
+        assert "timed out" in result.error
 
     @patch("src.api.weather.requests.get")
     def test_connection_error_returns_fallback(self, mock_get: MagicMock, client: WeatherClient) -> None:
@@ -128,6 +134,8 @@ class TestFailureModes:
         result = client.fetch_weather(0.0, 0.0, fallback=WeatherState.SNOW)
 
         assert result.state == WeatherState.SNOW
+        assert result.is_fallback is True
+        assert "no network" in result.error
 
     @patch("src.api.weather.requests.get")
     def test_malformed_json_returns_fallback(self, mock_get: MagicMock, client: WeatherClient) -> None:
@@ -138,6 +146,8 @@ class TestFailureModes:
         result = client.fetch_weather(0.0, 0.0)
 
         assert result.state == WeatherState.CLEAR
+        assert result.is_fallback is True
+        assert "bad json" in result.error
 
     @patch("src.api.weather.requests.get")
     def test_missing_weather_key_returns_fallback(self, mock_get: MagicMock, client: WeatherClient) -> None:
@@ -146,6 +156,8 @@ class TestFailureModes:
         result = client.fetch_weather(0.0, 0.0, fallback=WeatherState.MIST)
 
         assert result.state == WeatherState.MIST
+        assert result.is_fallback is True
+        assert result.error is not None
 
 
 # ---------------------------------------------------------------------------
@@ -194,8 +206,10 @@ class TestWeatherStateMapping:
 
 class TestFallbackResult:
     def test_fallback_uses_given_state(self) -> None:
-        result = _fallback_result(WeatherState.THUNDER)
+        result = _fallback_result(WeatherState.THUNDER, error="some error")
         assert result.state == WeatherState.THUNDER
         assert result.temperature == 0.0
         assert result.icon_code == "01d"
+        assert result.is_fallback is True
+        assert result.error == "some error"
         assert isinstance(result, WeatherResult)
