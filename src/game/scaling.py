@@ -15,7 +15,7 @@ import math
 # TIER_STEP = sqrt(LEVEL_STEP) so one tier-up applies half the power exponent
 # of one level-up (two tiers == one level in power terms).
 LEVEL_STEP: float = 1.5**3      # = 3.375 — per-level power multiplier (ratio)
-TIER_STEP: float = LEVEL_STEP**0.5  # = 1.5**1.5 ≈ 1.8371 — per-tier power multiplier (ratio)
+TIER_STEP: float = LEVEL_STEP**0.5  # = sqrt(3.375) = 1.5**1.5 ≈ 1.8371 — per-tier power multiplier (ratio)
 
 # Stats scaled by stat_multiplier.  Flat stats (attack_speed, mana_regen,
 # move_speed, attack_range, threat, ability_cost) are NOT in this tuple.

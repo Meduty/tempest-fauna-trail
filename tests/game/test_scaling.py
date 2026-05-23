@@ -28,7 +28,8 @@ class TestPower:
         assert power(1, 3) == pytest.approx(11.390625)
 
     def test_t10_l3_approx_2715x(self):
-        # Spread T1L1 → T10L3 = 3.375**6.5 = 1.5**19.5 ≈ 2715
+        # Spread T1L1 → T10L3: exponent = (10-1)/2 + (3-1) = 6.5
+        # P = 3.375**6.5 = 1.5**19.5 ≈ 2715
         assert power(10, 3) == pytest.approx(1.5**19.5, rel=1e-6)
 
     def test_two_tiers_equal_one_level(self):
