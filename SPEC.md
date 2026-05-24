@@ -69,7 +69,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 
 ## T. Tasks
 
-| # | Task | Files (code paths are relative to `src/`) | Depends | Est | Status |
+| # | Task | Files (code paths are relative to `src/`; `docs/` and `tools/` paths are repo-root relative) | Depends | Est | Status |
 |---|---|---|---|---|---|
 | T.1 | Data models — Champion, Enemy, Node, Run, BattleResult, WeatherState + NodeType/NodeState + combat runtime state + JSON serialization helpers | `game/models.py`, `docs/design/tasks/t1_data_models_plan.md`, `docs/design/tasks/t1_model_contracts.md` | — | M | ✅ Done |
 | T.2 | Weather effects — directional predator/prey ring; two decoupled systems (node-weather buff/debuff + affinity damage triangle), per-weather stat packs, shop weight, `apply_weather` for combat init | `game/weather_effects.py`, `docs/design/tasks/t2_weather_effects_plan.md` | T.1 | M | ✅ Done |
@@ -152,7 +152,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - T.25 adds deterministic balance simulation and matchup benchmarking over the
   existing auto-resolve engine for data-driven tuning.
 - Detailed plans: `docs/design/tasks/t18_power_scaling_plan.md` through
-  `t25_power_simulation_plan.md`.
+  `docs/design/tasks/t25_power_simulation_plan.md`.
 
 ## B. Bugs / Backprop
 
