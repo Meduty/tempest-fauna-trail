@@ -210,7 +210,7 @@ class CombatContext:
         raw = self._bus.fire_reducing("on_damage_pre", pre_event, raw, cast_id=self._current_cast_id, ctx=self)
 
         # Mitigation
-        if tag == SourceTag.TRUE or damage_type == "true":
+        if tag == SourceTag.TRUE:
             final = raw
         else:
             pen_flat = attacker.stat("penetration") if hasattr(attacker, "stat") else 0.0

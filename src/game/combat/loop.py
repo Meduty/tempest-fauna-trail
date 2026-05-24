@@ -73,7 +73,10 @@ def process_statuses(ctx: CombatContext, pieces: list[Piece]) -> None:
                 dot_amount = status_def.dot_per_tick
                 if status_def.dot_scales_with_stacks:
                     dot_amount *= status.stacks
-                ctx.deal_damage(piece, piece, dot_amount, SourceTag.DOT, damage_type="true")
+                if status_def.dot_true_damage:
+                    ctx.deal_damage(piece, piece, dot_amount, SourceTag.TRUE)
+                else:
+                    ctx.deal_damage(piece, piece, dot_amount, SourceTag.DOT, damage_type="magical")
                 # Decay stacks after DOT (e.g. POISON loses one stack per tick)
                 if status_def.decay_stacks_per_tick and status.stacks > 0:
                     status.stacks -= 1

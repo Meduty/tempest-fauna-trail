@@ -43,6 +43,7 @@ class StatusDef:
     dot_per_tick: float = 0.0  # Damage per tick (burn, poison)
     dot_scales_with_stacks: bool = False  # Poison: damage * stacks
     decay_stacks_per_tick: bool = False  # Poison: each tick removes one stack
+    dot_true_damage: bool = False  # True: DOT bypasses all mitigation (sudden death)
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +142,7 @@ SUDDEN_DEATH = _register(StatusDef(
     stack_behaviour=StackBehaviour.STACK,  # Stacks escalate each tick
     dot_per_tick=5.0,
     dot_scales_with_stacks=True,
+    dot_true_damage=True,  # Bypasses all mitigation — unstoppable timeout mechanic
 ))
 
 
