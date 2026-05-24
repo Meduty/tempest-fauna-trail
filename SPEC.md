@@ -69,7 +69,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 
 ## T. Tasks
 
-| # | Task | Files (code paths are relative to `src/`) | Depends | Est | Status |
+| # | Task | Files (code paths are relative to `src/`; `docs/` and `tools/` paths are repo-root relative) | Depends | Est | Status |
 |---|---|---|---|---|---|
 | T.1 | Data models — Champion, Enemy, Node, Run, BattleResult, WeatherState + NodeType/NodeState + combat runtime state + JSON serialization helpers | `game/models.py`, `docs/design/tasks/t1_data_models_plan.md`, `docs/design/tasks/t1_model_contracts.md` | — | M | ✅ Done |
 | T.2 | Weather effects — directional predator/prey ring; two decoupled systems (node-weather buff/debuff + affinity damage triangle), per-weather stat packs, shop weight, `apply_weather` for combat init | `game/weather_effects.py`, `docs/design/tasks/t2_weather_effects_plan.md` | T.1 | M | ✅ Done |
@@ -90,11 +90,12 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.17 | Documentation — README, prompting strategy, flow chart | `README.md`, `docs/` | all | M | 🔶 Partial |
 | T.18 | Power & scaling model — `P` formula, `√P` stat coupling, economy cost curve | `game/scaling.py`, `docs/design/tasks/t18_power_scaling_plan.md` | T.1 | S | ✅ Done |
 | T.19 | Encounter generation — seed-deterministic squad/offer fill, enemy power clustering, node budgets | `game/encounter.py`, `docs/design/tasks/t19_encounter_generation_plan.md` | T.1, T.4, T.5, T.18 | M | ✅ Done |
-| T.20 | Ability/passive/status framework — registry, typed event bus, status gates, boss phase hook | `game/abilities.py`, `game/combat.py`, `docs/design/tasks/t20_ability_framework_plan.md` | T.3 | L | ❌ Not started |
+| T.20 | Ability/passive/status framework — registry, typed event bus, status gates, boss phase hook | `game/abilities/`, `game/effects.py`, `game/events.py`, `game/status.py`, `game/registries.py`, `docs/design/tasks/t20_ability_framework_plan.md` | T.3 | L | ✅ Done |
 | T.21 | Challenge & boss encounters — spirit challenges, 2-phase bosses, weather-themed map effects | `game/encounter.py`, `game/content.py`, `docs/design/tasks/t21_challenge_boss_plan.md` | T.19, T.20 | M | ❌ Not started |
 | T.22 | Meta progression — augment, supply, economy, team-size cap | `game/augments.py`, `game/economy.py`, `docs/design/tasks/t22_meta_progression_plan.md` | T.1, T.18 | M | ❌ Not started |
 | T.23 | Prep formation snapshot integration — lock player board placement in Prep, validate deployment constraints, pass explicit coordinates into combat init | `ui/views/prep.py`, `game/models.py`, `game/combat.py`, `docs/design/tasks/t23_prep_formation_snapshot_plan.md` | T.1, T.3, T.15 | M | ❌ Not started |
 | T.24 | Enemy formation policy — deterministic role-aware spawn planner (frontline forward, backline protected, size-aware packing) with safe fallback | `game/formation.py`, `game/combat.py`, `docs/design/tasks/t24_enemy_formation_plan.md` | T.3, T.5, T.23 | M | ❌ Not started |
+| T.25 | Power simulation & balance benchmarking — deterministic matchup sweeps and empirical power ratings | `tools/simulation/`, `docs/design/tasks/t25_power_simulation_plan.md` | T.3, T.5 | M | ❌ Not started |
 
 **Size**: S = <1h, M = 1-3h, L = 3-6h
 
@@ -132,7 +133,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - UI age warnings (subtle top-right indicator when any `substitute` present or any `live` aged > 2h, hover lists affected cities) deferred — see D.17.
 - Detailed plan: `docs/design/tasks/t7_cache_refresher_plan.md`.
 
-### T.18-T.24 Planning Notes (Systems Expansion)
+### T.18-T.25 Planning Notes (Systems Expansion)
 
 - T.18 power scalar `P = 1.5 ** ((T-1)/2 + (L-1))` drives encounter budgets and
   piece stat generation; "two tiers == one level".
@@ -148,8 +149,10 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - T.24 introduces deterministic enemy formation heuristics by role and team
   size, replacing index-only right-side packing while preserving replay
   determinism.
+- T.25 adds deterministic balance simulation and matchup benchmarking over the
+  existing auto-resolve engine for data-driven tuning.
 - Detailed plans: `docs/design/tasks/t18_power_scaling_plan.md` through
-  `t24_enemy_formation_plan.md`.
+  `docs/design/tasks/t25_power_simulation_plan.md`.
 
 ## B. Bugs / Backprop
 
