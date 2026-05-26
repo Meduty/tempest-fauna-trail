@@ -87,6 +87,11 @@ class BossDef:
     # Budget (total P including supporting cast)
     budget: float = 6.0
 
+    # T24: Authored spawn position (col, row) for formation planner.
+    # Melee bosses start at (7, 3) — frontline center.
+    # Ranged/caster bosses start at (9, 3) — backline center.
+    spawn_position: tuple[int, int] = (9, 3)
+
     def build_enemy(self) -> Enemy:
         """Instantiate the boss as an Enemy object."""
         return Enemy(
@@ -169,6 +174,7 @@ _HOLLOWAY = BossDef(
     variable_cast_count_max=5,
     map_effect_id="sunlit_tiles",
     budget=6.0,
+    spawn_position=(7, 3),  # Melee frontline boss
 )
 
 # ---------------------------------------------------------------------------
@@ -210,6 +216,7 @@ _VANCE = BossDef(
     variable_cast_count_max=4,
     map_effect_id="fog",
     budget=15.0,
+    spawn_position=(9, 3),  # Ranged caster boss
 )
 
 # ---------------------------------------------------------------------------
@@ -251,6 +258,7 @@ _STRAND = BossDef(
     variable_cast_count_max=3,
     map_effect_id="hazard_tiles",
     budget=28.0,
+    spawn_position=(9, 3),  # Ranged caster boss
 )
 
 # ---------------------------------------------------------------------------
@@ -292,6 +300,7 @@ _VOSSBERG = BossDef(
     variable_cast_count_max=5,
     map_effect_id="defensive_ley",
     budget=42.0,
+    spawn_position=(7, 3),  # Melee frontline boss
 )
 
 # ---------------------------------------------------------------------------
@@ -333,6 +342,7 @@ _CREGE = BossDef(
     variable_cast_count_max=3,
     map_effect_id="flood_lanes",
     budget=60.0,
+    spawn_position=(9, 3),  # Ranged control boss
 )
 
 # ---------------------------------------------------------------------------
@@ -393,6 +403,7 @@ _IRON_EMPEROR = BossDef(
     variable_cast_count_max=4,
     map_effect_id="slow_tiles",
     budget=90.0,
+    spawn_position=(8, 3),  # Hybrid commander — midline center
 )
 
 

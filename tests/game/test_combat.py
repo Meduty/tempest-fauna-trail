@@ -195,8 +195,10 @@ def test_dead_target_triggers_retarget():
     ]
     result = resolve_combat(team, enemies, WeatherState.CLEAR)
     attacks = [e for e in result.events if e.event_type == "attack"]
-    assert attacks[0].target_id == "first"
-    assert attacks[1].target_id == "second"
+    # With T24 formation planner, "second" is placed closer to hero (center-out
+    # packing: row 2 vs row 3) so gets targeted first by proximity tiebreak.
+    assert attacks[0].target_id == "second"
+    assert attacks[1].target_id == "first"
     assert result.outcome == CombatOutcome.WIN
 
 
