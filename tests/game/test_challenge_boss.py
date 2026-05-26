@@ -472,6 +472,8 @@ class TestCollapsingArenaEffect:
         assert backline_slow
         assert frontline_slow
         assert backline_slow[-1].value < frontline_slow[-1].value
+        assert backline_slow[-1].value == pytest.approx(effect._backline_attack_speed_mul)
+        assert frontline_slow[-1].value == pytest.approx(effect._attack_speed_mul)
 
 
 class TestLeyCellsEffect:

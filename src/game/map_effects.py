@@ -167,12 +167,12 @@ class SpawnRiftsEffect(MapEffect):
         self,
         vent_cells: list[tuple[int, int]] | None = None,
         cycle_interval_rounds: int = 1,
-        damage_per_interval: float = 18.0,
+        damage_amount: float = 18.0,
         damage_interval: int = 60,
     ):
         self._vent_cells = vent_cells or [(2, 1), (7, 1)]
         self._cycle_interval = cycle_interval_rounds
-        self._damage = damage_per_interval
+        self._damage = damage_amount
         self._damage_interval = damage_interval
         self._active_index = -1
 
@@ -189,7 +189,9 @@ class SpawnRiftsEffect(MapEffect):
     def on_round(self, ctx: "CombatContext", board: BoardState, round_num: int) -> None:
         if round_num < 1:
             return
-        if not self._vent_cells or round_num % self._cycle_interval != 0:
+        if not self._vent_cells:
+            return
+        if round_num % self._cycle_interval != 0:
             return
         next_idx = (self._active_index + 1) % len(self._vent_cells)
         self._set_active_vent(board, next_idx)
@@ -431,6 +433,8 @@ class CollapsingArenaEffect(MapEffect):
         move_speed_mul: float = 0.65,
         attack_speed_mul: float = 0.65,
         backline_attack_speed_mul: float = 0.45,
+        backline_range_threshold: float = 3.0,
+        slow_duration_ticks: int = 2,
     ):
         self._interval = collapse_interval_rounds
         self._collapse_layer = 0
@@ -438,6 +442,8 @@ class CollapsingArenaEffect(MapEffect):
         self._move_speed_mul = move_speed_mul
         self._attack_speed_mul = attack_speed_mul
         self._backline_attack_speed_mul = backline_attack_speed_mul
+        self._backline_range_threshold = backline_range_threshold
+        self._slow_duration_ticks = slow_duration_ticks
 
     def setup(self, board: BoardState, rng: Any) -> None:
         # No initial modifiers — arena starts open
@@ -478,11 +484,11 @@ class CollapsingArenaEffect(MapEffect):
 
             attack_mul = (
                 self._backline_attack_speed_mul
-                if piece.stat("attack_range") >= 3
+                if piece.stat("attack_range") >= self._backline_range_threshold
                 else self._attack_speed_mul
             )
 
-            piece.modifiers = [
+            piece.modifiers[:] = [
                 mod
                 for mod in piece.modifiers
                 if mod.source_id not in {
@@ -497,7 +503,7 @@ class CollapsingArenaEffect(MapEffect):
                 value=self._move_speed_mul,
                 lifetime=Lifetime.TIMED,
                 source_id="map_effect:collapsing_arena:move_slow",
-                expires_at_tick=ctx.current_tick + 2,
+                expires_at_tick=ctx.current_tick + self._slow_duration_ticks,
             ))
             ctx.apply_modifier(piece, Modifier(
                 stat="attack_speed",
@@ -505,7 +511,7 @@ class CollapsingArenaEffect(MapEffect):
                 value=attack_mul,
                 lifetime=Lifetime.TIMED,
                 source_id="map_effect:collapsing_arena:attack_slow",
-                expires_at_tick=ctx.current_tick + 2,
+                expires_at_tick=ctx.current_tick + self._slow_duration_ticks,
             ))
 
     def accelerate(self) -> None:
