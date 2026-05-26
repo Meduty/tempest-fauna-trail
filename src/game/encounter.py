@@ -8,6 +8,7 @@ state, no clock, no global RNG.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from random import Random
 from typing import Final
 
@@ -486,3 +487,339 @@ def supply_seed(run_seed: int, node_index: int, rerolled: bool = False) -> int:
 def shop_seed(run_seed: int, visit_index: int) -> int:
     """Return the sub-seed for champion shop offers at a given visit."""
     return derive_seed(run_seed, visit_index, CH_SHOP)
+
+
+# ---------------------------------------------------------------------------
+# Challenge generation (T21) — §2.3 amended: draws from Champions faction
+# ---------------------------------------------------------------------------
+
+# Challenge team sizes per stage (§2.2 confirmed)
+CHALLENGE_TEAM_SIZES: Final[dict[int, int]] = {
+    1: 4,
+    2: 5,
+    3: 7,
+    4: 8,
+    5: 9,
+    6: 11,
+}
+
+
+def _challenge_affinity_slots(
+    team_size: int,
+    stage_affinity: WeatherState,
+    live_weather: WeatherState,
+) -> list[WeatherState]:
+    """Return target affinities per slot for challenge composition.
+
+    Distribution (§2.3 amended):
+    - 50% stage affinity (the challenge's themed core)
+    - 30% live weather affinity (interaction with real-time weather)
+    - 20% random (variety)
+    """
+    random_slots = max(1, round(0.2 * team_size))
+    live_wx_slots = max(1, round(0.3 * team_size))
+    challenge_slots = team_size - random_slots - live_wx_slots
+
+    slots: list[WeatherState] = []
+    slots.extend([stage_affinity] * challenge_slots)
+    slots.extend([live_weather] * live_wx_slots)
+    # Random slots — will be filled with random affinities at generation time
+    # Use None-equivalent: we'll use a sentinel and replace at generation time
+    slots.extend([WeatherState.CLEAR] * random_slots)  # placeholder; randomized below
+    return slots
+
+
+def generate_challenge(
+    run_seed: int,
+    node_index: int,
+    stage: StageDef,
+    live_weather: WeatherState,
+    dc: float = DEFAULT_DC,
+) -> list[Enemy]:
+    """Generate a challenge encounter — champions used as enemies.
+
+    §2.3 Amended: Challenges draw from the Champions faction. The interesting
+    thing about challenges is that you fight pieces you know as your own!
+    Distribution: 50% stage affinity, 30% live weather, 20% random.
+
+    Returns Enemy instances built from ChampionDefs (same stat block, marked
+    as enemy pieces for combat purposes).
+    """
+    from .content import _CHAMPION_DEFS, ChampionDef
+
+    rng = Random(derive_seed(run_seed, node_index, CH_CHALLENGE))
+
+    team_size = CHALLENGE_TEAM_SIZES[stage.index]
+    budget = STAGE_BASE[stage.index] * dc * TYPE_MULT["challenge"] * rng.uniform(0.90, 1.10)
+
+    # Build affinity target list
+    random_count = max(1, round(0.2 * team_size))
+    live_wx_count = max(1, round(0.3 * team_size))
+    challenge_count = team_size - random_count - live_wx_count
+
+    affinity_targets: list[WeatherState] = []
+    affinity_targets.extend([stage.affinity] * challenge_count)
+    affinity_targets.extend([live_weather] * live_wx_count)
+    # Random affinities
+    all_affinities = list(WeatherState)
+    for _ in range(random_count):
+        affinity_targets.append(rng.choice(all_affinities))
+
+    rng.shuffle(affinity_targets)
+
+    # Filter champions by tier appropriateness
+    lo_tier, hi_tier = PREFERRED_TIERS[stage.index]
+
+    # Build the challenge team from champion definitions
+    squad: list[Enemy] = []
+    remaining = budget
+    used_ids: dict[str, int] = {}
+
+    for target_aff in affinity_targets:
+        if remaining <= 0:
+            break
+
+        # Find champion candidates matching the target affinity
+        candidates = [
+            d for d in _CHAMPION_DEFS
+            if d.affinity == target_aff
+            and d.tier != 10  # No T10 legendaries in challenges
+            and used_ids.get(d.id, 0) < 2  # max 2 copies
+        ]
+        # Prefer tier-appropriate candidates
+        preferred = [d for d in candidates if lo_tier <= d.tier <= hi_tier]
+        if preferred:
+            candidates = preferred
+
+        if not candidates:
+            # Fallback: any champion not T10
+            candidates = [
+                d for d in _CHAMPION_DEFS
+                if d.tier != 10 and used_ids.get(d.id, 0) < 2
+            ]
+
+        if not candidates:
+            break
+
+        # Weighted pick by tier appropriateness
+        weights = [_tier_weight(d.tier, stage.index) for d in candidates]
+        total_w = sum(weights)
+        if total_w == 0:
+            continue
+        pick = rng.choices(candidates, weights=weights, k=1)[0]
+
+        # Determine level
+        level = _pick_level(rng, stage.index, pick.tier, remaining)
+        cost = power(pick.tier, level)
+        if cost > remaining + BUDGET_TOLERANCE and len(squad) >= 2:
+            continue
+
+        # Build as Enemy (same stat block, different wrapper)
+        enemy = _champion_as_enemy(pick, level)
+        squad.append(enemy)
+        remaining -= cost
+        used_ids[pick.id] = used_ids.get(pick.id, 0) + 1
+
+    return squad
+
+
+def _champion_as_enemy(champ_def: "ChampionDef", level: int) -> Enemy:
+    """Build an Enemy instance from a ChampionDef (for challenge encounters).
+
+    Champions used as challenge enemies retain their stats and abilities
+    but are marked as enemy pieces in combat.
+    """
+    from .content import compose_stats, _apply_stat_overrides
+    from .scaling import stat_multiplier as sm
+
+    base = compose_stats(
+        champ_def.primary_stat, champ_def.range_, champ_def.durability,
+        champ_def.playstyle, champ_def.tier,
+        speed=champ_def.speed, ability_cost=champ_def.ability_cost,
+    )
+    if level > 1:
+        s = sm(champ_def.tier, level) / sm(champ_def.tier, 1)
+        for k in ("max_hp", "strength", "intelligence", "armor", "resistance"):
+            base[k] = round(base[k] * s)
+
+    stats = _apply_stat_overrides(base, champ_def.stat_overrides)
+    return Enemy(
+        id=champ_def.id,
+        name=champ_def.name,
+        affinity=champ_def.affinity,
+        role="challenger",
+        tier=champ_def.tier,
+        level=level,
+        max_hp=max(1, stats["max_hp"]),
+        strength=max(0, stats["strength"]),
+        intelligence=max(0, stats["intelligence"]),
+        armor=max(0, stats["armor"]),
+        resistance=max(0, stats["resistance"]),
+        attack_speed=round(stats["attack_speed"]),
+        mana_regen=round(stats["mana_regen"]),
+        move_speed=champ_def.move_speed,
+        threat=champ_def.threat,
+        attack_range=stats["attack_range"],
+        ability_cost=champ_def.ability_cost,
+        active_ability=champ_def.active_ability,
+        passive_ability=champ_def.passive_ability,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Challenge rewards (§2.5 amended)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ChallengeReward:
+    """Reward structure for clearing a challenge encounter.
+
+    §2.5 amended: reward is one of the champions employed by the enemy team
+    (as a recruit), plus a random and a themed component.
+    """
+    amber: int
+    champion_reward_id: str  # id of one champion from the challenge team
+    random_component: str  # a random item component
+    themed_component: str  # a component themed to the stage affinity
+
+
+def generate_challenge_reward(
+    run_seed: int,
+    node_index: int,
+    stage: StageDef,
+    challenge_team: list[Enemy],
+) -> ChallengeReward:
+    """Generate rewards for clearing a challenge.
+
+    §2.5: one champion from the enemy team + random component + themed component.
+    """
+    rng = Random(derive_seed(run_seed, node_index, CH_CHALLENGE) + 1)
+
+    amber = 2 * stage.index
+
+    # Pick one champion from the challenge team as the recruit reward
+    if challenge_team:
+        champion_reward = rng.choice(challenge_team)
+        champion_reward_id = champion_reward.id
+    else:
+        champion_reward_id = ""
+
+    # Component rewards (placeholder ids until item system is built)
+    random_component = f"component_random_{rng.randint(1, 6)}"
+    # Themed component based on stage affinity
+    _AFFINITY_COMPONENTS: dict[WeatherState, str] = {
+        WeatherState.CLEAR: "component_sunstone",
+        WeatherState.MIST: "component_wardpelt",
+        WeatherState.THUNDER: "component_stormcore",
+        WeatherState.CLOUDY: "component_cloudite",
+        WeatherState.RAIN: "component_tidescale",
+        WeatherState.SNOW: "component_frostgem",
+    }
+    themed_component = _AFFINITY_COMPONENTS.get(stage.affinity, "component_random_1")
+
+    return ChallengeReward(
+        amber=amber,
+        champion_reward_id=champion_reward_id,
+        random_component=random_component,
+        themed_component=themed_component,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Boss encounter generation (T21)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class BossEncounter:
+    """A fully-assembled boss encounter ready for combat."""
+    boss: Enemy
+    supporting_cast: list[Enemy]
+    map_effect_id: str
+    boss_def_id: str  # reference back to BossDef
+
+
+def generate_boss(
+    run_seed: int,
+    node_index: int,
+    stage: StageDef,
+) -> BossEncounter:
+    """Generate a boss encounter for the given stage.
+
+    Boss encounters are authored set-pieces with a fixed boss and curated
+    supporting cast. Minor variation in adds is introduced via the seed.
+    """
+    from .bosses import BOSS_DEFS, BossDef
+    from .content import _ENEMY_DEFS
+
+    boss_def = BOSS_DEFS[stage.index]
+    rng = Random(derive_seed(run_seed, node_index, CH_BOSS))
+
+    # Build the boss piece
+    boss = _build_boss_enemy(boss_def)
+
+    # Build supporting cast
+    cast: list[Enemy] = []
+    for enemy_id, count in boss_def.supporting_cast:
+        enemy_def = next((d for d in _ENEMY_DEFS if d.id == enemy_id), None)
+        if enemy_def is None:
+            continue
+        for _ in range(count):
+            cast.append(_instantiate_enemy(enemy_def, 1))
+
+    # Apply add variation (replace some adds from the variation pool)
+    if boss_def.add_variation_pool and boss_def.add_variation_count > 0:
+        # Pick which positions to replace (from the conscript/low-tier slots)
+        replaceable_indices = [
+            i for i, e in enumerate(cast)
+            if e.id in boss_def.add_variation_pool
+        ]
+        if replaceable_indices:
+            num_replace = min(boss_def.add_variation_count, len(replaceable_indices))
+            replace_indices = rng.sample(replaceable_indices, num_replace)
+            for idx in replace_indices:
+                new_id = rng.choice(boss_def.add_variation_pool)
+                new_def = next((d for d in _ENEMY_DEFS if d.id == new_id), None)
+                if new_def:
+                    cast[idx] = _instantiate_enemy(new_def, 1)
+
+    return BossEncounter(
+        boss=boss,
+        supporting_cast=cast,
+        map_effect_id=boss_def.map_effect_id,
+        boss_def_id=boss_def.id,
+    )
+
+
+def _build_boss_enemy(boss_def: "BossDef") -> Enemy:
+    """Build an Enemy instance for a boss piece (always tier 10, level 1)."""
+    from .content import compose_stats, _apply_stat_overrides
+
+    base = compose_stats(
+        boss_def.primary_stat, boss_def.range_, boss_def.durability,
+        boss_def.playstyle, boss_def.tier,
+        speed=boss_def.speed,
+    )
+    stats = _apply_stat_overrides(base, boss_def.stat_overrides)
+    return Enemy(
+        id=boss_def.id,
+        name=boss_def.name,
+        affinity=boss_def.affinity,
+        role="boss",
+        tier=boss_def.tier,
+        level=1,
+        max_hp=max(1, stats["max_hp"]),
+        strength=max(0, stats["strength"]),
+        intelligence=max(0, stats["intelligence"]),
+        armor=max(0, stats["armor"]),
+        resistance=max(0, stats["resistance"]),
+        attack_speed=round(stats["attack_speed"]),
+        mana_regen=round(stats["mana_regen"]),
+        move_speed=boss_def.speed == "heavy" and 70 or 90,
+        threat=100,  # Bosses have high threat
+        attack_range=stats["attack_range"],
+        ability_cost=36_000,
+        active_ability=boss_def.phase1_active,
+        passive_ability=boss_def.phase1_passive,
+    )

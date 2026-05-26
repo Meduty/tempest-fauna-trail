@@ -93,7 +93,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.18 | Power & scaling model — `P` formula, `√P` stat coupling, economy cost curve | `game/scaling.py`, `docs/design/tasks/t18_power_scaling_plan.md` | T.1 | S | ✅ Done |
 | T.19 | Encounter generation — seed-deterministic squad/offer fill, enemy power clustering, node budgets | `game/encounter.py`, `docs/design/tasks/t19_encounter_generation_plan.md` | T.1, T.4, T.5, T.18 | M | ✅ Done |
 | T.20 | Ability/passive/status framework — registry, typed event bus, status gates, boss phase hook | `game/abilities/`, `game/effects.py`, `game/events.py`, `game/status.py`, `game/registries.py`, `docs/design/tasks/t20_ability_framework_plan.md` | T.3 | L | ✅ Done |
-| T.21 | Challenge & boss encounters — spirit challenges, 2-phase bosses, weather-themed map effects | `game/encounter.py`, `game/content.py`, `docs/design/tasks/t21_challenge_boss_plan.md` | T.19, T.20 | M | 📋 Plan |
+| T.21 | Challenge & boss encounters — champion-faction challenges, 2-phase bosses, decoupled map effects system | `game/encounter.py`, `game/bosses.py`, `game/map_effects.py`, `docs/design/tasks/t21_challenge_boss_plan.md` | T.19, T.20 | M | ✅ Done |
 | T.22 | Meta progression — augment, supply, economy, team-size cap | `game/augments.py`, `game/economy.py`, `docs/design/tasks/t22_meta_progression_plan.md` | T.1, T.18 | M | 📋 Plan |
 | T.23 | Prep formation snapshot integration — lock player board placement in Prep, validate deployment constraints, pass explicit coordinates into combat init | `ui/views/prep.py`, `game/models.py`, `game/combat.py`, `docs/design/tasks/t23_prep_formation_snapshot_plan.md` | T.1, T.3, T.15 | M | 📋 Plan |
 | T.24 | Enemy formation policy — deterministic role-aware spawn planner (frontline forward, backline protected, size-aware packing) with safe fallback | `game/formation.py`, `game/combat.py`, `docs/design/tasks/t24_enemy_formation_plan.md` | T.3, T.5, T.23 | M | 📋 Plan |
@@ -143,7 +143,9 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   sub-seeds; squads/offers are regenerated lazily, not stored.
 - T.20 builds the ability/passive/status framework (resolves D.3-D.5); bosses
   are its first consumer.
-- T.21 layers spirit challenges and 2-phase bosses on the T.19 generator.
+- T.21 layers champion-faction challenges and 2-phase bosses on the T.19 generator.
+  Challenges draw from the Champions roster (same pieces the player knows).
+  Map effects system decoupled from bosses for future reuse by augments/passives.
 - T.22 covers augment/supply choices, the Amber economy, and team-size cap.
 - T.23 makes Prep placement authoritative: board coordinates from Prep become
   combat init input; combat no longer overwrites player layout when a valid
@@ -202,10 +204,13 @@ in their T-task plan docs; what remains here is genuinely undecided.
 
 - D.1 Route branching: the linear 6-stage / 50-node chain is **locked** (T.4);
   whether optional branch/merge paths are added post-MVP is open.
-- D.2 Boss content: per-boss kits, phase-2 ability pairs, exact map-effect
-  mechanics (T.21).
-- D.3 Combat board-cell modifiers: boss map effects need a new combat-engine
-  cell-modifier mechanic — not yet a task, not yet designed.
+- D.2 Boss content: per-boss kits and phase-2 ability *implementations* (ability
+  handlers). Boss data, phase hooks, and on-death hooks are authored (T.21);
+  ability handler code is still open (future T.20 content work).
+- D.3 Combat board-cell modifiers: map effects system (`game/map_effects.py`)
+  is built and decoupled from bosses; integration with the combat tick loop
+  (calling `process_occupants` each tick, `on_round` at round boundaries) is
+  the remaining work. Currently boss-only; designed for future augment/passive use.
 
 ### Combat Systems
 
