@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from collections import deque
 
+from src.game.content import ENEMY_DEF_BY_ID
+from src.game.formation import plan_enemy_formation
 from src.game.models import (
     BattleEvent,
     BattleResult,
@@ -101,19 +103,34 @@ def _on_board(q: int, r: int) -> bool:
 # --- Initialization ----------------------------------------------------------
 
 
-def _assign_spawns(pieces: list[CombatPieceState]) -> None:
-    """Team to left columns, enemies to right columns; stable by input index."""
+def _assign_spawns(pieces: list[CombatPieceState], boss_position: tuple[int, int] | None = None) -> None:
+    """Team to left columns (index-based), enemies via role-aware formation planner (T24)."""
     team_index = 0
-    enemy_index = 0
+    enemies: list[CombatPieceState] = []
+
     for piece in pieces:
         if piece.is_enemy:
-            piece.position_q = BOARD_WIDTH - 1 - (enemy_index // BOARD_HEIGHT)
-            piece.position_r = enemy_index % BOARD_HEIGHT
-            enemy_index += 1
+            enemies.append(piece)
         else:
             piece.position_q = team_index // BOARD_HEIGHT
             piece.position_r = team_index % BOARD_HEIGHT
             team_index += 1
+
+    # T24: role-aware enemy formation
+    if enemies:
+        formation = plan_enemy_formation(
+            enemies,
+            ENEMY_DEF_BY_ID,
+            boss_position=boss_position,
+        )
+        for piece in enemies:
+            if piece.piece_id in formation:
+                piece.position_q, piece.position_r = formation[piece.piece_id]
+            else:
+                # Fallback: index-based packing (should not occur)
+                idx = enemies.index(piece)
+                piece.position_q = BOARD_WIDTH - 1 - (idx // BOARD_HEIGHT)
+                piece.position_r = idx % BOARD_HEIGHT
 
 
 # --- Queries -----------------------------------------------------------------

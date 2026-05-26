@@ -1,6 +1,6 @@
 # T24 Plan — Enemy Formation Policy (`src/game/formation.py`)
 
-> **Status:** comprehensive design — ready for admin review & decision on open items.
+> **Status:** ✅ Implemented — amendments applied (§4.2 flanker repositioning, §5.6 per-boss authored position).
 > **Depends:** T.19 (squads generated), T.1 (models), T.3 (combat engine board).
 > **Consumed by:** T.3 combat init, T.21 boss placement, T.23 (player placement is
 > separate — T24 is enemy-side only).
