@@ -17,12 +17,16 @@ The loop implements:
 from __future__ import annotations
 
 from collections import deque
+from dataclasses import dataclass
 from typing import Any
 
+from src.game.bosses.data import BOSS_DEFS
 from src.game.combat.context import CombatContext, hex_distance, HEX_DIRECTIONS, BOARD_WIDTH, BOARD_HEIGHT
 from src.game.combat.recorder import BattleResultRecorder
+from src.game.content import ENEMY_DEF_BY_ID
 from src.game.effects import EventBus, Lifetime, SourceTag
 from src.game.events import CombatStartEvent, DeathEvent, TickEvent
+from src.game.formation import plan_enemy_formation
 from src.game.piece import Piece, ActiveSlot
 from src.game.status import STATUS_DEFS, StatusGate, StatusInstance
 from src.game.weather_effects import damage_modifier
@@ -495,19 +499,60 @@ def _process_board_state(ctx: CombatContext, pieces: list[Piece]) -> None:
 # ---------------------------------------------------------------------------
 
 
+@dataclass
+class _FormationEnemy:
+    """Shim for feeding Piece enemies into plan_enemy_formation."""
+    piece_id: str
+    tier: int
+    speed_tiebreaker: int
+
+
 def assign_spawns(pieces: list[Piece]) -> None:
-    """Team to left columns, enemies to right columns; stable by input index."""
+    """Team to left columns, enemies via role-aware formation planner (T24)."""
     team_index = 0
-    enemy_index = 0
+    enemies: list[Piece] = []
     for piece in pieces:
-        if piece.is_enemy:
-            piece.position_q = BOARD_WIDTH - 1 - (enemy_index // BOARD_HEIGHT)
-            piece.position_r = enemy_index % BOARD_HEIGHT
-            enemy_index += 1
-        else:
+        if not piece.is_enemy:
             piece.position_q = team_index // BOARD_HEIGHT
             piece.position_r = team_index % BOARD_HEIGHT
             team_index += 1
+            continue
+        enemies.append(piece)
+
+    if not enemies:
+        return
+
+    boss_positions = {boss.id: boss.spawn_position for boss in BOSS_DEFS.values()}
+    formation_input: list[_FormationEnemy] = []
+    boss_position: tuple[int, int] | None = None
+
+    for enemy in enemies:
+        if enemy.id in boss_positions:
+            tier = 10
+            if boss_position is None:
+                boss_position = boss_positions[enemy.id]
+        else:
+            enemy_def = ENEMY_DEF_BY_ID.get(enemy.id)
+            tier = enemy_def.tier if enemy_def is not None else 1
+        formation_input.append(
+            _FormationEnemy(
+                piece_id=enemy.id,
+                tier=tier,
+                speed_tiebreaker=enemy.speed_tiebreaker,
+            )
+        )
+
+    formation = plan_enemy_formation(
+        formation_input,
+        ENEMY_DEF_BY_ID,
+        boss_position=boss_position,
+    )
+    for enemy_index, enemy in enumerate(enemies):
+        if enemy.speed_tiebreaker in formation:
+            enemy.position_q, enemy.position_r = formation[enemy.speed_tiebreaker]
+        else:
+            enemy.position_q = BOARD_WIDTH - 1 - (enemy_index // BOARD_HEIGHT)
+            enemy.position_r = enemy_index % BOARD_HEIGHT
 
 
 # ---------------------------------------------------------------------------

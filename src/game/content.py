@@ -530,6 +530,7 @@ def _build_enemy_roster(defs: tuple[EnemyDef, ...]) -> dict[str, Enemy]:
 CHAMPION_ROSTER: dict[str, Champion] = _build_champion_roster(_CHAMPION_DEFS)
 ENEMY_ROSTER: dict[str, Enemy] = _build_enemy_roster(_ENEMY_DEFS)
 ENEMY_TAGS_MAP: dict[str, frozenset[str]] = {d.id: d.tags for d in _ENEMY_DEFS}
+ENEMY_DEF_BY_ID: dict[str, EnemyDef] = {d.id: d for d in _ENEMY_DEFS}
 
 
 def get_champion(champion_id: str) -> Champion:
