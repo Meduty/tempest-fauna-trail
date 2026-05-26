@@ -43,7 +43,7 @@ class CellModifier:
     kind: str  # "hazard" | "impassable" | "ley" | "fog" | "rift" | "collapse"
     owner: str  # source id, e.g. "boss:strand" or "map_effect:hazard_tiles"
     tick_damage: float = 0.0  # damage dealt per interval (not per tick)
-    damage_interval: int = 60  # ticks between damage applications (default 600ms)
+    damage_interval: int = 60  # ticks between damage applications (60 ticks = 600ms at 10ms/tick)
     stat_buffs: dict[str, float] | None = None  # ley cell stat grants
     spawn_template: str | None = None  # rift spawns this enemy id
     active: bool = True

@@ -504,31 +504,6 @@ CHALLENGE_TEAM_SIZES: Final[dict[int, int]] = {
 }
 
 
-def _challenge_affinity_slots(
-    team_size: int,
-    stage_affinity: WeatherState,
-    live_weather: WeatherState,
-) -> list[WeatherState]:
-    """Return target affinities per slot for challenge composition.
-
-    Distribution (§2.3 amended):
-    - 50% stage affinity (the challenge's themed core)
-    - 30% live weather affinity (interaction with real-time weather)
-    - 20% random (variety)
-    """
-    random_slots = max(1, round(0.2 * team_size))
-    live_wx_slots = max(1, round(0.3 * team_size))
-    challenge_slots = team_size - random_slots - live_wx_slots
-
-    slots: list[WeatherState] = []
-    slots.extend([stage_affinity] * challenge_slots)
-    slots.extend([live_weather] * live_wx_slots)
-    # Random slots — will be filled with random affinities at generation time
-    # Use None-equivalent: we'll use a sentinel and replace at generation time
-    slots.extend([WeatherState.CLEAR] * random_slots)  # placeholder; randomized below
-    return slots
-
-
 def generate_challenge(
     run_seed: int,
     node_index: int,
@@ -816,7 +791,7 @@ def _build_boss_enemy(boss_def: "BossDef") -> Enemy:
         resistance=max(0, stats["resistance"]),
         attack_speed=round(stats["attack_speed"]),
         mana_regen=round(stats["mana_regen"]),
-        move_speed=boss_def.speed == "heavy" and 70 or 90,
+        move_speed=70 if boss_def.speed == "heavy" else 90,
         threat=100,  # Bosses have high threat
         attack_range=stats["attack_range"],
         ability_cost=36_000,

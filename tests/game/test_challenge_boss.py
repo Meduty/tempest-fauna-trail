@@ -341,7 +341,8 @@ class TestHazardTilesEffect:
         effect.on_round(ctx, board, 1)
         new_cells = set(board.cells_with_kind("hazard"))
         # Cells should have moved (very likely with different rng)
-        assert new_cells != initial_cells or True  # May rarely collide
+        # Note: extremely rare collision possible if rng picks same cells
+        assert len(new_cells) == 3  # correct count maintained
 
 
 class TestFloodLanesEffect:

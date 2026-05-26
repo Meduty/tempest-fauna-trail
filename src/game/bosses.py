@@ -13,7 +13,7 @@ No Flet imports (V.1).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Final
+from typing import Any, Callable, Final
 
 from src.game.effects import EffectBundle, Hook, HookScope, Modifier, Lifetime, SourceTag
 from src.game.events import DamageEvent, DeathEvent, PhaseEvent
@@ -267,7 +267,7 @@ BOSS_DEFS: dict[int, BossDef] = {
 # ---------------------------------------------------------------------------
 
 
-def make_boss_phase_hook(boss_def: BossDef) -> callable:
+def make_boss_phase_hook(boss_def: BossDef) -> Callable[[Any], EffectBundle]:
     """Create a passive factory that registers the boss phase-2 hook.
 
     Returns a factory (owner) -> EffectBundle per the passive system contract.
@@ -448,7 +448,7 @@ def _emperor_on_death_factory(owner: Any) -> EffectBundle:
 
 
 # On-death factory registry
-BOSS_ON_DEATH_FACTORIES: dict[str, callable] = {
+BOSS_ON_DEATH_FACTORIES: dict[str, Callable[[Any], EffectBundle]] = {
     "holloway_on_death": _holloway_on_death_factory,
     "vance_on_death": _vance_on_death_factory,
     "strand_on_death": _strand_on_death_factory,
