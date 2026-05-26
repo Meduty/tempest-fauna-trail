@@ -142,6 +142,31 @@ def process_casts(ctx: CombatContext, piece: Piece) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Board-state processing (map effects output)
+# ---------------------------------------------------------------------------
+
+
+def _process_board_state(ctx: CombatContext, pieces: list[Piece]) -> None:
+    """Apply board-state effects to living pieces each tick.
+
+    Map effects write to ctx.board_state; this function reads it and applies
+    mechanical consequences (slow status from slow_cells etc.).
+    The map effects themselves subscribe to on_tick hooks — this function
+    handles the combat-engine side (status application from board state).
+    """
+    board = ctx.board_state
+    if not board.slow_cells:
+        return
+    for piece in pieces:
+        if not piece.alive:
+            continue
+        pos = (piece.position_q, piece.position_r)
+        if board.is_slow(*pos):
+            # Short duration; re-applied each tick while piece stays on slow tile
+            ctx.apply_status(piece, "slow", duration_ticks=3)
+
+
+# ---------------------------------------------------------------------------
 # Main tick loop
 # ---------------------------------------------------------------------------
 
@@ -174,6 +199,9 @@ def run(ctx: CombatContext) -> str:
                     # Short duration ensures the status stays active between ticks
                     # (re-applied each tick; STACK behaviour accumulates stacks)
                     ctx.apply_status(piece, "sudden_death", 3)
+
+        # Process map effects (board-cell modifiers: slow tiles etc.)
+        _process_board_state(ctx, pieces)
 
         # Process statuses (expire, DOT)
         process_statuses(ctx, pieces)

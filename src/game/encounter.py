@@ -1,17 +1,31 @@
-"""Encounter generation (T19).
+"""Encounter generation (T19 + T21).
 
-Seed-deterministic procedural generation of enemy squads for FIGHT and REWARD
-nodes. Pure functions — no Flet imports, no I/O (V.1, V.2).
+Seed-deterministic procedural generation of enemy squads for FIGHT, REWARD,
+CHALLENGE, and BOSS_FIGHT nodes. Pure functions — no Flet imports, no I/O (V.1, V.2).
 
 All randomness derives from (run_seed, node_index, channel) — no external
 state, no clock, no global RNG.
+
+T21 additions:
+  generate_challenge()       — champion-faction encounter with 50/30/20 affinity split
+  generate_boss_encounter()  — authored boss + supporting cast with map effect
+  ChallengeReward            — reward payload for challenge clears
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from random import Random
 from typing import Final
 
-from .content import EnemyDef, _ENEMY_DEFS, compose_stats, _ROLE_FROM_AXES, _apply_stat_overrides
+from .content import (
+    ChampionDef,
+    EnemyDef,
+    _CHAMPION_DEFS,
+    _ENEMY_DEFS,
+    _ROLE_FROM_AXES,
+    _apply_stat_overrides,
+    compose_stats,
+)
 from .models import Enemy, WeatherState
 from .route import StageDef
 from .scaling import power
@@ -486,3 +500,338 @@ def supply_seed(run_seed: int, node_index: int, rerolled: bool = False) -> int:
 def shop_seed(run_seed: int, visit_index: int) -> int:
     """Return the sub-seed for champion shop offers at a given visit."""
     return derive_seed(run_seed, visit_index, CH_SHOP)
+
+
+# ===========================================================================
+# T21 — Challenge & Boss Encounters
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Challenge team sizes per stage (t21_challenge_boss_plan.md §2.2)
+# ---------------------------------------------------------------------------
+
+CHALLENGE_TEAM_SIZE: Final[dict[int, int]] = {
+    1: 4,
+    2: 5,
+    3: 7,
+    4: 8,
+    5: 9,
+    6: 11,
+}
+
+# Base components thematically linked to each affinity (challenge reward)
+AFFINITY_THEMED_COMPONENT: Final[dict[WeatherState, str]] = {
+    WeatherState.CLEAR:   "sword",   # direct power, the sunlit warrior
+    WeatherState.MIST:    "cloak",   # evasion/resistance, the veiled
+    WeatherState.THUNDER: "rod",     # ability power, the channelled storm
+    WeatherState.CLOUDY:  "belt",    # HP/endurance, the mountain's weight
+    WeatherState.RAIN:    "tear",    # mana/sustain, the flowing river
+    WeatherState.SNOW:    "bow",     # attack speed, the patient hunter
+}
+
+
+# ---------------------------------------------------------------------------
+# ChallengeReward — payload returned alongside the challenge encounter
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ChallengeReward:
+    """Reward payload for clearing a challenge encounter.
+
+    champion_offer  — id of one champion drawn from the defeated team;
+                      the player may recruit this champion.
+    component_offer — a random base component id.
+    themed_component — a base component themed to the stage affinity.
+    amber           — Amber currency granted (= 2 × stage_index).
+    tempest_bonus   — extra Tempest beyond the normal +2 per fight.
+    """
+    champion_offer: str
+    component_offer: str
+    themed_component: str
+    amber: int
+    tempest_bonus: int = 1
+
+
+# ---------------------------------------------------------------------------
+# Champion-pool helpers
+# ---------------------------------------------------------------------------
+
+# Base component ids (for random component rewards)
+_BASE_COMPONENTS: Final[list[str]] = ["bow", "tear", "rod", "belt", "sword", "cloak"]
+
+
+def _champion_defs_by_affinity() -> dict[WeatherState, list[ChampionDef]]:
+    """Return all champion defs (excl. T10 Primordials) grouped by affinity."""
+    pool: dict[WeatherState, list[ChampionDef]] = {ws: [] for ws in WeatherState}
+    for d in _CHAMPION_DEFS:
+        if d.tier == 10:
+            continue  # T10 Primordials reserved
+        pool[d.affinity].append(d)
+    return pool
+
+
+def _champion_def_to_enemy(d: ChampionDef, level: int = 1) -> Enemy:
+    """Build an Enemy from a ChampionDef at the given level.
+
+    Champions used as challenge enemies retain their stat profile but are
+    presented as Enemy objects (opponent-side pieces). Traits are dropped
+    (trait synergies are a player-board mechanic only).
+    """
+    from .scaling import stat_multiplier as sm
+
+    base = compose_stats(
+        d.primary_stat, d.range_, d.durability, d.playstyle, d.tier,
+        speed=d.speed, ability_cost=d.ability_cost,
+    )
+    if level > 1:
+        scale = sm(d.tier, level) / sm(d.tier, 1)
+        for k in ("max_hp", "strength", "intelligence", "armor", "resistance"):
+            base[k] = round(base[k] * scale)
+
+    stats = _apply_stat_overrides(base, d.stat_overrides)
+    return Enemy(
+        id=d.id,
+        name=d.name,
+        affinity=d.affinity,
+        role=_ROLE_FROM_AXES[d.primary_stat][d.range_],
+        tier=d.tier,
+        level=level,
+        max_hp=max(1, stats["max_hp"]),
+        strength=max(0, stats["strength"]),
+        intelligence=max(0, stats["intelligence"]),
+        armor=max(0, stats["armor"]),
+        resistance=max(0, stats["resistance"]),
+        attack_speed=round(stats["attack_speed"]),
+        mana_regen=round(stats["mana_regen"]),
+        move_speed=d.move_speed,
+        threat=d.threat,
+        attack_range=stats["attack_range"],
+        ability_cost=d.ability_cost,
+        active_ability=d.active_ability,
+        passive_ability=d.passive_ability,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Champion affinity slot assignment for challenges
+# ---------------------------------------------------------------------------
+
+
+def _challenge_affinity_slots(
+    team_size: int,
+    stage_affinity: WeatherState,
+    live_weather: WeatherState,
+) -> list[WeatherState]:
+    """Return a list of target affinities per slot following the 50/30/20 rule.
+
+    50% stage affinity (challenge identity), 30% live weather affinity
+    (weather-driven variety), 20% random (any affinity).
+    """
+    random_slots = max(1, round(0.20 * team_size))
+    live_wx_slots = max(1, round(0.30 * team_size))
+    stage_slots = team_size - random_slots - live_wx_slots
+
+    slots: list[WeatherState] = []
+    slots.extend([stage_affinity] * stage_slots)
+    slots.extend([live_weather] * live_wx_slots)
+
+    # Random slots: one of the 6 affinities (decided during generation)
+    all_affinities = list(WeatherState)
+    slots.extend([_rng_affinity_placeholder] * random_slots)  # filled during roll
+    return slots
+
+
+# Sentinel to mark "random affinity" slots (replaced during squad build)
+_rng_affinity_placeholder = WeatherState.CLEAR  # overridden by rng.choice
+
+
+def _roll_challenge_squad(
+    rng: Random,
+    team_size: int,
+    stage_affinity: WeatherState,
+    live_weather: WeatherState,
+    budget: float,
+    stage_index: int,
+) -> list[Enemy]:
+    """Build a challenge squad from the champion roster.
+
+    Follows the 50/30/20 affinity distribution:
+      50% stage affinity, 30% live weather, 20% random.
+    Excludes T10 Primordials.
+    """
+    all_affinities = list(WeatherState)
+    pool_by_affinity = _champion_defs_by_affinity()
+
+    # Compute slot targets
+    random_slots = max(1, round(0.20 * team_size))
+    live_wx_slots = max(1, round(0.30 * team_size))
+    stage_slots = team_size - random_slots - live_wx_slots
+
+    slot_affinities: list[WeatherState] = (
+        [stage_affinity] * stage_slots
+        + [live_weather] * live_wx_slots
+        + [rng.choice(all_affinities) for _ in range(random_slots)]
+    )
+    rng.shuffle(slot_affinities)
+
+    squad: list[Enemy] = []
+    remaining_budget = budget
+    dupe_counts: dict[str, int] = {}
+    max_dupes = 2
+
+    for target_affinity in slot_affinities:
+        if remaining_budget <= 0:
+            break
+
+        candidates = [
+            d for d in pool_by_affinity.get(target_affinity, [])
+            if dupe_counts.get(d.id, 0) < max_dupes
+            and _tier_weight(d.tier, stage_index) > 0
+            and power(d.tier, 1) <= remaining_budget + BUDGET_TOLERANCE
+        ]
+        if not candidates:
+            # Fallback: any affinity, affordable
+            candidates = [
+                d for d in _CHAMPION_DEFS
+                if d.tier != 10
+                and dupe_counts.get(d.id, 0) < max_dupes
+                and power(d.tier, 1) <= remaining_budget + BUDGET_TOLERANCE
+            ]
+        if not candidates:
+            continue
+
+        # Weight by tier appropriateness
+        weights = [_tier_weight(d.tier, stage_index) for d in candidates]
+        pick: ChampionDef = rng.choices(candidates, weights=weights, k=1)[0]
+        level = _pick_level(rng, stage_index, pick.tier, remaining_budget)
+        cost = power(pick.tier, level)
+
+        squad.append(_champion_def_to_enemy(pick, level))
+        remaining_budget -= cost
+        dupe_counts[pick.id] = dupe_counts.get(pick.id, 0) + 1
+
+    # Pad to team_size — budget is a soft quality target; count is a hard design target.
+    # Use cheapest available champions (lowest tier, ignoring remaining budget).
+    while len(squad) < team_size:
+        candidates = [
+            d for d in _CHAMPION_DEFS
+            if d.tier != 10 and dupe_counts.get(d.id, 0) < max_dupes
+        ]
+        if not candidates:
+            break
+        cheapest = min(candidates, key=lambda d: d.tier)
+        squad.append(_champion_def_to_enemy(cheapest, 1))
+        dupe_counts[cheapest.id] = dupe_counts.get(cheapest.id, 0) + 1
+
+    return squad
+
+
+# ---------------------------------------------------------------------------
+# generate_challenge — public API
+# ---------------------------------------------------------------------------
+
+
+def generate_challenge(
+    run_seed: int,
+    node_index: int,
+    stage: "StageDef",
+    live_weather: WeatherState = WeatherState.CLEAR,
+    dc: float = DEFAULT_DC,
+) -> tuple[list[Enemy], ChallengeReward]:
+    """Generate a CHALLENGE encounter and its reward payload.
+
+    The encounter uses the champion faction (not enemies). Affinity is:
+      50% stage affinity | 30% live weather | 20% random
+
+    Returns:
+        (enemy_squad, ChallengeReward)
+    """
+    rng = Random(derive_seed(run_seed, node_index, CH_CHALLENGE))
+    team_size = CHALLENGE_TEAM_SIZE[stage.index]
+    budget = STAGE_BASE[stage.index] * 1.3 * dc * rng.uniform(0.90, 1.10)
+
+    squad = _roll_challenge_squad(
+        rng, team_size, stage.affinity, live_weather, budget, stage.index,
+    )
+
+    # Build reward
+    champion_offer = rng.choice(squad).id if squad else ""
+    random_component = rng.choice(_BASE_COMPONENTS)
+    themed_component = AFFINITY_THEMED_COMPONENT[stage.affinity]
+    amber = 2 * stage.index
+
+    reward = ChallengeReward(
+        champion_offer=champion_offer,
+        component_offer=random_component,
+        themed_component=themed_component,
+        amber=amber,
+        tempest_bonus=1,
+    )
+    return squad, reward
+
+
+# ---------------------------------------------------------------------------
+# generate_boss_encounter — public API
+# ---------------------------------------------------------------------------
+
+
+def generate_boss_encounter(
+    run_seed: int,
+    node_index: int,
+    stage: "StageDef",
+) -> "BossEncounterResult":
+    """Generate a BOSS_FIGHT encounter for the given stage.
+
+    Returns a BossEncounterResult with:
+      - The boss Enemy instance (authored stats)
+      - The full supporting cast (fixed core + variable adds)
+      - The map effect id to apply to the combat context
+    """
+    from .bosses.data import BossEncounterResult, get_boss_def
+
+    boss_def = get_boss_def(stage.index)
+    rng = Random(derive_seed(run_seed, node_index, CH_BOSS))
+
+    # Build boss Enemy object from authored stats
+    boss_enemy = boss_def.build_enemy()
+
+    # Build fixed core cast
+    supporting_cast: list[Enemy] = []
+    for entry in boss_def.fixed_cast:
+        for _ in range(entry.count):
+            enemy_def = _get_enemy_def(entry.enemy_id)
+            if enemy_def is not None:
+                supporting_cast.append(_instantiate_enemy(enemy_def, entry.level))
+
+    # Draw variable adds from the pool
+    if boss_def.variable_cast_pool and boss_def.variable_cast_count_max > 0:
+        n_adds = rng.randint(
+            boss_def.variable_cast_count_min,
+            boss_def.variable_cast_count_max,
+        )
+        add_pool_defs = [
+            _get_enemy_def(eid)
+            for eid in boss_def.variable_cast_pool
+            if _get_enemy_def(eid) is not None
+        ]
+        if add_pool_defs:
+            for _ in range(n_adds):
+                pick = rng.choice(add_pool_defs)
+                supporting_cast.append(_instantiate_enemy(pick, 1))
+
+    return BossEncounterResult(
+        stage_index=stage.index,
+        boss_def=boss_def,
+        boss_enemy=boss_enemy,
+        supporting_cast=supporting_cast,
+        map_effect_id=boss_def.map_effect_id,
+    )
+
+
+def _get_enemy_def(enemy_id: str) -> EnemyDef | None:
+    """Look up an EnemyDef by id. Returns None if not found."""
+    for d in _ENEMY_DEFS:
+        if d.id == enemy_id:
+            return d
+    return None
