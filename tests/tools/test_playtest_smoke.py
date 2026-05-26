@@ -36,14 +36,19 @@ class TestSimFight:
 
 class TestInspect:
     def test_champion_filter_by_affinity(self) -> None:
+        from src.game.content import CHAMPION_ROSTER
+        from src.game.models import WeatherState
+
+        expected_count = sum(
+            1 for c in CHAMPION_ROSTER.values() if c.affinity == WeatherState.THUNDER
+        )
         code, out = _capture(
             inspect.main,
             ["--kind", "champion", "--affinity", "thunder"],
         )
         assert code == 0
         assert "thunder" in out
-        # 10 thunder champions in the roster
-        assert "10 matching" in out
+        assert f"{expected_count} matching" in out
 
     def test_enemy_filter_by_tier(self) -> None:
         code, out = _capture(

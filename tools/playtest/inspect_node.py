@@ -14,8 +14,6 @@ from __future__ import annotations
 import argparse
 import sys
 
-from src.game.bosses.data import BOSS_DEFS
-from src.game.content import ENEMY_ROSTER
 from src.game.encounter import (
     CONTENT_VERSION,
     DEFAULT_DC,
@@ -97,8 +95,12 @@ def _print_squad(squad: list[Enemy]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
-    stage = stage_def(args.stage)
-    position = node_position_in_stage(args.stage, args.node_index)
+    try:
+        stage = stage_def(args.stage)
+        position = node_position_in_stage(args.stage, args.node_index)
+    except argparse.ArgumentTypeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
 
     city_id = stage.node_cities[position]
     weather: WeatherState = args.weather if args.weather else CITIES[city_id].default_weather

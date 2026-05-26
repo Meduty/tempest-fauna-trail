@@ -35,6 +35,6 @@ catches up.
 | Task | State |
 |---|---|
 | Plan + docs | ✅ Done |
-| Layer 1 CLI (`tools/playtest/`) | ⏳ In progress (P1-P4) |
+| Layer 1 CLI (`tools/playtest/`) | ✅ Done |
 | Layer 2 admin view | 📋 Plan, deferred |
 | Layer 3 tick-replay (T.12 prototype) | 📋 Plan, deferred |

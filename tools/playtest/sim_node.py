@@ -80,8 +80,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
-    stage = stage_def(args.stage)
-    position = node_position_in_stage(args.stage, args.node_index)
+    try:
+        stage = stage_def(args.stage)
+        position = node_position_in_stage(args.stage, args.node_index)
+    except argparse.ArgumentTypeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
 
     city_id = stage.node_cities[position]
     weather: WeatherState = args.weather if args.weather else CITIES[city_id].default_weather

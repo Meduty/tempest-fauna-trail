@@ -197,7 +197,7 @@ ticks, survivors, damage_dealt`. Three `--weather-strategy` options:
 python -m tools.playtest.inspect \
     --kind champion \
     --affinity rain \
-    --tier 3 --level 2 \
+    --tier 3 \
     --show-favor cloudy        # also display Weather Favor under cloudy weather
 ```
 

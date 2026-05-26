@@ -114,7 +114,7 @@ def _apply_favor(piece: Champion | Enemy, weather: WeatherState) -> list[str]:
     return [
         piece.id,
         piece.affinity.value,
-        str(max(0, round(piece.max_hp * mod.hp_mult))),
+        str(max(1, round(piece.max_hp * mod.hp_mult))),
         str(max(0, round(piece.strength * mod.str_mult))),
         str(max(0, round(piece.intelligence * mod.int_mult))),
         str(max(0, round(piece.attack_speed * mod.as_mult))),

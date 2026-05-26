@@ -141,6 +141,12 @@ def _team_alive(result: BattleResult) -> bool:
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
 
+    try:
+        weather = _pick_weather(args.weather_strategy, 1, STAGES[0].node_cities[0])
+    except argparse.ArgumentTypeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
     team = args.team if args.team is not None else default_team(1)
     if not team:
         print("error: empty team", file=sys.stderr)
@@ -209,8 +215,11 @@ def main(argv: list[str] | None = None) -> int:
 
             if result.outcome == CombatOutcome.WIN:
                 cleared += 1
+            elif result.outcome == CombatOutcome.DRAW and _team_alive(result):
+                # Timed-out DRAW but team still has survivors — continue
+                cleared += 1
             else:
-                # LOSS or DRAW — abort the run
+                # LOSS or DRAW with zero survivors (wipe) — abort the run
                 died_at_node = node_index
                 break
         if died_at_node is not None:
