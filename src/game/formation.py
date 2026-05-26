@@ -35,11 +35,6 @@ COL_FRONT = 7   # Foremost enemy column — closest to player
 COL_MID = 8     # Middle enemy column
 COL_BACK = 9    # Rearmost enemy column
 
-CENTER_ROW = BOARD_HEIGHT // 2  # row 3 on a 7-row board
-
-# Edge rows for flank placement
-FLANK_ROWS = (0, BOARD_HEIGHT - 1)  # rows 0 and 6
-
 
 # ---------------------------------------------------------------------------
 # Placement roles
@@ -142,7 +137,7 @@ def _place_band(
     pieces: list["CombatPieceState"],
     col: int,
     occupied: set[tuple[int, int]],
-    placements: dict[str, tuple[int, int]],
+    placements: dict[int, tuple[int, int]],
     board_height: int = BOARD_HEIGHT,
     overflow_cols: tuple[int, ...] = (),
 ) -> None:
@@ -154,7 +149,7 @@ def _place_band(
         # Try primary column first
         for row in rows:
             if (col, row) not in occupied:
-                placements[piece.piece_id] = (col, row)
+                placements[piece.speed_tiebreaker] = (col, row)
                 occupied.add((col, row))
                 placed = True
                 break
@@ -164,7 +159,7 @@ def _place_band(
             for ov_col in overflow_cols:
                 for row in rows:
                     if (ov_col, row) not in occupied:
-                        placements[piece.piece_id] = (ov_col, row)
+                        placements[piece.speed_tiebreaker] = (ov_col, row)
                         occupied.add((ov_col, row))
                         placed = True
                         break
@@ -173,16 +168,17 @@ def _place_band(
 
         if not placed:
             # Last resort: any free cell in enemy zone
-            pos = _nearest_free(col, CENTER_ROW, occupied, board_height)
+            center_row = board_height // 2
+            pos = _nearest_free(col, center_row, occupied, board_height)
             if pos is not None:
-                placements[piece.piece_id] = pos
+                placements[piece.speed_tiebreaker] = pos
                 occupied.add(pos)
 
 
 def _place_flankers(
     flankers: list["CombatPieceState"],
     occupied: set[tuple[int, int]],
-    placements: dict[str, tuple[int, int]],
+    placements: dict[int, tuple[int, int]],
     board_height: int = BOARD_HEIGHT,
 ) -> None:
     """Place assassins/flankers at mid-to-back edge rows.
@@ -191,11 +187,12 @@ def _place_flankers(
     allowing them to slip around the frontline and threaten the enemy backline.
     """
     # Preferred positions: alternate between column 8 and 9, at edge rows
+    flank_rows = (0, board_height - 1)
     flank_positions = [
-        (COL_MID, FLANK_ROWS[0]),      # col 8, row 0
-        (COL_MID, FLANK_ROWS[1]),      # col 8, row 6
-        (COL_BACK, FLANK_ROWS[0]),     # col 9, row 0
-        (COL_BACK, FLANK_ROWS[1]),     # col 9, row 6
+        (COL_MID, flank_rows[0]),      # col 8, row 0
+        (COL_MID, flank_rows[1]),      # col 8, row max
+        (COL_BACK, flank_rows[0]),     # col 9, row 0
+        (COL_BACK, flank_rows[1]),     # col 9, row max
     ]
 
     for i, piece in enumerate(flankers):
@@ -204,7 +201,7 @@ def _place_flankers(
         if i < len(flank_positions):
             col, row = flank_positions[i]
             if (col, row) not in occupied:
-                placements[piece.piece_id] = (col, row)
+                placements[piece.speed_tiebreaker] = (col, row)
                 occupied.add((col, row))
                 placed = True
 
@@ -212,16 +209,16 @@ def _place_flankers(
             # Find nearest free edge-adjacent cell
             for col, row in flank_positions:
                 if (col, row) not in occupied:
-                    placements[piece.piece_id] = (col, row)
+                    placements[piece.speed_tiebreaker] = (col, row)
                     occupied.add((col, row))
                     placed = True
                     break
 
         if not placed:
             # Fallback: any free cell near edges
-            pos = _nearest_free(COL_MID, FLANK_ROWS[i % 2], occupied, board_height)
+            pos = _nearest_free(COL_MID, flank_rows[i % 2], occupied, board_height)
             if pos is not None:
-                placements[piece.piece_id] = pos
+                placements[piece.speed_tiebreaker] = pos
                 occupied.add(pos)
 
 
@@ -229,28 +226,28 @@ def _place_boss(
     boss: "CombatPieceState",
     boss_position: tuple[int, int],
     occupied: set[tuple[int, int]],
-    placements: dict[str, tuple[int, int]],
+    placements: dict[int, tuple[int, int]],
     board_height: int = BOARD_HEIGHT,
 ) -> None:
     """Place boss at its authored position, displacing any occupant."""
     # Reserve the boss position first
-    displaced_pid: str | None = None
+    displaced_tiebreaker: int | None = None
     for pid, pos in list(placements.items()):
         if pos == boss_position:
-            displaced_pid = pid
+            displaced_tiebreaker = pid
             occupied.discard(boss_position)
             del placements[pid]
             break
 
     # Place boss
-    placements[boss.piece_id] = boss_position
+    placements[boss.speed_tiebreaker] = boss_position
     occupied.add(boss_position)
 
     # Relocate displaced piece
-    if displaced_pid is not None:
+    if displaced_tiebreaker is not None:
         new_pos = _nearest_free(boss_position[0], boss_position[1], occupied, board_height)
         if new_pos is not None:
-            placements[displaced_pid] = new_pos
+            placements[displaced_tiebreaker] = new_pos
             occupied.add(new_pos)
 
 
@@ -265,7 +262,7 @@ def plan_enemy_formation(
     *,
     boss_position: tuple[int, int] | None = None,
     board_height: int = BOARD_HEIGHT,
-) -> dict[str, tuple[int, int]]:
+) -> dict[int, tuple[int, int]]:
     """Deterministic role-aware enemy formation planner.
 
     Args:
@@ -278,7 +275,7 @@ def plan_enemy_formation(
         board_height: Board height (default 7).
 
     Returns:
-        Dict mapping piece_id → (col, row) for each enemy.
+        Dict mapping piece speed_tiebreaker → (col, row) for each enemy.
     """
     if not enemies:
         return {}
@@ -308,7 +305,7 @@ def plan_enemy_formation(
         buckets[role].append(enemy)
 
     occupied: set[tuple[int, int]] = set()
-    placements: dict[str, tuple[int, int]] = {}
+    placements: dict[int, tuple[int, int]] = {}
 
     # 2. Place frontline (column 7, center-out)
     _place_band(
@@ -353,6 +350,6 @@ def plan_enemy_formation(
         _place_boss(boss_piece, boss_position, occupied, placements, board_height)
     elif boss_piece is not None:
         # Default boss position: center-back
-        _place_boss(boss_piece, (COL_BACK, CENTER_ROW), occupied, placements, board_height)
+        _place_boss(boss_piece, (COL_BACK, board_height // 2), occupied, placements, board_height)
 
     return placements

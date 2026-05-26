@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections import deque
 
+from src.game.bosses.data import BOSS_DEFS
 from src.game.content import ENEMY_DEF_BY_ID
 from src.game.formation import plan_enemy_formation
 from src.game.models import (
@@ -123,14 +124,20 @@ def _assign_spawns(pieces: list[CombatPieceState], boss_position: tuple[int, int
             ENEMY_DEF_BY_ID,
             boss_position=boss_position,
         )
-        for piece in enemies:
-            if piece.piece_id in formation:
-                piece.position_q, piece.position_r = formation[piece.piece_id]
+        for enemy_index, piece in enumerate(enemies):
+            if piece.speed_tiebreaker in formation:
+                piece.position_q, piece.position_r = formation[piece.speed_tiebreaker]
             else:
                 # Fallback: index-based packing (should not occur)
-                idx = enemies.index(piece)
-                piece.position_q = BOARD_WIDTH - 1 - (idx // BOARD_HEIGHT)
-                piece.position_r = idx % BOARD_HEIGHT
+                piece.position_q = BOARD_WIDTH - 1 - (enemy_index // BOARD_HEIGHT)
+                piece.position_r = enemy_index % BOARD_HEIGHT
+
+
+def _get_boss_spawn_position(boss_piece_id: str) -> tuple[int, int] | None:
+    for boss_def in BOSS_DEFS.values():
+        if boss_def.id == boss_piece_id:
+            return boss_def.spawn_position
+    return None
 
 
 # --- Queries -----------------------------------------------------------------
@@ -451,7 +458,14 @@ def resolve_combat(
         piece = apply_weather(source, weather)
         piece.speed_tiebreaker = index
         pieces.append(piece)
-    _assign_spawns(pieces)
+
+    boss_position: tuple[int, int] | None = None
+    for piece in pieces:
+        if piece.is_enemy and piece.tier == 10:
+            boss_position = _get_boss_spawn_position(piece.piece_id)
+            break
+
+    _assign_spawns(pieces, boss_position=boss_position)
 
     damage_dealt: dict[str, int] = {p.piece_id: 0 for p in pieces}
     damage_taken: dict[str, int] = {p.piece_id: 0 for p in pieces}
