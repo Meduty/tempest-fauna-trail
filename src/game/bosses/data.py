@@ -61,7 +61,7 @@ class BossDef:
     move_speed: int = 80
     threat: int = 90
     attack_range: int = 2
-    ability_cost: int = 48_000
+    ability_cost: int = 48_000      # mana units (mana_regen ticks to fill)
 
     # Phase 1 kit
     phase1_active: str = ""

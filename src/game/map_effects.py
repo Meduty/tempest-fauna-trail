@@ -48,7 +48,8 @@ HAZARD_INTERVAL = 60     # hazard damage fires every 60 ticks
 HAZARD_DAMAGE = 30.0     # true damage per interval on hazard tile
 LEY_ARMOR_BONUS = 20.0   # armor added to ley-holding team
 LEY_REGEN_BONUS = 15.0   # HP regen bonus (per interval) on ley tiles — future use
-SLOW_MAGNITUDE = 0.5     # move speed multiplier for slow tiles (50% of base)
+SLOW_MAGNITUDE = 0.5     # move speed multiplier — placeholder for T24 movement system
+                         # The 'slow' status is cosmetic until move_speed is consumed by pathing.
 FOG_RANGE = 2            # max targetable distance in fog (hexes)
 
 
@@ -148,11 +149,15 @@ class SunlitTilesEffect(MapEffect):
                 if tick % mod.heal_interval == 0:
                     ctx.heal(piece, piece, mod.heal_per_interval)
 
-                # Damage buff: short-lived TIMED Modifier refreshed each tick
-                # (expires 2 ticks after the piece vacates the tile)
+                # Damage buff: short-lived TIMED Modifier refreshed each tick.
+                # Buffs STR (physical damage proxy). Stage 1 / Clear is the
+                # tutorial boss — physical-only is intentional simplicity.
+                # Ability damage (INT) is unaffected; a future pass could add
+                # a paired INT modifier for full-damage coverage.
+                # Expires 2 ticks after the piece vacates the tile.
                 if mod.damage_buff_pct > 0:
                     buff = Modifier(
-                        stat="strength",        # buff raw damage via STR proxy
+                        stat="strength",        # physical damage proxy (see note above)
                         op="mul",
                         value=1.0 + mod.damage_buff_pct,
                         lifetime=Lifetime.TIMED,
@@ -189,7 +194,7 @@ class FogEffect(MapEffect):
 
     effect_id = "fog"
 
-    def _on_combat_start(self, ctx: Any, event: Any) -> None:
+    def _on_combat_start(self, ctx: Any, _event: Any) -> None:
         self.board.fog_range = FOG_RANGE
 
 
@@ -328,36 +333,57 @@ class DefensiveLeyEffect(MapEffect):
                     break  # First occupant wins
 
             if occupying_team != ley_mod.holding_team:
-                # Ownership changed — remove old buff, apply new
-                self._remove_ley_buff(ctx, ley_mod.holding_team)
+                # Ownership changed — remove old buff, apply new.
+                # Each cell uses a unique source_id so cells are independent:
+                # losing cell A does not strip cell B's buff from the same team.
+                self._remove_ley_buff(ctx, ley_mod.holding_team, pos)
                 ley_mod.holding_team = occupying_team
                 if occupying_team is not None:
-                    self._apply_ley_buff(ctx, occupying_team)
+                    self._apply_ley_buff(ctx, occupying_team, pos)
 
-    def _apply_ley_buff(self, ctx: Any, team: str) -> None:
-        """Apply defensive buff to all living members of team."""
+    @staticmethod
+    def _cell_source(pos: tuple[int, int]) -> str:
+        """Per-cell source id so each cell's buff is tracked independently."""
+        return f"map:ley:{pos[0]},{pos[1]}"
+
+    def _apply_ley_buff(self, ctx: Any, team: str, pos: tuple[int, int]) -> None:
+        """Apply defensive armor buff to all living members of team for this cell.
+
+        Uses a per-cell source_id so multiple held cells stack additively
+        (design intent) while re-application of the same cell is deduped
+        (prevents double-stacking on ownership swings).
+        """
         is_enemy_team = (team == "enemy")
+        source = self._cell_source(pos)
         for piece in ctx.living_pieces():
-            if piece.is_enemy == is_enemy_team:
+            if piece.is_enemy != is_enemy_team:
+                continue
+            # Dedup: only apply if this cell's buff is not already present
+            if not any(m.source_id == source for m in piece.modifiers):
                 buff = Modifier(
                     stat="armor",
                     op="add",
                     value=LEY_ARMOR_BONUS,
                     lifetime=Lifetime.COMBAT,
-                    source_id="map:ley",
+                    source_id=source,
                 )
                 ctx.apply_modifier(piece, buff)
 
-    def _remove_ley_buff(self, ctx: Any, team: str | None) -> None:
-        """Remove ley armor buff from all living members of team."""
+    def _remove_ley_buff(self, ctx: Any, team: str | None, pos: tuple[int, int]) -> None:
+        """Remove this cell's ley armor buff from all living members of team.
+
+        Only removes the modifier for this specific cell (by source_id),
+        leaving buffs from other held ley cells intact.
+        """
         if team is None:
             return
         is_enemy_team = (team == "enemy")
+        source = self._cell_source(pos)
         for piece in ctx.living_pieces():
             if piece.is_enemy == is_enemy_team:
                 piece.modifiers = [
                     m for m in piece.modifiers
-                    if m.source_id != "map:ley"
+                    if m.source_id != source
                 ]
 
 
@@ -385,10 +411,15 @@ class FloodLanesEffect(MapEffect):
         self.board.impassable_columns.add(self._flood_q)
 
     def _on_round(self, ctx: Any, round_num: int) -> None:
-        """Shift the flood column each round."""
+        """Shift the flood column each round.
+
+        The flood travels columns 1..(width-2) — inner columns only.
+        Edge columns (0 and width-1) are permanently passable so pieces
+        always have at least one clear lane on each flank.
+        """
         self.board.impassable_columns.discard(self._flood_q)
 
-        # Bounce at edges
+        # Bounce before reaching the outermost columns (keep edges open)
         next_q = self._flood_q + self._direction
         if next_q <= 0 or next_q >= self._width - 1:
             self._direction *= -1
@@ -451,7 +482,17 @@ class SlowTilesEffect(MapEffect):
             self._on_round(ctx, round_num)
 
     def _on_round(self, ctx: Any, round_num: int) -> None:
-        """Expand slow tiles inward from edges each round."""
+        """Expand slow tiles inward from edges each round.
+
+        Phase 1: expands every even round (first expansion at round 2, ~20 s).
+                 This delay gives players a few rounds before the freeze matters.
+        Phase 2: expands every round (The Wound Spreads passive doubles the rate).
+
+        NOTE: slow status currently has no mechanical gate (move_speed is not yet
+        consumed by pathing). The slow tiles are visually telegraphed and will
+        become mechanical when T24 (enemy formation / movement) is implemented.
+        SLOW_MAGNITUDE (0.5) is the intended multiplier for that system.
+        """
         # Phase 2 expands faster (every round instead of every 2 rounds)
         if self._phase2 or round_num % 2 == 0:
             self._slow_depth += 1

@@ -16,9 +16,10 @@ if TYPE_CHECKING:
 def _filter_fog(actor: Any, enemies: list, ctx: Any) -> list:
     """Filter enemies that are unreachable due to fog (BoardState.fog_range).
 
+    Reads ctx.board_state (public property on CombatContext).
     If no fog is active, returns the list unchanged.
     """
-    board_state = getattr(ctx, "_board_state", None) or getattr(ctx, "board_state", None)
+    board_state = getattr(ctx, "board_state", None)
     if board_state is None or board_state.fog_range is None:
         return enemies
     return [

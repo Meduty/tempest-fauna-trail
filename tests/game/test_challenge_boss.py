@@ -6,6 +6,10 @@ Covers:
 - ChallengeReward: structure, amber calculation
 - Map effects: BoardState mutations and on-tick behaviour
 - BoardState: basic query correctness
+- attach_map_effect(): wiring integration (effect registered → fires on bus)
+- Ley buff: per-cell independence, dedup, recapture correctness
+- Fog targeting: targeting.py respects board_state.fog_range
+- Flood lanes: boundary bounce, always-one-column invariant
 """
 from __future__ import annotations
 
@@ -485,12 +489,15 @@ class TestBuildMapEffect:
 
 
 def _make_mock_ctx(board: BoardState, width: int = 10, height: int = 7) -> Any:
-    """Create a minimal mock CombatContext for map effect tests."""
+    """Create a minimal mock CombatContext for map effect tests.
+
+    Exposes the public board_state property only — _board_state private attr
+    is not set (targeting.py now reads board_state, not _board_state).
+    """
     ctx = MagicMock()
     ctx._board_width = width
     ctx._board_height = height
     ctx.board_state = board
-    ctx._board_state = board
     ctx.living_pieces.return_value = []
     ctx.bus = MagicMock()
     ctx.rng = Random(42)
@@ -896,3 +903,350 @@ class TestIronEmperorBoss:
             result = generate_boss_encounter(seed, 60, stage)
             seen_cast_ids.add(tuple(e.id for e in result.supporting_cast))
         assert len(seen_cast_ids) > 1, "Iron Emperor never varied his supporting cast"
+
+
+# ---------------------------------------------------------------------------
+# attach_map_effect — wiring integration
+# ---------------------------------------------------------------------------
+
+class TestAttachMapEffect:
+    """attach_map_effect() must register hooks and activate effects via the bus."""
+
+    def test_attach_registers_hooks_with_bus(self):
+        """attach_map_effect() must call bus.subscribe() at least once."""
+        from src.game.loadout import attach_map_effect
+        from src.game.effects import EventBus
+
+        board = BoardState()
+        bus = MagicMock()
+        ctx = MagicMock()
+        ctx.board_state = board
+        ctx.bus = bus
+
+        effect = attach_map_effect("fog", ctx, seed=0)
+
+        assert effect is not None
+        bus.subscribe.assert_called()
+
+    def test_attach_fog_activates_on_combat_start(self):
+        """After attach, on_combat_start must set board.fog_range."""
+        from src.game.loadout import attach_map_effect
+        from src.game.effects import EventBus
+        from src.game.events import CombatStartEvent
+        from src.game.map_effects import FOG_RANGE
+
+        board = BoardState()
+        bus = EventBus()
+        ctx = MagicMock()
+        ctx.board_state = board
+        ctx.bus = bus
+
+        attach_map_effect("fog", ctx, seed=0)
+
+        assert board.fog_range is None  # not yet fired
+
+        bus.fire("on_combat_start", CombatStartEvent(), ctx=ctx)
+
+        assert board.fog_range == FOG_RANGE
+
+    def test_attach_sunlit_tiles_activates_on_combat_start(self):
+        """After attach, on_combat_start must populate sunlit_cells."""
+        from src.game.loadout import attach_map_effect
+        from src.game.effects import EventBus
+        from src.game.events import CombatStartEvent
+        from src.game.map_effects import SunlitTilesEffect
+
+        board = BoardState()
+        bus = EventBus()
+        ctx = MagicMock()
+        ctx.board_state = board
+        ctx.bus = bus
+        ctx._board_width = 10
+        ctx._board_height = 7
+        ctx.living_pieces.return_value = []
+
+        attach_map_effect("sunlit_tiles", ctx, seed=42)
+        bus.fire("on_combat_start", CombatStartEvent(), ctx=ctx)
+
+        assert len(board.sunlit_cells) == SunlitTilesEffect.TILE_COUNT
+
+    def test_attach_all_effect_ids_without_error(self):
+        """attach_map_effect must succeed for every registered effect id."""
+        from src.game.loadout import attach_map_effect
+        from src.game.effects import EventBus
+
+        for effect_id in MAP_EFFECT_CLASSES:
+            board = BoardState()
+            bus = MagicMock()
+            ctx = MagicMock()
+            ctx.board_state = board
+            ctx.bus = bus
+            effect = attach_map_effect(effect_id, ctx, seed=0)
+            assert effect is not None, f"attach_map_effect({effect_id!r}) returned None"
+
+    def test_attach_unknown_id_raises(self):
+        """Unknown effect ids must raise ValueError (not silently pass)."""
+        from src.game.loadout import attach_map_effect
+
+        board = BoardState()
+        ctx = MagicMock()
+        ctx.board_state = board
+        ctx.bus = MagicMock()
+
+        with pytest.raises(ValueError, match="Unknown map effect id"):
+            attach_map_effect("nonexistent", ctx, seed=0)
+
+
+# ---------------------------------------------------------------------------
+# Ley buff — per-cell independence and dedup
+# ---------------------------------------------------------------------------
+
+class TestLeyBuffCorrectness:
+    """Ley buff must be per-cell, deduped, and independently removable."""
+
+    def _setup(self) -> tuple:
+        board = BoardState()
+        effect = build_map_effect("defensive_ley", board, seed=99)
+        ctx = _make_mock_ctx(board)
+        effect._on_combat_start(ctx, None)
+        return board, effect, ctx
+
+    def test_no_double_buff_on_repeated_tick_same_holder(self):
+        """Holding the same cell across multiple ticks must not stack modifiers."""
+        board, effect, ctx = self._setup()
+        if not board.ley_cells:
+            pytest.skip("No ley cells placed")
+
+        cell = board.ley_cells[0]
+        piece = MagicMock()
+        piece.position_q = cell[0]
+        piece.position_r = cell[1]
+        piece.is_enemy = False
+        piece.modifiers = []
+
+        # Wire apply_modifier to actually append to piece.modifiers
+        def apply_mod(p, m):
+            p.modifiers.append(m)
+        ctx.apply_modifier.side_effect = apply_mod
+        ctx.living_pieces.return_value = [piece]
+
+        # First tick: ownership changes None → player, buff applied
+        for _ in range(3):
+            effect._on_tick(ctx, MagicMock(tick=1))
+
+        cell_source = DefensiveLeyEffect._cell_source(cell)
+        ley_mods = [m for m in piece.modifiers if m.source_id == cell_source]
+        assert len(ley_mods) == 1, (
+            f"Expected 1 ley modifier, got {len(ley_mods)} — buff is stacking"
+        )
+
+    def test_losing_cell_a_does_not_remove_cell_b_buff(self):
+        """Per-cell source IDs: each cell's buff is removed independently."""
+        from src.game.effects import Modifier, Lifetime
+
+        board, effect, ctx = self._setup()
+        if len(board.ley_cells) < 2:
+            pytest.skip("Need at least 2 ley cells")
+
+        cell_a = board.ley_cells[0]
+        cell_b = board.ley_cells[1]
+
+        source_a = DefensiveLeyEffect._cell_source(cell_a)
+        source_b = DefensiveLeyEffect._cell_source(cell_b)
+
+        # Simulate both cells held by player
+        piece = MagicMock()
+        piece.is_enemy = False
+        piece.modifiers = [
+            Modifier(stat="armor", op="add", value=20.0,
+                     lifetime=Lifetime.COMBAT, source_id=source_a),
+            Modifier(stat="armor", op="add", value=20.0,
+                     lifetime=Lifetime.COMBAT, source_id=source_b),
+        ]
+        ctx.living_pieces.return_value = [piece]
+
+        # Remove only cell_a's buff (simulate losing cell A)
+        effect._remove_ley_buff(ctx, "player", cell_a)
+
+        remaining_sources = [m.source_id for m in piece.modifiers]
+        assert source_a not in remaining_sources, "Cell A buff not removed"
+        assert source_b in remaining_sources, "Cell B buff wrongly removed"
+
+    def test_cell_buff_reapplied_after_recapture(self):
+        """After losing and recapturing a cell, the buff is reapplied once."""
+        board, effect, ctx = self._setup()
+        if not board.ley_cells:
+            pytest.skip("No ley cells placed")
+
+        cell = board.ley_cells[0]
+        piece = MagicMock()
+        piece.position_q = cell[0]
+        piece.position_r = cell[1]
+        piece.is_enemy = False
+        piece.modifiers = []
+
+        def apply_mod(p, m):
+            p.modifiers.append(m)
+        ctx.apply_modifier.side_effect = apply_mod
+        ctx.living_pieces.return_value = [piece]
+
+        cell_source = DefensiveLeyEffect._cell_source(cell)
+
+        # Capture → lose → recapture
+        effect._apply_ley_buff(ctx, "player", cell)
+        assert len([m for m in piece.modifiers if m.source_id == cell_source]) == 1
+
+        effect._remove_ley_buff(ctx, "player", cell)
+        assert len([m for m in piece.modifiers if m.source_id == cell_source]) == 0
+
+        effect._apply_ley_buff(ctx, "player", cell)
+        assert len([m for m in piece.modifiers if m.source_id == cell_source]) == 1
+
+
+# ---------------------------------------------------------------------------
+# Fog targeting integration
+# ---------------------------------------------------------------------------
+
+class TestFogTargetingIntegration:
+    """targeting.py must respect board_state.fog_range via _filter_fog."""
+
+    def test_primary_target_excluded_beyond_fog_range(self):
+        """primary_target must return None when all enemies are beyond fog_range."""
+        from src.game.targeting import primary_target
+        from src.game.map_effects import FOG_RANGE
+
+        board = BoardState()
+        board.fog_range = FOG_RANGE  # 2 hexes
+
+        actor = MagicMock()
+        actor.position_q = 0
+        actor.position_r = 0
+        actor.target_id = None
+
+        far_enemy = MagicMock()
+        far_enemy.position_q = FOG_RANGE + 3  # well beyond fog range
+        far_enemy.position_r = 0
+        far_enemy.id = "far"
+
+        ctx = MagicMock()
+        ctx.board_state = board
+        ctx.enemies_of.return_value = [far_enemy]
+
+        result = primary_target(actor, ctx)
+        assert result is None, "Enemy beyond fog_range should not be targetable"
+
+    def test_primary_target_returns_enemy_within_fog_range(self):
+        """primary_target returns an enemy that is within fog_range."""
+        from src.game.targeting import primary_target
+        from src.game.map_effects import FOG_RANGE
+
+        board = BoardState()
+        board.fog_range = FOG_RANGE
+
+        actor = MagicMock()
+        actor.position_q = 0
+        actor.position_r = 0
+        actor.target_id = None
+
+        near_enemy = MagicMock()
+        near_enemy.position_q = 1
+        near_enemy.position_r = 0
+        near_enemy.id = "near"
+        near_enemy.alive = True
+
+        ctx = MagicMock()
+        ctx.board_state = board
+        ctx.enemies_of.return_value = [near_enemy]
+
+        result = primary_target(actor, ctx)
+        assert result is near_enemy
+
+    def test_no_fog_means_all_enemies_targetable(self):
+        """When fog_range is None, distant enemies are still targetable."""
+        from src.game.targeting import primary_target
+
+        board = BoardState()
+        # fog_range defaults to None — no fog
+
+        actor = MagicMock()
+        actor.position_q = 0
+        actor.position_r = 0
+        actor.target_id = None
+
+        far_enemy = MagicMock()
+        far_enemy.position_q = 9
+        far_enemy.position_r = 6
+        far_enemy.id = "far"
+        far_enemy.alive = True
+
+        ctx = MagicMock()
+        ctx.board_state = board
+        ctx.enemies_of.return_value = [far_enemy]
+
+        result = primary_target(actor, ctx)
+        assert result is far_enemy
+
+
+# ---------------------------------------------------------------------------
+# Flood lanes — boundary bounce
+# ---------------------------------------------------------------------------
+
+class TestFloodLanesBoundary:
+    """Flood column must bounce before reaching edges and stay in inner range."""
+
+    def setup_method(self):
+        self.board = BoardState()
+        self.effect = build_map_effect("flood_lanes", self.board, seed=0)
+        self.ctx = _make_mock_ctx(self.board)
+        self.effect._on_combat_start(self.ctx, None)
+
+    def test_starting_column_is_inner(self):
+        col = next(iter(self.board.impassable_columns))
+        assert 0 < col < 9, f"Starting flood column {col} is on the edge"
+
+    def test_bounce_at_right_boundary(self):
+        """Force the flood to the rightmost allowed column and verify it bounces."""
+        from src.game.map_effects import ROUND_TICKS
+
+        # Drive flood rightward until it bounces
+        self.effect._direction = 1
+        seen_cols = []
+        for r in range(1, 15):
+            event = MagicMock()
+            event.tick = ROUND_TICKS * r
+            self.effect._on_tick(self.ctx, event)
+            col = next(iter(self.board.impassable_columns))
+            seen_cols.append(col)
+
+        assert max(seen_cols) <= 8, (
+            f"Flood reached col {max(seen_cols)}, exceeding inner-right bound 8"
+        )
+
+    def test_bounce_at_left_boundary(self):
+        """Force the flood leftward and verify it bounces."""
+        from src.game.map_effects import ROUND_TICKS
+
+        self.effect._direction = -1
+        seen_cols = []
+        for r in range(1, 15):
+            event = MagicMock()
+            event.tick = ROUND_TICKS * r
+            self.effect._on_tick(self.ctx, event)
+            col = next(iter(self.board.impassable_columns))
+            seen_cols.append(col)
+
+        assert min(seen_cols) >= 1, (
+            f"Flood reached col {min(seen_cols)}, below inner-left bound 1"
+        )
+
+    def test_always_exactly_one_impassable_column(self):
+        """After any number of rounds, exactly one column is impassable."""
+        from src.game.map_effects import ROUND_TICKS
+
+        for r in range(1, 20):
+            event = MagicMock()
+            event.tick = ROUND_TICKS * r
+            self.effect._on_tick(self.ctx, event)
+            assert len(self.board.impassable_columns) == 1, (
+                f"Round {r}: {len(self.board.impassable_columns)} impassable columns"
+            )

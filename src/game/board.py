@@ -31,7 +31,8 @@ class CellModifier:
     """
 
     cell: tuple[int, int]           # (q, r) axial hex coordinate
-    kind: str                        # "sunlit" | "hazard" | "ley" | "fog" | "flood" | "slow"
+    kind: str                        # "sunlit" | "hazard" | "ley" | "slow"
+                                     # (flood lanes use BoardState.impassable_columns, not CellModifier)
     owner: str                       # source id, e.g. "boss:holloway"
     active: bool = True
 

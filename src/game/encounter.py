@@ -571,7 +571,7 @@ def _champion_defs_by_affinity() -> dict[WeatherState, list[ChampionDef]]:
     return pool
 
 
-def _champion_def_to_enemy(d: ChampionDef, level: int = 1) -> Enemy:
+def _champion_def_to_enemy(d: ChampionDef, level: int = 1) -> "Enemy":
     """Build an Enemy from a ChampionDef at the given level.
 
     Champions used as challenge enemies retain their stat profile but are
