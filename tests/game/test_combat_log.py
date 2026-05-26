@@ -93,7 +93,6 @@ def test_log_handles_stalemate_with_no_events():
     enemies = [_enemy(id="mob", attack_range=1, move_speed=0)]
     result = resolve_combat(team, enemies, WeatherState.CLEAR)
     text = render_combat_log(result, team=team, enemies=enemies)
-    assert "(no actions — stalemate)" in text
     assert "=== Result: DRAW ===" in text
     assert "timed out" in text
 

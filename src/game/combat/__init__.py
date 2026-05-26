@@ -1,15 +1,15 @@
-"""Combat engine subpackage (T20).
+"""Combat engine subpackage (T20/T26 unified).
 
 Re-exports CombatContext and run for external callers.
-Also re-exports resolve_combat from legacy module for backward compatibility.
-Internal modules import each other by relative path.
+resolve_combat is the single public combat entry point — it delegates to the
+new unified loop internally.
 
 HARD RULE: combat/ may import effects.py, registries.py, events.py, status.py, stdlib.
            combat/ may NEVER import content modules (abilities/, items/, traits/, etc.).
 """
 
 from src.game.combat.context import CombatContext, hex_distance
-from src.game.combat.loop import run
+from src.game.combat.loop_new import run
 
 # Backward compatibility: re-export everything from the legacy module
 from src.game.combat.legacy import (  # noqa: F401

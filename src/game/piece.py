@@ -50,6 +50,8 @@ class Piece:
     alive: bool = True
     target_id: str | None = None
     speed_tiebreaker: int = 0
+    action_energy: int = 0
+    movement_energy: int = 0
 
     # Crit state
     crit_counter: int = 0
