@@ -153,58 +153,70 @@ class MapEffect:
 
 
 class SpawnRiftsEffect(MapEffect):
-    """Holloway (Clear) — Furnace vents spawn weak adds periodically.
+    """Holloway (Clear) — pressure vents cycle into superheated hazard zones.
 
-    Auto-battle design: adds appear at fixed positions visible pre-combat.
-    Players can plan team composition around handling extra bodies.
-    Spawns 1 add every 2 rounds (every 1200 ticks) at a rift cell.
+    Auto-battle design: vent cells are visible pre-combat and one vent becomes
+    superheated on a fixed cadence, rewarding route planning and repositioning.
     """
     effect_id = "spawn_rifts"
-    display_name = "Furnace Vents"
-    description = "Scrap-vents periodically spawn weak reinforcements."
+    display_name = "Pressure Vents"
+    description = "Vents cycle into superheated zones that scorch occupants."
     affinity = WeatherState.CLEAR
 
-    def __init__(self, rift_cells: list[tuple[int, int]] | None = None,
-                 spawn_template: str = "enemy_conscript",
-                 spawn_interval_rounds: int = 2):
-        self._rift_cells = rift_cells or [(2, 1), (7, 1)]
-        self._spawn_template = spawn_template
-        self._spawn_interval = spawn_interval_rounds
+    def __init__(
+        self,
+        vent_cells: list[tuple[int, int]] | None = None,
+        cycle_interval_rounds: int = 1,
+        damage_per_interval: float = 18.0,
+        damage_interval: int = 60,
+    ):
+        self._vent_cells = vent_cells or [(2, 1), (7, 1)]
+        self._cycle_interval = cycle_interval_rounds
+        self._damage = damage_per_interval
+        self._damage_interval = damage_interval
+        self._active_index = -1
 
     def setup(self, board: BoardState, rng: Any) -> None:
-        for cell in self._rift_cells:
+        for cell in self._vent_cells:
             board.add_modifier(CellModifier(
                 cell=cell,
                 kind="rift",
                 owner="map_effect:spawn_rifts",
-                spawn_template=self._spawn_template,
             ))
+        if self._vent_cells:
+            self._set_active_vent(board, 0)
 
     def on_round(self, ctx: "CombatContext", board: BoardState, round_num: int) -> None:
         if round_num < 1:
             return
-        if round_num % self._spawn_interval != 0:
+        if not self._vent_cells or round_num % self._cycle_interval != 0:
             return
-        # Spawn one add at a random rift cell
-        rift_cells = board.cells_with_kind("rift")
-        if not rift_cells:
-            return
-        cell = ctx.rng.choice(rift_cells)
-        self._spawn_add(ctx, cell)
+        next_idx = (self._active_index + 1) % len(self._vent_cells)
+        self._set_active_vent(board, next_idx)
 
-    def _spawn_add(self, ctx: "CombatContext", cell: tuple[int, int]) -> None:
-        """Spawn a weak add at the given cell."""
-        from src.game.encounter import _instantiate_enemy
-        from src.game.content import _ENEMY_DEFS
+    def _set_active_vent(self, board: BoardState, idx: int) -> None:
+        board.remove_by_owner("map_effect:spawn_rifts_active")
+        self._active_index = idx
+        board.add_modifier(CellModifier(
+            cell=self._vent_cells[idx],
+            kind="hazard",
+            owner="map_effect:spawn_rifts_active",
+            tick_damage=self._damage,
+            damage_interval=self._damage_interval,
+        ))
 
-        template = next((d for d in _ENEMY_DEFS if d.id == self._spawn_template), None)
-        if template is None:
+    def process_occupants(self, ctx: "CombatContext", board: BoardState) -> None:
+        tick = ctx.current_tick
+        if tick % self._damage_interval != 0:
             return
-        enemy = _instantiate_enemy(template, 1)
-        from src.game.loadout import piece_from_enemy
-        piece = piece_from_enemy(enemy)
-        piece.is_enemy = True
-        ctx.spawn(piece, cell[0], cell[1])
+        hot_cells = {
+            mod.cell
+            for mod in board.all_modifiers()
+            if mod.active and mod.owner == "map_effect:spawn_rifts_active"
+        }
+        for piece in ctx.living_pieces():
+            if (piece.position_q, piece.position_r) in hot_cells:
+                ctx.deal_damage(piece, piece, self._damage, SourceTag.TRUE)
 
 
 class FogEffect(MapEffect):
@@ -402,23 +414,30 @@ class FloodLanesEffect(MapEffect):
 
 
 class CollapsingArenaEffect(MapEffect):
-    """Iron Emperor (Snow) — edge rows disable over the fight.
+    """Iron Emperor (Snow) — edge tiles become deep-frost slow zones over time.
 
-    Auto-battle design: the arena shrinks predictably from the edges inward.
-    This creates a sudden-death-at-timeout effect naturally (only activates
-    when the fight runs long). Players see the shrinking boundary and can
-    build burst teams to end fights before the arena becomes too small.
-    Collapse accelerates in boss phase 2 (via on_phase_change integration).
+    Auto-battle design: frost creeps inward from the edges, heavily punishing
+    units that idle in backline corners (especially ranged auto-attackers).
+    Frost accelerates in boss phase 2 (via on_phase_change integration).
     """
     effect_id = "collapsing_arena"
-    display_name = "World-Engine Freeze"
-    description = "The arena freezes from the edges inward over time."
+    display_name = "World-Engine Frost"
+    description = "Deep frost spreads inward, slowing units caught on frozen tiles."
     affinity = WeatherState.SNOW
 
-    def __init__(self, collapse_interval_rounds: int = 2):
+    def __init__(
+        self,
+        collapse_interval_rounds: int = 2,
+        move_speed_mul: float = 0.65,
+        attack_speed_mul: float = 0.65,
+        backline_attack_speed_mul: float = 0.45,
+    ):
         self._interval = collapse_interval_rounds
         self._collapse_layer = 0
         self._accelerated = False
+        self._move_speed_mul = move_speed_mul
+        self._attack_speed_mul = attack_speed_mul
+        self._backline_attack_speed_mul = backline_attack_speed_mul
 
     def setup(self, board: BoardState, rng: Any) -> None:
         # No initial modifiers — arena starts open
@@ -435,7 +454,7 @@ class CollapsingArenaEffect(MapEffect):
         self._apply_collapse(board)
 
     def _apply_collapse(self, board: BoardState) -> None:
-        """Mark edge rows/columns as impassable up to current collapse layer."""
+        """Mark edge rows/columns as deep-frost slow zones."""
         from src.game.combat.context import BOARD_WIDTH, BOARD_HEIGHT
         board.remove_by_owner("map_effect:collapsing_arena")
         layer = self._collapse_layer
@@ -445,9 +464,49 @@ class CollapsingArenaEffect(MapEffect):
                         r < layer or r >= BOARD_HEIGHT - layer):
                     board.add_modifier(CellModifier(
                         cell=(q, r),
-                        kind="collapse",
+                        kind="slow",
                         owner="map_effect:collapsing_arena",
                     ))
+
+    def process_occupants(self, ctx: "CombatContext", board: BoardState) -> None:
+        from src.game.effects import Modifier, Lifetime
+
+        slow_cells = set(board.cells_with_kind("slow"))
+        for piece in ctx.living_pieces():
+            if (piece.position_q, piece.position_r) not in slow_cells:
+                continue
+
+            attack_mul = (
+                self._backline_attack_speed_mul
+                if piece.stat("attack_range") >= 3
+                else self._attack_speed_mul
+            )
+
+            piece.modifiers = [
+                mod
+                for mod in piece.modifiers
+                if mod.source_id not in {
+                    "map_effect:collapsing_arena:move_slow",
+                    "map_effect:collapsing_arena:attack_slow",
+                }
+            ]
+
+            ctx.apply_modifier(piece, Modifier(
+                stat="move_speed",
+                op="mul",
+                value=self._move_speed_mul,
+                lifetime=Lifetime.TIMED,
+                source_id="map_effect:collapsing_arena:move_slow",
+                expires_at_tick=ctx.current_tick + 2,
+            ))
+            ctx.apply_modifier(piece, Modifier(
+                stat="attack_speed",
+                op="mul",
+                value=attack_mul,
+                lifetime=Lifetime.TIMED,
+                source_id="map_effect:collapsing_arena:attack_slow",
+                expires_at_tick=ctx.current_tick + 2,
+            ))
 
     def accelerate(self) -> None:
         """Called when boss enters phase 2 — doubles collapse speed."""

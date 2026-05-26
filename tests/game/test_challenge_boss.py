@@ -390,8 +390,9 @@ class TestCollapsingArenaEffect:
         from unittest.mock import MagicMock
         ctx = MagicMock()
         effect.on_round(ctx, board, 1)
-        # Edges should now be collapsed
-        assert not board.is_passable(0, 0)
+        # Edges should now be frost-slow zones (but still passable)
+        assert board.is_passable(0, 0)
+        assert board.has_kind(0, 0, "slow")
         # Center should still be passable
         assert board.is_passable(5, 3)
 
@@ -409,7 +410,7 @@ class TestCollapsingArenaEffect:
 
         # Round 2 collapses
         effect.on_round(ctx, board, 2)
-        assert not board.is_passable(0, 0)
+        assert board.has_kind(0, 0, "slow")
 
         # Reset for acceleration test
         effect2 = CollapsingArenaEffect(collapse_interval_rounds=2)
@@ -419,7 +420,58 @@ class TestCollapsingArenaEffect:
 
         # Now round 1 should collapse (interval becomes 1)
         effect2.on_round(ctx, board2, 1)
-        assert not board2.is_passable(0, 0)
+        assert board2.has_kind(0, 0, "slow")
+
+    def test_process_occupants_applies_stronger_backline_attack_slow(self):
+        from src.game.piece import Piece
+
+        effect = CollapsingArenaEffect(collapse_interval_rounds=1)
+        board = BoardState()
+        effect.setup(board, Random(42))
+
+        class DummyCtx:
+            current_tick = 100
+
+            def __init__(self, pieces):
+                self._pieces = pieces
+
+            def living_pieces(self):
+                return self._pieces
+
+            def apply_modifier(self, target, modifier):
+                target.modifiers.append(modifier)
+
+        from unittest.mock import MagicMock
+        round_ctx = MagicMock()
+        effect.on_round(round_ctx, board, 1)
+
+        backline = Piece(
+            id="backline",
+            base_stats={"attack_range": 4.0},
+            position_q=0,
+            position_r=0,
+        )
+        frontline = Piece(
+            id="frontline",
+            base_stats={"attack_range": 1.0},
+            position_q=0,
+            position_r=1,
+        )
+        ctx = DummyCtx([backline, frontline])
+
+        effect.process_occupants(ctx, board)
+
+        backline_slow = [
+            m for m in backline.modifiers
+            if m.source_id == "map_effect:collapsing_arena:attack_slow"
+        ]
+        frontline_slow = [
+            m for m in frontline.modifiers
+            if m.source_id == "map_effect:collapsing_arena:attack_slow"
+        ]
+        assert backline_slow
+        assert frontline_slow
+        assert backline_slow[-1].value < frontline_slow[-1].value
 
 
 class TestLeyCellsEffect:
@@ -436,10 +488,24 @@ class TestSpawnRiftsEffect:
     """Holloway's furnace vents."""
 
     def test_setup_places_rifts(self):
-        effect = SpawnRiftsEffect(rift_cells=[(2, 1), (7, 1)])
+        effect = SpawnRiftsEffect(vent_cells=[(2, 1), (7, 1)])
         board = BoardState()
         effect.setup(board, Random(42))
         assert len(board.cells_with_kind("rift")) == 2
+
+    def test_on_round_cycles_active_hot_vent(self):
+        effect = SpawnRiftsEffect(vent_cells=[(2, 1), (7, 1)], cycle_interval_rounds=1)
+        board = BoardState()
+        effect.setup(board, Random(42))
+
+        from unittest.mock import MagicMock
+        ctx = MagicMock()
+        effect.on_round(ctx, board, 1)
+        active = [
+            m.cell for m in board.all_modifiers()
+            if m.owner == "map_effect:spawn_rifts_active"
+        ]
+        assert active == [(7, 1)]
 
 
 class TestFogEffect:
