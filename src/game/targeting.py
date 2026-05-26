@@ -13,10 +13,31 @@ if TYPE_CHECKING:
     from src.game.piece import Piece
 
 
+def _filter_fog(actor: Any, enemies: list, ctx: Any) -> list:
+    """Filter enemies that are unreachable due to fog (BoardState.fog_range).
+
+    Reads ctx.board_state (public property on CombatContext).
+    If no fog is active, returns the list unchanged.
+    """
+    board_state = getattr(ctx, "board_state", None)
+    if board_state is None or board_state.fog_range is None:
+        return enemies
+    return [
+        e for e in enemies
+        if board_state.is_in_fog_range(
+            actor.position_q, actor.position_r,
+            e.position_q, e.position_r,
+        )
+    ]
+
+
 def primary_target(actor: Any, ctx: Any) -> Any | None:
-    """The actor's current target (or closest enemy if no current target)."""
-    from src.game.combat.context import CombatContext
+    """The actor's current target (or closest enemy if no current target).
+
+    Respects fog_range from BoardState — targets beyond fog range are excluded.
+    """
     enemies = list(ctx.enemies_of(actor))
+    enemies = _filter_fog(actor, enemies, ctx)
     if not enemies:
         return None
     # Prefer current target if alive
@@ -29,24 +50,24 @@ def primary_target(actor: Any, ctx: Any) -> Any | None:
 
 
 def lowest_hp_enemy(actor: Any, ctx: Any) -> Any | None:
-    """Enemy with the lowest current HP."""
-    enemies = list(ctx.enemies_of(actor))
+    """Enemy with the lowest current HP. Respects fog_range."""
+    enemies = _filter_fog(actor, list(ctx.enemies_of(actor)), ctx)
     if not enemies:
         return None
     return min(enemies, key=lambda e: (e.hp, e.id))
 
 
 def highest_ap_enemy(actor: Any, ctx: Any) -> Any | None:
-    """Enemy with the highest ability power (intelligence)."""
-    enemies = list(ctx.enemies_of(actor))
+    """Enemy with the highest ability power (intelligence). Respects fog_range."""
+    enemies = _filter_fog(actor, list(ctx.enemies_of(actor)), ctx)
     if not enemies:
         return None
     return max(enemies, key=lambda e: (e.stat("intelligence"), e.id))
 
 
 def random_enemy(actor: Any, ctx: Any) -> Any | None:
-    """Random enemy (using ctx.rng for determinism)."""
-    enemies = list(ctx.enemies_of(actor))
+    """Random enemy (using ctx.rng for determinism). Respects fog_range."""
+    enemies = _filter_fog(actor, list(ctx.enemies_of(actor)), ctx)
     if not enemies:
         return None
     idx = ctx.rng.randint(0, len(enemies) - 1)

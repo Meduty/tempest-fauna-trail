@@ -137,6 +137,33 @@ def piece_from_enemy(enemy: Enemy) -> Piece:
     return piece
 
 
+def attach_map_effect(effect_id: str, ctx: Any, seed: int) -> Any:
+    """Instantiate and register a MapEffect with a CombatContext.
+
+    This is the canonical wiring call for boss fights. Call it AFTER building
+    CombatContext and BEFORE calling combat/loop.run(ctx). The map effect will
+    subscribe its hooks to ctx.bus and write initial state to ctx.board_state
+    when on_combat_start fires inside run().
+
+    ctx is duck-typed — CombatContext is not imported here (isolation rule).
+    loadout.py is the designated cross-boundary module (content ↔ combat).
+
+    Args:
+        effect_id: Map effect id from BossEncounterResult.map_effect_id.
+        ctx:       A CombatContext (or any object exposing .board_state + .bus).
+        seed:      Deterministic seed for the effect's internal RNG.
+                   Use derive_seed(run_seed, node_index, CH_BOSS) for boss fights.
+
+    Returns:
+        The registered MapEffect instance (retained if the caller needs it).
+    """
+    from src.game.map_effects import build_map_effect
+
+    effect = build_map_effect(effect_id, ctx.board_state, seed)
+    effect.register(ctx.bus)
+    return effect
+
+
 def compile_loadout(
     team: list[Champion],
     enemies: list[Enemy],

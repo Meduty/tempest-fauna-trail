@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
+from src.game.board import BoardState
 from src.game.effects import (
     EffectBundle,
     EventBus,
@@ -87,6 +88,7 @@ class CombatContext:
         bus: EventBus,
         weather: WeatherState,
         seed: int = 0,
+        board_state: BoardState | None = None,
     ) -> None:
         self._pieces = pieces
         self._bus = bus
@@ -98,6 +100,11 @@ class CombatContext:
         self._current_cast_id: int | None = None
         self._combat_ended = False
         self._winner: str | None = None
+        # Board dimensions (read by map effects; not used by engine directly yet)
+        self._board_width: int = BOARD_WIDTH
+        self._board_height: int = BOARD_HEIGHT
+        # Board state (map effects write cell modifiers; targeting reads fog_range)
+        self._board_state: BoardState = board_state if board_state is not None else BoardState()
 
     # --- Read-only queries ---
 
@@ -124,6 +131,11 @@ class CombatContext:
     @property
     def bus(self) -> EventBus:
         return self._bus
+
+    @property
+    def board_state(self) -> BoardState:
+        """Live board-cell modifier state. Written by map effects; read by targeting."""
+        return self._board_state
 
     @property
     def combat_ended(self) -> bool:

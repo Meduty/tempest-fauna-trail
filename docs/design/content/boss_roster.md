@@ -7,9 +7,11 @@ corrupted apex-creature it unleashes when wounded. That bond *is* the two-phase
 structure: **Phase 1 is the commander and their war-machine; Phase 2 is the
 broken beast set loose.**
 
-**Status:** first-pass design. Identity, two-phase kit *concepts*, map effect,
-on-death, and supporting cast only — no stat tuning, no kit implementation. The
-2-phase mechanic, the phase hook, and the map-effect dependency are specified in
+**Status:** T21 implemented. Boss authored stats, supporting cast (fixed core +
+variable adds), and map effects are live in `game/bosses/data.py`,
+`game/encounter.py`, and `game/map_effects.py`. Ability kit *content*
+(handler functions) is still stubbed — registered ids only. The 2-phase mechanic,
+the phase hook, and the map-effect architecture are specified in
 `t21_challenge_boss_plan.md` §3; the ability substrate in
 `effect_systems_design.md` §6.6 (boss phase hook).
 
@@ -105,17 +107,17 @@ Each boss has **one authored arena**, fixed by its stage affinity — not
 re-rolled by live weather. The effect each affinity contributes is the T21
 table; each boss is locked to its own:
 
-| Boss (affinity) | Map effect | Authored as |
+| Boss (affinity) | Map effect id | Mechanic |
 |---|---|---|
-| Holloway (Clear) | **Spawn rifts** — cells periodically open and spawn adds | Furnace scrap-vents coughing up scrap-imp adds |
-| Vance (Mist) | **Fog** — pieces beyond short range are untargetable | The dust-storm her extraction raised — blowing sand |
-| Strand (Thunder) | **Hazard tiles** — cells deal per-tick damage to occupants | Live capture-grid cells — the marquee hazard fight |
-| Vossberg (Cloudy) | **Ley cells** — contested tiles buff whoever holds them | Smouldering scorched ground — thermals to fight over |
-| Crège (Rain) | **Flood lanes** — a board column floods impassable, shifts per round | The dredge-wake tearing the board open |
-| Iron Emperor (Snow) | **Collapsing arena** — edge rows disable over the fight | The World-Engine freezing the board solid, edges inward |
+| Holloway (Clear) | `sunlit_tiles` | **Sunlit tiles** — 3 designated cells grant heal-over-time + damage buff to any piece standing on them. Both teams can benefit; visible in Prep. Buff drops on vacating. |
+| Vance (Mist) | `fog` | **Fog** — permanent dust-haze; pieces beyond 2 hexes are untargetable. Forces all combatants to close the gap. |
+| Strand (Thunder) | `hazard_tiles` | **Hazard tiles** — 4–6 cells deal true damage every 60 ticks. Tiles shift positions each round. |
+| Vossberg (Cloudy) | `defensive_ley` | **Defensive ley cells** — 3 contested tiles grant +armor to the holding team. Ownership transfers by stepping onto a cell; buff drops on vacating. |
+| Crège (Rain) | `flood_lanes` | **Flood lanes** — one board column floods (impassable), shifts left/right each round, forcing formation adaption. |
+| Iron Emperor (Snow) | `slow_tiles` | **Slow tiles** — edge cells freeze over each round, expanding inward. Pieces on slow tiles gain the Slow status. Expansion accelerates in Phase 2 (*The Wound Spreads*). |
 
-Map effects require board-cell modifier support — a combat-engine extension that
-is not yet built (`SPEC D.3`).
+Map effects are implemented in `game/map_effects.py` (T21); board-cell modifier
+support is in `game/board.py` (`SPEC D.3` resolved).
 
 ### 1.5 Supporting cast & scaling
 
@@ -150,11 +152,14 @@ does. Tags: `human, machine` → Phase 2 `corrupted, machine`.
     burning tiles that deal damage over several ticks.
   - **+passive: *Cinder Husk*** — reflects a share of every hit it takes back as
     burn damage.
-- **Map effect — spawn rifts.** The Furnace-Walker's scrap-vents periodically
-  open and cough up scrap-imp adds into the fight.
+- **Map effect — sunlit tiles.** Three cells across the arena bask in direct
+  sunlight; any piece standing on one receives heal-over-time and a damage buff.
+  Both teams can benefit — the "right" prep is to frontload pieces toward the lit
+  cells. Buffs vanish immediately on vacating.
 - **On death.** The Walker's boiler bursts — a final delayed AOE detonation
   centered on the wreck a few ticks after death. Stand clear.
-- **Supporting cast.** 2× Heavy Knight, 2× Steam Engineer, 4× Conscript.
+- **Supporting cast.** Fixed: 2× Heavy Knight, 2× Steam Engineer. Variable: 3–5
+  drawn from [Conscript, Levyman, Pikeman, Field Medic].
 - **Feel.** A patient endurance check, and the player's first boss — weather off
   the table, the lesson is simply that bosses *grow*: kill it before *Stoke the
   Fires* makes it unkillable.
@@ -190,7 +195,8 @@ Tags: `human` → Phase 2 `corrupted, beast`.
   the gap or fight half-blind.
 - **On death.** The Sun-Husk collapses into a fading mote of light that briefly
   *heals* the player's team — a held breath of the lion freed at last.
-- **Supporting cast.** 2× Battlemage, 1× Company Captain, 4× Picket.
+- **Supporting cast.** Fixed: 2× Battlemage, 1× Company Captain. Variable: 3–4
+  drawn from [Picket, Crossbow Levy, Sergeant-at-Arms].
 - **Feel.** A positioning puzzle in low visibility — break line-of-aim, deny the
   lock, and reach the Sun-Husk before it executes your carry.
 
@@ -219,7 +225,8 @@ Affinity: **Thunder**. Tags: `human, machine` → Phase 2 `corrupted, spirit`.
   whatever stands on them — the game's marquee version of the hazard fight.
 - **On death.** A final uncontrolled lightning strike hits the boss's own tile,
   damaging anything adjacent — the storm's last, free swing.
-- **Supporting cast.** 2× Arcanist, 1× Riflemaster, 3× Capture-Rig Wolf.
+- **Supporting cast.** Fixed: 2× Arcanist, 1× Riflemaster. Variable: 2–3
+  drawn from [Capture-Rig Wolf, Stormhawk, Voltaic Diviner].
 - **Feel.** A tempo race. Punish the discharged windows; survive the charged
   ones. The first boss that *hides* from you.
 
@@ -246,12 +253,15 @@ smoke has turned the sky to a low brown ceiling that never lifts.* Affinity:
     landing, and the landing tiles stay alight.
   - **+passive: *Feeding Frenzy*** — every takedown (boss *or* its adds) grants
     the Pyre-Maw stacking Attack Speed for the rest of the fight.
-- **Map effect — ley cells.** Smouldering scorched ground: contested hot-spot
-  tiles that buff whoever holds them — a positional layer in a fight that
-  otherwise just wants to brawl.
+- **Map effect — defensive ley cells.** Three smouldering scorched-ground tiles
+  contest the board. Whichever team has a piece standing on a cell holds it, and
+  the holding team gains a team-wide armor bonus. Ownership transfers by stepping
+  on; buff vanishes on vacating. A positional layer in a fight that otherwise
+  just wants to brawl — the ley cells reward the side that doesn't cede ground.
 - **On death.** The Pyre-Maw's fire gutters out; the burning tiles it left snuff
   in a wave, and the brown ceiling thins — a small mercy for the survivors.
-- **Supporting cast.** 1× Lord Commander, 2× Gunslinger, 4× Conscript.
+- **Supporting cast.** Fixed: 1× Lord Commander, 2× Gunslinger. Variable: 3–5
+  drawn from [Conscript, Pikeman, Field Chaplain].
 - **Feel.** A pressure fight. Vossberg never stops moving forward; the player who
   turtles loses the board to fire — and the ley cells punish ceding ground.
 
@@ -282,7 +292,8 @@ Affinity: **Rain**. Tags: `human, machine` → Phase 2 `corrupted, beast`.
   must hold.
 - **On death.** The Leviathan sinks and the dredged silt drains away — the board
   clears of slow as the river is, briefly, free.
-- **Supporting cast.** 1× Iron Maiden, 2× Cannoneer, 3× Blight Lurker.
+- **Supporting cast.** Fixed: 1× Iron Maiden, 2× Cannoneer. Variable: 2–3
+  drawn from [Blight Lurker, Drowned Siren, Dredge Hulk].
 - **Feel.** A control fight against forced movement. The player must hold
   formation while the boss spends both phases tearing that formation apart.
 
@@ -316,18 +327,21 @@ silence, the heat-death of nature. Tags: `human, machine` → Phase 2
   - **+active: *Reclamation*** — channels for a stretch of ticks, then a
     board-wide detonation; the channel can be raced but not interrupted. The
     signature "beat the timer" finale moment.
-  - **+passive: *The Wound Spreads*** — in phase 2 the collapsing arena
-    accelerates: the board freezes inward faster, the dead world closing on the
-    player as the Emperor's HP falls.
-- **Map effect — collapsing arena.** The World-Engine freezes the board solid
-  from the edges inward; edge rows disable over the fight, and *The Wound
-  Spreads* speeds the collapse in phase 2.
+  - **+passive: *The Wound Spreads*** — in phase 2 the slow-tile expansion
+    accelerates: the frozen ring tightens every round instead of every two,
+    the dead world closing in as the Emperor's HP falls.
+- **Map effect — slow tiles.** Edge cells coat in ice each round, spreading
+  inward. Any piece on a slow cell is Slowed (reduced move speed). The ring
+  starts shallow but grows; *The Wound Spreads* doubles the rate in phase 2.
+  The arena never shrinks — pieces can still stand anywhere — but the fast
+  centre zone compresses to nothing.
 - **On death.** The World-Engine goes dark. The corrupted elements it held —
   every caged storm and drowned tide — come apart and *settle*, no longer bound.
   The run's victory state. A closing beat: a freed corrupted-creature or two may
   linger on the board, no longer hostile.
-- **Supporting cast.** 2× Archmagus Imperator, 2× Hierarch, 4× T1–3 Conscripts —
-  thematic context per `enemy_roster.md` (a boss appears with elites + trash).
+- **Supporting cast.** Fixed core: 2× Archmagus Imperator, 2× Hierarch.
+  Variable adds: 3–4 drawn from [Conscript, Pikeman, Crossbow Levy, Heavy Knight,
+  Battlemage] — the world's last army, slightly different at the edges each fight.
 - **Feel.** Every lesson at once: he grows like Holloway, focus-fires like
   Vance, hides his windows like Strand, pressures like Vossberg, controls the
   board like Crège — and then the floor itself becomes the threat.
@@ -336,18 +350,12 @@ silence, the heat-death of nature. Tags: `human, machine` → Phase 2
 
 ## 8. Open questions
 
-- **T21 / SPEC sync.** `t21_challenge_boss_plan.md` carries two stale rules: §3's
-  "affinity == live node weather" + live-weather map-effect table, and §2's
-  separate challenge-weather table (`1=Clear, 2=Cloudy, 3=Mist, 4=Snow, 5=Rain,
-  6=Thunder`). Both should be replaced by the single §1.1 stage-affinity table
-  here. Note this **moves stage 6 from Thunder to Snow** — T21 §2's "stage 6 is
-  always Thunder, the marquee fight" note is dropped. `SPEC D.2` should be synced
-  too.
+- **Ability kit implementation.** Boss ability ids (e.g. `holloway.pressure_vent`)
+  are registered in `game/bosses/data.py` but the handler functions are stubs.
+  Kit implementation is a future task.
 - **Oceania = Cloudy.** The softest affinity fit (§1.1). Alternative considered:
   swap to NYC = Cloudy / Sydney = Snow — rejected because Sydney itself is not
   snowy and a Snow finale in NYC is the stronger image.
-- **Map effects need a combat extension.** Board-cell modifiers are an unbuilt
-  combat mechanic (`SPEC D.3`). Boss content blocks on it.
 - **Channel interaction.** The Iron Emperor's *Reclamation* channel needs a rule
   for what (if anything) can interrupt it — stun? silence? nothing?
 - **Boss affinity visibility.** The route map / prep UI must surface each stage's

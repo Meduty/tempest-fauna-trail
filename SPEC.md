@@ -93,7 +93,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.18 | Power & scaling model — `P` formula, `√P` stat coupling, economy cost curve | `game/scaling.py`, `docs/design/tasks/t18_power_scaling_plan.md` | T.1 | S | ✅ Done |
 | T.19 | Encounter generation — seed-deterministic squad/offer fill, enemy power clustering, node budgets | `game/encounter.py`, `docs/design/tasks/t19_encounter_generation_plan.md` | T.1, T.4, T.5, T.18 | M | ✅ Done |
 | T.20 | Ability/passive/status framework — registry, typed event bus, status gates, boss phase hook | `game/abilities/`, `game/effects.py`, `game/events.py`, `game/status.py`, `game/registries.py`, `docs/design/tasks/t20_ability_framework_plan.md` | T.3 | L | ✅ Done |
-| T.21 | Challenge & boss encounters — spirit challenges, 2-phase bosses, weather-themed map effects | `game/encounter.py`, `game/content.py`, `docs/design/tasks/t21_challenge_boss_plan.md` | T.19, T.20 | M | 📋 Plan |
+| T.21 | Challenge & boss encounters — champion-faction challenges, 2-phase bosses, auto-battle-aware map effects | `game/encounter.py`, `game/board.py`, `game/map_effects.py`, `game/bosses/`, `docs/design/tasks/t21_challenge_boss_plan.md` | T.19, T.20 | M | ✅ Done |
 | T.22 | Meta progression — augment, supply, economy, team-size cap | `game/augments.py`, `game/economy.py`, `docs/design/tasks/t22_meta_progression_plan.md` | T.1, T.18 | M | 📋 Plan |
 | T.23 | Prep formation snapshot integration — lock player board placement in Prep, validate deployment constraints, pass explicit coordinates into combat init | `ui/views/prep.py`, `game/models.py`, `game/combat.py`, `docs/design/tasks/t23_prep_formation_snapshot_plan.md` | T.1, T.3, T.15 | M | 📋 Plan |
 | T.24 | Enemy formation policy — deterministic role-aware spawn planner (frontline forward, backline protected, size-aware packing) with safe fallback | `game/formation.py`, `game/combat.py`, `docs/design/tasks/t24_enemy_formation_plan.md` | T.3, T.5, T.23 | M | 📋 Plan |
@@ -202,10 +202,13 @@ in their T-task plan docs; what remains here is genuinely undecided.
 
 - D.1 Route branching: the linear 6-stage / 50-node chain is **locked** (T.4);
   whether optional branch/merge paths are added post-MVP is open.
-- D.2 Boss content: per-boss kits, phase-2 ability pairs, exact map-effect
-  mechanics (T.21).
-- D.3 Combat board-cell modifiers: boss map effects need a new combat-engine
-  cell-modifier mechanic — not yet a task, not yet designed.
+- D.2 Boss content: authored per-boss kits (phase 1 + phase 2 abilities, on-death
+  hooks) **designed in T.21** — `game/bosses/data.py`. Ability *implementation*
+  (handler functions) is still open; currently stubs in the registry.
+- D.3 Combat board-cell modifiers: **designed and implemented in T.21** —
+  `game/board.py` (BoardState + CellModifier), `game/map_effects.py` (6 effect
+  classes), `game/combat/loop.py` (_process_board_state), `game/targeting.py`
+  (fog filter). Remaining: per-ability content that writes to board_state.
 
 ### Combat Systems
 
