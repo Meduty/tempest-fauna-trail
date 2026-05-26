@@ -54,7 +54,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 ## V. Invariants
 
 - V.1: `game/` has zero Flet imports — pure logic, no UI coupling
-- V.2: Combat is pure function — `resolve_combat(team, enemies, weather) -> BattleResult`
+- V.2: Combat is pure function — `resolve_combat(team, enemies, weather) -> BattleResult`. Single public entry point; the new ability/passive/status framework is invoked through it, never alongside it. `resolve_combat` internally delegates to `compile_loadout → CombatContext → combat/loop_new.run → BattleResultRecorder.build_result`. Boss fights use the same delegation chain but attach `map_effect_id` via `attach_map_effect` before running the loop (T.26).
 - V.3: API failure never crashes app — failed fetch leaves node `unknown` (never-succeeded) or `substitute` (holds `CITIES[city_id].default_weather`); refresher streams keep retrying, never escalate
 - V.4: All HTTP calls run on `threading.Thread`, never main thread
 - V.5: Weather state enum: exactly 6 values (Clear, Cloudy, Mist, Rain, Snow, Thunder), mapped 1:1 to OpenWeather id main groups
@@ -98,6 +98,8 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.23 | Prep formation snapshot integration — lock player board placement in Prep, validate deployment constraints, pass explicit coordinates into combat init | `ui/views/prep.py`, `game/models.py`, `game/combat.py`, `docs/design/tasks/t23_prep_formation_snapshot_plan.md` | T.1, T.3, T.15 | M | 📋 Plan |
 | T.24 | Enemy formation policy — deterministic role-aware spawn planner (frontline forward, backline protected, size-aware packing) with safe fallback | `game/formation.py`, `game/combat.py`, `docs/design/tasks/t24_enemy_formation_plan.md` | T.3, T.5, T.23 | M | ✅ Done |
 | T.25 | Power simulation & balance benchmarking — deterministic matchup sweeps and empirical power ratings | `tools/simulation/`, `docs/design/tasks/t25_power_simulation_plan.md` | T.3, T.5 | M | 📋 Plan |
+| T.26 | Combat engine unification — `resolve_combat` delegates to the new loop via `BattleResultRecorder`; legacy tick loop retired; Weather Favor applied in `compile_loadout` | `game/combat/legacy.py`, `game/combat/loop_new.py`, `game/combat/recorder.py`, `game/loadout.py` | T.3, T.20 | M | ✅ Done |
+| T.27 | Playtesting CLI — dev-facing tools for sim_fight / sim_node / sim_run / inspect / inspect_node, no Flet, pure consumers of `src/game/` | `tools/playtest/`, `docs/design/playtesting/` | T.3, T.5, T.19, T.21, T.26 | M | ✅ Done |
 
 **Size**: S = <1h, M = 1-3h, L = 3-6h
 
@@ -135,7 +137,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - UI age warnings (subtle top-right indicator when any `substitute` present or any `live` aged > 2h, hover lists affected cities) deferred — see D.17.
 - Detailed plan: `docs/design/tasks/t7_cache_refresher_plan.md`.
 
-### T.18-T.25 Planning Notes (Systems Expansion)
+### T.18-T.27 Planning Notes (Systems Expansion)
 
 - T.18 power scalar `P = 1.5 ** ((T-1)/2 + (L-1))` drives encounter budgets and
   piece stat generation; "two tiers == one level".
@@ -153,8 +155,16 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   determinism.
 - T.25 adds deterministic balance simulation and matchup benchmarking over the
   existing auto-resolve engine for data-driven tuning.
+- T.26 unified the two combat engines that briefly coexisted: legacy
+  `resolve_combat` (T.3) and `compile_loadout + CombatContext + loop.run`
+  (T.20). Post-T.26 there is **one** entry point — see V.2 and
+  `docs/design/playtesting/engine_split.md` for the historical note.
+- T.27 ships the dev-facing playtest CLI suite (`tools/playtest/`) used to
+  exercise the engine before the Flet UI exists; pure consumer of
+  `src/game/`. See `docs/design/playtesting/plan.md`.
 - Detailed plans: `docs/design/tasks/t18_power_scaling_plan.md` through
-  `docs/design/tasks/t25_power_simulation_plan.md`.
+  `docs/design/tasks/t25_power_simulation_plan.md`;
+  `docs/design/playtesting/plan.md` covers T.27.
 
 ## B. Bugs / Backprop
 
@@ -254,7 +264,7 @@ in their T-task plan docs; what remains here is genuinely undecided.
 ## Implementation Order
 
 ### Phase 1: Core Logic (Week 1-3)
-T.1 → T.2 → T.3 → T.4 → T.18 → T.5 → T.19 → T.20 → T.21 → T.24 → T.16 (game tests)
+T.1 → T.2 → T.3 → T.4 → T.18 → T.5 → T.19 → T.20 → T.21 → T.24 → T.26 → T.16 (game tests) → T.27 (playtest CLI)
 
 ### Phase 2: API + Data (Week 2-3)
 T.6 → T.7 → T.16 (API tests)

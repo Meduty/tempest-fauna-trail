@@ -2,193 +2,194 @@
 
 ## 1. Problem
 
-The engine is feature-complete through T.21 (combat, abilities, statuses,
-encounter gen, bosses, map effects, weather cache). The UI is a placeholder.
-Devs cannot today:
+The engine is feature-complete through T.21 / T.24 / T.26 (unified combat,
+abilities, statuses, encounter gen, bosses, map effects, weather cache, role-
+aware enemy formation). The UI is still a placeholder counter. Devs cannot
+today:
 
 - See a full fight play out tick-by-tick outside of a unit test.
 - Twiddle team / enemy / weather / seed without writing pytest.
 - Walk a full 50-node run end-to-end.
-- Inspect tick-level state — board, mana, statuses, modifiers, ability casts.
 - Render a generated encounter (fight / reward / challenge / boss) before its
   view exists.
+- Inspect a champion or enemy at any `(tier, level)` with computed stats.
 
 Unit tests prove correctness; they don't surface feel. T.25 covers batch
 balance sweeps but is offline and statistical. We need an **interactive,
-qualitative, dev-facing surface** that runs before the Flet UI exists.
+qualitative, dev-facing surface** that runs before the Flet UI catches up.
 
 ## 2. Goals & Non-goals
 
 ### Goals
 
-- Run any combat (legacy or new engine) from the command line with explicit
-  team / enemy / weather / seed.
-- Render a human-readable tick trace for **both** engines.
+- Run any combat from the command line with explicit team / enemy / weather /
+  seed.
+- Render a human-readable tick trace with HP deltas for every fight.
 - Generate any node (FIGHT, REWARD, CHALLENGE, BOSS) by `(stage, node_index,
   run_seed)` and resolve it.
-- Walk a full 50-node run with a stub team, collect per-node outcomes.
+- Walk a full 50-node run with a stub team, collect per-node outcomes to CSV.
 - Inspect rosters: champions / enemies at any `(tier, level)` with computed
-  stats.
-- Provide a scuffed admin Flet view that wires the above without theme work.
+  stats and weather-favor modifiers.
 
 ### Non-goals
 
-- Production UI work (theme, layout, animation) — T.8-T.13 own that.
+- Production UI work (theme, layout, animation) — T.8–T.13 own that.
 - Batch matchup sweeps and Bradley-Terry ratings — T.25 owns that.
-- Replacing the legacy engine or unifying the two engines.
 - Writing new game logic. Tools are pure consumers of existing pure functions.
 
-## 3. Reality Check Summary
+## 3. Engine Status (post-T.26)
 
-See [engine_split.md](engine_split.md) for the full note. Headline:
+`resolve_combat(team, enemies, weather, *, node_id="") -> BattleResult` is the
+single public combat entry point. It composes `compile_loadout → CombatContext
+→ loop_new.run` internally and uses the `BattleResultRecorder` to produce a
+fully-populated `BattleResult.events`. See [engine_split.md](engine_split.md)
+for the history of the resolved engine split.
 
-- `resolve_combat()` → `BattleResult` with events, **no abilities/bosses**.
-- `compile_loadout` + `CombatContext` + `loop.run` → abilities/bosses, **no
-  event stream**. Need `DebugRecorder` to bridge.
-- T.25 already designs `tools/simulation/` — playtest tools live in
-  `tools/playtest/` to avoid conflict.
-- `apply_weather` (Weather Favor) is legacy-only; the new engine currently
-  applies Affinity Clash but not Favor. Flagged, out of scope here.
+One asymmetry the playtest layer must respect: `resolve_combat` does **not**
+accept a `map_effect_id`. Boss fights need that map effect attached. The
+playtest layer composes the primitives manually for BOSS nodes:
 
-All public APIs the plan depends on are confirmed in code:
+```python
+pieces, bus = compile_loadout(team, encounter.all_enemies, weather)
+for i, p in enumerate(pieces):
+    p.speed_tiebreaker = i
+boss_pos = next((b.spawn_position for b in BOSS_DEFS.values() if b.id == encounter.boss_enemy.id), None)
+assign_spawns(pieces)   # T24 formation
+recorder = BattleResultRecorder(pieces, weather, node_id)
+recorder.register(bus)
+ctx = CombatContext(pieces, bus, weather, seed=run_seed)
+attach_map_effect(encounter.map_effect_id, ctx, seed=run_seed)
+winner = loop_new.run(ctx, recorder)
+result = recorder.build_result(winner)
+```
+
+This is exposed as a helper `resolve_boss_combat(...)` in `_common.py` so
+sim_node and sim_run can call it without duplicating the wiring.
+
+## 4. Confirmed API Surface
 
 | API | File | Signature |
 |---|---|---|
-| `resolve_combat` | `combat/legacy.py:423` | `(team, enemies, weather, *, node_id="") -> BattleResult` |
-| `compile_loadout` | `loadout.py:167` | `(team, enemies, weather, seed=42) -> (pieces, bus)` |
-| `CombatContext.__init__` | `combat/context.py:85` | `(pieces, bus, weather, seed=0, board_state=None)` |
-| `combat/loop.run` | `combat/loop.py:174` | `(ctx) -> "team"|"enemy"|"draw"` |
-| `attach_map_effect` | `loadout.py:140` | `(effect_id, ctx, seed) -> MapEffect` |
+| `resolve_combat` | `combat/legacy.py:447` | `(team, enemies, weather, *, node_id="") -> BattleResult` |
+| `compile_loadout` | `loadout.py:196` | `(team, enemies, weather, seed=42) -> (pieces, bus)` |
+| `assign_spawns` | `combat/loop_new.py:510` | `(pieces) -> None` (T.24 formation) |
+| `CombatContext` | `combat/context.py:77` | `(pieces, bus, weather, seed=0, board_state=None)` |
+| `loop_new.run` | `combat/loop_new.py:563` | `(ctx, recorder=None) -> "team"\|"enemy"\|"draw"` |
+| `attach_map_effect` | `loadout.py:141` | `(effect_id, ctx, seed) -> MapEffect` |
+| `BattleResultRecorder` | `combat/recorder.py:41` | `(pieces, weather, node_id="")` |
+| `format_combat_log` | `combat_log.py:77` | `(result, *, team=None, enemies=None) -> list[str]` |
 | `generate_fight` | `encounter.py:446` | `(run_seed, node_index, stage, dc=1.0) -> list[Enemy]` |
-| `generate_reward` | `encounter.py:465` | same |
+| `generate_reward` | `encounter.py:465` | `(run_seed, node_index, stage, dc=1.0) -> list[Enemy]` |
 | `generate_challenge` | `encounter.py:735` | `(run_seed, node_index, stage, live_weather, dc) -> (squad, ChallengeReward)` |
 | `generate_boss_encounter` | `encounter.py:779` | `(run_seed, node_index, stage) -> BossEncounterResult` |
-| `format_combat_log` | `combat_log.py:77` | `(result, *, team=None, enemies=None) -> list[str]` |
-| `get_champion` / `get_enemy` | `content.py:535/539` | `(id) -> Champion / Enemy` |
+| `get_champion` / `get_enemy` | `content.py:536/540` | `(id) -> Champion / Enemy` |
+| `champions_by_affinity` / `enemies_by_affinity` | `content.py:544/548` | `(weather) -> list[...]` |
+| `STAGES`, `CITIES`, `stage_of`, `build_route` | `route.py:42/231/365/338` | route catalog + index helpers |
+| `power` / `stat_multiplier` | `scaling.py:50/74` | `(tier, level) -> float` |
 
-## 4. Layers
+## 5. Layers
 
-Three layers, build in order. Each layer delivers standalone value.
+Two layers in scope. A third is mentioned for context but is not built here.
 
 ### Layer 1 — `tools/playtest/` CLI
 
-Argparse / Click scripts, plain Python, stdout output, optional CSV/JSON dump.
-No Flet dependency. Imports only `src/game/` and `src/api/`.
+Argparse scripts, plain Python, stdout output, optional CSV/JSON dump. No
+Flet dependency. Imports only `src/game/`.
 
-| Script | Purpose | Engine |
-|---|---|---|
-| `sim_fight.py` | One-shot fight from `--team`, `--enemies`, `--weather`, `--seed`, `--engine legacy|new`. Renders text log + survivors + damage tables. | Both |
-| `sim_node.py` | `--stage N --node-index K --run-seed S`. Generates encounter, picks weather (live or `--weather`), resolves with `--team` or stub team, prints result. | Both |
-| `sim_run.py` | Walks all 50 nodes with a `--team` (or seeded stub recruit). Per-node outcome row → CSV. Final summary: clears, deaths, total damage, where the run died. | Both |
-| `inspect.py` | Roster browser: `--filter affinity=rain --tier 3 --level 2` prints a table of champion/enemy stats via `compose_stats`. | n/a |
-| `inspect_node.py` | Generate node only (no resolve). Print enemy squad with stats, weather, reward payload, expected DC. | n/a |
-| `debug_recorder.py` | Library used by `sim_fight` when `--engine new`. Subscribes to bus hooks, produces tick-ordered text. Reusable by T.12. | New |
+| Script | Purpose |
+|---|---|
+| `sim_fight.py` | One-shot fight from `--team`, `--enemies`, `--weather`, `--seed`. Renders `format_combat_log` to stdout with HP trace. |
+| `sim_node.py` | `--stage N --node-index K --run-seed S`. Generates the matching encounter (FIGHT / REWARD / CHALLENGE / BOSS) and resolves it with `--team` (or `default_team`). |
+| `sim_run.py` | Walks all 50 nodes with a `--team`. Per-node outcome row → CSV. Final summary: clears, where the run died, total damage. |
+| `inspect.py` | Roster browser: `--kind champion|enemy --affinity rain --tier 3 --level 2`. Prints aligned stat table; optionally shows weather-favor modifiers via `combat_modifier`. |
+| `inspect_node.py` | Generate any node without resolving combat. Print enemy squad with stats, expected DC, reward payload (for CHALLENGE). |
+| `_common.py` | id parsing, table formatter, `default_team(stage_index)` helper, `resolve_boss_combat` wrapper. |
 
-Each script is ~50-150 LoC. All routed through one entry point (`python -m
-tools.playtest.<name>`) for predictable invocation.
+All scripts share invocation pattern: `python -m tools.playtest.<name> ...`.
 
-### Layer 2 — scuffed admin Flet view (`/admin`)
+### Layer 2 — scuffed admin Flet view (deferred)
 
-After Layer 1 proves value. Single route wired into `src/main.py`. No styling.
-Lives in `src/ui/views/admin.py`, behind an env-var or build flag so it never
-ships in a normal build.
+Single `/admin` route wired into `src/main.py` behind an env-var flag, with
+one `ft.Tabs` per panel (encounter probe, roster browser, run stepper,
+map-effect tester). Reuses Layer 1 functions verbatim. Not built in this
+iteration — Layer 1 unblocks balance work on its own.
 
-Panels (all in one `ft.Tabs`):
+### Layer 3 — tick-replay visualizer (future, T.12 prototype)
 
-1. **Encounter probe** — dropdowns for stage / node_index / weather / seed,
-   team picker (multiselect from roster), engine toggle, "Resolve" button,
-   `ft.ListView` for log lines.
-2. **Roster browser** — filter by affinity / role / tier; data table of stats.
-3. **Run stepper** — initialize `Run`, "Advance" button steps the trail, shows
-   current node / weather / encounter preview / resolve button.
-4. **Map-effect tester** — pick a boss, build context, show `board_state`
-   summary after `attach_map_effect` (slow cells, fog ranges, etc.).
-5. **God-mode toggles** — force weather, override seed, instant-kill button
-   that calls `ctx.deal_damage(..., amount=1e9, tag=TRUE)` on a chosen target.
+Already enabled by T.26's `BattleResultRecorder`; T.12 will consume the same
+`BattleResult.events` the CLI renders today.
 
-All panels reuse the Layer 1 functions. The view is the rendering surface,
-not a parallel implementation. ~300-500 LoC total.
-
-### Layer 3 — tick-replay visualizer (future)
-
-Once `DebugRecorder` is proven via Layer 1 and Layer 2 plays back the same
-event stream, Layer 2's combat panel becomes the T.12 combat-view prototype.
-Not built in this plan — listed so the structural reuse is intentional.
-
-## 5. File Layout
+## 6. File Layout
 
 ```
-tools/                                  # new — also seeded by T.25
+tools/                                  # new top-level dir (also seeded by T.25)
   __init__.py
   playtest/
     __init__.py
-    debug_recorder.py                   # bus subscriber → text trace (new engine)
+    _common.py                          # parsing, formatting, default_team, resolve_boss_combat
     sim_fight.py                        # CLI: single fight
     sim_node.py                         # CLI: single generated node
     sim_run.py                          # CLI: full 50-node run
     inspect.py                          # CLI: roster stats table
     inspect_node.py                     # CLI: encounter preview (no resolve)
-    _common.py                          # team/enemy id parsing, table formatters
 
-src/ui/views/
-  admin.py                              # Layer 2 (added when Layer 1 stable)
+tests/tools/
+  __init__.py
+  test_playtest_common.py               # _common helpers
+  test_playtest_smoke.py                # end-to-end smoke for each CLI
 
 docs/design/playtesting/
   README.md                             # this index
   plan.md                               # this doc
-  engine_split.md                       # reality-check note
+  engine_split.md                       # historical note (post-T.26)
 ```
 
-`tools/playtest/` and `tools/simulation/` (T.25) are siblings. Both can import
-freely from `src/game/`; neither imports `src/ui/`.
+`tools/playtest/` and `tools/simulation/` (T.25, planned) are siblings. Both
+can import freely from `src/game/`; neither imports `src/ui/`.
 
-## 6. CLI Sketches
+## 7. CLI Sketches
 
 ### `sim_fight.py`
 
 ```
 python -m tools.playtest.sim_fight \
-    --team fox_thunder,bear_snow,otter_rain \
-    --enemies frost_drone,smog_bot \
+    --team champ_blaze_fox,champ_drift_yak,champ_tide_otter \
+    --enemies enemy_frost_drone,enemy_smog_bot \
     --weather rain \
-    --seed 42 \
-    --engine legacy \
-    --trace        # also dump per-tick events
-    --csv out.csv  # optional damage-dealt CSV
+    --seed 42
 ```
 
-Behavior: load champions / enemies by id (errors fast on unknown id), build
-team list, call chosen engine, render log to stdout. With `--engine new`,
-attach `DebugRecorder` before `loop.run` and render the recorder's stream.
+Loads champions / enemies by id (errors fast on unknown id), calls
+`resolve_combat`, renders log via `format_combat_log(result, team, enemies)`.
 
 ### `sim_node.py`
 
 ```
 python -m tools.playtest.sim_node \
     --stage 3 --node-index 22 --run-seed 12345 \
-    --team fox_thunder,bear_snow,otter_rain \
-    --weather thunder        # else use stage.affinity
-    --engine new
+    --team champ_storm_eagle,champ_drift_yak,champ_tide_otter \
+    --weather thunder
 ```
 
-Behavior: resolve `StageDef` from `route.STAGES[stage-1]`, call the matching
-generator based on `route.STAGES[stage-1].node_types[node_index]`, pass the
-squad into the chosen engine.
+Reads `STAGES[stage-1]`, picks the matching generator based on
+`stage.node_types[node_position_in_stage]`, resolves with `resolve_combat`
+(or `resolve_boss_combat` for BOSS nodes), prints log + result.
 
 ### `sim_run.py`
 
 ```
 python -m tools.playtest.sim_run \
     --run-seed 12345 \
-    --team fox_thunder,bear_snow,otter_rain \
-    --weather-strategy stage-affinity   # or 'fixed:rain' or 'cache' (uses api/cache)
+    --team champ_blaze_fox,champ_drift_yak,champ_tide_otter \
+    --weather-strategy stage-affinity \
     --csv run_12345.csv
 ```
 
-Behavior: iterate all 50 nodes, generate encounter, resolve, advance.
-Aborts on team wipe (LOSS / DRAW with 0 survivors) — prints node index and
-weather when the run ends. CSV columns: `node_index, stage, node_type,
-city_id, weather, outcome, ticks, survivors, damage_dealt`.
+Walks all 50 nodes, generates encounter, resolves, advances. Aborts on team
+wipe. CSV columns: `node_index, stage, node_type, city_id, weather, outcome,
+ticks, survivors, damage_dealt`. Three `--weather-strategy` options:
+`stage-affinity` (use stage's authored affinity), `city-default` (use
+`CITIES[city_id].default_weather`), `fixed:rain` (force one).
 
 ### `inspect.py`
 
@@ -196,59 +197,43 @@ city_id, weather, outcome, ticks, survivors, damage_dealt`.
 python -m tools.playtest.inspect \
     --kind champion \
     --affinity rain \
-    --tier 3 --level 2
+    --tier 3 --level 2 \
+    --show-favor cloudy        # also display Weather Favor under cloudy weather
 ```
 
-Output: aligned table of `id | name | role | tier/level | hp | str | int | as |
-ms | mr | armor | res | range | active | passive`.
+Output: aligned table — `id | name | role | tier/level | hp | str | int | as |
+ms | mr | armor | res | range | active | passive`. With `--show-favor`, a
+second column block shows favor-modified stats.
 
-## 7. DebugRecorder Contract
+### `inspect_node.py`
 
-Lives in `tools/playtest/debug_recorder.py`.
-
-```python
-@dataclass
-class RecordedEvent:
-    tick: int
-    event_name: str
-    actor_id: str
-    target_id: str | None
-    amount: float
-    note: str
-
-class DebugRecorder:
-    def __init__(self, bus: EventBus, ctx: CombatContext) -> None: ...
-    def render(self) -> list[str]: ...       # text lines, same shape as combat_log
-    def to_csv_rows(self) -> list[dict]: ...
+```
+python -m tools.playtest.inspect_node \
+    --stage 3 --node-index 22 --run-seed 12345
 ```
 
-Subscribed hooks: `on_attack_start`, `on_attack_landed`, `on_damage_dealt`,
-`on_heal`, `on_cast`, `on_cast_complete`, `on_death`, `on_spawn`,
-`on_status_applied`, `on_status_expired`, `on_combat_end`.
-
-Uses `Lifetime.COMBAT` so subscriptions auto-clear on `on_combat_end`.
+Output: node header (city, weather, type), enemy squad table, computed budget
++ DC, and (for CHALLENGE) the reward payload.
 
 ## 8. Phase Order
 
 | Phase | Deliverable | Cost |
 |---|---|---|
-| **P1** | `_common.py`, `debug_recorder.py`, `sim_fight.py` (legacy + new). | S |
-| **P2** | `inspect.py`, `inspect_node.py`. Roster + encounter visibility without resolving combat. | S |
-| **P3** | `sim_node.py`, `sim_run.py`. Full 50-node walk. CSV output. | M |
-| **P4** | `ui/views/admin.py` scuffed view. Wires into `main.py` behind a flag. | M |
-| **P5** | Optional: integration with `pytest -m playtest` markers — known-good replay snapshots. | S |
+| **P1** | `_common.py`, `sim_fight.py`. | S |
+| **P2** | `inspect.py`, `inspect_node.py`. | S |
+| **P3** | `sim_node.py`, `sim_run.py`. | M |
+| **P4** | Smoke tests under `tests/tools/`. | S |
+| **P5** (later) | `ui/views/admin.py` scuffed Flet view. | M |
 
-P1 is the smallest unit that returns value. Each later phase is independent.
+P1 returns value alone. Each later phase is independent.
 
 ## 9. Invariants the Plan Holds To
 
-- **V.1** — `tools/playtest/` and `tools/simulation/` import from `src/game/`
-  only. They never import Flet. The admin view (`src/ui/views/admin.py`) is
-  the only Flet-aware part of the playtest surface.
-- **V.2** — Combat remains a pure function. `DebugRecorder` is a passive
-  observer on the bus; it never mutates.
-- **V.3 / V.4** — `sim_run.py` uses `api/cache.py` if `--weather-strategy
-  cache`; HTTP only via the existing refresher path on a worker thread.
+- **V.1** — `tools/playtest/` imports from `src/game/` only. Zero Flet.
+- **V.2** — Combat remains a pure function. CLIs are read-only consumers.
+- **V.3 / V.4** — `sim_run.py` does not hit the OpenWeather API. It uses
+  authored stage affinity / city defaults to pick weather. The cache layer
+  stays untouched.
 - Pure-function determinism — every CLI takes an explicit `--seed` /
   `--run-seed`; no script touches the global RNG.
 
@@ -256,19 +241,7 @@ P1 is the smallest unit that returns value. Each later phase is independent.
 
 | Risk | Mitigation |
 |---|---|
-| Two engines diverge further; playtest output stops matching production. | Each tool prints the engine name in its header line. `sim_fight` supports `--engine both` for an A/B diff (planned in P3, not P1). |
-| Weather Favor missing in new engine misleads balance reads. | `inspect.py` prints both legacy-with-Favor and raw-base stats side-by-side. Documented in `engine_split.md`. |
-| Admin view leaks into production builds. | Gated by `TFT_ADMIN=1` env var (or hard-coded debug flag); not registered in `page.on_route_change` unless flag is set. |
-| `DebugRecorder` payload format drifts from `events.py` dataclasses. | Recorder stores the raw event object, renders via a single mapping table — same shape `combat_log` uses for `BattleEvent`. |
-| Stub teams for `sim_run` need balance to not always wipe stage 1. | `_common.py` provides a `default_team(stage)` helper using `compose_stats` at a sensible (tier, level). |
-
-## 11. Why this Plan, in One Paragraph
-
-The engine is observable in principle (pure functions, deterministic) but
-inaccessible in practice (no UI, no CLI). Three layers — a CLI for fast
-iteration, a scuffed admin view for click-driven exploration, and a future
-tick-replay visualizer — produce playtest signal at increasing fidelity using
-the same underlying functions. The plan stays inside V.1 / V.2 by adding only
-read-only consumers; it defers batch balance work to T.25 and combat UI work
-to T.12; and it surfaces the legacy / new engine split explicitly so every
-tool can pick the right entry point for the question it's asking.
+| Default stub team auto-wipes on stage 1 because content balance still drifting. | `_common.default_team(stage_index)` picks `(tier, level)` tuned to budget. Players can override with `--team`. |
+| `combat_log` only renders MOVE / ATTACK / CAST / DEATH; status / heal / spawn events from new abilities are silent. | Acceptable for P1. Follow-up task: extend `combat_log._format_event` to handle the rest — separate work, not blocking. |
+| Boss path duplicates wiring that should live in one helper. | `_common.resolve_boss_combat` is the single helper; sim_node / sim_run call it for BOSS_FIGHT nodes. |
+| `tools/__init__.py` collisions with T.25's planned `tools/simulation/`. | Both live under one `tools/` namespace package. Each subpackage owns its modules; no shared state. |

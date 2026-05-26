@@ -1,80 +1,59 @@
-# Engine Split — Playtest Implications
+# Engine Unification — Historical Note
 
-The codebase ships **two combat entry points**. Every playtest tool must choose
-one. This is the most important reality-check finding from designing the
-playtest surface.
+> **Resolved.** This note is kept for context. The engine split described
+> below was closed by T.26 (commit `b229f93`, PR [#18][pr18], issue [#17][i17]).
 
-## The split
+[pr18]: https://github.com/Meduty/tempest-fauna-trail/pull/18
+[i17]: https://github.com/Meduty/tempest-fauna-trail/issues/17
 
-### Legacy: `resolve_combat(team, enemies, weather, *, node_id) -> BattleResult`
+## What used to be split
 
-- File: `src/game/combat/legacy.py`
-- Public re-export: `src.game.combat.resolve_combat`
-- Self-contained tick loop (no `CombatContext`, no event bus).
-- Applies **Weather Favor** stat packs via `apply_weather()` at init.
-- Applies **Affinity Clash** damage triangle via `damage_modifier()` per hit.
-- Emits a complete `BattleEvent` stream stored in `BattleResult.events`.
-- Consumed by `combat_log.format_combat_log(result, team, enemies)` for the
-  existing human-readable log.
-- **Does not invoke abilities, passives, statuses, board cells, or map effects.**
+Before T.26 the codebase carried **two combat engines** side by side:
 
-### New: `compile_loadout` + `CombatContext` + `combat/loop.run`
+- **Legacy** (`combat/legacy.py`, T.3) — own tick loop, returned `BattleResult`
+  with `events`. Applied Weather Favor + Affinity Clash. Ignored abilities,
+  passives, statuses, board cells, map effects.
+- **New** (`combat/loop.py` + `CombatContext`, T.20) — ran the full ability /
+  passive / status / map-effect framework. Returned only `"team" | "enemy" |
+  "draw"`. No event stream. Did not apply Weather Favor.
 
-- Files: `src/game/loadout.py`, `src/game/combat/context.py`,
-  `src/game/combat/loop.py`.
-- Built for T.20 (ability/passive/status framework) and T.21 (challenges,
-  bosses, map effects).
-- Mutator API on `CombatContext`; content interacts only via this surface.
-- `combat/loop.run(ctx)` returns just `"team" | "enemy" | "draw"` — no
-  `BattleResult`, **no events list**.
-- Applies **Affinity Clash** via `ctx.deal_damage` → `damage_modifier`.
-- **Does not apply Weather Favor stat packs** (`apply_weather` is never called
-  in the loadout build path). Treat this as a known gap, not a playtest bug.
+The T.20 plan §8.3 specified that `resolve_combat` would internally delegate
+to the new loop, but the delegation was never written. Both engines stayed
+live, each with its own test surface.
 
-## What this means for playtest tools
+## How T.26 closed it
 
-| Goal | Engine | Why |
-|---|---|---|
-| Show a battle as text log with HP trace | Legacy | `BattleResult.events` + `combat_log` already exist |
-| Balance sweep on stat baselines | Legacy | Deterministic, fast, weather Favor included |
-| Exercise abilities / passives / statuses | New | Legacy ignores them entirely |
-| Boss fights with map effects | New | Requires `attach_map_effect(effect_id, ctx, seed)` |
-| Challenge encounters (champion-as-enemy) | Either | Pure stat / weather check works on legacy |
+| Change | File |
+|---|---|
+| Added `_apply_weather_to_piece` inside `compile_loadout` so Weather Favor runs on every combat. | `src/game/loadout.py` |
+| New unified tick loop with meters / pathing / status processing / map effects. | `src/game/combat/loop_new.py` |
+| Bus-subscriber recorder that reconstructs `BattleResult` from the unified loop. | `src/game/combat/recorder.py` |
+| `resolve_combat` rewritten as a 20-line shim: `compile_loadout → CombatContext → attach recorder → loop_new.run → recorder.build_result`. | `src/game/combat/legacy.py` |
+| `combat/__init__.py` exports `run` from `loop_new`; old `loop.py` retained but no longer the entry. | `src/game/combat/__init__.py` |
 
-## DebugRecorder — bridging the gap
+All 388 pre-T.26 tests pass against the unified engine without modification.
 
-For the new engine to produce a renderable trace, the playtest layer must add
-a thin subscriber:
+## What the playtest plan inherits
 
-```python
-# tools/playtest/debug_recorder.py
-class DebugRecorder:
-    """Subscribes to CombatContext.bus, records tick-ordered events."""
-    def __init__(self, bus, ctx):
-        self.events: list[tuple[int, str, dict]] = []  # (tick, name, payload)
-        for hook_name in (
-            "on_attack_landed", "on_damage_dealt", "on_cast",
-            "on_cast_complete", "on_death", "on_status_applied",
-            "on_status_expired", "on_heal", "on_spawn",
-        ):
-            bus.subscribe(Hook(hook=hook_name, fn=self._record, ...))
-        self._ctx = ctx
+Because of T.26, the playtest tooling has **one** combat entry point. The
+plan's original draft assumed two and proposed:
 
-    def _record(self, ev, **kw):
-        self.events.append((self._ctx.current_tick, ev.__class__.__name__, ev))
+- A `--engine legacy|new` CLI flag — **removed**, single engine now.
+- A custom `DebugRecorder` for the new engine — **removed**, `BattleResultRecorder`
+  ships with the engine and `combat_log.format_combat_log` renders its output.
 
-    def render(self) -> list[str]:
-        # Mirror format_combat_log shape so output is interchangeable.
-        ...
-```
+Boss fights still need a slightly different code path because `resolve_combat`
+doesn't accept a `map_effect_id`. The playtest layer composes the same
+primitives manually for boss nodes — `compile_loadout → CombatContext →
+attach_map_effect → loop_new.run(ctx, recorder)` — and that path is documented
+inline in `sim_node.py`.
 
-This keeps `src/game/` Flet-free (V.1) and untouched — the recorder lives in
-`tools/playtest/`, hooks into the existing bus API, and produces text using the
-same grouping/format conventions as `combat_log.py`.
+## Lingering tech debt
 
-## When the split should close
-
-Eventually the legacy engine should either be deleted or rebuilt on top of
-`CombatContext`. That is **not in scope for playtesting**. Playtest tools
-work with what exists today and surface the split so users can pick the right
-tool for the right question.
+- `combat/legacy.py` still hosts the public shim plus deprecated helpers
+  (`_apply_hit`, `_resolve_movement`, etc.) re-exported through
+  `combat/__init__.py` for backward compatibility with old tests. Future
+  cleanup task: move the shim out of `legacy.py`, delete the deprecated
+  helpers, drop the re-exports. Not blocking the playtest work.
+- `combat/loop.py` (the pre-T.26 partial loop) still exists in tree alongside
+  `loop_new.py`. Candidate for deletion in the same cleanup pass.
