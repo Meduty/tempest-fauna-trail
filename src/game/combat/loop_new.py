@@ -250,6 +250,11 @@ def _resolve_movement(
     recorder: BattleResultRecorder | None,
 ) -> None:
     """Resolve a movement trigger for a piece."""
+    # Gate: root/frozen blocks movement
+    if piece.is_gated(StatusGate.BLOCKS_MOVEMENT):
+        piece.movement_energy = ENERGY_THRESHOLD
+        return
+
     enemy_living = _opponents(piece, pieces)
     attack_range = int(piece.stat("attack_range"))
 
@@ -313,7 +318,7 @@ def _resolve_action(
     # (registered abilities are handled by the ability framework's process_casts)
     from src.game.registries import ABILITY_REGISTRY  # deferred: avoids circular import
     has_unregistered_cast = False
-    if piece.actives:
+    if piece.actives and not piece.is_gated(StatusGate.BLOCKS_CAST):
         slot = piece.actives[0]
         if slot.current_mana >= slot.cost and slot.ability_id not in ABILITY_REGISTRY:
             has_unregistered_cast = True
@@ -321,23 +326,26 @@ def _resolve_action(
     if has_unregistered_cast:
         slot = piece.actives[0]
         target = current if current is not None else _select_target(piece, living_enemies)
-        if target is not None:
+        if target is not None and ctx:
             piece.target_id = target.id
-            damage, is_crit = _apply_hit(
-                piece, target, ABILITY_STR_COEFF, ABILITY_INT_COEFF, DMG_MAGICAL,
-                can_crit=piece.ability_can_crit,
+            # Use ctx pipeline so on_damage_pre/on_damage_dealt/on_damage_taken fire
+            strength = piece.stat("strength")
+            intelligence = piece.stat("intelligence")
+            raw = ABILITY_STR_COEFF * strength + ABILITY_INT_COEFF * intelligence
+            final = ctx.deal_damage(
+                piece, target, raw, SourceTag.ABILITY,
+                crit=None, damage_type=DMG_MAGICAL,
             )
             if recorder:
-                recorder.record_cast(piece.id, target.id, tick, damage, DMG_MAGICAL, is_crit)
-            # Check for death (fire death event via ctx if available)
-            if not target.alive and ctx:
-                death_event = DeathEvent(victim=target, killer=piece)
-                ctx.bus.fire("on_death", death_event, ctx=ctx)
+                recorder.record_cast(piece.id, target.id, tick, int(final), DMG_MAGICAL, False)
             slot.current_mana = 0.0
             piece.action_energy -= ENERGY_THRESHOLD
             return
 
     # Rule 2: auto-attack when at least one enemy is in attack range.
+    if piece.is_gated(StatusGate.BLOCKS_ATTACK):
+        piece.action_energy -= ENERGY_THRESHOLD
+        return
     attack_range = int(piece.stat("attack_range"))
     in_range_enemies = [
         e
@@ -345,23 +353,15 @@ def _resolve_action(
         if hex_distance(piece.position_q, piece.position_r, e.position_q, e.position_r)
         <= attack_range
     ]
-    if in_range_enemies:
+    if in_range_enemies and ctx:
         if current is not None and any(e is current for e in in_range_enemies):
             target = current
         else:
             target = _select_target(piece, in_range_enemies)
         assert target is not None
         piece.target_id = target.id
-        damage, is_crit = _apply_hit(
-            piece, target, AUTO_STR_COEFF, AUTO_INT_COEFF, DMG_PHYSICAL,
-            can_crit=True,
-        )
-        if recorder:
-            recorder.record_attack(piece.id, target.id, tick, damage, DMG_PHYSICAL, is_crit)
-        # Check for death
-        if not target.alive and ctx:
-            death_event = DeathEvent(victim=target, killer=piece)
-            ctx.bus.fire("on_death", death_event, ctx=ctx)
+        # Use ctx pipeline so on_attack_start/on_attack_landed and damage hooks fire
+        ctx.trigger_basic_attack(piece, target)
         piece.action_energy -= ENERGY_THRESHOLD
         return
 
@@ -576,13 +576,14 @@ def run(ctx: CombatContext, recorder: BattleResultRecorder | None = None) -> str
         winner = "team" if team_alive else "enemy"
         if recorder:
             recorder.set_duration(0)
+        ctx.end_combat(winner)
         return winner
 
     duration = 0
     timed_out = False
     ended_early = False
 
-    for tick in range(1, MAX_TICKS + 1):
+    for tick in range(1, HARD_CAP_TICKS + 1):
         ctx.current_tick = tick
         duration = tick
 
@@ -592,6 +593,12 @@ def run(ctx: CombatContext, recorder: BattleResultRecorder | None = None) -> str
 
         # Fire on_tick (for hooks/abilities listening to tick events)
         ctx.bus.fire("on_tick", TickEvent(tick=tick), ctx=ctx)
+
+        # Sudden death: apply escalating DOT to all living pieces once MAX_TICKS is passed
+        if tick >= SUDDEN_DEATH_TICK_START:
+            for piece in pieces:
+                if piece.alive:
+                    ctx.apply_status(piece, "sudden_death", 3)
 
         # Process map effects (board-cell modifiers: slow tiles etc.)
         _process_board_state(ctx, pieces)
@@ -665,7 +672,10 @@ def run(ctx: CombatContext, recorder: BattleResultRecorder | None = None) -> str
 
     if not ended_early:
         timed_out = True
-        duration = MAX_TICKS
+        duration = HARD_CAP_TICKS
+    elif duration >= SUDDEN_DEATH_TICK_START:
+        # Combat resolved by sudden-death DOT — still counts as timed out
+        timed_out = True
 
     if recorder:
         recorder.set_duration(duration, timed_out)
@@ -678,8 +688,11 @@ def run(ctx: CombatContext, recorder: BattleResultRecorder | None = None) -> str
     enemy_alive = any(p.alive and p.is_enemy for p in pieces)
 
     if team_alive and not enemy_alive:
-        return "team"
+        winner = "team"
     elif enemy_alive and not team_alive:
-        return "enemy"
+        winner = "enemy"
     else:
-        return "draw"
+        winner = "draw"
+
+    ctx.end_combat(winner)
+    return winner
