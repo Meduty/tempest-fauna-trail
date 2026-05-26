@@ -173,18 +173,18 @@ def _apply_weather_to_piece(piece: Piece, weather: WeatherState) -> None:
     """
     modifier = combat_modifier(piece.affinity, weather)
 
-    def _scale_int(value: float, mult: float) -> float:
+    def _scale_stat(value: float, mult: float) -> float:
         return float(max(0, round(value * mult)))
 
-    piece.base_stats["hp"] = _scale_int(piece.base_stats["hp"], modifier.hp_mult)
-    piece.base_stats["strength"] = _scale_int(piece.base_stats["strength"], modifier.str_mult)
-    piece.base_stats["intelligence"] = _scale_int(piece.base_stats["intelligence"], modifier.int_mult)
-    piece.base_stats["attack_speed"] = _scale_int(piece.base_stats["attack_speed"], modifier.as_mult)
-    piece.base_stats["move_speed"] = _scale_int(piece.base_stats["move_speed"], modifier.ms_mult)
-    piece.base_stats["mana_regen"] = _scale_int(piece.base_stats["mana_regen"], modifier.mr_mult)
-    piece.base_stats["threat"] = _scale_int(piece.base_stats["threat"], modifier.thr_mult)
-    piece.base_stats["armor"] = _scale_int(piece.base_stats["armor"], modifier.armor_mult)
-    piece.base_stats["resistance"] = _scale_int(piece.base_stats["resistance"], modifier.res_mult)
+    piece.base_stats["hp"] = _scale_stat(piece.base_stats["hp"], modifier.hp_mult)
+    piece.base_stats["strength"] = _scale_stat(piece.base_stats["strength"], modifier.str_mult)
+    piece.base_stats["intelligence"] = _scale_stat(piece.base_stats["intelligence"], modifier.int_mult)
+    piece.base_stats["attack_speed"] = _scale_stat(piece.base_stats["attack_speed"], modifier.as_mult)
+    piece.base_stats["move_speed"] = _scale_stat(piece.base_stats["move_speed"], modifier.ms_mult)
+    piece.base_stats["mana_regen"] = _scale_stat(piece.base_stats["mana_regen"], modifier.mr_mult)
+    piece.base_stats["threat"] = _scale_stat(piece.base_stats["threat"], modifier.thr_mult)
+    piece.base_stats["armor"] = _scale_stat(piece.base_stats["armor"], modifier.armor_mult)
+    piece.base_stats["resistance"] = _scale_stat(piece.base_stats["resistance"], modifier.res_mult)
     piece.base_stats["attack_range"] = float(max(1, int(piece.base_stats["attack_range"]) + modifier.attack_range_delta))
 
     # Update HP to match new max_hp (piece starts at full HP)

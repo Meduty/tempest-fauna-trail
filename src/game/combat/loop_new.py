@@ -22,7 +22,7 @@ from typing import Any
 from src.game.combat.context import CombatContext, hex_distance, HEX_DIRECTIONS, BOARD_WIDTH, BOARD_HEIGHT
 from src.game.combat.recorder import BattleResultRecorder
 from src.game.effects import EventBus, Lifetime, SourceTag
-from src.game.events import CombatStartEvent, TickEvent
+from src.game.events import CombatStartEvent, DeathEvent, TickEvent
 from src.game.piece import Piece, ActiveSlot
 from src.game.status import STATUS_DEFS, StatusGate, StatusInstance
 from src.game.weather_effects import damage_modifier
@@ -307,7 +307,7 @@ def _resolve_action(
     # Rule 1: cast when mana is full and any valid target exists (legacy fallback).
     # Check if piece has ability slots with full mana AND the ability is NOT in the registry
     # (registered abilities are handled by the ability framework's process_casts)
-    from src.game.registries import ABILITY_REGISTRY
+    from src.game.registries import ABILITY_REGISTRY  # deferred: avoids circular import
     has_unregistered_cast = False
     if piece.actives:
         slot = piece.actives[0]
@@ -327,7 +327,6 @@ def _resolve_action(
                 recorder.record_cast(piece.id, target.id, tick, damage, DMG_MAGICAL, is_crit)
             # Check for death (fire death event via ctx if available)
             if not target.alive and ctx:
-                from src.game.events import DeathEvent
                 death_event = DeathEvent(victim=target, killer=piece)
                 ctx.bus.fire("on_death", death_event, ctx=ctx)
             slot.current_mana = 0.0
@@ -357,7 +356,6 @@ def _resolve_action(
             recorder.record_attack(piece.id, target.id, tick, damage, DMG_PHYSICAL, is_crit)
         # Check for death
         if not target.alive and ctx:
-            from src.game.events import DeathEvent
             death_event = DeathEvent(victim=target, killer=piece)
             ctx.bus.fire("on_death", death_event, ctx=ctx)
         piece.action_energy -= ENERGY_THRESHOLD
@@ -375,9 +373,10 @@ def _resolve_action(
 def _event_sort_key(entry: tuple[Piece, str]) -> tuple[float, float, int, int]:
     """Deterministic same-tick total ordering (plan section 3.5)."""
     piece, kind = entry
+    as_val = piece.stat("attack_speed")
     return (
-        -piece.stat("attack_speed"),
-        -piece.stat("attack_speed"),
+        -as_val,
+        -as_val,
         piece.speed_tiebreaker,
         0 if kind == _KIND_MOVEMENT else 1,
     )
