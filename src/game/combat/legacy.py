@@ -427,94 +427,33 @@ def resolve_combat(
     *,
     node_id: str = "",
 ) -> BattleResult:
-    """Resolve one battle from start to finish; pure and deterministic."""
-    # Init: snapshot roster definitions into weather-modified combat pieces.
-    pieces: list[CombatPieceState] = []
-    for index, source in enumerate([*team, *enemies]):
-        piece = apply_weather(source, weather)
+    """Resolve one battle from start to finish; pure and deterministic.
+
+    Delegates to the unified combat engine (T26): compile_loadout builds
+    weather-modified Pieces, the new loop runs the tick simulation, and
+    BattleResultRecorder reconstructs the legacy BattleResult format.
+    """
+    from src.game.combat.context import CombatContext
+    from src.game.combat.loop_new import run as run_combat, assign_spawns
+    from src.game.combat.recorder import BattleResultRecorder
+    from src.game.loadout import compile_loadout
+
+    # Build pieces with weather favor applied
+    pieces, bus = compile_loadout(team, enemies, weather, seed=42)
+
+    # Assign speed tiebreakers (stable input ordering)
+    for index, piece in enumerate(pieces):
         piece.speed_tiebreaker = index
-        pieces.append(piece)
-    _assign_spawns(pieces)
 
-    damage_dealt: dict[str, int] = {p.piece_id: 0 for p in pieces}
-    damage_taken: dict[str, int] = {p.piece_id: 0 for p in pieces}
-    events: list[BattleEvent] = []
+    # Assign spawn positions
+    assign_spawns(pieces)
 
-    duration = 0
-    timed_out = False
+    # Create recorder
+    recorder = BattleResultRecorder(pieces, weather, node_id)
+    recorder.register(bus)
 
-    if _both_sides_alive(pieces):
-        ended_early = False
-        for tick in range(1, MAX_TICKS + 1):
-            duration = tick
+    # Build context and run
+    ctx = CombatContext(pieces, bus, weather, seed=42)
+    winner = run_combat(ctx, recorder)
 
-            # Step 1: advance every living meter.
-            for piece in pieces:
-                if not piece.alive:
-                    continue
-                piece.action_energy += effective_as(piece)
-                piece.movement_energy += effective_ms(piece)
-                piece.mana = min(
-                    piece.ability_cost, piece.mana + effective_mr_tick(piece)
-                )
-
-            # Step 2: collect triggered meters.
-            triggered: list[tuple[CombatPieceState, str]] = []
-            for piece in pieces:
-                if not piece.alive:
-                    continue
-                if piece.movement_energy >= ENERGY_THRESHOLD:
-                    triggered.append((piece, _KIND_MOVEMENT))
-                if piece.action_energy >= ENERGY_THRESHOLD:
-                    triggered.append((piece, _KIND_ACTION))
-
-            # Step 3: resolve in deterministic order.
-            triggered.sort(key=_event_sort_key)
-            for piece, kind in triggered:
-                if not piece.alive:
-                    continue
-                if kind == _KIND_MOVEMENT:
-                    _resolve_movement(piece, pieces, events, tick)
-                else:
-                    _resolve_action(
-                        piece, pieces, events, tick, damage_dealt, damage_taken
-                    )
-                if not _both_sides_alive(pieces):
-                    ended_early = True
-                    break
-            if ended_early:
-                break
-
-        if not ended_early:
-            timed_out = True
-            duration = MAX_TICKS
-
-    # Determine outcome from final living pieces.
-    team_alive = any(p.alive and not p.is_enemy for p in pieces)
-    enemy_alive = any(p.alive and p.is_enemy for p in pieces)
-    if timed_out:
-        outcome = CombatOutcome.DRAW
-    elif enemy_alive and not team_alive:
-        outcome = CombatOutcome.LOSS
-    elif team_alive and not enemy_alive:
-        outcome = CombatOutcome.WIN
-    else:
-        outcome = CombatOutcome.DRAW
-
-    rounds = (duration + ROUND_TICKS - 1) // ROUND_TICKS
-    turns = sum(1 for e in events if e.event_type in (EVENT_ATTACK, EVENT_CAST))
-
-    return BattleResult(
-        node_id=node_id,
-        weather=weather,
-        outcome=outcome,
-        rounds=rounds,
-        turns=turns,
-        duration_ticks=duration,
-        team_damage_dealt=damage_dealt,
-        team_damage_taken=damage_taken,
-        surviving_team_ids=[p.piece_id for p in pieces if p.alive and not p.is_enemy],
-        surviving_enemy_ids=[p.piece_id for p in pieces if p.alive and p.is_enemy],
-        timed_out=timed_out,
-        events=events,
-    )
+    return recorder.build_result(winner)

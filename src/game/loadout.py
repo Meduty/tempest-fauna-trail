@@ -20,6 +20,7 @@ from src.game.models import Champion, Enemy, WeatherState
 from src.game.piece import ActiveSlot, Piece
 from src.game.registries import ABILITY_REGISTRY, PASSIVE_REGISTRY
 from src.game.status import StatusInstance
+from src.game.weather_effects import combat_modifier
 from src.game import abilities as _abilities  # noqa: F401 — triggers @register decorators
 
 DEFAULT_ABILITY_COST = 36_000
@@ -164,6 +165,34 @@ def attach_map_effect(effect_id: str, ctx: Any, seed: int) -> Any:
     return effect
 
 
+def _apply_weather_to_piece(piece: Piece, weather: WeatherState) -> None:
+    """Apply Weather Favor to a piece's base_stats (mutates in place).
+
+    Uses integer-scaled values matching the legacy apply_weather behavior
+    so that combat results are deterministic and consistent.
+    """
+    modifier = combat_modifier(piece.affinity, weather)
+
+    def _scale_int(value: float, mult: float) -> float:
+        return float(max(0, round(value * mult)))
+
+    piece.base_stats["hp"] = _scale_int(piece.base_stats["hp"], modifier.hp_mult)
+    piece.base_stats["strength"] = _scale_int(piece.base_stats["strength"], modifier.str_mult)
+    piece.base_stats["intelligence"] = _scale_int(piece.base_stats["intelligence"], modifier.int_mult)
+    piece.base_stats["attack_speed"] = _scale_int(piece.base_stats["attack_speed"], modifier.as_mult)
+    piece.base_stats["move_speed"] = _scale_int(piece.base_stats["move_speed"], modifier.ms_mult)
+    piece.base_stats["mana_regen"] = _scale_int(piece.base_stats["mana_regen"], modifier.mr_mult)
+    piece.base_stats["threat"] = _scale_int(piece.base_stats["threat"], modifier.thr_mult)
+    piece.base_stats["armor"] = _scale_int(piece.base_stats["armor"], modifier.armor_mult)
+    piece.base_stats["resistance"] = _scale_int(piece.base_stats["resistance"], modifier.res_mult)
+    piece.base_stats["attack_range"] = float(max(1, int(piece.base_stats["attack_range"]) + modifier.attack_range_delta))
+
+    # Update HP to match new max_hp (piece starts at full HP)
+    new_max_hp = max(1.0, piece.base_stats["hp"])
+    piece.max_hp = new_max_hp
+    piece.hp = new_max_hp
+
+
 def compile_loadout(
     team: list[Champion],
     enemies: list[Enemy],
@@ -182,6 +211,10 @@ def compile_loadout(
         pieces.append(piece_from_champion(champ))
     for enemy in enemies:
         pieces.append(piece_from_enemy(enemy))
+
+    # 2. Apply Weather Favor to base stats
+    for piece in pieces:
+        _apply_weather_to_piece(piece, weather)
 
     # 7. Apply champion passive bundles
     for piece in pieces:
