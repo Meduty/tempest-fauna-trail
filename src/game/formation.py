@@ -93,7 +93,11 @@ def classify_role(enemy_def: "EnemyDef") -> PlacementRole:
 
 
 def _center_out_rows(count: int, board_height: int = BOARD_HEIGHT) -> list[int]:
-    """Return `count` row indices, center-out from the middle row."""
+    """Return `count` row indices, center-out from the middle row.
+
+    If count exceeds board_height, returns all rows (clamped).
+    """
+    count = min(count, board_height)
     center = board_height // 2
     rows: list[int] = [center]
     offset = 1
