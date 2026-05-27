@@ -28,7 +28,7 @@ from src.game.weather_effects import apply_weather, damage_modifier
 TICK_MS = 10
 ROUND_TICKS = 600
 ENERGY_THRESHOLD = 60_000
-MAX_TICKS = 7_200
+MAX_TICKS = 12_000
 
 # --- Board (plan section 4) ---
 BOARD_WIDTH = 10

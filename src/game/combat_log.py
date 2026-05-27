@@ -54,7 +54,9 @@ def _format_event(
         return f"{event.actor_id} moves to ({event.note})"
 
     if event.event_type == EVENT_DEATH:
-        killer = f" by {event.target_id}" if event.target_id else ""
+        killer = ""
+        if event.target_id and event.target_id != event.actor_id:
+            killer = f" by {event.target_id}"
         return f"{event.actor_id} is defeated{killer}"
 
     if event.event_type in (EVENT_ATTACK, EVENT_CAST):

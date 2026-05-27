@@ -79,7 +79,7 @@ def ember_salamander_active(ctx: Any, actor: Any, targets: list) -> None:
     amount = _eval_scaling(60.0, "intelligence*1.8", actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
     # Apply burn
-    ctx.apply_status(target, "burn", duration_ticks=300)
+    ctx.apply_status(target, "burn", duration_ticks=300, source_id=actor.id)
 
 
 # --- Goldcrest Lark (T4, SUP-Buff) ---
@@ -199,7 +199,7 @@ def iceclaw_lynx_passive(owner: Any) -> EffectBundle:
         bonus = owner.stat("intelligence") * 0.4
         ctx.deal_damage(owner, event.target, bonus, SourceTag.BASIC_ATTACK)
         # Apply slow
-        ctx.apply_status(event.target, "slow", duration_ticks=100, stacks=1)
+        ctx.apply_status(event.target, "slow", duration_ticks=100, stacks=1, source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),

@@ -39,7 +39,7 @@ from src.game.weather_effects import damage_modifier
 TICK_MS = 10
 ROUND_TICKS = 600
 ENERGY_THRESHOLD = 60_000
-MAX_TICKS = 7_200
+MAX_TICKS = 12_000
 
 # Sudden death: kicks in at MAX_TICKS, escalating DOT per tick
 SUDDEN_DEATH_TICK_START = MAX_TICKS
@@ -408,10 +408,16 @@ def process_statuses(ctx: CombatContext, pieces: list[Piece]) -> None:
                 dot_amount = status_def.dot_per_tick
                 if status_def.dot_scales_with_stacks:
                     dot_amount *= status.stacks
+                attacker = piece
+                if status.source_id:
+                    for p in ctx.all_pieces():
+                        if p.id == status.source_id and p.alive:
+                            attacker = p
+                            break
                 if status_def.dot_true_damage:
-                    ctx.deal_damage(piece, piece, dot_amount, SourceTag.TRUE)
+                    ctx.deal_damage(attacker, piece, dot_amount, SourceTag.TRUE)
                 else:
-                    ctx.deal_damage(piece, piece, dot_amount, SourceTag.DOT, damage_type="magical")
+                    ctx.deal_damage(attacker, piece, dot_amount, SourceTag.DOT, damage_type="magical")
                 # Decay stacks after DOT
                 if status_def.decay_stacks_per_tick and status.stacks > 0:
                     status.stacks -= 1

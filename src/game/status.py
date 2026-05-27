@@ -140,7 +140,7 @@ SUDDEN_DEATH = _register(StatusDef(
     id="sudden_death",
     display_name="Sudden Death",
     stack_behaviour=StackBehaviour.STACK,  # Stacks escalate each tick
-    dot_per_tick=5.0,
+    dot_per_tick=0.5,
     dot_scales_with_stacks=True,
     dot_true_damage=True,  # Bypasses all mitigation — unstoppable timeout mechanic
 ))

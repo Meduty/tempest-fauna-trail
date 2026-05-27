@@ -87,7 +87,7 @@ def static_buildup(owner: Any) -> EffectBundle:
         if event.attacker is not owner:
             return
         if ctx.weather == WeatherState.THUNDER:
-            ctx.apply_status(event.target, "charged", duration_ticks=200, stacks=1)
+            ctx.apply_status(event.target, "charged", duration_ticks=200, stacks=1, source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
