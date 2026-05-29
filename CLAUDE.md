@@ -71,7 +71,10 @@ src/
 │   ├── formation.py        # Role-aware enemy formation (T.24)
 │   ├── loadout.py          # compile_loadout (content ↔ combat boundary)
 │   └── rng.py              # Seeded RNG helper
-├── ui/                     # Stub (__init__.py only)
+├── ui/                     # Theme tokens + reusable Flet components (T.8)
+│   ├── theme.py            # Design tokens (colors, typography, spacing, animation)
+│   ├── components/         # Shared components (champion_card, weather_badge, meter_bar, chips)
+│   └── views/
 └── viz/                    # Stub (__init__.py only)
 tools/
 └── playtest/               # Dev CLI: sim_fight, sim_node, sim_run, inspect, inspect_node (T.27)
