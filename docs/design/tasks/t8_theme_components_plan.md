@@ -135,7 +135,7 @@ this module beyond WeatherState (for the affinity color map).
 from src.game.models import WeatherState
 
 # --- Affinity Colors (per WeatherState) ---
-AFFINITY_COLORS: dict[str, str] = {
+AFFINITY_COLORS: dict[WeatherState, str] = {
     WeatherState.CLEAR: "#A8A8A8",
     WeatherState.CLOUDY: "#B0BEC5",
     WeatherState.MIST: "#CE93D8",
@@ -376,6 +376,7 @@ Theme tokens are pure constants — tests validate structural integrity:
 
 - `AFFINITY_COLORS` has exactly 6 keys matching `WeatherState` members.
 - All hex strings are valid 7-char format (`#RRGGBB`).
+- All `AFFINITY_COLORS` values meet WCAG AA contrast (≥4.5:1) against `BG`.
 - All spacing values are multiples of 4.
 - All font sizes are positive integers.
 
