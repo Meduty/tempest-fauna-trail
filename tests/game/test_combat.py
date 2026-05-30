@@ -293,9 +293,9 @@ def test_affinity_damage_triangle_scales_hits():
         if e.event_type == "attack"
     ).amount
 
-    # Raw auto = 1.0 * 50 = 50; enemy armor 0. Predator x1.10 -> 55, prey x0.90 -> 45.
-    assert predator_hit == 55
-    assert prey_hit == 45
+    # Raw auto = 1.0 * 50 = 50; enemy armor 0. Predator x1.20 -> 60, prey x0.80 -> 40.
+    assert predator_hit == 60
+    assert prey_hit == 40
 
 
 # --- 6.x Penetration ---------------------------------------------------------

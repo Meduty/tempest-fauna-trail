@@ -202,11 +202,11 @@ def test_combat_modifier_is_deterministic() -> None:
 
 def test_damage_modifier_values_by_relation() -> None:
     # Enemy RAIN; ring positions around it.
-    assert damage_modifier(WeatherState.SNOW, WeatherState.RAIN) == 1.10
-    assert damage_modifier(WeatherState.THUNDER, WeatherState.RAIN) == 1.05
+    assert damage_modifier(WeatherState.SNOW, WeatherState.RAIN) == 1.20
+    assert damage_modifier(WeatherState.THUNDER, WeatherState.RAIN) == 1.10
     assert damage_modifier(WeatherState.RAIN, WeatherState.RAIN) == 1.00
-    assert damage_modifier(WeatherState.MIST, WeatherState.RAIN) == 0.95
-    assert damage_modifier(WeatherState.CLOUDY, WeatherState.RAIN) == 0.90
+    assert damage_modifier(WeatherState.MIST, WeatherState.RAIN) == 0.90
+    assert damage_modifier(WeatherState.CLOUDY, WeatherState.RAIN) == 0.80
 
 
 def test_damage_modifier_clear_is_inert_both_ways() -> None:
@@ -226,15 +226,15 @@ def test_damage_modifier_predator_beats_one_above_prey() -> None:
 
 
 def test_damage_modifier_exchange_ratio_is_tamed() -> None:
-    # Primary predator/prey exchange ~1.22x; secondary ~1.11x.
+    # Primary predator/prey exchange ~1.50x; secondary ~1.22x.
     primary = damage_modifier(
         WeatherState.SNOW, WeatherState.RAIN
     ) / damage_modifier(WeatherState.RAIN, WeatherState.SNOW)
     secondary = damage_modifier(
         WeatherState.THUNDER, WeatherState.RAIN
     ) / damage_modifier(WeatherState.RAIN, WeatherState.THUNDER)
-    assert primary == pytest.approx(1.10 / 0.90)
-    assert secondary == pytest.approx(1.05 / 0.95)
+    assert primary == pytest.approx(1.20 / 0.80)
+    assert secondary == pytest.approx(1.10 / 0.90)
     assert primary > secondary
 
 

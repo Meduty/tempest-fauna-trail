@@ -265,11 +265,11 @@ Weather Favor:
 
 Affinity Clash:
 
-- `damage_modifier`: `1.10 / 1.05 / 1.00 / 0.95 / 0.90` by relation.
+- `damage_modifier`: `1.20 / 1.10 / 1.00 / 0.90 / 0.80` by relation.
 - Mirror (`a == a`) and any `CLEAR` pairing → `1.00`.
 - Monotonic: predator `> 1.0 >` prey; primary magnitude `>` secondary.
 - Exchange ratio `damage_modifier(pred, prey) / damage_modifier(prey, pred)`
-  ≈ `1.22` (primary), `≈ 1.11` (secondary).
+  ≈ `1.50` (primary), `≈ 1.22` (secondary).
 
 Other:
 
@@ -325,7 +325,7 @@ Other:
 - **Weather Favor tiers**: strong / medium / weak buff = `+10% / +6% / +3%` for
   self / primary predator / secondary predator; medium / weak debuff =
   `−6% / −3%` for primary / secondary prey. No strong debuff.
-- **Affinity Clash**: `1.10 / 1.05 / 1.00 / 0.95 / 0.90` per hit, attacker-flagged,
+- **Affinity Clash**: `1.20 / 1.10 / 1.00 / 0.90 / 0.80` per hit, attacker-flagged,
   one modifier per hit.
 - **Self is the strict Weather Favor maximum** — a piece is strongest in its own
   weather.
