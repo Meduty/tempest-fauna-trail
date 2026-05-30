@@ -77,7 +77,8 @@ src/
 │   └── views/
 └── viz/                    # Stub (__init__.py only)
 tools/
-└── playtest/               # Dev CLI: sim_fight, sim_node, sim_run, inspect, inspect_node (T.27)
+├── playtest/               # Dev CLI: sim_fight, sim_node, sim_run, inspect, inspect_node (T.27)
+└── simulation/             # Power sim — matchup sweeps + Bradley-Terry ratings (T.25)
 tests/                      # Mirrors src/ + tools/ structure
 docs/                       # Design + journal (see Documentation Map)
 ```
@@ -90,7 +91,6 @@ docs/                       # Design + journal (see Documentation Map)
 | `game/save.py` | T.14 | JSON save/load of `Run` |
 | `ui/theme.py`, `ui/components/`, `ui/views/` | T.8-T.13, T.15, T.23 | Flet views + shared components |
 | `viz/route_map.py`, `viz/run_summary.py` | T.11, T.13 | Canvas route map, BarChart summary |
-| `tools/simulation/` | T.25 | Matchup sweeps + Bradley-Terry power ratings |
 
 ## Flet Conventions
 

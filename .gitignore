@@ -1,3 +1,6 @@
+# T.25 power-sim outputs (generated)
+results/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
