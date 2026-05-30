@@ -372,9 +372,9 @@ def test_cast_path_consumes_mana_and_deals_magic_damage():
     result = resolve_combat(team, enemies, WeatherState.CLEAR)
     casts = [e for e in result.events if e.event_type == "cast"]
     assert casts, "expected at least one cast"
-    # T3 MVP fallback: raw damage = ABILITY_STR_COEFF*STR + ABILITY_INT_COEFF*INT
-    # = 0.2*0 + 4.2*20 = 84 (T20 ability handlers will own their own scaling formula)
-    assert casts[0].amount == 84
+    # T.30 §4 fix: fallback scales on max(STR, INT) * (STR_COEFF + INT_COEFF)
+    # = (0.2 + 4.2) * max(0, 20) = 4.4 * 20 = 88
+    assert casts[0].amount == 88
 
 
 # --- Effective stat helpers --------------------------------------------------

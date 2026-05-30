@@ -329,9 +329,10 @@ def _resolve_action(
         if target is not None and ctx:
             piece.target_id = target.id
             # Use ctx pipeline so on_damage_pre/on_damage_dealt/on_damage_taken fire
+            # Fix T.30 §4: scale on piece's PRIMARY stat (max of STR/INT) to de-bias
             strength = piece.stat("strength")
             intelligence = piece.stat("intelligence")
-            raw = ABILITY_STR_COEFF * strength + ABILITY_INT_COEFF * intelligence
+            raw = (ABILITY_STR_COEFF + ABILITY_INT_COEFF) * max(strength, intelligence)
             final = ctx.deal_damage(
                 piece, target, raw, SourceTag.ABILITY,
                 crit=None, damage_type=DMG_MAGICAL,
@@ -614,6 +615,13 @@ def run(ctx: CombatContext, recorder: BattleResultRecorder | None = None) -> str
 
         # Expire timed modifiers
         expire_modifiers(ctx, pieces)
+
+        # Despawn expired summons (G6)
+        for piece in pieces:
+            if piece.alive and piece.summon and piece.summon_expires_tick > 0:
+                if tick >= piece.summon_expires_tick:
+                    piece.alive = False
+                    piece.hp = 0.0
 
         if not _both_sides_alive(pieces):
             ended_early = True
