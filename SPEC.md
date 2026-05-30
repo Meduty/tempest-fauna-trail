@@ -18,7 +18,7 @@ auto-resolved — the player's decisions happen *between* fights.
 weather-aware roster swaps, and board positioning.
 
 **Run-start conditions:**
-- Team-size cap: **3** (field 1 champion, bench holds 2 spares).
+- Team-size cap: **3** at rank 1 (field 1 champion, bench holds 2 spares); grows with Tempest rank up to **6** at max rank (see D.14).
 - Starting champion: player picks 1 from a seed-random offer of 3 (Tier 1–2).
 - Starting shop: 5 Tier-1 champions (auto-populated; first reroll per node is free).
 - Starting Amber: **10** (enough to buy 2 Tier-1 champions or 1 Tier-2 + save).
@@ -103,7 +103,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.8 | Theme + shared components — colors, fonts, champion card, weather badge | `ui/theme.py`, `ui/components/` | — | S | ✅ Done |
 | T.9 | Main menu view — new game, load game, quit | `ui/views/menu.py`, `main.py` | T.8 | S | 📋 Plan |
 | T.10 | Run-start flow — initial champion pick (1-of-3 offer), first shop population, starting Amber/Tempest state init | `game/run_init.py`, `ui/views/trail.py` | T.5, T.8, T.22 | S | 📋 Plan |
-| T.11 | Route map visualization — Canvas with city nodes + weather icons | `viz/route_map.py`, `ui/views/map.py` | T.4, T.6, T.8 | L | 📋 Plan |
+| T.11 | Route map visualization — Canvas with city nodes + weather icons | `viz/route_map.py`, `ui/views/trail.py` | T.4, T.6, T.8 | L | 📋 Plan |
 | T.12 | Combat view — animated battle log, HP bars | `ui/views/combat.py` | T.3, T.8 | L | 📋 Plan |
 | T.13 | Run summary visualization — BarChart of damage per battle | `viz/run_summary.py`, `ui/views/summary.py` | T.3, T.8 | M | 📋 Plan |
 | T.14 | Save/load — JSON serialization of Run state | `game/save.py` | T.1 | S | ❌ Not started |
