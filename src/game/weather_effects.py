@@ -101,8 +101,9 @@ class CombatModifier:
 
 IDENTITY = CombatModifier()
 
-# Strong-tier (±10%) base stat packs per weather. `combat_modifier` scales the
-# deviation from 1.0 down for the medium/weak tiers.
+# Strong-tier base stat packs per weather (primary stats ±10%, with smaller
+# offensive adds where noted). `combat_modifier` scales the deviation from 1.0
+# down for the medium/weak tiers.
 WEATHER_BUFF_BASE: dict[WeatherState, CombatModifier] = {
     WeatherState.CLOUDY: CombatModifier(hp_mult=1.10, res_mult=1.10, as_mult=1.05),
     WeatherState.MIST: CombatModifier(ms_mult=1.10, thr_mult=1.10, int_mult=1.05),
