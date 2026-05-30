@@ -13,8 +13,8 @@ specified below before beginning implementation.
 
 ## Amendments
 
-{{AMENDMENTS — bullet list of deltas vs plan doc. Write "None" if plan stands
-as written.}}
+{{AMENDMENTS}}
+_Bullet list of deltas vs plan doc. Write "None" if plan stands as written._
 
 ## Pre-Implementation Research
 
