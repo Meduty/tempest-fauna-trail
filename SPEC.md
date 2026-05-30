@@ -2,8 +2,27 @@
 
 ## G. Goal
 
-Roguelike strategy game: animal champions travel fixed route of ~6 real cities.
-Live OpenWeather data at each city shapes combat modifiers. Auto-resolved battles.
+Roguelike auto-chess strategy game inspired by TFT, under an animal-spirits-and-weather theme.
+Players start with **1 chosen champion** and **10 Amber** (starting budget), then progress
+through a fixed 50-node route of real-world cities across 6 continent stages. Live
+OpenWeather data at each city shapes combat modifiers. Battles are tick-based and
+auto-resolved — the player's decisions happen *between* fights.
+
+**Core game loop (per node):**
+1. **Trail** — view route progress, preview next node weather & enemies.
+2. **Prep** — reposition pieces on the hex board, swap bench ↔ field, use items,
+   browse the **champion shop** (buy / sell / reroll), spend Amber to level team-size.
+3. **Combat** — auto-resolved; outcome grants Amber, items, and/or Tempest XP.
+
+**Core player decisions:** team composition & synergy traits, item optimization,
+weather-aware roster swaps, and board positioning.
+
+**Run-start conditions:**
+- Team-size cap: **3** at rank 1 (field 1 champion, bench holds 2 spares); grows with Tempest rank up to **6** at max rank (see D.14).
+- Starting champion: player picks 1 from a seed-random offer of 3 (Tier 1–2).
+- Starting shop: 5 Tier-1 champions (auto-populated; first reroll per node is free).
+- Starting Amber: **10** (enough to buy 2 Tier-1 champions or 1 Tier-2 + save).
+
 Built with Flet (Python). FH Technikum Wien project — 2 students, 8 weeks.
 
 **Grading weight**: UI 4pt | Data Loading 2pt | Visualization 4pt | Structure 6pt | Documentation 4pt
@@ -45,9 +64,9 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 ### Flet Routes
 | Route | View | Purpose |
 |---|---|---|
-| `/` | Main Menu | New game, load, quit |
-| `/recruit` | Team Builder | Pick ~3 champions from roster of 8 |
-| `/map` | Route Map | Canvas map with weather icons per city |
+| `/` | Main Menu | New game, continue, quit |
+| `/trail` | Trail Map | Route progression, node preview, weather overlays |
+| `/prep` | Prep Phase | Board placement, bench/field swap, shop, items |
 | `/combat` | Battle | Auto-resolved combat with animated log |
 | `/summary` | Run Summary | BarChart of damage per battle, win/loss |
 
@@ -83,8 +102,8 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.7 | Cache + refresher — stateless per-city cache (`unknown` / `live`+`fetched_at` / `substitute` holding city-default weather), 3-stream refresher (A full RR 50, B window `[current+1..+6]` count-clamped, C uniform random) ticks 1/min deduped → ≤3 calls/min, sync fetch on advance-to-`unknown` | `api/cache.py`, `api/refresher.py`, `docs/design/tasks/t7_cache_refresher_plan.md` | T.6 | M | ✅ Done |
 | T.8 | Theme + shared components — colors, fonts, champion card, weather badge | `ui/theme.py`, `ui/components/` | — | S | ✅ Done |
 | T.9 | Main menu view — new game, load game, quit | `ui/views/menu.py`, `main.py` | T.8 | S | 📋 Plan |
-| T.10 | Team recruit view — pick 3 champions from roster | `ui/views/recruit.py` | T.5, T.8 | M | 📋 Plan |
-| T.11 | Route map visualization — Canvas with city nodes + weather icons | `viz/route_map.py`, `ui/views/map.py` | T.4, T.6, T.8 | L | 📋 Plan |
+| T.10 | Run-start flow — initial champion pick (1-of-3 offer), first shop population, starting Amber/Tempest state init | `game/run_init.py`, `ui/views/trail.py` | T.5, T.8, T.22 | S | 📋 Plan |
+| T.11 | Route map visualization — Canvas with city nodes + weather icons | `viz/route_map.py`, `ui/views/trail.py` | T.4, T.6, T.8 | L | 📋 Plan |
 | T.12 | Combat view — animated battle log, HP bars | `ui/views/combat.py` | T.3, T.8 | L | 📋 Plan |
 | T.13 | Run summary visualization — BarChart of damage per battle | `viz/run_summary.py`, `ui/views/summary.py` | T.3, T.8 | M | 📋 Plan |
 | T.14 | Save/load — JSON serialization of Run state | `game/save.py` | T.1 | S | ❌ Not started |
@@ -95,13 +114,14 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.19 | Encounter generation — seed-deterministic squad/offer fill, enemy power clustering, node budgets | `game/encounter.py`, `docs/design/tasks/t19_encounter_generation_plan.md` | T.1, T.4, T.5, T.18 | M | ✅ Done |
 | T.20 | Ability/passive/status framework — registry, typed event bus, status gates, boss phase hook | `game/abilities/`, `game/effects.py`, `game/events.py`, `game/status.py`, `game/registries.py`, `docs/design/tasks/t20_ability_framework_plan.md` | T.3 | L | ✅ Done |
 | T.21 | Challenge & boss encounters — champion-faction challenges, 2-phase bosses, auto-battle-aware map effects | `game/encounter.py`, `game/board.py`, `game/map_effects.py`, `game/bosses/`, `docs/design/tasks/t21_challenge_boss_plan.md` | T.19, T.20 | M | ✅ Done |
-| T.22 | Meta progression — augment, supply, economy, team-size cap | `game/augments.py`, `game/economy.py`, `docs/design/tasks/t22_meta_progression_plan.md` | T.1, T.18 | M | 📋 Plan |
+| T.22 | Economy & shop — Amber income per node (+3 base, +1-3 win bonus), shop refresh (5 slots, auto-refresh each node, manual reroll 1 Amber, first reroll per node free), buy `Cost(T)=T`, sell `floor(Cost/2)`, team-size Tempest leveling (rank N costs 2N, max rank 6), stage-gated tier probabilities | `game/economy.py`, `game/shop.py`, `docs/design/tasks/t22_meta_progression_plan.md` | T.1, T.5, T.18 | L | 📋 Plan |
 | T.23 | Prep formation snapshot integration — lock player board placement in Prep, validate deployment constraints, pass explicit coordinates into combat init | `ui/views/prep.py`, `game/models.py`, `game/combat.py`, `docs/design/tasks/t23_prep_formation_snapshot_plan.md` | T.1, T.3, T.15 | M | 📋 Plan |
 | T.24 | Enemy formation policy — deterministic role-aware spawn planner (frontline forward, backline protected, size-aware packing) with safe fallback | `game/formation.py`, `game/combat.py`, `docs/design/tasks/t24_enemy_formation_plan.md` | T.3, T.5, T.23 | M | ✅ Done |
 | T.25 | Power simulation & balance benchmarking — deterministic matchup sweeps and empirical power ratings | `tools/simulation/`, `docs/design/tasks/t25_power_simulation_plan.md` | T.3, T.5 | M | ✅ Done |
 | T.26 | Combat engine unification — `resolve_combat` delegates to the new loop via `BattleResultRecorder`; legacy tick loop retired; Weather Favor applied in `compile_loadout` | `game/combat/legacy.py`, `game/combat/loop_new.py`, `game/combat/recorder.py`, `game/loadout.py` | T.3, T.20 | M | ✅ Done |
 | T.27 | Playtesting CLI — dev-facing tools for sim_fight / sim_node / sim_run / inspect / inspect_node, no Flet, pure consumers of `src/game/` | `tools/playtest/`, `docs/design/playtesting/` | T.3, T.5, T.19, T.21, T.26 | M | ✅ Done |
 | T.28 | Synergy trait effects — implement `TraitDef` / `TraitBreakpoint` types, `@register_trait` factories for all Kinship/Calling/Affinity traits, team roll-up step in `compile_loadout`, `BattleResult` activation events | `game/traits/`, `game/loadout.py`, `docs/design/content/trait_catalog.md` | T.5, T.20, T.26 | L | ❌ Not started |
+| T.29 | Item engine — `Item`, `Component`, `ItemSlot` models, `RECIPE_MAP` (8 components → 36 combined), equip/unequip logic (3 slots per piece), `EffectBundle` factories per item, emblem Kinship grant, special-item run-actions, drop-table integration with REWARD nodes | `game/items.py`, `game/item_effects.py`, `docs/design/tasks/t29_item_engine_plan.md` | T.1, T.20, T.22 | L | ❌ Not started |
 
 **Size**: S = <1h, M = 1-3h, L = 3-6h
 
@@ -139,7 +159,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - UI age warnings (subtle top-right indicator when any `substitute` present or any `live` aged > 2h, hover lists affected cities) deferred — see D.17.
 - Detailed plan: `docs/design/tasks/t7_cache_refresher_plan.md`.
 
-### T.18-T.27 Planning Notes (Systems Expansion)
+### T.18-T.29 Planning Notes (Systems Expansion)
 
 - T.18 power scalar `P = 1.5 ** ((T-1)/2 + (L-1))` drives encounter budgets and
   piece stat generation; "two tiers == one level".
@@ -148,7 +168,11 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - T.20 builds the ability/passive/status framework (resolves D.3-D.5); bosses
   are its first consumer.
 - T.21 layers spirit challenges and 2-phase bosses on the T.19 generator.
-- T.22 covers augment/supply choices, the Amber economy, and team-size cap.
+- T.22 implements the full economy loop: Amber income (+3 base/node, +1-3 win
+  bonus), shop (5 slots, auto-refresh per node, reroll = 1 Amber, first free),
+  buy/sell (`Cost(T) = T` / `floor(Cost/2)`), Tempest team-size leveling
+  (rank N costs 2N Tempest, max rank 6), and stage-gated tier probabilities.
+  Also covers augment/supply node resolution and augment pool.
 - T.23 makes Prep placement authoritative: board coordinates from Prep become
   combat init input; combat no longer overwrites player layout when a valid
   placement snapshot is provided.
@@ -170,6 +194,13 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - T.27 ships the dev-facing playtest CLI suite (`tools/playtest/`) used to
   exercise the engine before the Flet UI exists; pure consumer of
   `src/game/`. See `docs/design/playtesting/plan.md`.
+- T.28 implements synergy trait breakpoint effects — the team-building payoff
+  layer. Depends on T.22 for the economy that feeds champion acquisition.
+- T.29 implements the item engine: `Item`/`Component` models, `RECIPE_MAP`,
+  equip/unequip (3 slots/piece), per-item `EffectBundle` factories, emblem
+  Kinship-grant, special-item run-actions, and REWARD-node drop integration.
+  Content authored in `docs/design/content/item_catalog.md`; substrate spec'd
+  in `docs/design/systems/effect_systems_design.md` §8.
 - Detailed plans: `docs/design/tasks/t18_power_scaling_plan.md` through
   `docs/design/tasks/t25_power_simulation_plan.md`;
   `docs/design/playtesting/plan.md` covers T.27.
@@ -233,8 +264,9 @@ in their T-task plan docs; what remains here is genuinely undecided.
 - D.5 Ability / passive / status framework: **designed in T.20**; per-champion
   ability and passive *content* (kits) is still open.
 - D.6 Combat timeout policy: keep hard draw only or add sudden-death escalation.
-- D.7 HP carryover: whether champion HP persists across nodes or resets per
-  fight (`views_spec.md` Trail panel assumes "carry-over if persistent").
+- D.7 HP carryover: **LOCKED — full reset per fight.** Champions heal to full HP
+  between nodes. Simplifies economy tuning and avoids snowball/frustration; the
+  challenge comes from enemy scaling and weather variance, not attrition.
 
 ### Content
 
@@ -243,8 +275,11 @@ in their T-task plan docs; what remains here is genuinely undecided.
   `docs/design/content/trait_catalog.md`; technical substrate in
   `docs/design/systems/effect_systems_design.md` §7. Implementation tracked as
   T.28.
-- D.9 Item system: items are referenced by `SUPPLY` combos, `REWARD` drops, and
-  the prep inventory, but no item model, pool, or effects exist — undesigned.
+- D.9 Item system: **LOCKED — design in `docs/design/content/item_catalog.md`**;
+  implementation tracked as T.29. 8 base components, 36 combined items via
+  `RECIPE_MAP`, 6 emblems (Spirit Gem + component → Kinship), 6 special
+  run-action items. 3 item slots per champion piece. Items acquired from
+  REWARD-node drops, SUPPLY-node picks, and the prep shop.
 - D.10 Champion / enemy archetypes: the ~6-8 role archetypes and their `P = 1`
   base stats, enemy power tags, and the spirit roster (T.5 / T.18).
 - D.11 Augment content: the augment pool, the 4 quality tiers, and per-augment
@@ -253,21 +288,31 @@ in their T-task plan docs; what remains here is genuinely undecided.
 
 ### Economy & Meta
 
-- D.13 Champion economy: Amber sources/sinks, `Cost(T) = T` tuning, reroll costs
-  (augment reroll is free once; shop reroll undecided), and sell values.
-- D.14 Team-size cap: `Tempest` counter (the XP analogue) — start at rank `1`,
-  `+2` Tempest per fight, raise rank `N` at `2N` Tempest; Amber can complete a
-  rank-up instantly at `1 Amber : 1 Tempest`, full remaining cost only,
-  all-or-nothing (T.22).
-- D.15 Shop: lives in the Prep view (`views_spec.md` §6.4); its inventory model,
-  refresh rule, and stage availability gating are open (T.22).
+- D.13 Champion economy: **LOCKED.** Amber sources: +3 base per node, +1-3
+  bonus on win, REWARD-node loot. Sinks: buy champion `Cost(T) = T` Amber,
+  shop reroll = 1 Amber (first reroll each node is free), Tempest buy-up
+  (`1 Amber : 1 Tempest`). Sell value: `floor(Cost / 2)` Amber. Interest: none
+  (keeps runs short).
+- D.14 Team-size cap: `Tempest` counter (the XP analogue) — start at rank `1`
+  (field 1 + 2 bench = team-size 3), `+2` Tempest per fight, raise rank `N` at
+  `2N` Tempest; Amber can complete a rank-up instantly at `1 Amber : 1 Tempest`,
+  full remaining cost only, all-or-nothing (T.22). Max rank **6** (field 6
+  pieces).
+- D.15 Shop: **LOCKED.** Lives in the Prep view. 5 champion slots, auto-refreshed
+  each node entry (free). Manual reroll costs 1 Amber; the first reroll each
+  node is free (counter resets every node advance). Stage-gated tier
+  probabilities: stage 1 sees Tier 1-2 only; stage 6 sees Tier 1-10 with
+  higher-tier weight. Exact probability table authored in
+  `docs/design/tasks/t22_meta_progression_plan.md`.
 
 ### UI / Flow
 
-- D.16 View/route drift: SPEC's Flet route table (`/recruit`, `/map`,
-  `/summary`) is stale against `views_spec.md` (`/trail`, `/prep`); a single
-  canonical route set must be chosen. `views_spec.md` §11 is also stale
-  (7-node route, 4-value `NodeType`) and needs a sync pass.
+- D.16 View/route drift: **RESOLVED.** Canonical routes are `/`, `/trail`,
+  `/prep`, `/combat`, `/summary` — matching `views_spec.md`. The legacy
+  `/recruit` and `/map` routes are retired; initial champion pick is handled
+  inline during run-start (first Prep node). `views_spec.md` §11 node-type set
+  updated to match `NodeType` enum (`fight`, `reward`, `augment`, `supply`,
+  `challenge`, `boss_fight`).
 - D.17 Cache health UX: warn indicator surface when any node is `substitute`
   or any `live` weather aged > 2h; hover shows affected cities; smart
   failsafe copy when many nodes degraded. Polish layer over T.7 cache states.
@@ -277,13 +322,16 @@ in their T-task plan docs; what remains here is genuinely undecided.
 ### Phase 1: Core Logic (Week 1-3)
 T.1 → T.2 → T.3 → T.4 → T.18 → T.5 → T.19 → T.20 → T.21 → T.24 → T.26 → T.16 (game tests) → T.27 (playtest CLI)
 
+### Phase 1b: Economy & Content Systems (Week 3-4) ← NEW critical path
+T.22 (economy + shop) → T.28 (traits) → T.29 (items)
+
 ### Phase 2: API + Data (Week 2-3)
 T.6 → T.7 → T.16 (API tests)
 
-### Phase 3: UI + Combat (Week 3-5)
-T.8 → T.9 → T.10 → T.12 → T.15 → T.23
+### Phase 3: UI + Combat (Week 4-6)
+T.8 → T.9 → T.10 → T.15 → T.23 → T.12
 
-### Phase 4: Visualizations (Week 5-7)
+### Phase 4: Visualizations (Week 6-7)
 T.11 → T.13
 
 ### Phase 5: Polish + Docs (Week 7-8)
