@@ -20,7 +20,7 @@ weather-aware roster swaps, and board positioning.
 **Run-start conditions:**
 - Team-size cap: **3** (field 1 champion, bench holds 2 spares).
 - Starting champion: player picks 1 from a seed-random offer of 3 (Tier 1–2).
-- Starting shop: 5 Tier-1 champions (first shop is free to view; first reroll free).
+- Starting shop: 5 Tier-1 champions (auto-populated; first reroll per node is free).
 - Starting Amber: **10** (enough to buy 2 Tier-1 champions or 1 Tier-2 + save).
 
 Built with Flet (Python). FH Technikum Wien project — 2 students, 8 weeks.
@@ -114,7 +114,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.19 | Encounter generation — seed-deterministic squad/offer fill, enemy power clustering, node budgets | `game/encounter.py`, `docs/design/tasks/t19_encounter_generation_plan.md` | T.1, T.4, T.5, T.18 | M | ✅ Done |
 | T.20 | Ability/passive/status framework — registry, typed event bus, status gates, boss phase hook | `game/abilities/`, `game/effects.py`, `game/events.py`, `game/status.py`, `game/registries.py`, `docs/design/tasks/t20_ability_framework_plan.md` | T.3 | L | ✅ Done |
 | T.21 | Challenge & boss encounters — champion-faction challenges, 2-phase bosses, auto-battle-aware map effects | `game/encounter.py`, `game/board.py`, `game/map_effects.py`, `game/bosses/`, `docs/design/tasks/t21_challenge_boss_plan.md` | T.19, T.20 | M | ✅ Done |
-| T.22 | Economy & shop — Amber income per node, shop refresh (5 slots, auto-refresh each node, manual reroll 1 Amber), buy `Cost(T)=T`, sell `floor(Cost/2)`, team-size Tempest leveling, stage-gated tier probabilities | `game/economy.py`, `game/shop.py`, `docs/design/tasks/t22_meta_progression_plan.md` | T.1, T.5, T.18 | L | 📋 Plan |
+| T.22 | Economy & shop — Amber income per node (+3 base, +1-3 win bonus), shop refresh (5 slots, auto-refresh each node, manual reroll 1 Amber, first reroll per node free), buy `Cost(T)=T`, sell `floor(Cost/2)`, team-size Tempest leveling (rank N costs 2N, max rank 6), stage-gated tier probabilities | `game/economy.py`, `game/shop.py`, `docs/design/tasks/t22_meta_progression_plan.md` | T.1, T.5, T.18 | L | 📋 Plan |
 | T.23 | Prep formation snapshot integration — lock player board placement in Prep, validate deployment constraints, pass explicit coordinates into combat init | `ui/views/prep.py`, `game/models.py`, `game/combat.py`, `docs/design/tasks/t23_prep_formation_snapshot_plan.md` | T.1, T.3, T.15 | M | 📋 Plan |
 | T.24 | Enemy formation policy — deterministic role-aware spawn planner (frontline forward, backline protected, size-aware packing) with safe fallback | `game/formation.py`, `game/combat.py`, `docs/design/tasks/t24_enemy_formation_plan.md` | T.3, T.5, T.23 | M | ✅ Done |
 | T.25 | Power simulation & balance benchmarking — deterministic matchup sweeps and empirical power ratings | `tools/simulation/`, `docs/design/tasks/t25_power_simulation_plan.md` | T.3, T.5 | M | ✅ Done |
@@ -299,9 +299,10 @@ in their T-task plan docs; what remains here is genuinely undecided.
   full remaining cost only, all-or-nothing (T.22). Max rank **6** (field 6
   pieces).
 - D.15 Shop: **LOCKED.** Lives in the Prep view. 5 champion slots, auto-refreshed
-  each node entry (free). Manual reroll costs 1 Amber (first reroll per node is
-  free). Stage-gated tier probabilities: stage 1 sees Tier 1-2 only; stage 6
-  sees Tier 1-10 with higher-tier weight. Exact probability table authored in
+  each node entry (free). Manual reroll costs 1 Amber; the first reroll each
+  node is free (counter resets every node advance). Stage-gated tier
+  probabilities: stage 1 sees Tier 1-2 only; stage 6 sees Tier 1-10 with
+  higher-tier weight. Exact probability table authored in
   `docs/design/tasks/t22_meta_progression_plan.md`.
 
 ### UI / Flow
@@ -328,7 +329,7 @@ T.22 (economy + shop) → T.28 (traits) → T.29 (items)
 T.6 → T.7 → T.16 (API tests)
 
 ### Phase 3: UI + Combat (Week 4-6)
-T.8 → T.9 → T.15 → T.23 → T.12
+T.8 → T.9 → T.10 → T.15 → T.23 → T.12
 
 ### Phase 4: Visualizations (Week 6-7)
 T.11 → T.13
