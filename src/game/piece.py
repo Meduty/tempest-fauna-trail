@@ -57,6 +57,11 @@ class Piece:
     crit_counter: int = 0
     ability_can_crit: bool = False
 
+    # Summon state (G6 — summons are full Piece objects with these flags)
+    summon: bool = False
+    summon_owner_id: str = ""
+    summon_expires_tick: int = 0  # 0 means no expiry
+
     def stat(self, stat_name: str) -> float:
         """Get computed stat value including all modifiers."""
         return compute_stat(self, stat_name)

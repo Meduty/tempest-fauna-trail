@@ -86,6 +86,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - V.12: Locked node weather = frozen snapshot in `Run`; cache may refresh same city, engine ignores cache for that node and reads `Run`
 - V.13: Advance to `unknown` triggers one synchronous fetch + lock; on fetch fail, lock `substitute` with `CITIES[city_id].default_weather`
 - V.14: `tools/simulation/` imports only from `src/game/` — no `ui/`, no `api/`. Matches the V.1 isolation rule extended to the sim layer; keeps `resolve_combat` as the only engine entry. (T.25)
+- V.15: Every `ability_id` and `passive_id` referenced by `ChampionDef`, `EnemyDef`, or `BossDef` in content/roster data **must** resolve in `ABILITY_REGISTRY` or `PASSIVE_REGISTRY` respectively — enforced by CI guard test (`test_ability_catalog.py::test_all_*_resolve` and `test_all_boss_abilities_resolve`). BossDef coverage includes `phase1_active`, `phase1_passive`, `phase1_phase_hook`, `phase2_active`, `phase2_passive`, and `on_death_hook`. (T.30)
 
 ## T. Tasks
 
@@ -122,6 +123,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.27 | Playtesting CLI — dev-facing tools for sim_fight / sim_node / sim_run / inspect / inspect_node, no Flet, pure consumers of `src/game/` | `tools/playtest/`, `docs/design/playtesting/` | T.3, T.5, T.19, T.21, T.26 | M | ✅ Done |
 | T.28 | Synergy trait effects — implement `TraitDef` / `TraitBreakpoint` types, `@register_trait` factories for all Kinship/Calling/Affinity traits, team roll-up step in `compile_loadout`, `BattleResult` activation events | `game/traits/`, `game/loadout.py`, `docs/design/content/trait_catalog.md` | T.5, T.20, T.26 | L | ❌ Not started |
 | T.29 | Item engine — `Item`, `Component`, `ItemSlot` models, `RECIPE_MAP` (8 components → 36 combined), equip/unequip logic (3 slots per piece), `EffectBundle` factories per item, emblem Kinship grant, special-item run-actions, drop-table integration with REWARD nodes | `game/items.py`, `game/item_effects.py`, `docs/design/tasks/t29_item_engine_plan.md` | T.1, T.20, T.22 | L | ❌ Not started |
+| T.30 | Ability & passive catalog — implement all 120 roster ability/passive handlers (60 champions + 60 enemies) plus 6 full 2-phase boss kits; fix registration IDs, fix generic-fallback bias, add summon lifecycle primitives, add CI guard test for ability-id resolution | `game/abilities/champions.py`, `game/abilities/enemies.py`, `game/abilities/bosses.py`, `game/piece.py`, `game/combat/loop_new.py`, `docs/design/tasks/t30_ability_catalog_plan.md` | T.5, T.20, T.21, T.26 | L | ✅ Done |
 
 **Size**: S = <1h, M = 1-3h, L = 3-6h
 
@@ -201,9 +203,17 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   Kinship-grant, special-item run-actions, and REWARD-node drop integration.
   Content authored in `docs/design/content/item_catalog.md`; substrate spec'd
   in `docs/design/systems/effect_systems_design.md` §8.
+- T.30 implements the full ability & passive catalog for all 120 roster pieces
+  and 6 bosses. Key design decisions: round = 600 ticks (G8, convention only,
+  no round abstraction); summons are full Piece objects (G6); auras use periodic
+  radius re-application (Q4); coefficients are fixed authored values; boss kits
+  are full 2-phase with phase-transition map effects (Q5). Also fixes the
+  generic fallback formula (`max(STR, INT)` instead of INT-biased) and re-keys
+  all ability registration IDs to match content roster prefixes.
 - Detailed plans: `docs/design/tasks/t18_power_scaling_plan.md` through
   `docs/design/tasks/t25_power_simulation_plan.md`;
-  `docs/design/playtesting/plan.md` covers T.27.
+  `docs/design/playtesting/plan.md` covers T.27;
+  `docs/design/tasks/t30_ability_catalog_plan.md` covers T.30.
 
 ## B. Bugs / Backprop
 
@@ -253,7 +263,8 @@ in their T-task plan docs; what remains here is genuinely undecided.
   whether optional branch/merge paths are added post-MVP is open.
 - D.2 Boss content: authored per-boss kits (phase 1 + phase 2 abilities, on-death
   hooks) **designed in T.21** — `game/bosses/data.py`. Ability *implementation*
-  (handler functions) is still open; currently stubs in the registry.
+  (handler functions) **completed in T.30** — `game/abilities/bosses.py` contains
+  full 2-phase kits for all 6 bosses with phase-transition hooks at 50% HP.
 - D.3 Combat board-cell modifiers: **designed and implemented in T.21** —
   `game/board.py` (BoardState + CellModifier), `game/map_effects.py` (6 effect
   classes), `game/combat/loop.py` (_process_board_state), `game/targeting.py`
@@ -262,7 +273,8 @@ in their T-task plan docs; what remains here is genuinely undecided.
 ### Combat Systems
 
 - D.5 Ability / passive / status framework: **designed in T.20**; per-champion
-  ability and passive *content* (kits) is still open.
+  ability and passive *content* (kits) **implemented in T.30** — all 120 roster
+  pieces + 6 bosses now have authored handlers with fixed coefficients.
 - D.6 Combat timeout policy: keep hard draw only or add sudden-death escalation.
 - D.7 HP carryover: **LOCKED — full reset per fight.** Champions heal to full HP
   between nodes. Simplifies economy tuning and avoids snowball/frustration; the

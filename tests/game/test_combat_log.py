@@ -113,8 +113,8 @@ def test_cast_and_move_lines_render():
     enemies = [_enemy(id="mob", attack_speed=0, move_speed=0, max_hp=1000, resistance=0)]
     result = resolve_combat(team, enemies, WeatherState.CLEAR)
     text = render_combat_log(result, team=team, enemies=enemies)
-    # T3 MVP fallback: 0.2*0 + 4.2*20 = 84 (ability handlers own scaling in T20)
-    assert "hero casts at mob — 84 magical" in text
+    # T.30 §4 fix: fallback = (0.2+4.2)*max(0,20) = 88
+    assert "hero casts at mob — 88 magical" in text
     assert "hero moves to (" in text
 
 

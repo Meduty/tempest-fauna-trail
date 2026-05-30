@@ -203,6 +203,9 @@ def compile_loadout(
 
     Returns (pieces, bus) ready for CombatContext.
     """
+    from src.game.bosses.data import BOSS_DEFS
+    _boss_defs_by_id = {boss.id: boss for boss in BOSS_DEFS.values()}
+
     bus = EventBus()
 
     # 1. Build pieces from models
@@ -216,7 +219,7 @@ def compile_loadout(
     for piece in pieces:
         _apply_weather_to_piece(piece, weather)
 
-    # 7. Apply champion passive bundles
+    # 7. Apply champion/enemy passive bundles
     for piece in pieces:
         for passive_id in piece.passives:
             if passive_id and passive_id in PASSIVE_REGISTRY:
@@ -224,5 +227,19 @@ def compile_loadout(
                 bundle = factory(piece)
                 if bundle:
                     apply_bundle(piece, bundle, bus)
+
+    # 8. Apply boss-specific phase hook and on-death hook.
+    # BossDef.build_enemy() only carries phase1_passive; the phase transition
+    # hook and on-death hook must be wired separately so they are subscribed
+    # at combat start and fire correctly during a real encounter.
+    for piece in pieces:
+        if piece.id in _boss_defs_by_id:
+            boss_def = _boss_defs_by_id[piece.id]
+            for extra_id in (boss_def.phase1_phase_hook, boss_def.on_death_hook):
+                if extra_id and extra_id in PASSIVE_REGISTRY:
+                    factory = PASSIVE_REGISTRY[extra_id]
+                    bundle = factory(piece)
+                    if bundle:
+                        apply_bundle(piece, bundle, bus)
 
     return pieces, bus
