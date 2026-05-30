@@ -1,5 +1,9 @@
 # T25 — Power Simulation & Balance Benchmarking
 
+> **Status (2026-05-30): shipped.** Implemented per amendments below.
+> The §3.2 1v1 framing was kept but expanded with full team-vs-team modes
+> per the team-sim amendment. See §13 for the as-built notes.
+
 ## 1. Objective
 
 Derive the **implicit power** of every champion/enemy piece empirically, using
@@ -232,3 +236,72 @@ sweeps. P4 is optional but valuable for catching stat-change regressions.
   from trait groupings are a team-comp mechanic, not a 1v1 property. If team
   synergy bonuses are later implemented, add a `--synergies` flag to optionally
   activate them.
+
+## 13. As-built notes (2026-05-30)
+
+The shipped layer follows the plan's module structure (`matchup.py`,
+`tournament.py`, `ratings.py`, `report.py`, `runner.py`) but extends it
+per the T.25 team-sim amendment.
+
+### 13.1 Modes
+
+| CLI mode | Generator | Battle count (N=120 pieces) |
+|---|---|---|
+| `1v1` | `enumerate_1v1` — every unordered pair of distinct pieces | C(120,2) = 7140 |
+| `team2-full` | `enumerate_team2` — every unordered pair of disjoint 2-piece teams (gated behind `--i-know-what-im-doing`) | ~25M |
+| `team-sample` | `sample_teams` — random N-piece teams, paired sample-by-sample, optional `--tier-stratified` | `--n-battles` |
+
+The §3.2 tier-normalised mode collapses into `1v1` plus `team-sample
+--tier-stratified` because the shipped roster only carries `level = 1`.
+
+### 13.2 Champion / enemy bridges
+
+The plan's `champion_as_enemy` is generalised into a symmetric pair:
+
+- `as_team_piece(piece)` — coerce any roster entry into a `Champion`-typed
+  piece with id suffix `_a`. Traits dropped (engine treats them as opaque
+  labels; sim does not invoke trait synergies).
+- `as_enemy_piece(piece)` — coerce any roster entry into an `Enemy`-typed
+  piece with id suffix `_b`.
+
+Suffixing both sides keeps piece ids unique across mirror matches without
+the engine ever seeing the same id twice. The original id lives in
+`MatchupConfig.piece_ids_*`, so attribution back to the roster does not
+read piece ids from `BattleResult.surviving_team_ids` directly.
+
+### 13.3 Per-piece attribution
+
+Binary rule (decision locked at session start, per T.25 prompt):
+
+> Every piece on the winning team scores 1 win against every piece on the
+> losing team. Draws split 0.5 each direction.
+
+`_pairwise_records` aggregates this across all results into `(wins, games)`
+dicts keyed by piece-id pairs. Surviving HP and damage shares were
+considered and rejected — see [docs/journal/2026-05-30_power_simulation.md](../../journal/2026-05-30_power_simulation.md).
+
+### 13.4 Bradley-Terry implementation
+
+MM update per the plan §6.2, with these implementation notes:
+
+- Per-iteration normalisation uses the **geometric mean** of nonzero β
+  values to prevent drift. The plan didn't specify this; arithmetic mean
+  causes scale blow-up when many pieces have zero wins.
+- Pieces that never win are floored at `β = 1e-3` so the update step stays
+  finite without polluting the geometric mean.
+- Final pass normalises so the weakest piece anchors at `β = 1.0`
+  (plan §6.2 — "T1L1 baseline piece").
+
+**Caveat**: stratified sampling produces tier-disjoint games — there is
+no β anchor between tiers, so BT betas drift per tier under that mode.
+Recommend non-stratified data for cross-tier BT comparisons; use
+stratified mode only for within-tier relative reads.
+
+### 13.5 Files
+
+- [tools/simulation/matchup.py](../../../tools/simulation/matchup.py)
+- [tools/simulation/tournament.py](../../../tools/simulation/tournament.py)
+- [tools/simulation/ratings.py](../../../tools/simulation/ratings.py)
+- [tools/simulation/report.py](../../../tools/simulation/report.py)
+- [tools/simulation/runner.py](../../../tools/simulation/runner.py)
+- Tests: [tests/tools/simulation/](../../../tests/tools/simulation/)
