@@ -303,10 +303,12 @@ Boss kits (phase 1 + phase 2 + on-death/phase hooks + map effects) are designed 
 
 ---
 
-## 14. Open decisions
+## 14. Open decisions — RESOLVED
 
-1. **"Round" semantics (G8).** Define a round as a fixed tick count and emit `on_round_start`, or reinterpret all "each round" passives as periodic ticks? Many pieces depend on this — decide before P2.
-2. **Summon scope (G6).** Full summoned-piece stat blocks (per enemy_roster open Q "Summon stats") vs. a lightweight stat-derived add. Affects Steam Engineer, Umbra, bosses.
-3. **Calibration pass ownership.** T.30 ships *functional, roughly-calibrated* kits; the precise coefficient tuning happens against the post-P1 re-sim — is that in T.30 or a follow-up balance task?
-4. **Aura modeling.** Signal Drummer / Standard Bearer "aura" = periodic radius re-application vs. a persistent `WHILE_CONDITION` modifier (t20 deferred those). Pick one.
-5. **Boss kit depth** — full 2-phase authoring in T.30, or land phase-1 here and phase-2 as a T.21 follow-up?
+All decisions resolved during implementation (2026-05-30):
+
+1. **"Round" semantics (G8).** ✅ Round = 600 ticks (convention only). All periodic passives use `on_tick` with `>= 600` guard. No `on_round_start` event.
+2. **Summon scope (G6).** ✅ Full Piece objects with `summon=True` flag, `summon_owner_id`, `summon_expires_tick`. Despawned in tick loop.
+3. **Calibration pass ownership.** ✅ Coefficients are fixed, authored per-ability values in T.30. No deferred balance task.
+4. **Aura modeling (Q4).** ✅ Periodic radius re-application (`on_tick` every 300 ticks → short-duration TIMED modifiers). No `WHILE_CONDITION` primitive.
+5. **Boss kit depth (Q5).** ✅ Full 2-phase kits for all 6 bosses authored in T.30 (`game/abilities/bosses.py`).
