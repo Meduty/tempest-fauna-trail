@@ -6,6 +6,27 @@ Generated 2026-05-30 from `results/mega2/` (1v1 full round-robin ×6 weathers, 2
 
 ---
 
+## ⚠️ Rectification (added 2026-05-30, post-publication)
+
+**This dataset was generated on a build where no designed abilities fire.** Discovered while drafting per-piece fixes. Two compounding facts:
+
+1. **Ability content is unimplemented** (SPEC §D.5: the T.20 *framework* is done, per-piece *kits* are still open). Only ~16 of 240 roster ability slots have any coded handler.
+2. **Those ~16 handlers are mis-registered** — coded under short ids (`torrent_heron.active`) while the roster references prefixed ids (`champ_torrent_heron.active`). **0 of 240 roster ability-ids resolve to a handler** (empirically verified).
+
+So every piece falls back to the generic cast in [loop_new.py:334](../src/game/combat/loop_new.py#L334): `raw = 0.2*strength + 4.2*intelligence` (INT coeff 21× STR), plus auto-attacks. Combat in this dataset = stat-sticks + auto-attacks + one identical int-scaled nuke.
+
+**What survives this caveat** (structural, independent of kits): §1 the win-curve cliff, §2.2 `ΣP` distribution-blindness, §8.1 champion edge, aggregate balance. These are about HP/DPS/focus-fire and hold regardless.
+
+**What is invalidated / provisional** (anything kit-dependent):
+- §3 role balance — "str/warrior weak, int/mage fine" is largely an artifact: the generic nuke scales on INT, so int pieces get a free strong "ability" and str pieces get ~84 dmg vs ~756 (see §7). Real kits will redistribute this.
+- §4 trait (Kinship/Calling) deltas — measured on stat-sticks, not kits.
+- §6–7 most piece outliers, especially the str+ability pieces (Powder Sapper et al.): they are **crippled by the int-scaled fallback, not mis-designed**. Their designed kits scale on STR and have never fired.
+- Tier drift §2.3 is partly real (cliff) but its role/kit component is unmeasured.
+
+**Action:** implement the kit catalog + fix the registration bug, then **re-run mega**. Only then are per-piece/role/trait verdicts in §3–7 trustworthy. Tracking: [`docs/design/tasks/t30_ability_catalog_plan.md`](../docs/design/tasks/t30_ability_catalog_plan.md).
+
+---
+
 ## 0. Executive summary
 
 The roster's **aggregate balance is healthy** (champion vs enemy win rate is centered in every format) and the **base scaling math is sound** (`P`, `√P` coupling). The problems are *structural* and *within-roster*, and they trace back to two engine-level facts:
