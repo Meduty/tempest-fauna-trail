@@ -94,145 +94,68 @@ mid-combat.
 - T.28 (synergy traits) and T.29 (items) will add multiplicative effects on
   top of these kits
 
-## Full Implemented Ability Table (as of T.30)
+## Full Implemented Ability Catalog (as of T.30)
 
-### Champions (60)
+This section documents all 246 implemented abilities (120 champion abilities, 120 enemy abilities, 6 boss death hooks) with descriptions and implementation details.
 
-| Piece ID | Name | Active Ability ID | Passive Ability ID |
-|---|---|---|---|
-| `champ_aegis_tortoise` | Aegis Tortoise | `champ_aegis_tortoise.active` | `champ_aegis_tortoise.passive` |
-| `champ_aerion` | Aerion, the Skybreaker | `champ_aerion.active` | `champ_aerion.passive` |
-| `champ_aurion` | Aurion, the First Dawn | `champ_aurion.active` | `champ_aurion.passive` |
-| `champ_borealis` | Borealis, the Pale Aurora | `champ_borealis.active` | `champ_borealis.passive` |
-| `champ_boulderhide_skink` | Boulderhide Skink | `champ_boulderhide_skink.active` | `champ_boulderhide_skink.passive` |
-| `champ_cliffeyrie_eagle` | Cliffeyrie Eagle | `champ_cliffeyrie_eagle.active` | `champ_cliffeyrie_eagle.passive` |
-| `champ_coppercrest_stork` | Coppercrest Stork | `champ_coppercrest_stork.active` | `champ_coppercrest_stork.passive` |
-| `champ_coral_colossus` | Coral Colossus | `champ_coral_colossus.active` | `champ_coral_colossus.passive` |
-| `champ_dawnwisp` | Dawnwisp | `champ_dawnwisp.active` | `champ_dawnwisp.passive` |
-| `champ_dusk_bat` | Dusk Bat | `champ_dusk_bat.active` | `champ_dusk_bat.passive` |
-| `champ_duskstep_marten` | Duskstep Marten | `champ_duskstep_marten.active` | `champ_duskstep_marten.passive` |
-| `champ_eclipse_jaguar` | Eclipse Jaguar | `champ_eclipse_jaguar.active` | `champ_eclipse_jaguar.passive` |
-| `champ_ember_salamander` | Ember Salamander | `champ_ember_salamander.active` | `champ_ember_salamander.passive` |
-| `champ_fogveil_moth` | Fogveil Moth | `champ_fogveil_moth.active` | `champ_fogveil_moth.passive` |
-| `champ_frostfang_wolverine` | Frostfang Wolverine | `champ_frostfang_wolverine.active` | `champ_frostfang_wolverine.passive` |
-| `champ_frostplate_tortoise` | Frostplate Tortoise | `champ_frostplate_tortoise.active` | `champ_frostplate_tortoise.passive` |
-| `champ_frostquill_porcupine` | Frostquill Porcupine | `champ_frostquill_porcupine.active` | `champ_frostquill_porcupine.passive` |
-| `champ_geode_beetle` | Geode Beetle | `champ_geode_beetle.active` | `champ_geode_beetle.passive` |
-| `champ_glacierback_mammoth` | Glacierback Mammoth | `champ_glacierback_mammoth.active` | `champ_glacierback_mammoth.passive` |
-| `champ_glade_heron` | Glade Heron | `champ_glade_heron.active` | `champ_glade_heron.passive` |
-| `champ_goldcrest_lark` | Goldcrest Lark | `champ_goldcrest_lark.active` | `champ_goldcrest_lark.passive` |
-| `champ_goldhide_rhino` | Goldhide Rhino | `champ_goldhide_rhino.active` | `champ_goldhide_rhino.passive` |
-| `champ_granite_gorilla` | Granite Gorilla | `champ_granite_gorilla.active` | `champ_granite_gorilla.passive` |
-| `champ_grovekeeper_tapir` | Grovekeeper Tapir | `champ_grovekeeper_tapir.active` | `champ_grovekeeper_tapir.passive` |
-| `champ_hoarfrost_owl` | Hoarfrost Owl | `champ_hoarfrost_owl.active` | `champ_hoarfrost_owl.passive` |
-| `champ_hollow_elk` | Hollow Elk | `champ_hollow_elk.active` | `champ_hollow_elk.passive` |
-| `champ_iceclaw_lynx` | Iceclaw Lynx | `champ_iceclaw_lynx.active` | `champ_iceclaw_lynx.passive` |
-| `champ_lostlight_wisp` | Lostlight Wisp | `champ_lostlight_wisp.active` | `champ_lostlight_wisp.passive` |
-| `champ_marsh_thrush` | Marsh Thrush | `champ_marsh_thrush.active` | `champ_marsh_thrush.passive` |
-| `champ_marshghast_boar` | Marshghast Boar | `champ_marshghast_boar.active` | `champ_marshghast_boar.passive` |
-| `champ_mirage_caracal` | Mirage Caracal | `champ_mirage_caracal.active` | `champ_mirage_caracal.passive` |
-| `champ_mirewarden_toad` | Mirewarden Toad | `champ_mirewarden_toad.active` | `champ_mirewarden_toad.passive` |
-| `champ_mournhollow` | Mournhollow, the Pale Stag | `champ_mournhollow.active` | `champ_mournhollow.passive` |
-| `champ_nerei` | Nerei, the Floodmother | `champ_nerei.active` | `champ_nerei.passive` |
-| `champ_nightglass_mantis` | Nightglass Mantis | `champ_nightglass_mantis.active` | `champ_nightglass_mantis.passive` |
-| `champ_pebbleback_pangolin` | Pebbleback Pangolin | `champ_pebbleback_pangolin.active` | `champ_pebbleback_pangolin.passive` |
-| `champ_permafrost_walrus` | Permafrost Walrus | `champ_permafrost_walrus.active` | `champ_permafrost_walrus.passive` |
-| `champ_phantom_lynx` | Phantom Lynx | `champ_phantom_lynx.active` | `champ_phantom_lynx.passive` |
-| `champ_reedbank_otter` | Reedbank Otter | `champ_reedbank_otter.active` | `champ_reedbank_otter.passive` |
-| `champ_riptide_caiman` | Riptide Caiman | `champ_riptide_caiman.active` | `champ_riptide_caiman.passive` |
-| `champ_snowpelt_cub` | Snowpelt Cub | `champ_snowpelt_cub.active` | `champ_snowpelt_cub.passive` |
-| `champ_sparkfly` | Sparkfly | `champ_sparkfly.active` | `champ_sparkfly.passive` |
-| `champ_spectral_heron` | Spectral Heron | `champ_spectral_heron.active` | `champ_spectral_heron.passive` |
-| `champ_springfrog` | Springfrog | `champ_springfrog.active` | `champ_springfrog.passive` |
-| `champ_storm_eagle` | Storm Eagle | `champ_storm_eagle.active` | `champ_storm_eagle.passive` |
-| `champ_sunmane_lion` | Sunmane Lion | `champ_sunmane_lion.active` | `champ_sunmane_lion.passive` |
-| `champ_sunspear_falcon` | Sunspear Falcon | `champ_sunspear_falcon.active` | `champ_sunspear_falcon.passive` |
-| `champ_tempest_eel` | Tempest Eel | `champ_tempest_eel.active` | `champ_tempest_eel.passive` |
-| `champ_thunderclap_gorilla` | Thunderclap Gorilla | `champ_thunderclap_gorilla.active` | `champ_thunderclap_gorilla.passive` |
-| `champ_thunderhide_bison` | Thunderhide Bison | `champ_thunderhide_bison.active` | `champ_thunderhide_bison.passive` |
-| `champ_thunderhoof_colt` | Thunderhoof Colt | `champ_thunderhoof_colt.active` | `champ_thunderhoof_colt.passive` |
-| `champ_torrent_heron` | Torrent Heron | `champ_torrent_heron.active` | `champ_torrent_heron.passive` |
-| `champ_umbra` | Umbra, the Mountain's Shadow | `champ_umbra.active` | `champ_umbra.passive` |
-| `champ_veilfang_wolf` | Veilfang Wolf | `champ_veilfang_wolf.active` | `champ_veilfang_wolf.passive` |
-| `champ_veldt_pronghorn` | Veldt Pronghorn | `champ_veldt_pronghorn.active` | `champ_veldt_pronghorn.passive` |
-| `champ_voltmane_jackal` | Voltmane Jackal | `champ_voltmane_jackal.active` | `champ_voltmane_jackal.passive` |
-| `champ_voltscale_mamba` | Voltscale Mamba | `champ_voltscale_mamba.active` | `champ_voltscale_mamba.passive` |
-| `champ_will_o_fawn` | Will-o-Fawn | `champ_will_o_fawn.active` | `champ_will_o_fawn.passive` |
-| `champ_wintermoth` | Wintermoth | `champ_wintermoth.active` | `champ_wintermoth.passive` |
-| `champ_wraithorn_stag` | Wraithorn Stag | `champ_wraithorn_stag.active` | `champ_wraithorn_stag.passive` |
+**Legend:**
+- **Active**: Cast ability with mana cost
+- **Passive**: Always-on effect via event hooks
+- **Scaling**: Damage/heal formula (e.g., `base=40, scaling=intelligence*2.5`)
+- **Hooks**: Event subscriptions (e.g., `on_attack_landed`, `on_tick`, `on_damage_taken`)
+- **Periodic**: Fires every N ticks (600 ticks ≈ "per round", 300 ticks ≈ "twice per round")
 
-### Enemies (60)
+### Champions (60 champions × 2 = 120 abilities)
 
-| Piece ID | Name | Active Ability ID | Passive Ability ID |
-|---|---|---|---|
-| `enemy_arcanist` | Arcanist | `enemy_arcanist.active` | `enemy_arcanist.passive` |
-| `enemy_archmagus_imperator` | Archmagus Imperator | `enemy_archmagus_imperator.active` | `enemy_archmagus_imperator.passive` |
-| `enemy_avalanche_engine` | Avalanche Engine | `enemy_avalanche_engine.active` | `enemy_avalanche_engine.passive` |
-| `enemy_battlemage` | Battlemage | `enemy_battlemage.active` | `enemy_battlemage.passive` |
-| `enemy_blight_lurker` | Blight Lurker | `enemy_blight_lurker.active` | `enemy_blight_lurker.passive` |
-| `enemy_brineblight_berserker` | Brineblight Berserker | `enemy_brineblight_berserker.active` | `enemy_brineblight_berserker.passive` |
-| `enemy_caged_banshee` | Caged Banshee | `enemy_caged_banshee.active` | `enemy_caged_banshee.passive` |
-| `enemy_caged_storm_drake` | Caged Storm-Drake | `enemy_caged_storm_drake.active` | `enemy_caged_storm_drake.passive` |
-| `enemy_cannoneer` | Cannoneer | `enemy_cannoneer.active` | `enemy_cannoneer.passive` |
-| `enemy_capture_rig_wolf` | Capture-Rig Wolf | `enemy_capture_rig_wolf.active` | `enemy_capture_rig_wolf.passive` |
-| `enemy_cold_iron_yeti` | Cold-Iron Yeti | `enemy_cold_iron_yeti.active` | `enemy_cold_iron_yeti.passive` |
-| `enemy_company_captain` | Company Captain | `enemy_company_captain.active` | `enemy_company_captain.passive` |
-| `enemy_company_guard` | Company Guard | `enemy_company_guard.active` | `enemy_company_guard.passive` |
-| `enemy_conscript` | Conscript | `enemy_conscript.active` | `enemy_conscript.passive` |
-| `enemy_crossbow_levy` | Crossbow Levy | `enemy_crossbow_levy.active` | `enemy_crossbow_levy.passive` |
-| `enemy_drained_stalker` | Drained Stalker | `enemy_drained_stalker.active` | `enemy_drained_stalker.passive` |
-| `enemy_dredge_hulk` | Dredge-Hulk | `enemy_dredge_hulk.active` | `enemy_dredge_hulk.passive` |
-| `enemy_drowned_siren` | Drowned Siren | `enemy_drowned_siren.active` | `enemy_drowned_siren.passive` |
-| `enemy_field_chaplain` | Field Chaplain | `enemy_field_chaplain.active` | `enemy_field_chaplain.passive` |
-| `enemy_field_medic` | Field Medic | `enemy_field_medic.active` | `enemy_field_medic.passive` |
-| `enemy_flood_tyrant` | Flood Tyrant | `enemy_flood_tyrant.active` | `enemy_flood_tyrant.passive` |
-| `enemy_frost_sovereign` | Frost Sovereign | `enemy_frost_sovereign.active` | `enemy_frost_sovereign.passive` |
-| `enemy_glacier_goliath` | Glacier Goliath | `enemy_glacier_goliath.active` | `enemy_glacier_goliath.passive` |
-| `enemy_grand_marshal` | Grand Marshal | `enemy_grand_marshal.active` | `enemy_grand_marshal.passive` |
-| `enemy_gunslinger` | Gunslinger | `enemy_gunslinger.active` | `enemy_gunslinger.passive` |
-| `enemy_heavy_knight` | Heavy Knight | `enemy_heavy_knight.active` | `enemy_heavy_knight.passive` |
-| `enemy_hexblade_officer` | Hexblade Officer | `enemy_hexblade_officer.active` | `enemy_hexblade_officer.passive` |
-| `enemy_hierarch` | Hierarch | `enemy_hierarch.active` | `enemy_hierarch.passive` |
-| `enemy_hollowed_wisp` | Hollowed Wisp | `enemy_hollowed_wisp.active` | `enemy_hollowed_wisp.passive` |
-| `enemy_inquisitor` | Inquisitor | `enemy_inquisitor.active` | `enemy_inquisitor.passive` |
-| `enemy_iron_collared_hound` | Iron-Collared Hound | `enemy_iron_collared_hound.active` | `enemy_iron_collared_hound.passive` |
-| `enemy_iron_maiden` | Iron Maiden | `enemy_iron_maiden.active` | `enemy_iron_maiden.passive` |
-| `enemy_levyman` | Levyman | `enemy_levyman.active` | `enemy_levyman.passive` |
-| `enemy_lord_commander` | Lord Commander | `enemy_lord_commander.active` | `enemy_lord_commander.passive` |
-| `enemy_maw_of_the_drowned` | Maw of the Drowned | `enemy_maw_of_the_drowned.active` | `enemy_maw_of_the_drowned.passive` |
-| `enemy_picket` | Picket | `enemy_picket.active` | `enemy_picket.passive` |
-| `enemy_pikeman` | Pikeman | `enemy_pikeman.active` | `enemy_pikeman.passive` |
-| `enemy_powder_sapper` | Powder Sapper | `enemy_powder_sapper.active` | `enemy_powder_sapper.passive` |
-| `enemy_quarried_behemoth` | Quarried Behemoth | `enemy_quarried_behemoth.active` | `enemy_quarried_behemoth.passive` |
-| `enemy_quarry_crawler` | Quarry Crawler | `enemy_quarry_crawler.active` | `enemy_quarry_crawler.passive` |
-| `enemy_reaver_of_the_reach` | Reaver of the Reach | `enemy_reaver_of_the_reach.active` | `enemy_reaver_of_the_reach.passive` |
-| `enemy_riflemaster` | Riflemaster | `enemy_riflemaster.active` | `enemy_riflemaster.passive` |
-| `enemy_riven_frost_wyrm` | Riven Frost-Wyrm | `enemy_riven_frost_wyrm.active` | `enemy_riven_frost_wyrm.passive` |
-| `enemy_sergeant_at_arms` | Sergeant-at-Arms | `enemy_sergeant_at_arms.active` | `enemy_sergeant_at_arms.passive` |
-| `enemy_shaftmaw` | Shaftmaw | `enemy_shaftmaw.active` | `enemy_shaftmaw.passive` |
-| `enemy_shroud_killer` | Shroud-Killer | `enemy_shroud_killer.active` | `enemy_shroud_killer.passive` |
-| `enemy_signal_drummer` | Signal Drummer | `enemy_signal_drummer.active` | `enemy_signal_drummer.passive` |
-| `enemy_slag_sentinel` | Slag Sentinel | `enemy_slag_sentinel.active` | `enemy_slag_sentinel.passive` |
-| `enemy_spymaster` | Spymaster | `enemy_spymaster.active` | `enemy_spymaster.passive` |
-| `enemy_standard_bearer` | Standard Bearer | `enemy_standard_bearer.active` | `enemy_standard_bearer.passive` |
-| `enemy_steam_engineer` | Steam Engineer | `enemy_steam_engineer.active` | `enemy_steam_engineer.passive` |
-| `enemy_steam_knight` | Steam Knight | `enemy_steam_knight.active` | `enemy_steam_knight.passive` |
-| `enemy_stone_warden` | Stone Warden | `enemy_stone_warden.active` | `enemy_stone_warden.passive` |
-| `enemy_storm_tyrant` | Storm Tyrant | `enemy_storm_tyrant.active` | `enemy_storm_tyrant.passive` |
-| `enemy_stormhawk` | Stormhawk | `enemy_stormhawk.active` | `enemy_stormhawk.passive` |
-| `enemy_stretcher_hand` | Stretcher-Hand | `enemy_stretcher_hand.active` | `enemy_stretcher_hand.passive` |
-| `enemy_sundered_lord` | Sundered Lord | `enemy_sundered_lord.active` | `enemy_sundered_lord.passive` |
-| `enemy_thunder_bull` | Thunder Bull | `enemy_thunder_bull.active` | `enemy_thunder_bull.passive` |
-| `enemy_veil_lord` | Veil Lord | `enemy_veil_lord.active` | `enemy_veil_lord.passive` |
-| `enemy_voltaic_diviner` | Voltaic Diviner | `enemy_voltaic_diviner.active` | `enemy_voltaic_diviner.passive` |
+Organized by affinity (Clear, Rain, Snow, Cloudy, Mist, Thunder), then by tier.
 
-### Bosses (6, two-phase)
+See **[ABILITY_CATALOG_CHAMPIONS.md](./ABILITY_CATALOG_CHAMPIONS.md)** for the full 60-champion table with descriptions and implementation details.
 
-| Boss ID | Name | Phase 1 Active | Phase 1 Passive | Phase Hook | Phase 2 Active | Phase 2 Passive | On-Death Hook |
+**Summary by archetype:**
+- **Healers (SUP-Heal)**: Dawnwisp, Springfrog, Lostlight Wisp — INT-scaled heals, periodic HoT
+- **Buffers (SUP-Buff)**: Goldcrest Lark, Marsh Thrush, Geode Beetle — team AS/MS/armor boosts
+- **Tanks**: Aegis Tortoise, Coral Colossus, Frostplate Tortoise — damage reduction, armor stacking
+- **Assassins**: Mirage Caracal, Duskstep Marten, Nightglass Mantis — execute bonuses vs low-HP, blink/stealth
+- **Marksmen/Hunters**: Sunspear Falcon, Glade Heron, Cliffeyrie Eagle — empowered autos, marking
+- **Mages (APC-INT)**: Ember Salamander, Tempest Eel, Phantom Lynx — AOE, chain lightning, penetration
+- **Warriors/Bruisers (ADC-STR)**: Veldt Pronghorn, Sunmane Lion, Thunderclap Gorilla — physical scaling, cleaves
+- **Primordials (T10)**: Aurion, Nerei, Borealis, Umbra, Mournhollow, Aerion — ramping stats, board-wide effects, summons
+
+### Enemies (60 enemies × 2 = 120 abilities)
+
+Organized by faction: Humans (30), Corrupted Wildlife Rain/Snow/Cloudy/Mist/Thunder (5 each = 30).
+
+See **[ABILITY_CATALOG_ENEMIES.md](./ABILITY_CATALOG_ENEMIES.md)** for the full 60-enemy table with descriptions and implementation details.
+
+**Summary by faction:**
+- **Humans T1-T10**: Military units (Conscripts → Grand Marshal), support (Field Medic, Chaplain), specialists (Gunslinger, Spymaster, Arcanist). Include aura buffers (Signal Drummer, Standard Bearer), summons (Steam Engineer), armor-stacking (Iron Maiden).
+- **Corrupted Wildlife**: Regen (Blight Lurker), AOE control (Drowned Siren), AS ramping (Capture-Rig Wolf), slowing auras (Dredge-Hulk), execute + mana refund (Shroud-Killer), periodic stat/armor stacking (T10 Tyrants/Wardens/Lords).
+
+### Bosses (6 bosses × 6 abilities each = 36 abilities)
+
+Each boss has a full 2-phase kit: phase 1 active/passive, phase hook (50% HP trigger), phase 2 active/passive, death hook.
+
+| Boss | Affinity | Phase 1 Active | Phase 1 Passive | Phase Hook (50% HP) | Phase 2 Active | Phase 2 Passive | Death Hook |
 |---|---|---|---|---|---|---|---|
-| `boss_holloway` | Foundry-Lord Holloway | `holloway.pressure_vent` | `holloway.stoke_the_fires` | `holloway.phase_hook` | `holloway.magma_heave` | `holloway.cinder_husk` | `holloway.boiler_burst` |
-| `boss_vance` | Solar Overseer Vance | `vance.focusing_lens` | `vance.glare` | `vance.phase_hook` | `vance.sunflare_pounce` | `vance.drought_aura` | `vance.sun_husk_collapse` |
-| `boss_strand` | Grid-Director Strand | `strand.arc_cascade` | `strand.overcharged` | `strand.phase_hook` | `strand.thunderhead` | `strand.stormform` | `strand.lightning_strike` |
-| `boss_vossberg` | Clearance-Marshal Vossberg | `vossberg.scorched_advance` | `vossberg.no_quarter` | `vossberg.phase_hook` | `vossberg.wildfire_leap` | `vossberg.feeding_frenzy` | `vossberg.fire_gutters_out` |
-| `boss_crege` | Dredge-Admiral Crège | `crege.harpoon_winch` | `crege.dredged_depths` | `crege.phase_hook` | `crege.maelstrom_jaws` | `crege.drowning_tide` | `crege.silt_drains` |
-| `boss_iron_emperor` | The Iron Emperor | `iron_emperor.decree_of_iron` | `iron_emperor.tribute` | `iron_emperor.phase_hook` | `iron_emperor.reclamation` | `iron_emperor.the_wound_spreads` | `iron_emperor.world_engine_dark` |
+| **Foundry-Lord Holloway** | Clear | **Pressure Vent**: STR cone (base 100, scaling strength\*2.5) + burn 400 ticks | **Stoke the Fires**: Gains +8 STR per ally every 600 ticks | Burns all enemies 200 ticks, swaps active, registers phase 2 passive | **Magma Heave**: STR AOE radius 3 (base 140, scaling strength\*3.0) 70% damage + burn 500 ticks | **Cinder Husk**: +30 armor; reflects 10% damage as physical | **Boiler Burst**: 80 true damage AOE to all enemies |
+| **Solar Overseer Vance** | Mist | **Focusing Lens**: High INT nuke (base 120, scaling intelligence\*2.8) furthest enemy | **Glare**: Periodic aura -15 AS to enemies radius 3 every 300 ticks | Silences all enemies 200 ticks, swaps active, registers phase 2 passive | **Sunflare Pounce**: INT burst (base 150, scaling intelligence\*3.0) lowest-HP + fear 250 ticks | **Drought Aura**: Periodic -5 mana_regen to enemies radius 4 every 300 ticks | **Sun Husk Collapse**: 60 true damage + burn 300 ticks AOE |
+| **Grid-Director Strand** | Thunder | **Arc Cascade**: Chain lightning (base 110, scaling intelligence\*2.5) chains to 3 (60%, 50%, 40%) | **Overcharged**: Gains +12 INT per cast (stacking) | Stuns all enemies 150 ticks, swaps active, registers phase 2 passive | **Thunderhead**: Massive AOE radius 4 (base 130, scaling intelligence\*3.0) 60% + charged 300 ticks | **Stormform**: Bonus intelligence\*0.4 damage to charged targets | **Lightning Strike**: 100 true damage + stun 100 ticks AOE |
+| **Clearance-Marshal Vossberg** | Cloudy | **Scorched Advance**: STR charge (base 130, scaling strength\*2.8) + burn 300 ticks, neighbors 40% | **No Quarter**: Every 3rd attack grants +10 STR (stacking) | Grants +40 STR, swaps active, registers phase 2 passive | **Wildfire Leap**: STR AOE radius 2 (base 160, scaling strength\*3.2) 80% + burn 400 ticks | **Feeding Frenzy**: Heals 10% max_hp on kill | **Fire Gutters Out**: Allies lose -20 STR on boss death |
+| **Dredge-Admiral Crège** | Rain | **Harpoon Winch**: Hybrid pull (base 100, scaling strength\*2.0+intelligence\*1.0) furthest enemy + root 250 ticks, teleport 1 hex toward boss | **Dredged Depths**: Periodic slow aura radius 3 every 300 ticks | Roots all enemies 200 ticks, swaps active, registers phase 2 passive | **Maelstrom Jaws**: Hybrid AOE radius 3 (base 120, scaling strength\*2.5+intelligence\*1.5) 70% + slow 400 ticks | **Drowning Tide**: Periodic 5 DoT damage to all enemies every 200 ticks | **Silt Drains**: Removes slow status + heals 50 to all enemies |
+| **The Iron Emperor** | Snow | **Decree of Iron**: Hybrid mark (base 100, scaling strength\*1.5+intelligence\*1.5) lowest-HP -25 armor/-25 resistance 600 ticks | **Tribute**: Gains +6 STR/INT per ally every 600 ticks | Grants +50 STR/INT, freezes all enemies 200 ticks, swaps active, registers phase 2 passive | **Reclamation**: Channel finisher AOE radius 4 (base 150, scaling strength\*2.0+intelligence\*2.0) 50% + slow 400 ticks | **The Wound Spreads**: Periodic intensifying DoT (3\*intensity) + slow every 300 ticks | **World Engine Dark**: Strips all timed modifiers from allies, heals 100 to all enemies |
+
+**Boss implementation notes:**
+- Phase hooks fire `PhaseEvent(new_phase=2)` on the event bus
+- Phase transitions swap the active slot via `owner.actives = [ActiveSlot(...)]`
+- Phase 2 passives are registered mid-combat via `ctx.register_bundle(owner, bundle)`
+- Boss map effects (burn/silence/stun all enemies) fire during phase hook before phase 2 begins
+- Death hooks fire `on_death` event; Crège/Iron Emperor have ally-healing/cleansing effects
+
+---
+
+## Detailed Ability Tables
+
+Due to the large size (240+ abilities), the full ability-by-ability tables are in separate files:
+
+- **[docs/design/content/ABILITY_CATALOG_CHAMPIONS.md](../design/content/ABILITY_CATALOG_CHAMPIONS.md)** — 60 champions, organized by affinity (Clear, Rain, Snow, Cloudy, Mist, Thunder) with descriptions and implementation details
+- **[docs/design/content/ABILITY_CATALOG_ENEMIES.md](../design/content/ABILITY_CATALOG_ENEMIES.md)** — 60 enemies, organized by faction (Humans T1-T10, Corrupted Wildlife by affinity)
