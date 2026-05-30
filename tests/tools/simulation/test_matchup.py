@@ -20,7 +20,7 @@ from tools.simulation.matchup import (
 
 
 def test_as_enemy_piece_copies_combat_fields():
-    champ = get_champion("champ_blaze_fox" if False else "champ_ember_salamander")
+    champ = get_champion("champ_ember_salamander")
     enemy = as_enemy_piece(champ)
     assert enemy.id == champ.id + SIDE_B_SUFFIX
     assert enemy.max_hp == champ.max_hp

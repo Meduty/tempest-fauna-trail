@@ -34,11 +34,6 @@ Arguments — what each flag controls
     **Set to physical core count**, NOT logical (SMT contention hurts Python
     on this workload). Pass 1 to run serial (useful for debugging tracebacks).
 
---chunksize N
-    `ProcessPoolExecutor.map` chunksize. Higher = fewer IPC round trips but
-    coarser progress bar updates. 64 is fine for most runs; raise to 256 if
-    workers are starving on a very fast machine.
-
 --weather W
     Restrict to one weather (`clear`, `cloudy`, `mist`, `rain`, `snow`,
     `thunder`). Default: all 6 — each stage runs once per weather, so total
@@ -250,7 +245,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -266,7 +261,7 @@ from tools.simulation.matchup import (
     configure_sim_max_ticks,
     run_matchup,
 )
-from tools.simulation.ratings import aggregate_stats, binary_win_rate, bradley_terry
+from tools.simulation.ratings import PieceStats, aggregate_stats, binary_win_rate, bradley_terry
 from tools.simulation.report import print_summary, write_ratings_csv, write_results_csv
 from tools.simulation.tournament import enumerate_1v1, enumerate_team2, sample_teams
 
@@ -301,8 +296,6 @@ class Stage:
 def run_stage(
     stage: Stage,
     pool: ProcessPoolExecutor | None,
-    *,
-    chunksize: int = 64,
 ) -> list[MatchupResult]:
     """Resolve every config in a stage with a tqdm bar.
 
@@ -319,11 +312,11 @@ def run_stage(
             results.append(run_matchup(cfg))
         return results
 
-    # imap_unordered streams results back as workers finish — perfect for tqdm.
+    # Submit all configs and stream results back as workers finish.
     results = []
-    iterator = pool.map(run_matchup, stage.configs, chunksize=chunksize)
-    for r in tqdm(iterator, desc=label, total=n, unit="fight"):
-        results.append(r)
+    futures = {pool.submit(run_matchup, cfg): cfg for cfg in stage.configs}
+    for fut in tqdm(as_completed(futures), desc=label, total=n, unit="fight"):
+        results.append(fut.result())
     return results
 
 
@@ -372,7 +365,9 @@ def build_stages(
 # ---------------------------------------------------------------------------
 
 
-def write_stage_outputs(stage: Stage, results: list[MatchupResult], out_dir: Path) -> None:
+def write_stage_outputs(
+    stage: Stage, results: list[MatchupResult], out_dir: Path
+) -> tuple[dict[str, float], dict[str, float], dict[str, PieceStats]]:
     results_path = out_dir / f"results_{stage.name}_{stage.weather.value}.csv"
     ratings_path = out_dir / f"ratings_{stage.name}_{stage.weather.value}.csv"
     write_results_csv(results_path, results)
@@ -381,7 +376,7 @@ def write_stage_outputs(stage: Stage, results: list[MatchupResult], out_dir: Pat
     stats = aggregate_stats(results)
     write_ratings_csv(ratings_path, win_rates=wr, bt_ratings=bt, stats=stats)
     print(f"[mega] wrote {results_path} + {ratings_path}")
-    return wr, bt, stats  # type: ignore[return-value]
+    return wr, bt, stats
 
 
 # ---------------------------------------------------------------------------
@@ -404,8 +399,6 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Output directory. Default results/mega")
     p.add_argument("--workers", type=int, default=8,
                    help="Process pool size. Default 8. Pass 1 for serial.")
-    p.add_argument("--chunksize", type=int, default=64,
-                   help="ProcessPool chunksize. Default 64.")
     p.add_argument("--weather", type=_parse_weather, default=None,
                    help="Restrict to one weather. Default: all 6.")
     p.add_argument("--n2", type=int, default=50_000,
@@ -463,7 +456,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         for stage in stages:
             t_stage = time.monotonic()
-            results = run_stage(stage, pool, chunksize=args.chunksize)
+            results = run_stage(stage, pool)
             elapsed = time.monotonic() - t_stage
             rate = len(results) / elapsed if elapsed > 0 else 0.0
             print(f"[mega] {stage.name} @ {stage.weather.value}: "
