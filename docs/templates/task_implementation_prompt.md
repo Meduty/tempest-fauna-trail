@@ -45,5 +45,5 @@ Treat the design document review as mandatory groundwork, not optional context.
   ({{PLAN_PATH}}, content rosters, system designs) to reflect changes made
 - Write a journal entry at `docs/journal/{{YYYY-MM-DD}}_{{topic}}.md` capturing:
   the why, key decisions, deviations from plan, follow-ups
-- Run `uv run pytest` — all green before declaring done
+- Run `uv run pytest tests/` (or `pytest tests/`) — all green before declaring done
 - Run `/check` to confirm no SPEC drift introduced
