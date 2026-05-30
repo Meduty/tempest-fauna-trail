@@ -101,6 +101,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.25 | Power simulation & balance benchmarking — deterministic matchup sweeps and empirical power ratings | `tools/simulation/`, `docs/design/tasks/t25_power_simulation_plan.md` | T.3, T.5 | M | ✅ Done |
 | T.26 | Combat engine unification — `resolve_combat` delegates to the new loop via `BattleResultRecorder`; legacy tick loop retired; Weather Favor applied in `compile_loadout` | `game/combat/legacy.py`, `game/combat/loop_new.py`, `game/combat/recorder.py`, `game/loadout.py` | T.3, T.20 | M | ✅ Done |
 | T.27 | Playtesting CLI — dev-facing tools for sim_fight / sim_node / sim_run / inspect / inspect_node, no Flet, pure consumers of `src/game/` | `tools/playtest/`, `docs/design/playtesting/` | T.3, T.5, T.19, T.21, T.26 | M | ✅ Done |
+| T.28 | Synergy trait effects — implement `TraitDef` / `TraitBreakpoint` types, `@register_trait` factories for all Kinship/Calling/Affinity traits, team roll-up step in `compile_loadout`, `BattleResult` activation events | `game/traits/`, `game/loadout.py`, `docs/design/content/trait_catalog.md` | T.5, T.20, T.26 | L | ❌ Not started |
 
 **Size**: S = <1h, M = 1-3h, L = 3-6h
 
@@ -237,8 +238,11 @@ in their T-task plan docs; what remains here is genuinely undecided.
 
 ### Content
 
-- D.8 Synergy traits: V.8 reserves `Champion.traits` as auto-chess synergy tags,
-  but which synergies exist and what bonuses they grant is undesigned.
+- D.8 Synergy traits: V.8 reserves `Champion.traits` as auto-chess synergy tags.
+  **Design complete** — breakpoints and bonuses authored in
+  `docs/design/content/trait_catalog.md`; technical substrate in
+  `docs/design/systems/effect_systems_design.md` §7. Implementation tracked as
+  T.28.
 - D.9 Item system: items are referenced by `SUPPLY` combos, `REWARD` drops, and
   the prep inventory, but no item model, pool, or effects exist — undesigned.
 - D.10 Champion / enemy archetypes: the ~6-8 role archetypes and their `P = 1`
