@@ -7,6 +7,7 @@ import flet as ft
 from src.game.models import WeatherState
 from src.ui.theme import (
     AFFINITY_COLORS,
+    BG,
     CHIP_RADIUS,
     FONT_SIZE_CAPTION,
     FONT_SIZE_BODY,
@@ -14,7 +15,6 @@ from src.ui.theme import (
     SPACING_SM,
     SURFACE_ELEVATED,
     TEXT_MUTED,
-    TEXT_PRIMARY,
 )
 
 _CHIP_SIZES = {
@@ -35,7 +35,7 @@ def affinity_chip(
         content=ft.Text(
             affinity.value.capitalize(),
             size=cfg["font_size"],
-            color=TEXT_PRIMARY,
+            color=BG,
             weight=ft.FontWeight.W_500,
         ),
         bgcolor=color,

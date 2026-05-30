@@ -87,8 +87,8 @@ class TestWeatherBadge:
     def test_correct_border_color(self):
         badge = weather_badge(weather=WeatherState.RAIN)
         expected_color = AFFINITY_COLORS[WeatherState.RAIN]
-        # Border is ft.border.all(1, color)
         assert badge.border is not None
+        assert badge.border.top.color == expected_color
 
     def test_all_weather_states(self):
         for ws in WeatherState:

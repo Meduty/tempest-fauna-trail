@@ -53,14 +53,18 @@ def meter_bar(
     )
 
     # Wrap in a row to control proportional fill
+    controls: list[ft.Control] = []
+    if ratio > 0:
+        controls.append(
+            ft.Container(content=inner_bar, expand=int(round(ratio * 100))),
+        )
+    if ratio < 1:
+        controls.append(
+            ft.Container(expand=int(round((1 - ratio) * 100))),
+        )
+
     bar_content = ft.Row(
-        controls=[
-            ft.Container(
-                content=inner_bar,
-                expand=int(max(1, round(ratio * 100))),
-            ),
-            ft.Container(expand=int(max(1, round((1 - ratio) * 100)))),
-        ],
+        controls=controls,
         spacing=0,
         tight=True,
     )
