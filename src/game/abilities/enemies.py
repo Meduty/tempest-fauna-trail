@@ -72,11 +72,8 @@ def levyman_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if ctx.current_tick - state["last_tick"] >= 600:
             state["last_tick"] = ctx.current_tick
-            ctx.apply_modifier(owner, Modifier(
-                "max_hp", "add", 25.0, Lifetime.COMBAT,
-                "passive:enemy_levyman.hp",
-            ))
-            owner.hp = min(owner.hp + 25, owner.max_hp + 25)
+            owner.max_hp += 25.0
+            owner.hp = min(owner.hp + 25.0, owner.max_hp)
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),

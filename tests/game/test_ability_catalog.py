@@ -113,6 +113,25 @@ def test_all_enemy_passives_resolve():
         )
 
 
+def test_all_boss_abilities_resolve():
+    """Every BossDef phase1/2 active and passive resolves in the registries."""
+    from src.game.bosses.data import BOSS_DEFS
+
+    for boss in BOSS_DEFS.values():
+        for field_name, ability_id, registry in (
+            ("phase1_active", boss.phase1_active, ABILITY_REGISTRY),
+            ("phase1_passive", boss.phase1_passive, PASSIVE_REGISTRY),
+            ("phase1_phase_hook", boss.phase1_phase_hook, PASSIVE_REGISTRY),
+            ("phase2_active", boss.phase2_active, ABILITY_REGISTRY),
+            ("phase2_passive", boss.phase2_passive, PASSIVE_REGISTRY),
+            ("on_death_hook", boss.on_death_hook, PASSIVE_REGISTRY),
+        ):
+            if ability_id:
+                assert ability_id in registry, (
+                    f"Boss {boss.id}: {field_name} '{ability_id}' not in registry"
+                )
+
+
 # ---------------------------------------------------------------------------
 # 2. Smoke tests — basic ability execution
 # ---------------------------------------------------------------------------
@@ -260,31 +279,32 @@ def test_umbra_spawns_clones():
 
 
 def test_summon_expires():
-    """Summons expire when their tick passes."""
-    from src.game.combat.loop_new import expire_modifiers
+    """Summons expire via the real combat loop when their tick passes."""
+    from src.game.combat import loop_new
 
-    piece = _make_piece("summoned", is_enemy=True)
+    # Use large HP so neither piece dies before the summon expiry at tick 100.
+    # At tick 100 no auto-attacks have fired yet (energy threshold requires 600 ticks
+    # of regen at default attack_speed=100 to overflow 60_000).
+    piece = _make_piece("summoned", is_enemy=True, max_hp=100_000.0)
     piece.summon = True
     piece.summon_expires_tick = 100
-    other = _make_piece("hero")
+    piece.position_q = 9
+    piece.position_r = 3
 
-    pieces = [piece, other]
-    ctx = _make_ctx(pieces)
-    ctx.current_tick = 99
+    hero = _make_piece("hero", max_hp=100_000.0)
+    hero.position_q = 0
+    hero.position_r = 3
 
-    # Not expired yet
-    assert piece.alive
+    ctx = _make_ctx([piece, hero])
 
-    # Simulate tick 100 expiry (from loop)
-    ctx.current_tick = 100
-    # Manually check expiry logic
-    for p in pieces:
-        if p.alive and p.summon and p.summon_expires_tick > 0:
-            if ctx.current_tick >= p.summon_expires_tick:
-                p.alive = False
-                p.hp = 0.0
+    assert piece.alive, "Summon should be alive before the loop runs"
 
-    assert not piece.alive
+    # Drive the real combat loop — the loop despawns expired summons at tick 100.
+    result = loop_new.run(ctx)
+
+    assert not piece.alive, "Summon should be despawned by the combat loop"
+    assert piece.hp == 0.0
+    assert result == "team", "Hero should win once the only enemy summon expires"
 
 
 # ---------------------------------------------------------------------------
@@ -340,7 +360,7 @@ def test_signal_drummer_aura_buffs_allies():
 
 
 def test_snowpelt_cub_gains_hp_every_600_ticks():
-    """Snowpelt Cub passive grants HP every 600 ticks (not rounds)."""
+    """Snowpelt Cub passive raises max_hp and hp every 600 ticks (not rounds)."""
     from src.game.events import TickEvent
     from src.game.loadout import apply_bundle
 
@@ -352,13 +372,16 @@ def test_snowpelt_cub_gains_hp_every_600_ticks():
     bundle = PASSIVE_REGISTRY["champ_snowpelt_cub.passive"](cub)
     apply_bundle(cub, bundle, ctx.bus, ctx=ctx)
 
+    initial_max_hp = cub.max_hp
+    initial_hp = cub.hp
+
     # At tick 0, no proc yet
     ctx.current_tick = 0
     ctx.bus.fire("on_tick", TickEvent(tick=0), ctx=ctx)
-    initial_mods = len([m for m in cub.modifiers if "snowpelt" in m.source_id])
+    assert cub.max_hp == initial_max_hp, "Should not proc at tick 0"
 
-    # At tick 600, should proc
+    # At tick 600, should proc: max_hp and hp both increase by 30
     ctx.current_tick = 600
     ctx.bus.fire("on_tick", TickEvent(tick=600), ctx=ctx)
-    after_mods = len([m for m in cub.modifiers if "snowpelt" in m.source_id])
-    assert after_mods > initial_mods, "Should gain HP modifier at tick 600"
+    assert cub.max_hp == initial_max_hp + 30.0, "max_hp should increase by 30 at tick 600"
+    assert cub.hp == initial_hp + 30.0, "hp should increase by 30 at tick 600"

@@ -658,11 +658,8 @@ def snowpelt_cub_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if ctx.current_tick - state["last_tick"] >= 600:
             state["last_tick"] = ctx.current_tick
-            ctx.apply_modifier(owner, Modifier(
-                "max_hp", "add", 30.0, Lifetime.COMBAT,
-                "passive:champ_snowpelt_cub.growth",
-            ))
-            owner.hp = min(owner.hp + 30, owner.max_hp + 30)
+            owner.max_hp += 30.0
+            owner.hp = min(owner.hp + 30.0, owner.max_hp)
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
@@ -813,15 +810,12 @@ def glacierback_mammoth_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if ctx.current_tick - state["last_tick"] >= 600:
             state["last_tick"] = ctx.current_tick
-            ctx.apply_modifier(owner, Modifier(
-                "max_hp", "add", 40.0, Lifetime.COMBAT,
-                "passive:champ_glacierback_mammoth.hp",
-            ))
+            owner.max_hp += 40.0
+            owner.hp = min(owner.hp + 40.0, owner.max_hp)
             ctx.apply_modifier(owner, Modifier(
                 "strength", "add", 10.0, Lifetime.COMBAT,
                 "passive:champ_glacierback_mammoth.str",
             ))
-            owner.hp = min(owner.hp + 40, owner.max_hp + 40)
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),

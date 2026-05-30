@@ -28,7 +28,8 @@ mid-combat.
 3. **Summon scope (G6 amendment).** Umbra's shadow summon and Steam Engineer's
    turret spawn as real `Piece` objects with `summon=True`,
    `summon_owner_id`, and `summon_expires_tick`. The tick loop despawns expired
-   summons (removal from `ctx.pieces`). This keeps summons first-class: they
+   summons by setting `alive=False` and `hp=0` (pieces remain in `ctx._pieces`
+   but are treated as dead). This keeps summons first-class: they
    can be targeted, take damage, trigger events.
 
 4. **Generic fallback fix.** The old formula `0.2*STR + 4.2*INT` was biased
