@@ -122,6 +122,8 @@ def holloway_cinder_husk(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.target is not owner:
             return
+        if event.tag == SourceTag.REFLECT.value:
+            return  # never reflect a reflection — prevents mutual-reflect recursion
         if not hasattr(event, "attacker") or event.attacker is None:
             return
         if event.attacker.alive:

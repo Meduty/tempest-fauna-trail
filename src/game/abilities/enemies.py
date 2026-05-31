@@ -502,6 +502,8 @@ def steam_knight_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.target is not owner:
             return
+        if event.tag == SourceTag.REFLECT.value:
+            return  # never reflect a reflection — prevents mutual-reflect recursion
         state["count"] += 1
         if state["count"] % 3 == 0 and event.attacker.alive:
             reflect = owner.stat("strength") * 0.4
