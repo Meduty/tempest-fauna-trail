@@ -126,29 +126,34 @@ win_rate[A] = Σ wins_A / total_battles_A
 
 Biased by opponent field composition. Useful for a quick first pass.
 
-### 6.2 Bradley-Terry model (preferred)
+### 6.2 Deterministic power-threshold model
 
-Latent strength `β_i ≥ 0` per piece. Probability A beats B:
+The engine is deterministic: the outcome of every matchup is decided by
+power, not chance. Expected win rate uses a step function:
 
-$$P(A \succ B) = \frac{\beta_A}{\beta_A + \beta_B}$$
+- Higher total power → wins 100% of the time (score 1.0)
+- Lower total power → loses 100% of the time (score 0.0)
+- Equal total power → half-win (score 0.5; secondary factors like weather
+  affinity, role advantage, and fine-tuning decide the actual winner, but
+  these average out across many distinct matchups)
 
-Maximum likelihood iterative update (converges in ~30 iterations):
+```
+expected_winrate(piece) =
+    ( wins_vs_lower_power + 0.5 * matchups_at_equal_power )
+    / total_opponents
+```
 
-$$\beta_i^{\text{new}} = \frac{W_i}{\displaystyle\sum_{j \neq i} \frac{n_{ij}}{\beta_i + \beta_j}}$$
+For teams, use the team's total additive power and apply the same rules.
 
-where $W_i$ = total wins for piece $i$, $n_{ij}$ = total games between $i$ and $j$.
-
-Normalise so that a T1L1 baseline piece (the weakest defined champion) has
-$\beta = 1.0$. Then the derived $\beta$ is directly comparable to
-`power(T, L)`.
+Self-matchups (if they occur) count as equal power (0.5).
 
 ### 6.3 Derived metrics
 
 | Metric | Formula | Interpretation |
 |---|---|---|
-| **Power deviation** | `β / power(T, L)` | > 1.2 → overtuned; < 0.8 → undertuned |
+| **wr_delta** | `win_rate - expected_wr` | > +0.15 → overtuned; < -0.15 → undertuned |
 | **Matchup spread** | std dev of win rates across all opponents | high = rock-paper-scissors feel |
-| **Weather sensitivity** | variance of `β` across 6 weather runs | high = weather-gated |
+| **Weather sensitivity** | variance of win rate across 6 weather runs | high = weather-gated |
 | **Affinity premium** | win rate vs prey − win rate vs predators | measures affinity ring payoff |
 
 ## 7. Module Structure
@@ -159,7 +164,7 @@ tools/
     __init__.py
     matchup.py          # champion_as_enemy, MatchupConfig, MatchupResult, run_matchup
     tournament.py       # all-pairs round-robin; returns list[MatchupResult]
-    ratings.py          # bradley_terry(results) -> dict[str, float]; win_rates(...)
+    ratings.py          # deterministic expected_wr + binary_win_rate (per-piece attribution)
     report.py           # write_csv, print_summary (top 5 over/underperformers)
     runner.py           # CLI entry point (argparse)
 ```
@@ -216,7 +221,7 @@ when stats are changed without intention.
 | Phase | Deliverable | Effort |
 |---|---|---|
 | **P1** | `matchup.py`, `tournament.py`, sequential CSV output | S |
-| **P2** | `ratings.py` (Bradley-Terry + win rate), `report.py` console summary | S |
+| **P2** | `ratings.py` (deterministic expected WR + binary win rate), `report.py` console summary | S |
 | **P3** | `runner.py` CLI, `--workers` multiprocessing, all-weather sweep | M |
 | **P4** | pytest `@balance` markers on curated matchups as regression gate | S |
 
@@ -230,8 +235,10 @@ sweeps. P4 is optional but valuable for catching stat-change regressions.
   meaningful sweeps — the plan depends on T.5 being complete.
 - The sim runs pieces at identical tier/level to isolate kit design; cross-tier
   validation (power ladder) is secondary and added in P3.
-- Draws (`CombatOutcome.DRAW`) are excluded from Bradley-Terry input. If draw
-  rate exceeds ~5%, add a tie-correction (e.g. split as 0.5 win each).
+- Draws (`CombatOutcome.DRAW`) are scored as 0.5 for both sides in the
+  binary win-rate attribution. In the deterministic model, draws do not
+  occur in normal play (the engine always forces a resolution), but
+  timeouts may produce them.
 - `traits` are intentionally excluded from `champion_as_enemy` — synergy bonuses
   from trait groupings are a team-comp mechanic, not a 1v1 property. If team
   synergy bonuses are later implemented, add a `--synergies` flag to optionally
@@ -280,22 +287,24 @@ Binary rule (decision locked at session start, per T.25 prompt):
 dicts keyed by piece-id pairs. Surviving HP and damage shares were
 considered and rejected — see [docs/journal/2026-05-30_power_simulation.md](../../journal/2026-05-30_power_simulation.md).
 
-### 13.4 Bradley-Terry implementation
+### 13.4 Deterministic power-threshold model (replaces Bradley-Terry)
 
-MM update per the plan §6.2, with these implementation notes:
+The expected win rate uses a step function of relative power, not a
+logistic curve:
 
-- Per-iteration normalisation uses the **geometric mean** of nonzero β
-  values to prevent drift. The plan didn't specify this; arithmetic mean
-  causes scale blow-up when many pieces have zero wins.
-- Pieces that never win are floored at `β = 1e-3` so the update step stays
-  finite without polluting the geometric mean.
-- Final pass normalises so the weakest piece anchors at `β = 1.0`
-  (plan §6.2 — "T1L1 baseline piece").
+- `team_a_power > team_b_power` → `expected_wr = 1.0` for team A
+- `team_a_power < team_b_power` → `expected_wr = 0.0` for team A
+- `team_a_power == team_b_power` → `expected_wr = 0.5` (half-win)
 
-**Caveat**: stratified sampling produces tier-disjoint games — there is
-no β anchor between tiers, so BT betas drift per tier under that mode.
-Recommend non-stratified data for cross-tier BT comparisons; use
-stratified mode only for within-tier relative reads.
+This matches the deterministic engine: outcomes are forced by power
+advantage, not probabilistic. Secondary factors (weather affinity, role
+advantage, fine-tuning) decide equal-power matchups but average out
+across the roster, so equal-power is scored as 0.5.
+
+The Bradley-Terry model was removed because it predicted P(win) as a
+logistic function of relative power (e.g. 50% more power → ~66% win
+rate), which is wrong for a deterministic engine where 50% more power
+guarantees a 100% win.
 
 ### 13.5 Files
 

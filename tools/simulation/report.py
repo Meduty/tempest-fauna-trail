@@ -42,7 +42,6 @@ def write_ratings_csv(
     path: Path,
     *,
     win_rates: dict[str, float],
-    bt_ratings: dict[str, float],
     stats: dict[str, PieceStats] | None = None,
 ) -> None:
     """One row per piece. Columns:
@@ -51,16 +50,14 @@ def write_ratings_csv(
         n_matches, n_pair_games, n_pair_wins, n_team_wins, n_team_draws,
         n_team_timeouts, mean_duration_ticks,
         win_rate, expected_wr, wr_delta,
-        beta, expected_power, beta_ratio, beta_deviation_pct,
-        timeout_rate
+        expected_power, timeout_rate
 
-    expected_wr is calibrated against actual opponent field via
-    power(T,L); wr_delta = win_rate - expected_wr is the unit-free
-    "over/under" signal. beta_ratio is the existing β / power(T,L);
-    beta_deviation_pct is (ratio - 1) * 100 for human reading.
+    expected_wr uses the deterministic power-threshold model: higher team
+    power wins (1.0), lower loses (0.0), equal scores 0.5.
+    wr_delta = win_rate - expected_wr is the unit-free "over/under" signal.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-    piece_ids = sorted(set(win_rates) | set(bt_ratings) | set(stats or {}))
+    piece_ids = sorted(set(win_rates) | set(stats or {}))
     with path.open("w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([
@@ -69,8 +66,7 @@ def write_ratings_csv(
             "n_team_wins", "n_team_draws", "n_team_timeouts",
             "mean_duration_ticks",
             "win_rate", "expected_wr", "wr_delta",
-            "beta", "expected_power", "beta_ratio", "beta_deviation_pct",
-            "timeout_rate",
+            "expected_power", "timeout_rate",
         ])
         for pid in piece_ids:
             try:
@@ -90,10 +86,7 @@ def write_ratings_csv(
                 level = 0
                 expected_power = 0.0
                 kind = ""
-            beta = bt_ratings.get(pid, 0.0)
             wr = win_rates.get(pid, 0.0)
-            beta_ratio = (beta / expected_power) if expected_power > 0 else 0.0
-            beta_dev_pct = (beta_ratio - 1.0) * 100.0 if expected_power > 0 else 0.0
             s = (stats or {}).get(pid)
             n_matches = s.n_matches if s else 0
             n_pair_games = s.n_pair_games if s else 0
@@ -112,8 +105,7 @@ def write_ratings_csv(
                 n_team_wins, n_team_draws, n_team_timeouts,
                 f"{mean_duration:.1f}",
                 f"{wr:.4f}", f"{expected_wr:.4f}", f"{wr_delta:+.4f}",
-                f"{beta:.4f}", f"{expected_power:.4f}",
-                f"{beta_ratio:.4f}", f"{beta_dev_pct:+.2f}",
+                f"{expected_power:.4f}",
                 f"{timeout_rate:.4f}",
             ])
 
@@ -126,7 +118,6 @@ def write_ratings_csv(
 def print_summary(
     *,
     win_rates: dict[str, float],
-    bt_ratings: dict[str, float],
     stats: dict[str, PieceStats] | None = None,
     top_n: int = 5,
     wr_delta_alert: float = 0.15,
@@ -134,11 +125,10 @@ def print_summary(
     """Tier-bucketed top/bottom by wr_delta (actual − expected WR).
 
     `wr_delta` is the cleanest signal: positive = beats power-implied
-    expectation, negative = under-performs. Beats raw β/power(T,L) because
-    it's already on the unit interval and accounts for actual opponent
-    field via `PieceStats.expected_wr`.
+    expectation, negative = under-performs. Uses the deterministic power-
+    threshold model where higher power wins 100%, equal scores 50%.
     """
-    if not bt_ratings and not win_rates:
+    if not win_rates:
         print("[summary] no ratings to report")
         return
 
@@ -150,30 +140,22 @@ def print_summary(
         wr: float
         exp_wr: float
         delta: float
-        beta: float
-        beta_ratio: float
-        timeouts: float
 
-    piece_ids = set(win_rates) | set(bt_ratings) | set(stats or {})
+    piece_ids = set(win_rates) | set(stats or {})
     rows_by_tier: dict[int, list[_Row]] = {}
     for pid in piece_ids:
         try:
             piece = get_piece(pid)
             tier = piece.tier
-            expected_power = power(tier, piece.level)
         except KeyError:
             tier = 0
-            expected_power = 0.0
         s = (stats or {}).get(pid)
         wr = win_rates.get(pid, 0.0)
         exp_wr = s.expected_wr if s else 0.0
         delta = wr - exp_wr
-        beta = bt_ratings.get(pid, 0.0)
-        beta_ratio = (beta / expected_power) if expected_power > 0 else 0.0
         n = s.n_matches if s else 0
-        timeout_rate = (s.n_team_timeouts / n) if (s and n > 0) else 0.0
         rows_by_tier.setdefault(tier, []).append(
-            _Row(pid, tier, n, wr, exp_wr, delta, beta, beta_ratio, timeout_rate)
+            _Row(pid, tier, n, wr, exp_wr, delta)
         )
 
     n_total = sum(r.n for tier_rows in rows_by_tier.values() for r in tier_rows)
@@ -181,8 +163,7 @@ def print_summary(
     print(f"=== T.25 summary — {sum(len(v) for v in rows_by_tier.values())} pieces, "
           f"{n_total:,} per-piece matches ===")
     header = (f"  {'piece_id':<32} {'T':>2} {'n':>5} "
-              f"{'WR':>6} {'exp':>6} {'delta':>7} "
-              f"{'beta':>7} {'b/p':>6} {'TO%':>5}")
+              f"{'WR':>6} {'exp':>6} {'delta':>7}")
 
     flagged = 0
     for tier in sorted(rows_by_tier):
@@ -195,15 +176,13 @@ def print_summary(
         for r in top:
             tag = "  +" if r.delta > wr_delta_alert else ""
             print(f"  {r.pid:<32} {r.tier:>2} {r.n:>5} "
-                  f"{r.wr:>6.3f} {r.exp_wr:>6.3f} {r.delta:>+7.3f} "
-                  f"{r.beta:>7.2f} {r.beta_ratio:>6.2f} {r.timeouts:>5.1%}{tag}")
+                  f"{r.wr:>6.3f} {r.exp_wr:>6.3f} {r.delta:>+7.3f}{tag}")
         if bottom and bottom != top:
             print(f"  {'...':<32}")
             for r in bottom:
                 tag = "  -" if r.delta < -wr_delta_alert else ""
                 print(f"  {r.pid:<32} {r.tier:>2} {r.n:>5} "
-                      f"{r.wr:>6.3f} {r.exp_wr:>6.3f} {r.delta:>+7.3f} "
-                      f"{r.beta:>7.2f} {r.beta_ratio:>6.2f} {r.timeouts:>5.1%}{tag}")
+                      f"{r.wr:>6.3f} {r.exp_wr:>6.3f} {r.delta:>+7.3f}{tag}")
         flagged += sum(1 for r in rows if abs(r.delta) > wr_delta_alert)
 
     print(f"\n[summary] {flagged} piece(s) outside ±{wr_delta_alert:+.0%} wr_delta band")
