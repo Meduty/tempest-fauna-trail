@@ -34,7 +34,7 @@ qualitative, dev-facing surface** that runs before the Flet UI catches up.
 ### Non-goals
 
 - Production UI work (theme, layout, animation) — T.8–T.13 own that.
-- Batch matchup sweeps and Bradley-Terry ratings — T.25 owns that.
+- Batch matchup sweeps and win-rate analysis — T.25 owns that.
 - Writing new game logic. Tools are pure consumers of existing pure functions.
 
 ## 3. Engine Status (post-T.26)

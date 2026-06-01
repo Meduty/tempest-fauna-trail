@@ -186,9 +186,9 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   full 1v1 (C(N,2) pairs), full 2v2 Cartesian (opt-in, ~25M pairs), and
   random team sampling (`team-sample`, default; optional tier-stratification).
   Per-piece win attribution is binary (every piece on the winning team scores
-  1 vs every piece on the losing team; draws split 0.5). Bradley-Terry MLE
-  derives a latent β per piece, normalised so the weakest piece anchors at
-  `β = 1.0` (plan §6.2).
+  1 vs every piece on the losing team; draws split 0.5). Win-rate analysis
+  uses the deterministic power-threshold model (higher power wins 100%,
+  equal power scores 50%).
 - T.26 unified the two combat engines that briefly coexisted: legacy
   `resolve_combat` (T.3) and `compile_loadout + CombatContext + loop.run`
   (T.20). Post-T.26 there is **one** entry point — see V.2 and

@@ -4,7 +4,7 @@ Stages queued in order, each executed via ProcessPoolExecutor with a tqdm
 progress bar. Outputs land under --out (default results/mega/):
 
     results_<stage>_<weather>.csv    raw battle log
-    ratings_<stage>_<weather>.csv    win-rate + Bradley-Terry betas
+    ratings_<stage>_<weather>.csv    win-rate + expected WR (deterministic power model)
     run.log                          stdout snapshot (when redirected)
 
 Stages:
@@ -25,7 +25,7 @@ Arguments — what each flag controls
 --out PATH
     Output directory. One pair of CSVs per (stage, weather) is written:
     `results_<stage>_<weather>.csv` (raw battles) + `ratings_<stage>_<weather>.csv`
-    (per-piece win rate, expected_wr, wr_delta, beta, deviation, timeouts).
+    (per-piece win rate, expected_wr, wr_delta, timeouts).
     Default: `results/mega`.
 
 --workers N
@@ -43,8 +43,8 @@ Arguments — what each flag controls
 
 --n2 N
     Battles per weather for `team2-sample`. Default 50_000. Higher = tighter
-    Bradley-Terry convergence (each piece sees more opponents). Below ~5_000
-    per weather, BT β has visible noise per piece.
+    convergence (each piece sees more opponents). Below ~5_000
+    per weather, win-rate estimates have visible noise per piece.
 
 --n3 N
     Same as --n2 but for `team3-sample` (3v3 random teams). Default 30_000.
@@ -118,7 +118,7 @@ Single weather only — iterate fast on one affinity:
     config (≈ 1/6 of the full run). Use when investigating one weather's
     affinity clash interactions without paying the 6× weather multiplier.
 
-Bigger samples — tighten Bradley-Terry convergence:
+Bigger samples — tighten win-rate convergence:
 
     python -m tools.simulation.mega --workers 8 \\
         --n2 200000 --n3 100000 --out results/big
@@ -126,8 +126,8 @@ Bigger samples — tighten Bradley-Terry convergence:
     Measures: same balance signals as the default run but with ~4× the
     samples per stage. Use when default-run `wr_delta` for a piece sits
     near a decision threshold (e.g. ±5%) and you need to disambiguate
-    real over/under-performance from sampling noise. β values stabilise
-    to 3 significant figures at this sample size.
+    real over/under-performance from sampling noise. Win-rate estimates
+    stabilise to 3 significant figures at this sample size.
 
 Tier-stratified — isolate kit quality from raw tier differential:
 
@@ -261,7 +261,7 @@ from tools.simulation.matchup import (
     configure_sim_max_ticks,
     run_matchup,
 )
-from tools.simulation.ratings import PieceStats, aggregate_stats, binary_win_rate, bradley_terry
+from tools.simulation.ratings import PieceStats, aggregate_stats, binary_win_rate
 from tools.simulation.report import print_summary, write_ratings_csv, write_results_csv
 from tools.simulation.tournament import enumerate_1v1, enumerate_team2, sample_teams
 
@@ -367,16 +367,15 @@ def build_stages(
 
 def write_stage_outputs(
     stage: Stage, results: list[MatchupResult], out_dir: Path
-) -> tuple[dict[str, float], dict[str, float], dict[str, PieceStats]]:
+) -> tuple[dict[str, float], dict[str, PieceStats]]:
     results_path = out_dir / f"results_{stage.name}_{stage.weather.value}.csv"
     ratings_path = out_dir / f"ratings_{stage.name}_{stage.weather.value}.csv"
     write_results_csv(results_path, results)
     wr = binary_win_rate(results)
-    bt = bradley_terry(results)
     stats = aggregate_stats(results)
-    write_ratings_csv(ratings_path, win_rates=wr, bt_ratings=bt, stats=stats)
+    write_ratings_csv(ratings_path, win_rates=wr, stats=stats)
     print(f"[mega] wrote {results_path} + {ratings_path}")
-    return wr, bt, stats
+    return wr, stats
 
 
 # ---------------------------------------------------------------------------
@@ -461,10 +460,10 @@ def main(argv: list[str] | None = None) -> int:
             rate = len(results) / elapsed if elapsed > 0 else 0.0
             print(f"[mega] {stage.name} @ {stage.weather.value}: "
                   f"{len(results):,} battles in {elapsed:.1f}s ({rate:.0f}/s)")
-            wr, bt, stats = write_stage_outputs(stage, results, args.out)
+            wr, stats = write_stage_outputs(stage, results, args.out)
 
             # Per-stage console summary (tier-bucketed)
-            print_summary(win_rates=wr, bt_ratings=bt, stats=stats)
+            print_summary(win_rates=wr, stats=stats)
     finally:
         if pool is not None:
             pool.shutdown(wait=True)

@@ -1,12 +1,10 @@
-"""Bradley-Terry + binary win-rate attribution."""
+"""Deterministic power-threshold + binary win-rate attribution."""
 from __future__ import annotations
-
-from dataclasses import dataclass
 
 from src.game.models import CombatOutcome, WeatherState
 
 from tools.simulation.matchup import MatchupConfig, MatchupResult
-from tools.simulation.ratings import aggregate_stats, binary_win_rate, bradley_terry
+from tools.simulation.ratings import aggregate_stats, binary_win_rate
 
 
 def _make_result(
@@ -54,46 +52,6 @@ def test_binary_win_rate_draw_is_half():
     assert wr["B"] == 0.5
 
 
-def test_bradley_terry_converges_with_clear_ordering():
-    """Round-robin where A > B > C produces β_A > β_B > β_C."""
-    results = []
-    # A always beats B
-    for _ in range(5):
-        results.append(_make_result(("A",), ("B",), CombatOutcome.WIN))
-    # B always beats C
-    for _ in range(5):
-        results.append(_make_result(("B",), ("C",), CombatOutcome.WIN))
-    # A always beats C
-    for _ in range(5):
-        results.append(_make_result(("A",), ("C",), CombatOutcome.WIN))
-
-    bt = bradley_terry(results, iterations=200)
-    assert bt["A"] > bt["B"] > bt["C"]
-    # Weakest normalised to 1.0
-    assert min(bt.values()) >= 1.0 - 1e-6
-
-
-def test_bradley_terry_handles_team_battles():
-    """Team battles feed per-piece pairwise records."""
-    results = [
-        _make_result(("A", "B"), ("C", "D"), CombatOutcome.WIN),
-        _make_result(("A", "B"), ("C", "D"), CombatOutcome.WIN),
-        _make_result(("A", "B"), ("C", "D"), CombatOutcome.WIN),
-    ]
-    bt = bradley_terry(results, iterations=100)
-    # All winners should rank strictly higher than all losers
-    assert min(bt["A"], bt["B"]) > max(bt["C"], bt["D"])
-
-
-def test_bradley_terry_empty_input():
-    assert bradley_terry([]) == {}
-
-
-# ---------------------------------------------------------------------------
-# aggregate_stats
-# ---------------------------------------------------------------------------
-
-
 def test_aggregate_stats_match_counts():
     """n_matches counts each battle a piece played, not per-opponent pairs."""
     results = [
@@ -108,12 +66,12 @@ def test_aggregate_stats_match_counts():
     assert stats["enemy_picket"].n_team_wins == 1
 
 
-def test_aggregate_stats_expected_wr_uses_team_additive_power():
-    """Real pieces from different tiers: expected_wr should differ from 0.5.
+def test_aggregate_stats_expected_wr_uses_deterministic_power_threshold():
+    """Real pieces from different tiers: expected_wr should be 1.0 for higher power.
 
     champ_ember_salamander is T3 (power = 2^(2/3) ≈ 1.587),
-    enemy_conscript is T1 (power = 1.0). Expected WR for champ should
-    be ≈ 1.587 / (1.587 + 1.0) ≈ 0.613 in a 1v1.
+    enemy_conscript is T1 (power = 1.0). The deterministic model gives
+    the higher-power piece expected_wr = 1.0 and the lower-power piece 0.0.
     """
     results = [
         _make_result(("champ_ember_salamander",), ("enemy_conscript",), CombatOutcome.WIN),
@@ -121,11 +79,9 @@ def test_aggregate_stats_expected_wr_uses_team_additive_power():
     stats = aggregate_stats(results)
     champ_exp = stats["champ_ember_salamander"].expected_wr
     conscript_exp = stats["enemy_conscript"].expected_wr
-    # T3 vs T1: champ should beat 0.6
-    assert champ_exp > 0.55
-    assert conscript_exp < 0.45
-    # Probabilities sum to 1 across the matchup
-    assert abs(champ_exp + conscript_exp - 1.0) < 1e-6
+    # T3 vs T1: champ has strictly higher power -> expected 1.0
+    assert champ_exp == 1.0
+    assert conscript_exp == 0.0
 
 
 def test_aggregate_stats_team_battle_shares_expected_wr():

@@ -48,7 +48,7 @@ Everything else — tier drift, the apparent role/trait imbalances, the brittlen
 
 - All runs used `--max-ticks 1_000_000`, disabling sudden death → `timeout_rate = 0` everywhere (Section 8.3 caveat).
 - 120 pieces total (60 champions, 60 enemies).
-- **Metrics:** `win_rate`; `expected_wr` (Bradley-Terry budget from `power(T,L)`); `wr_delta = win_rate − expected_wr`; `beta` (BT strength); `mean_duration_ticks`.
+- **Metrics:** `win_rate`; `expected_wr` (deterministic power-threshold model from `power(T,L)`); `wr_delta = win_rate − expected_wr`; `mean_duration_ticks`.
 - **Win-curve / power analysis:** team `ΣP` computed via `power(tier, 1)` ([src/game/scaling.py](../src/game/scaling.py)) as a level-1 proxy — per-battle level isn't in `results_*.csv`. Level noise adds scatter but does not change monotone shapes.
 
 ---
@@ -114,7 +114,7 @@ Champion `wr_delta` by tier:
 | T9 | +0.226 | +0.183 | +0.153 |
 | T10 | +0.163 | +0.138 | +0.118 |
 
-Low tiers underperform their budget, high tiers overperform — exactly what a step-function win-curve produces against a *smooth* Bradley-Terry `expected_wr`. This is largely a measurement artifact of Section 2.1, not pure content imbalance. It compresses as team size grows (averaging) but persists. Practical consequence: **cross-tier `wr_delta` cannot be read as kit quality** — a `--tier-stratified` sweep is required for that.
+Low tiers underperform their budget, high tiers overperform — the deterministic engine always forces a winner, and secondary factors compound with power differences. This is expected behaviour for the power-threshold model. It compresses as team size grows (averaging) but persists. Practical consequence: **cross-tier `wr_delta` cannot be read as kit quality** — a `--tier-stratified` sweep is required for that.
 
 ### 2.4 Fights are decisive even at parity
 
@@ -259,8 +259,8 @@ Raw team-A win rate runs slightly >0.5 in team stages (2v2 ~0.528). But at stric
 ### 8.3 Timeouts are blind
 `--max-ticks 1_000_000` means sudden death never fired; `timeout_rate = 0` everywhere. Stall behavior (e.g. bruiser/warrior fights that can't close — Section 3.1) is invisible. Re-run at engine-default `MAX_TICKS` to surface `TO%`.
 
-### 8.4 `beta` (Bradley-Terry) is tier-dominated
-Beta spans Grand Marshal 176.1 → Powder Sapper 1.0 (~176×). Because high-tier pieces win ~100% vs low tier (the cliff), BT inflates their strength super-linearly. Beta ranks pieces correctly but its *magnitudes* are a curve artifact; prefer within-tier comparisons.
+### 8.4 Historical note: Bradley-Terry removed
+The original analysis included Bradley-Terry β values which spanned 176× across tiers. This was a modelling error — the engine is deterministic, not probabilistic, so BT's logistic assumption was incorrect. The expected win-rate model now uses a deterministic power threshold (step function). Historical β values in this report are superseded; prefer `wr_delta` for balance reads.
 
 ### 8.5 What is and isn't measurable here
 - **Measurable & trustworthy:** aggregate balance, role/tier *direction*, the win-curve, `ΣP` distribution effect, gross outliers, the Powder Sapper bug.
