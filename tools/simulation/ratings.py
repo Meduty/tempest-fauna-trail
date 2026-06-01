@@ -1,16 +1,15 @@
 """Power-rating derivation from MatchupResult sets (T.25).
 
-Two complementary metrics:
+Metrics:
 
     binary_win_rate  — per-piece wins / games, attributing every piece on the
                        winning team a 1 and on the losing team a 0 (draws =
                        0.5 each). Cheap, biased by opponent field.
 
-    bradley_terry    — latent strength β_i ≥ 0 such that
-                       P(i beats j) = β_i / (β_i + β_j). Iterative MLE update
-                       converges in ~30 iterations. Normalised so the
-                       weakest piece has β = 1.0; output is directly
-                       comparable across roster + against power(T, L).
+    expected_winrate — deterministic power-threshold model. The engine is
+                       deterministic: higher total power wins 100%, lower
+                       loses 100%, equal power scores 0.5 (secondary factors
+                       average out across many matchups).
 
 Attribution rule (binary, per amendment T.25):
     Every piece on the winning team scores 1 win vs every piece on the
@@ -18,43 +17,12 @@ Attribution rule (binary, per amendment T.25):
 """
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 from src.game.models import CombatOutcome
 from src.game.scaling import power
 
 from tools.simulation.matchup import MatchupResult, get_piece
-
-
-# ---------------------------------------------------------------------------
-# Attribution
-# ---------------------------------------------------------------------------
-
-
-def _pairwise_records(
-    results: list[MatchupResult],
-) -> tuple[dict[tuple[str, str], float], dict[tuple[str, str], int]]:
-    """Aggregate per-piece pairwise wins + game counts.
-
-    Returns (wins, games) where keys are (piece_a, piece_b) with the
-    semantic "piece_a scored against piece_b". Both directions always
-    populated (games[a,b] == games[b,a]).
-    """
-    wins: dict[tuple[str, str], float] = {}
-    games: dict[tuple[str, str], int] = {}
-    for r in results:
-        a_score = 1.0 if r.outcome == CombatOutcome.WIN else (
-            0.5 if r.outcome == CombatOutcome.DRAW else 0.0
-        )
-        b_score = 1.0 - a_score
-        for pa in r.config.piece_ids_a:
-            for pb in r.config.piece_ids_b:
-                wins[(pa, pb)] = wins.get((pa, pb), 0.0) + a_score
-                wins[(pb, pa)] = wins.get((pb, pa), 0.0) + b_score
-                games[(pa, pb)] = games.get((pa, pb), 0) + 1
-                games[(pb, pa)] = games.get((pb, pa), 0) + 1
-    return wins, games
 
 
 # ---------------------------------------------------------------------------
@@ -72,10 +40,11 @@ class PieceStats:
     n_team_draws: int       # team-level draws counted once per battle
     n_team_timeouts: int    # battles the piece was in that timed out
     mean_duration: float    # mean battle duration (ticks)
-    expected_wr: float      # mean team_power_self / (team_power_self + team_power_opp)
-                            # over battles & per-opponent pair count; uses
-                            # power(T,L) and assumes team strength is additive
-                            # (matches T.18 HP*DPS ≈ P budget). See journal.
+    expected_wr: float      # deterministic power-threshold expected win rate:
+                            # wins (1.0) vs lower-power opponents, half-wins
+                            # (0.5) vs equal-power opponents, losses (0.0) vs
+                            # higher-power opponents. Uses team-additive
+                            # power(T,L).
 
 
 def aggregate_stats(results: list[MatchupResult]) -> dict[str, PieceStats]:
@@ -113,14 +82,16 @@ def aggregate_stats(results: list[MatchupResult]) -> dict[str, PieceStats]:
         n_opp_a = len(r.config.piece_ids_a)
         n_opp_b = len(r.config.piece_ids_b)
 
-        # Team-additive expected WR per T.18 power budget (HP*DPS ≈ P, sum
-        # across roster slots). All pieces on the same team share the same
-        # team_wr_expected because binary attribution makes the whole team
-        # win or lose together.
+        # Deterministic power-threshold expected WR: higher total power
+        # wins (1.0), lower loses (0.0), equal scores 0.5.
         team_a_power = sum(_power_of(pid) for pid in r.config.piece_ids_a)
         team_b_power = sum(_power_of(pid) for pid in r.config.piece_ids_b)
-        total_power = team_a_power + team_b_power
-        team_a_exp_wr = (team_a_power / total_power) if total_power > 0 else 0.5
+        if team_a_power > team_b_power:
+            team_a_exp_wr = 1.0
+        elif team_a_power < team_b_power:
+            team_a_exp_wr = 0.0
+        else:
+            team_a_exp_wr = 0.5
         team_b_exp_wr = 1.0 - team_a_exp_wr
 
         for pa in r.config.piece_ids_a:
@@ -189,81 +160,3 @@ def binary_win_rate(results: list[MatchupResult]) -> dict[str, float]:
             wins_total[pb] = wins_total.get(pb, 0.0) + b_score * n_opp_a
             games_total[pb] = games_total.get(pb, 0) + n_opp_a
     return {pid: wins_total[pid] / games_total[pid] for pid in wins_total if games_total[pid] > 0}
-
-
-def bradley_terry(
-    results: list[MatchupResult],
-    *,
-    iterations: int = 100,
-    tol: float = 1e-6,
-    normalise_to_weakest: bool = True,
-) -> dict[str, float]:
-    """Iterative MLE for Bradley-Terry latent strengths.
-
-    Update rule (Hunter 2004 MM algorithm):
-
-        β_i^new = W_i / Σ_{j != i} n_{ij} / (β_i + β_j)
-
-    where W_i is total per-piece wins (binary attribution) and n_{ij} is
-    total per-piece games between i and j across all battles. Converges
-    in ~30 iterations for typical roster sizes.
-
-    Output normalised so the piece with smallest β has β = 1.0; remaining
-    pieces are scaled identically. Pieces with zero games are dropped.
-    """
-    wins, games = _pairwise_records(results)
-    piece_ids = sorted({pid for pair in games for pid in pair})
-    if not piece_ids:
-        return {}
-
-    # Aggregate per-piece W_i.
-    wins_total: dict[str, float] = {pid: 0.0 for pid in piece_ids}
-    for (a, b), w in wins.items():
-        wins_total[a] += w
-
-    # Pieces that have zero wins would collapse to 0 under MM; floor at a
-    # small fraction of typical β so the ratio update stays finite.
-    epsilon = 1e-3
-
-    beta: dict[str, float] = {pid: 1.0 for pid in piece_ids}
-
-    for _ in range(iterations):
-        new_beta: dict[str, float] = {}
-        for i in piece_ids:
-            denom = 0.0
-            for j in piece_ids:
-                if i == j:
-                    continue
-                n_ij = games.get((i, j), 0)
-                if n_ij == 0:
-                    continue
-                denom += n_ij / (beta[i] + beta[j])
-            w_i = wins_total[i]
-            if denom > 0 and w_i > 0:
-                new_beta[i] = w_i / denom
-            else:
-                new_beta[i] = epsilon
-
-        # Normalise to geometric mean = 1 each iteration; prevents drift
-        # and keeps the scale stable between updates.
-        log_sum = sum(math.log(v) for v in new_beta.values() if v > 0)
-        n_nonzero = sum(1 for v in new_beta.values() if v > 0)
-        if n_nonzero > 0:
-            geom_mean = math.exp(log_sum / n_nonzero)
-            if geom_mean > 0:
-                for k in new_beta:
-                    new_beta[k] = new_beta[k] / geom_mean
-
-        max_delta = max(abs(new_beta[pid] - beta[pid]) for pid in piece_ids)
-        beta = new_beta
-        if max_delta < tol:
-            break
-
-    if normalise_to_weakest:
-        nonzero = [v for v in beta.values() if v > 0]
-        if nonzero:
-            min_beta = min(nonzero)
-            for pid in beta:
-                beta[pid] = beta[pid] / min_beta
-
-    return beta

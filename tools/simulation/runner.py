@@ -29,7 +29,7 @@ from pathlib import Path
 from src.game.models import WeatherState
 
 from tools.simulation.matchup import all_piece_ids
-from tools.simulation.ratings import aggregate_stats, binary_win_rate, bradley_terry
+from tools.simulation.ratings import aggregate_stats, binary_win_rate
 from tools.simulation.report import print_summary, write_ratings_csv, write_results_csv
 from tools.simulation.tournament import (
     enumerate_1v1,
@@ -126,13 +126,12 @@ def _run_weather(args: argparse.Namespace, weather: WeatherState) -> None:
     write_results_csv(results_path, results)
 
     wr = binary_win_rate(results)
-    bt = bradley_terry(results)
     stats = aggregate_stats(results)
-    write_ratings_csv(ratings_path, win_rates=wr, bt_ratings=bt, stats=stats)
+    write_ratings_csv(ratings_path, win_rates=wr, stats=stats)
 
     print(f"[runner] wrote {results_path}")
     print(f"[runner] wrote {ratings_path}")
-    print_summary(win_rates=wr, bt_ratings=bt, stats=stats)
+    print_summary(win_rates=wr, stats=stats)
 
 
 def main(argv: list[str] | None = None) -> int:

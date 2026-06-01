@@ -31,8 +31,7 @@ Binary attribution (every piece on winning team scores 1 vs every piece
 on losing team; draws 0.5) trades signal-per-battle for clarity:
 
 - No hidden weighting assumptions.
-- Maps cleanly into Bradley-Terry's MLE update (which expects integer-
-  or fractional-count wins).
+- Maps cleanly into the deterministic power-threshold expected WR model.
 - Higher sample count to converge, but engine determinism means the marginal
   cost of more battles is just CPU time — there's no statistical reason
   to economise on samples.
@@ -82,15 +81,15 @@ metric where deviation reads ≈ 0% on the "average" piece, anchor BT to
 the geometric mean of T1L1 pieces instead. Held off — plan §6.2 is
 explicit about weakest-anchored.
 
-## Bradley-Terry implementation notes
+## Deterministic power-threshold model (replaces Bradley-Terry)
 
-- Per-iteration normalisation must use the **geometric mean** of nonzero
-  β. Initial implementation used arithmetic mean and produced
-  6-digit-large betas when many pieces had zero wins (a few large values
-  dragged the arithmetic mean down close to the floor).
-- Pieces with zero wins floor at `β = 1e-3` rather than literal 0, so
-  the update step stays finite for pieces whose opponents reference
-  them.
+The expected win rate uses a step function: higher team power → 1.0,
+lower → 0.0, equal → 0.5. This correctly reflects the deterministic
+engine where outcomes are forced by power advantage, not random.
+
+The previous Bradley-Terry implementation was removed because it
+modelled win probability as a logistic curve (P(win) = β_A / (β_A + β_B)),
+which is wrong for a deterministic engine.
 
 ## Mirror-match handling
 
@@ -106,12 +105,17 @@ of `BattleResult` directly.
 score, given `power(T, L)` and the actual opponents it faced, assuming
 team strength is additive?"
 
-**Model** — team-additive power budget per T.18:
+**Model** — deterministic power-threshold (step function):
 
 ```
 team_a_power = Σ power(T, L) over team A pieces
 team_b_power = Σ power(T, L) over team B pieces
-team_a_wr_expected = team_a_power / (team_a_power + team_b_power)
+if team_a_power > team_b_power:
+    team_a_wr_expected = 1.0
+elif team_a_power < team_b_power:
+    team_a_wr_expected = 0.0
+else:
+    team_a_wr_expected = 0.5  # equal power → half-win
 ```
 
 All pieces on the same team share the same `team_wr_expected` because

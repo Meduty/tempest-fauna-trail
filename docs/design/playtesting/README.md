@@ -22,7 +22,7 @@ catches up.
 ## Relationship to other tasks
 
 - **T.25 — power simulation** (`tools/simulation/`, planned) covers batch
-  matchup sweeps and Bradley-Terry ratings. The playtest tools here are
+  matchup sweeps and deterministic power-threshold win-rate analysis. The playtest tools here are
   interactive / one-shot / qualitative; they sit beside T.25, not on top.
 - **T.12 — combat view** is the eventual UI consumer of the same
   `BattleResult.events` the playtest CLIs render to text. Layer 3 of this

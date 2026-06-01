@@ -78,7 +78,7 @@ src/
 └── viz/                    # Stub (__init__.py only)
 tools/
 ├── playtest/               # Dev CLI: sim_fight, sim_node, sim_run, inspect, inspect_node (T.27)
-└── simulation/             # Power sim — matchup sweeps + Bradley-Terry ratings (T.25)
+└── simulation/             # Power sim — matchup sweeps + deterministic win-rate analysis (T.25)
 tests/                      # Mirrors src/ + tools/ structure
 docs/                       # Design + journal (see Documentation Map)
 ```
