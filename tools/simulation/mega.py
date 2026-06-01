@@ -308,14 +308,14 @@ def run_stage(
     label = f"{stage.name} @ {stage.weather.value}"
     if pool is None:
         results: list[MatchupResult] = []
-        for cfg in tqdm(stage.configs, desc=label, total=n, unit="fight"):
+        for cfg in tqdm(stage.configs, desc=label, total=n, unit="fight", smoothing=0.05):
             results.append(run_matchup(cfg))
         return results
 
     # Submit all configs and stream results back as workers finish.
     results = []
     futures = {pool.submit(run_matchup, cfg): cfg for cfg in stage.configs}
-    for fut in tqdm(as_completed(futures), desc=label, total=n, unit="fight"):
+    for fut in tqdm(as_completed(futures), desc=label, total=n, unit="fight", smoothing=0.05):
         results.append(fut.result())
     return results
 
