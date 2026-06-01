@@ -1,0 +1,361 @@
+"piece_id","name","affinity","role","tier","stage","wr_range"
+"champ_aerion","Aerion, the Skybreaker","thunder","hybrid",10,"2v2",0.0895
+"champ_voltmane_jackal","Voltmane Jackal","thunder","hybrid",7,"1v1",0.0882999999999999
+"champ_wraithorn_stag","Wraithorn Stag","mist","warrior",6,"1v1",0.0882000000000001
+"enemy_thunder_bull","Thunder Bull","thunder","warrior",7,"1v1",0.0882000000000001
+"champ_voltscale_mamba","Voltscale Mamba","thunder","warrior",3,"1v1",0.084
+"champ_aerion","Aerion, the Skybreaker","thunder","hybrid",10,"1v1",0.0798
+"enemy_shroud_killer","Shroud-Killer","mist","warrior",7,"1v1",0.0757000000000001
+"enemy_caged_storm_drake","Caged Storm-Drake","thunder","hybrid",9,"2v2",0.0756
+"enemy_caged_storm_drake","Caged Storm-Drake","thunder","hybrid",9,"3v3",0.0740999999999999
+"champ_borealis","Borealis, the Pale Aurora","snow","hybrid",10,"2v2",0.0717
+"champ_duskstep_marten","Duskstep Marten","cloudy","assassin",5,"1v1",0.0714
+"champ_aerion","Aerion, the Skybreaker","thunder","hybrid",10,"3v3",0.0709
+"enemy_frost_sovereign","Frost Sovereign","snow","hybrid",10,"1v1",0.0673
+"champ_boulderhide_skink","Boulderhide Skink","cloudy","marksman",3,"1v1",0.0673
+"enemy_avalanche_engine","Avalanche Engine","snow","marksman",5,"1v1",0.0671999999999999
+"enemy_maw_of_the_drowned","Maw of the Drowned","rain","hybrid",9,"1v1",0.0671999999999999
+"champ_borealis","Borealis, the Pale Aurora","snow","hybrid",10,"3v3",0.0665
+"enemy_storm_tyrant","Storm Tyrant","thunder","hybrid",10,"3v3",0.0664
+"champ_iceclaw_lynx","Iceclaw Lynx","snow","assassin",6,"2v2",0.0656
+"champ_voltmane_jackal","Voltmane Jackal","thunder","hybrid",7,"2v2",0.0643
+"enemy_riven_frost_wyrm","Riven Frost-Wyrm","snow","hybrid",9,"3v3",0.0638
+"champ_eclipse_jaguar","Eclipse Jaguar","cloudy","hybrid",7,"1v1",0.0631
+"enemy_slag_sentinel","Slag Sentinel","cloudy","warrior",4,"1v1",0.0631
+"enemy_caged_storm_drake","Caged Storm-Drake","thunder","hybrid",9,"1v1",0.0630000000000001
+"champ_thunderhide_bison","Thunderhide Bison","thunder","warrior",5,"1v1",0.0629999999999999
+"enemy_storm_tyrant","Storm Tyrant","thunder","hybrid",10,"2v2",0.0629999999999999
+"enemy_riven_frost_wyrm","Riven Frost-Wyrm","snow","hybrid",9,"2v2",0.0621
+"enemy_veil_lord","Veil Lord","mist","hybrid",10,"2v2",0.0603999999999999
+"champ_iceclaw_lynx","Iceclaw Lynx","snow","assassin",6,"1v1",0.0589000000000001
+"enemy_quarry_crawler","Quarry Crawler","cloudy","warrior",3,"1v1",0.0589
+"enemy_riven_frost_wyrm","Riven Frost-Wyrm","snow","hybrid",9,"1v1",0.0588
+"champ_umbra","Umbra, the Mountain's Shadow","cloudy","hybrid",10,"1v1",0.0588
+"enemy_thunder_bull","Thunder Bull","thunder","warrior",7,"3v3",0.0585
+"enemy_frost_sovereign","Frost Sovereign","snow","hybrid",10,"2v2",0.0562
+"champ_hollow_elk","Hollow Elk","mist","assassin",4,"2v2",0.0561
+"champ_cliffeyrie_eagle","Cliffeyrie Eagle","cloudy","marksman",9,"3v3",0.0556
+"champ_voltmane_jackal","Voltmane Jackal","thunder","hybrid",7,"3v3",0.0549
+"enemy_sundered_lord","Sundered Lord","mist","hybrid",9,"2v2",0.0547000000000001
+"champ_granite_gorilla","Granite Gorilla","cloudy","assassin",6,"1v1",0.0546
+"champ_cliffeyrie_eagle","Cliffeyrie Eagle","cloudy","marksman",9,"1v1",0.0546
+"champ_cliffeyrie_eagle","Cliffeyrie Eagle","cloudy","marksman",9,"2v2",0.0538
+"enemy_voltaic_diviner","Voltaic Diviner","thunder","mage",5,"3v3",0.0517
+"champ_spectral_heron","Spectral Heron","mist","mage",9,"2v2",0.0511999999999999
+"enemy_stone_warden","Stone Warden","cloudy","bruiser",10,"1v1",0.0505000000000001
+"champ_torrent_heron","Torrent Heron","rain","marksman",3,"1v1",0.0505
+"enemy_capture_rig_wolf","Capture-Rig Wolf","thunder","warrior",3,"1v1",0.0505
+"champ_riptide_caiman","Riptide Caiman","rain","warrior",9,"1v1",0.0505
+"enemy_cold_iron_yeti","Cold-Iron Yeti","snow","warrior",4,"1v1",0.0504000000000001
+"champ_frostplate_tortoise","Frostplate Tortoise","snow","warrior",5,"1v1",0.0504
+"champ_veilfang_wolf","Veilfang Wolf","mist","assassin",8,"1v1",0.0504
+"champ_mournhollow","Mournhollow, the Pale Stag","mist","hybrid",10,"1v1",0.0504
+"champ_borealis","Borealis, the Pale Aurora","snow","hybrid",10,"1v1",0.0504
+"enemy_storm_tyrant","Storm Tyrant","thunder","hybrid",10,"1v1",0.0504
+"champ_granite_gorilla","Granite Gorilla","cloudy","assassin",6,"2v2",0.0467
+"champ_umbra","Umbra, the Mountain's Shadow","cloudy","hybrid",10,"2v2",0.0466
+"champ_glade_heron","Glade Heron","rain","mage",8,"1v1",0.0463
+"champ_mirewarden_toad","Mirewarden Toad","rain","assassin",7,"1v1",0.0462
+"enemy_reaver_of_the_reach","Reaver of the Reach","cloudy","hybrid",7,"1v1",0.0462
+"champ_grovekeeper_tapir","Grovekeeper Tapir","rain","bruiser",4,"1v1",0.0462
+"enemy_avalanche_engine","Avalanche Engine","snow","marksman",5,"2v2",0.0458
+"champ_marshghast_boar","Marshghast Boar","mist","bruiser",7,"2v2",0.0439000000000001
+"champ_storm_eagle","Storm Eagle","thunder","mage",9,"2v2",0.0437000000000001
+"enemy_shroud_killer","Shroud-Killer","mist","warrior",7,"2v2",0.0434
+"champ_thunderclap_gorilla","Thunderclap Gorilla","thunder","warrior",8,"3v3",0.0425
+"champ_mournhollow","Mournhollow, the Pale Stag","mist","hybrid",10,"2v2",0.0423
+"enemy_dredge_hulk","Dredge-Hulk","rain","bruiser",7,"1v1",0.0421
+"enemy_voltaic_diviner","Voltaic Diviner","thunder","mage",5,"1v1",0.042
+"enemy_brineblight_berserker","Brineblight Berserker","rain","warrior",5,"1v1",0.042
+"enemy_drained_stalker","Drained Stalker","mist","mage",4,"1v1",0.042
+"enemy_stormhawk","Stormhawk","thunder","mage",4,"1v1",0.042
+"enemy_quarried_behemoth","Quarried Behemoth","cloudy","bruiser",9,"2v2",0.0417
+"champ_boulderhide_skink","Boulderhide Skink","cloudy","marksman",3,"3v3",0.0412
+"champ_eclipse_jaguar","Eclipse Jaguar","cloudy","hybrid",7,"2v2",0.041
+"enemy_thunder_bull","Thunder Bull","thunder","warrior",7,"2v2",0.0407000000000001
+"champ_boulderhide_skink","Boulderhide Skink","cloudy","marksman",3,"2v2",0.0405
+"champ_permafrost_walrus","Permafrost Walrus","snow","marksman",3,"2v2",0.0405
+"enemy_maw_of_the_drowned","Maw of the Drowned","rain","hybrid",9,"2v2",0.04
+"enemy_frost_sovereign","Frost Sovereign","snow","hybrid",10,"3v3",0.0397
+"enemy_shroud_killer","Shroud-Killer","mist","warrior",7,"3v3",0.0395000000000001
+"champ_nerei","Nerei, the Floodmother","rain","hybrid",10,"2v2",0.0393
+"enemy_reaver_of_the_reach","Reaver of the Reach","cloudy","hybrid",7,"2v2",0.0391
+"enemy_stormhawk","Stormhawk","thunder","mage",4,"3v3",0.039
+"champ_glade_heron","Glade Heron","rain","mage",8,"3v3",0.0389
+"enemy_veil_lord","Veil Lord","mist","hybrid",10,"3v3",0.0389
+"champ_marshghast_boar","Marshghast Boar","mist","bruiser",7,"1v1",0.0378999999999999
+"enemy_quarried_behemoth","Quarried Behemoth","cloudy","bruiser",9,"1v1",0.0378000000000001
+"champ_reedbank_otter","Reedbank Otter","rain","warrior",2,"1v1",0.0378
+"enemy_caged_banshee","Caged Banshee","mist","mage",5,"1v1",0.0378
+"champ_tempest_eel","Tempest Eel","thunder","mage",6,"1v1",0.0378
+"champ_grovekeeper_tapir","Grovekeeper Tapir","rain","bruiser",4,"2v2",0.0378
+"champ_mirage_caracal","Mirage Caracal","clear","assassin",8,"1v1",0.0377999999999999
+"champ_storm_eagle","Storm Eagle","thunder","mage",9,"1v1",0.0377999999999999
+"enemy_quarry_crawler","Quarry Crawler","cloudy","warrior",3,"2v2",0.0375
+"champ_mournhollow","Mournhollow, the Pale Stag","mist","hybrid",10,"3v3",0.0372
+"enemy_brineblight_berserker","Brineblight Berserker","rain","warrior",5,"2v2",0.0372
+"enemy_avalanche_engine","Avalanche Engine","snow","marksman",5,"3v3",0.0368000000000001
+"champ_riptide_caiman","Riptide Caiman","rain","warrior",9,"2v2",0.0354000000000001
+"champ_nerei","Nerei, the Floodmother","rain","hybrid",10,"3v3",0.035
+"champ_glacierback_mammoth","Glacierback Mammoth","snow","bruiser",7,"2v2",0.0349
+"champ_wraithorn_stag","Wraithorn Stag","mist","warrior",6,"2v2",0.0346
+"champ_marshghast_boar","Marshghast Boar","mist","bruiser",7,"3v3",0.0344
+"enemy_cannoneer","Cannoneer","clear","marksman",8,"3v3",0.0344
+"champ_tempest_eel","Tempest Eel","thunder","mage",6,"2v2",0.0343999999999999
+"champ_torrent_heron","Torrent Heron","rain","marksman",3,"2v2",0.034
+"enemy_iron_collared_hound","Iron-Collared Hound","snow","warrior",3,"1v1",0.0337
+"enemy_lord_commander","Lord Commander","clear","warrior",7,"1v1",0.0336000000000001
+"champ_spectral_heron","Spectral Heron","mist","mage",9,"1v1",0.0336000000000001
+"champ_permafrost_walrus","Permafrost Walrus","snow","marksman",3,"1v1",0.0336
+"enemy_battlemage","Battlemage","clear","mage",5,"1v1",0.0336
+"champ_pebbleback_pangolin","Pebbleback Pangolin","cloudy","warrior",1,"1v1",0.0336
+"enemy_crossbow_levy","Crossbow Levy","clear","marksman",2,"1v1",0.0336
+"enemy_riflemaster","Riflemaster","clear","marksman",6,"1v1",0.0336
+"champ_nightglass_mantis","Nightglass Mantis","cloudy","assassin",8,"1v1",0.0336
+"champ_nerei","Nerei, the Floodmother","rain","hybrid",10,"1v1",0.0336
+"enemy_quarry_crawler","Quarry Crawler","cloudy","warrior",3,"3v3",0.0334
+"champ_tempest_eel","Tempest Eel","thunder","mage",6,"3v3",0.033
+"champ_mirewarden_toad","Mirewarden Toad","rain","assassin",7,"2v2",0.0325
+"champ_iceclaw_lynx","Iceclaw Lynx","snow","assassin",6,"3v3",0.0324
+"champ_glade_heron","Glade Heron","rain","mage",8,"2v2",0.0322
+"enemy_capture_rig_wolf","Capture-Rig Wolf","thunder","warrior",3,"2v2",0.0321
+"champ_permafrost_walrus","Permafrost Walrus","snow","marksman",3,"3v3",0.0321
+"champ_thunderclap_gorilla","Thunderclap Gorilla","thunder","warrior",8,"2v2",0.0318000000000001
+"champ_frostfang_wolverine","Frostfang Wolverine","snow","warrior",8,"2v2",0.0317
+"enemy_quarried_behemoth","Quarried Behemoth","cloudy","bruiser",9,"3v3",0.0313
+"enemy_slag_sentinel","Slag Sentinel","cloudy","warrior",4,"2v2",0.0308
+"enemy_cold_iron_yeti","Cold-Iron Yeti","snow","warrior",4,"2v2",0.0306
+"enemy_maw_of_the_drowned","Maw of the Drowned","rain","hybrid",9,"3v3",0.0301
+"champ_thunderhide_bison","Thunderhide Bison","thunder","warrior",5,"2v2",0.03
+"champ_goldcrest_lark","Goldcrest Lark","clear","mage",4,"3v3",0.0298
+"enemy_sundered_lord","Sundered Lord","mist","hybrid",9,"3v3",0.0296000000000001
+"champ_geode_beetle","Geode Beetle","cloudy","mage",4,"1v1",0.0295
+"champ_coral_colossus","Coral Colossus","rain","warrior",5,"1v1",0.0294000000000001
+"champ_snowpelt_cub","Snowpelt Cub","snow","warrior",1,"1v1",0.0294
+"champ_thunderhoof_colt","Thunderhoof Colt","thunder","warrior",2,"1v1",0.0294
+"champ_aegis_tortoise","Aegis Tortoise","clear","warrior",5,"1v1",0.0294
+"enemy_glacier_goliath","Glacier Goliath","snow","warrior",7,"1v1",0.0294
+"champ_thunderclap_gorilla","Thunderclap Gorilla","thunder","warrior",8,"1v1",0.0294
+"champ_sunspear_falcon","Sunspear Falcon","clear","marksman",9,"1v1",0.0294
+"champ_aurion","Aurion, the First Dawn","clear","hybrid",10,"1v1",0.0294
+"champ_eclipse_jaguar","Eclipse Jaguar","cloudy","hybrid",7,"3v3",0.0291
+"champ_riptide_caiman","Riptide Caiman","rain","warrior",9,"3v3",0.0291
+"enemy_flood_tyrant","Flood Tyrant","rain","hybrid",10,"3v3",0.028
+"champ_coral_colossus","Coral Colossus","rain","warrior",5,"3v3",0.0277999999999999
+"champ_umbra","Umbra, the Mountain's Shadow","cloudy","hybrid",10,"3v3",0.0276000000000001
+"champ_coral_colossus","Coral Colossus","rain","warrior",5,"2v2",0.0275
+"champ_wraithorn_stag","Wraithorn Stag","mist","warrior",6,"3v3",0.0274
+"enemy_steam_knight","Steam Knight","clear","warrior",6,"2v2",0.0269
+"champ_veilfang_wolf","Veilfang Wolf","mist","assassin",8,"2v2",0.0269
+"enemy_riflemaster","Riflemaster","clear","marksman",6,"2v2",0.0268
+"enemy_capture_rig_wolf","Capture-Rig Wolf","thunder","warrior",3,"3v3",0.0265
+"champ_granite_gorilla","Granite Gorilla","cloudy","assassin",6,"3v3",0.026
+"champ_frostplate_tortoise","Frostplate Tortoise","snow","warrior",5,"2v2",0.0257
+"enemy_shaftmaw","Shaftmaw","cloudy","assassin",5,"1v1",0.0253
+"enemy_flood_tyrant","Flood Tyrant","rain","hybrid",10,"1v1",0.0253
+"enemy_cold_iron_yeti","Cold-Iron Yeti","snow","warrior",4,"3v3",0.0253
+"champ_phantom_lynx","Phantom Lynx","mist","assassin",3,"1v1",0.0252
+"champ_sunmane_lion","Sunmane Lion","clear","warrior",6,"1v1",0.0252
+"enemy_cannoneer","Cannoneer","clear","marksman",8,"1v1",0.0252
+"champ_frostfang_wolverine","Frostfang Wolverine","snow","warrior",8,"1v1",0.0252
+"enemy_archmagus_imperator","Archmagus Imperator","clear","hybrid",9,"1v1",0.0252
+"champ_frostquill_porcupine","Frostquill Porcupine","snow","marksman",9,"1v1",0.0252
+"enemy_blight_lurker","Blight Lurker","rain","warrior",3,"1v1",0.0251999999999999
+"enemy_reaver_of_the_reach","Reaver of the Reach","cloudy","hybrid",7,"3v3",0.0251
+"champ_glacierback_mammoth","Glacierback Mammoth","snow","bruiser",7,"3v3",0.025
+"champ_reedbank_otter","Reedbank Otter","rain","warrior",2,"2v2",0.0249
+"enemy_dredge_hulk","Dredge-Hulk","rain","bruiser",7,"2v2",0.0248
+"enemy_stone_warden","Stone Warden","cloudy","bruiser",10,"3v3",0.0246
+"champ_sparkfly","Sparkfly","thunder","mage",1,"2v2",0.0245
+"champ_sunmane_lion","Sunmane Lion","clear","warrior",6,"3v3",0.0245
+"enemy_blight_lurker","Blight Lurker","rain","warrior",3,"3v3",0.0244
+"champ_goldhide_rhino","Goldhide Rhino","clear","bruiser",7,"3v3",0.0244
+"champ_sunspear_falcon","Sunspear Falcon","clear","marksman",9,"3v3",0.024
+"enemy_stone_warden","Stone Warden","cloudy","bruiser",10,"2v2",0.0239
+"enemy_iron_maiden","Iron Maiden","clear","bruiser",7,"2v2",0.0237999999999999
+"enemy_glacier_goliath","Glacier Goliath","snow","warrior",7,"2v2",0.0236000000000001
+"enemy_conscript","Conscript","clear","warrior",1,"3v3",0.0228
+"champ_nightglass_mantis","Nightglass Mantis","cloudy","assassin",8,"3v3",0.0225000000000001
+"enemy_blight_lurker","Blight Lurker","rain","warrior",3,"2v2",0.0224
+"champ_frostfang_wolverine","Frostfang Wolverine","snow","warrior",8,"3v3",0.0224
+"champ_hoarfrost_owl","Hoarfrost Owl","snow","mage",4,"2v2",0.0223
+"champ_nightglass_mantis","Nightglass Mantis","cloudy","assassin",8,"2v2",0.0214000000000001
+"enemy_arcanist","Arcanist","clear","mage",9,"2v2",0.0214
+"champ_pebbleback_pangolin","Pebbleback Pangolin","cloudy","warrior",1,"2v2",0.0213
+"enemy_brineblight_berserker","Brineblight Berserker","rain","warrior",5,"3v3",0.0213
+"enemy_hierarch","Hierarch","clear","mage",8,"3v3",0.0212000000000001
+"enemy_caged_banshee","Caged Banshee","mist","mage",5,"2v2",0.0212
+"enemy_crossbow_levy","Crossbow Levy","clear","marksman",2,"3v3",0.0212
+"enemy_veil_lord","Veil Lord","mist","hybrid",10,"1v1",0.0211
+"champ_grovekeeper_tapir","Grovekeeper Tapir","rain","bruiser",4,"3v3",0.0211
+"champ_frostplate_tortoise","Frostplate Tortoise","snow","warrior",5,"3v3",0.0211
+"enemy_iron_maiden","Iron Maiden","clear","bruiser",7,"1v1",0.021
+"enemy_spymaster","Spymaster","clear","assassin",8,"1v1",0.021
+"champ_hollow_elk","Hollow Elk","mist","assassin",4,"1v1",0.021
+"enemy_arcanist","Arcanist","clear","mage",9,"1v1",0.0209999999999999
+"champ_thunderhoof_colt","Thunderhoof Colt","thunder","warrior",2,"3v3",0.0203
+"champ_storm_eagle","Storm Eagle","thunder","mage",9,"3v3",0.02
+"enemy_powder_sapper","Powder Sapper","clear","marksman",2,"3v3",0.0198
+"champ_snowpelt_cub","Snowpelt Cub","snow","warrior",1,"2v2",0.0196
+"champ_reedbank_otter","Reedbank Otter","rain","warrior",2,"3v3",0.0195
+"champ_phantom_lynx","Phantom Lynx","mist","assassin",3,"3v3",0.0194
+"enemy_standard_bearer","Standard Bearer","clear","mage",3,"2v2",0.0188
+"champ_pebbleback_pangolin","Pebbleback Pangolin","cloudy","warrior",1,"3v3",0.0188
+"enemy_powder_sapper","Powder Sapper","clear","marksman",2,"2v2",0.0184
+"champ_wintermoth","Wintermoth","snow","mage",2,"3v3",0.0184
+"enemy_stormhawk","Stormhawk","thunder","mage",4,"2v2",0.0183
+"champ_duskstep_marten","Duskstep Marten","cloudy","assassin",5,"2v2",0.0183
+"champ_duskstep_marten","Duskstep Marten","cloudy","assassin",5,"3v3",0.0182
+"enemy_company_captain","Company Captain","clear","mage",5,"2v2",0.0182
+"enemy_glacier_goliath","Glacier Goliath","snow","warrior",7,"3v3",0.0181
+"champ_thunderhoof_colt","Thunderhoof Colt","thunder","warrior",2,"2v2",0.018
+"champ_mirage_caracal","Mirage Caracal","clear","assassin",8,"3v3",0.018
+"champ_spectral_heron","Spectral Heron","mist","mage",9,"3v3",0.018
+"champ_veldt_pronghorn","Veldt Pronghorn","clear","warrior",2,"3v3",0.0179
+"champ_phantom_lynx","Phantom Lynx","mist","assassin",3,"2v2",0.0179
+"enemy_company_captain","Company Captain","clear","mage",5,"3v3",0.0179
+"enemy_shaftmaw","Shaftmaw","cloudy","assassin",5,"3v3",0.0178
+"champ_frostquill_porcupine","Frostquill Porcupine","snow","marksman",9,"3v3",0.0176000000000001
+"enemy_arcanist","Arcanist","clear","mage",9,"3v3",0.0175999999999999
+"champ_springfrog","Springfrog","rain","mage",1,"2v2",0.0174
+"champ_geode_beetle","Geode Beetle","cloudy","mage",4,"2v2",0.0174
+"enemy_standard_bearer","Standard Bearer","clear","mage",3,"3v3",0.0173
+"enemy_flood_tyrant","Flood Tyrant","rain","hybrid",10,"2v2",0.0172
+"champ_aurion","Aurion, the First Dawn","clear","hybrid",10,"3v3",0.0171
+"enemy_hexblade_officer","Hexblade Officer","clear","assassin",6,"3v3",0.0169
+"enemy_grand_marshal","Grand Marshal","clear","warrior",10,"3v3",0.0168999999999999
+"champ_veldt_pronghorn","Veldt Pronghorn","clear","warrior",2,"1v1",0.0168
+"enemy_gunslinger","Gunslinger","clear","marksman",5,"1v1",0.0168
+"enemy_hexblade_officer","Hexblade Officer","clear","assassin",6,"1v1",0.0168
+"enemy_sundered_lord","Sundered Lord","mist","hybrid",9,"1v1",0.0168
+"enemy_conscript","Conscript","clear","warrior",1,"1v1",0.0168
+"champ_lostlight_wisp","Lostlight Wisp","mist","mage",1,"1v1",0.0168
+"champ_springfrog","Springfrog","rain","mage",1,"1v1",0.0168
+"enemy_company_guard","Company Guard","clear","bruiser",4,"1v1",0.0168
+"enemy_heavy_knight","Heavy Knight","clear","warrior",4,"1v1",0.0168
+"champ_fogveil_moth","Fogveil Moth","mist","mage",5,"1v1",0.0168
+"enemy_steam_knight","Steam Knight","clear","warrior",6,"1v1",0.0167999999999999
+"champ_goldhide_rhino","Goldhide Rhino","clear","bruiser",7,"1v1",0.0167999999999999
+"champ_glacierback_mammoth","Glacierback Mammoth","snow","bruiser",7,"1v1",0.0167999999999999
+"enemy_gunslinger","Gunslinger","clear","marksman",5,"3v3",0.0167999999999999
+"champ_veilfang_wolf","Veilfang Wolf","mist","assassin",8,"3v3",0.0166000000000001
+"champ_frostquill_porcupine","Frostquill Porcupine","snow","marksman",9,"2v2",0.0165999999999999
+"enemy_hierarch","Hierarch","clear","mage",8,"2v2",0.0163
+"champ_voltscale_mamba","Voltscale Mamba","thunder","warrior",3,"2v2",0.0162
+"champ_springfrog","Springfrog","rain","mage",1,"3v3",0.0162
+"champ_geode_beetle","Geode Beetle","cloudy","mage",4,"3v3",0.0161
+"enemy_voltaic_diviner","Voltaic Diviner","thunder","mage",5,"2v2",0.016
+"champ_torrent_heron","Torrent Heron","rain","marksman",3,"3v3",0.0158
+"enemy_iron_collared_hound","Iron-Collared Hound","snow","warrior",3,"2v2",0.0157
+"champ_marsh_thrush","Marsh Thrush","rain","mage",6,"2v2",0.0157
+"champ_dawnwisp","Dawnwisp","clear","mage",1,"3v3",0.0157
+"champ_aegis_tortoise","Aegis Tortoise","clear","warrior",5,"2v2",0.0156
+"champ_aurion","Aurion, the First Dawn","clear","hybrid",10,"2v2",0.0151
+"enemy_dredge_hulk","Dredge-Hulk","rain","bruiser",7,"3v3",0.0150999999999999
+"enemy_hexblade_officer","Hexblade Officer","clear","assassin",6,"2v2",0.015
+"enemy_iron_collared_hound","Iron-Collared Hound","snow","warrior",3,"3v3",0.015
+"enemy_drowned_siren","Drowned Siren","rain","mage",4,"3v3",0.0148
+"champ_sunspear_falcon","Sunspear Falcon","clear","marksman",9,"2v2",0.0145000000000001
+"enemy_riflemaster","Riflemaster","clear","marksman",6,"3v3",0.0145000000000001
+"enemy_spymaster","Spymaster","clear","assassin",8,"2v2",0.0144000000000001
+"champ_lostlight_wisp","Lostlight Wisp","mist","mage",1,"3v3",0.0144
+"enemy_signal_drummer","Signal Drummer","clear","mage",1,"3v3",0.0143
+"champ_aegis_tortoise","Aegis Tortoise","clear","warrior",5,"3v3",0.0143
+"champ_goldhide_rhino","Goldhide Rhino","clear","bruiser",7,"2v2",0.0142
+"enemy_inquisitor","Inquisitor","clear","hybrid",6,"3v3",0.0141
+"champ_mirewarden_toad","Mirewarden Toad","rain","assassin",7,"3v3",0.0139
+"enemy_steam_knight","Steam Knight","clear","warrior",6,"3v3",0.0138999999999999
+"enemy_picket","Picket","clear","marksman",1,"3v3",0.0136
+"enemy_battlemage","Battlemage","clear","mage",5,"3v3",0.0136
+"enemy_field_medic","Field Medic","clear","mage",2,"3v3",0.0135
+"enemy_drained_stalker","Drained Stalker","mist","mage",4,"2v2",0.0134
+"enemy_shaftmaw","Shaftmaw","cloudy","assassin",5,"2v2",0.0134
+"enemy_spymaster","Spymaster","clear","assassin",8,"3v3",0.0131
+"champ_veldt_pronghorn","Veldt Pronghorn","clear","warrior",2,"2v2",0.0128
+"champ_hoarfrost_owl","Hoarfrost Owl","snow","mage",4,"3v3",0.0128
+"champ_dawnwisp","Dawnwisp","clear","mage",1,"1v1",0.0126
+"champ_dusk_bat","Dusk Bat","cloudy","mage",2,"1v1",0.0126
+"champ_wintermoth","Wintermoth","snow","mage",2,"1v1",0.0126
+"enemy_drowned_siren","Drowned Siren","rain","mage",4,"1v1",0.0126
+"champ_hoarfrost_owl","Hoarfrost Owl","snow","mage",4,"1v1",0.0126
+"champ_coppercrest_stork","Coppercrest Stork","thunder","mage",4,"1v1",0.0126
+"enemy_inquisitor","Inquisitor","clear","hybrid",6,"1v1",0.0126
+"champ_goldcrest_lark","Goldcrest Lark","clear","mage",4,"2v2",0.0126
+"enemy_heavy_knight","Heavy Knight","clear","warrior",4,"2v2",0.0123
+"champ_coppercrest_stork","Coppercrest Stork","thunder","mage",4,"3v3",0.0122
+"enemy_iron_maiden","Iron Maiden","clear","bruiser",7,"3v3",0.0122
+"champ_hollow_elk","Hollow Elk","mist","assassin",4,"3v3",0.0121
+"champ_mirage_caracal","Mirage Caracal","clear","assassin",8,"2v2",0.012
+"champ_thunderhide_bison","Thunderhide Bison","thunder","warrior",5,"3v3",0.0118
+"enemy_cannoneer","Cannoneer","clear","marksman",8,"2v2",0.0117
+"enemy_drowned_siren","Drowned Siren","rain","mage",4,"2v2",0.0116
+"champ_dusk_bat","Dusk Bat","cloudy","mage",2,"2v2",0.0113
+"enemy_archmagus_imperator","Archmagus Imperator","clear","hybrid",9,"2v2",0.0113
+"champ_ember_salamander","Ember Salamander","clear","mage",3,"2v2",0.0109
+"champ_marsh_thrush","Marsh Thrush","rain","mage",6,"3v3",0.0109
+"enemy_steam_engineer","Steam Engineer","clear","mage",4,"3v3",0.0108
+"enemy_stretcher_hand","Stretcher-Hand","clear","mage",1,"2v2",0.0107
+"enemy_lord_commander","Lord Commander","clear","warrior",7,"3v3",0.0105
+"enemy_gunslinger","Gunslinger","clear","marksman",5,"2v2",0.0103
+"champ_voltscale_mamba","Voltscale Mamba","thunder","warrior",3,"3v3",0.0103
+"champ_will_o_fawn","Will-o-Fawn","mist","mage",2,"2v2",0.0102
+"champ_sparkfly","Sparkfly","thunder","mage",1,"3v3",0.0102
+"enemy_company_guard","Company Guard","clear","bruiser",4,"3v3",0.0102
+"enemy_steam_engineer","Steam Engineer","clear","mage",4,"2v2",0.0101
+"enemy_pikeman","Pikeman","clear","warrior",2,"3v3",0.01
+"enemy_caged_banshee","Caged Banshee","mist","mage",5,"3v3",0.00989999999999996
+"enemy_conscript","Conscript","clear","warrior",1,"2v2",0.00979999999999998
+"enemy_field_chaplain","Field Chaplain","clear","mage",3,"3v3",0.00969999999999999
+"enemy_slag_sentinel","Slag Sentinel","cloudy","warrior",4,"3v3",0.0096
+"champ_fogveil_moth","Fogveil Moth","mist","mage",5,"2v2",0.00930000000000003
+"enemy_company_guard","Company Guard","clear","bruiser",4,"2v2",0.00929999999999997
+"enemy_levyman","Levyman","clear","warrior",1,"2v2",0.00920000000000004
+"champ_will_o_fawn","Will-o-Fawn","mist","mage",2,"3v3",0.00919999999999999
+"enemy_battlemage","Battlemage","clear","mage",5,"2v2",0.0091
+"champ_dusk_bat","Dusk Bat","cloudy","mage",2,"3v3",0.00900000000000001
+"champ_fogveil_moth","Fogveil Moth","mist","mage",5,"3v3",0.00890000000000002
+"enemy_archmagus_imperator","Archmagus Imperator","clear","hybrid",9,"3v3",0.00890000000000002
+"enemy_stretcher_hand","Stretcher-Hand","clear","mage",1,"3v3",0.00879999999999997
+"champ_ember_salamander","Ember Salamander","clear","mage",3,"3v3",0.00870000000000004
+"enemy_levyman","Levyman","clear","warrior",1,"3v3",0.00869999999999999
+"enemy_inquisitor","Inquisitor","clear","hybrid",6,"2v2",0.00850000000000001
+"enemy_company_captain","Company Captain","clear","mage",5,"1v1",0.00849999999999999
+"enemy_sergeant_at_arms","Sergeant-at-Arms","clear","bruiser",3,"1v1",0.00840000000000002
+"champ_ember_salamander","Ember Salamander","clear","mage",3,"1v1",0.00840000000000002
+"champ_sparkfly","Sparkfly","thunder","mage",1,"1v1",0.0084
+"enemy_picket","Picket","clear","marksman",1,"1v1",0.00839999999999999
+"enemy_powder_sapper","Powder Sapper","clear","marksman",2,"1v1",0.00839999999999999
+"enemy_pikeman","Pikeman","clear","warrior",2,"1v1",0.00839999999999999
+"enemy_field_chaplain","Field Chaplain","clear","mage",3,"1v1",0.00839999999999999
+"champ_marsh_thrush","Marsh Thrush","rain","mage",6,"1v1",0.00839999999999999
+"enemy_sergeant_at_arms","Sergeant-at-Arms","clear","bruiser",3,"3v3",0.00829999999999997
+"enemy_crossbow_levy","Crossbow Levy","clear","marksman",2,"2v2",0.00819999999999999
+"champ_lostlight_wisp","Lostlight Wisp","mist","mage",1,"2v2",0.00800000000000001
+"enemy_field_chaplain","Field Chaplain","clear","mage",3,"2v2",0.00789999999999996
+"champ_dawnwisp","Dawnwisp","clear","mage",1,"2v2",0.00750000000000001
+"champ_snowpelt_cub","Snowpelt Cub","snow","warrior",1,"3v3",0.00749999999999995
+"enemy_pikeman","Pikeman","clear","warrior",2,"2v2",0.00730000000000003
+"enemy_lord_commander","Lord Commander","clear","warrior",7,"2v2",0.0071
+"enemy_hollowed_wisp","Hollowed Wisp","mist","assassin",3,"2v2",0.00700000000000001
+"champ_coppercrest_stork","Coppercrest Stork","thunder","mage",4,"2v2",0.00679999999999997
+"enemy_sergeant_at_arms","Sergeant-at-Arms","clear","bruiser",3,"2v2",0.00660000000000005
+"enemy_signal_drummer","Signal Drummer","clear","mage",1,"2v2",0.00660000000000002
+"enemy_heavy_knight","Heavy Knight","clear","warrior",4,"3v3",0.00630000000000003
+"enemy_drained_stalker","Drained Stalker","mist","mage",4,"3v3",0.00619999999999998
+"enemy_hollowed_wisp","Hollowed Wisp","mist","assassin",3,"3v3",0.00600000000000001
+"enemy_field_medic","Field Medic","clear","mage",2,"2v2",0.00549999999999995
+"champ_sunmane_lion","Sunmane Lion","clear","warrior",6,"2v2",0.00429999999999997
+"enemy_grand_marshal","Grand Marshal","clear","warrior",10,"2v2",0.00429999999999997
+"enemy_levyman","Levyman","clear","warrior",1,"1v1",0.00420000000000004
+"enemy_field_medic","Field Medic","clear","mage",2,"1v1",0.00420000000000001
+"enemy_hierarch","Hierarch","clear","mage",8,"1v1",0.00420000000000001
+"enemy_signal_drummer","Signal Drummer","clear","mage",1,"1v1",0.0042
+"enemy_standard_bearer","Standard Bearer","clear","mage",3,"1v1",0.0042
+"champ_goldcrest_lark","Goldcrest Lark","clear","mage",4,"1v1",0.0042
+"enemy_steam_engineer","Steam Engineer","clear","mage",4,"1v1",0.0042
+"enemy_picket","Picket","clear","marksman",1,"2v2",0.00410000000000005
+"champ_wintermoth","Wintermoth","snow","mage",2,"2v2",0.00390000000000001
+"enemy_stretcher_hand","Stretcher-Hand","clear","mage",1,"1v1",0
+"champ_will_o_fawn","Will-o-Fawn","mist","mage",2,"1v1",0
+"enemy_hollowed_wisp","Hollowed Wisp","mist","assassin",3,"1v1",0
+"enemy_grand_marshal","Grand Marshal","clear","warrior",10,"1v1",0
