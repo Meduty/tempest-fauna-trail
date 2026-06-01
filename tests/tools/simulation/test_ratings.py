@@ -84,6 +84,16 @@ def test_aggregate_stats_expected_wr_uses_deterministic_power_threshold():
     assert conscript_exp == 0.0
 
 
+def test_aggregate_stats_expected_wr_equal_power_is_half():
+    """Equal team power -> expected_wr = 0.5 for both sides."""
+    results = [
+        _make_result(("enemy_conscript",), ("enemy_conscript",), CombatOutcome.WIN),
+    ]
+    stats = aggregate_stats(results)
+    # Same piece on both sides: identical power -> 0.5
+    assert stats["enemy_conscript"].expected_wr == 0.5
+
+
 def test_aggregate_stats_team_battle_shares_expected_wr():
     """All pieces in a team share the same team-level expected WR."""
     results = [
