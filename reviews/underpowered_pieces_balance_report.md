@@ -21,14 +21,19 @@ The engine implements **two decoupled weather systems** (`src/game/weather_effec
 
 | System | Name | Mechanism | Sim Coverage |
 |--------|------|-----------|--------------|
-| **A** | **Weather Favor** | Node weather applies multiplicative stat buffs/debuffs at combat init based on piece affinity vs active weather (±10% strong tier, scaled down for medium/weak) | ✅ Fully measured in mega2/3/4 — own-weather advantage = **+0.011 win rate** (nearly inert) |
-| **B** | **Affinity Clash** | Per-hit damage multiplier based on attacker affinity vs defender affinity (1.20× primary predator → 0.80× primary prey) | ⚠️ **Implicitly included** (the combat engine resolves it every hit via `damage_modifier()`), but **not independently measured or isolated** in the simulation reports |
+| **A** | **Weather Favor** | Node weather applies multiplicative stat buffs/debuffs at combat init based on piece affinity vs active weather (±10% strong tier, scaled down for medium/weak) | ✅ Directly measured in mega2/3/4 via own-weather WR — own-weather advantage = **+0.011 win rate** (nearly inert) |
+| **B** | **Affinity Clash** | Per-hit damage multiplier based on attacker affinity vs defender affinity (1.20× primary predator → 0.80× primary prey). **Independent of current weather** — this is a piece-vs-piece matchup system, not a weather-condition system | ⚠️ Active in the combat engine (resolves every hit via `damage_modifier()`), but **not surfaced by the own-weather WR metric** since it is weather-independent. Its signal would appear as unexpected wins against higher-power pieces that have prey-type affinity, i.e. in per-matchup `wr_delta` residuals — **not yet isolated in simulation reports** |
 
 ### Verdict on Weather
 
-Both systems fire during simulation battles, but the combined effect is negligible (+0.011 win rate for own-weather). The mega3 report §8 notes outcomes are "weather-invariant to 4 decimals" for top/bottom pieces. The simulation **does not separately report System B (Affinity Clash) impact** — it is entangled with System A in the aggregate weather metric. A dedicated A/B isolation sweep (disable one system at a time) is needed to attribute the ±1pp between the two.
+The two systems are **fully decoupled** and must be evaluated separately:
 
-**Root cause of weakness:** System A's buff magnitude (±10% at strong tier, ±6%/±3% at medium/weak) is too small relative to the power-ratio cliff. System B's ±20% damage mult is more impactful per-hit but since the same affinity matchup applies symmetrically across all hits, it shifts DPS linearly without creating the variance needed to soften the deterministic cliff.
+- **System A (Weather Favor):** Measured directly by own-weather WR = +0.011. This is the stat-buff system that depends on node weather matching piece affinity. It is nearly inert — the mega3 report §8 notes outcomes are "weather-invariant to 4 decimals" for top/bottom pieces.
+- **System B (Affinity Clash):** Does NOT appear in the own-weather metric because it is independent of the active weather condition. It is a pure matchup system: a rain piece deals 1.20× to a snow piece regardless of whether the weather is rain, snow, or clear. Its impact should manifest as pieces consistently over/under-performing against specific affinity opponents (e.g. unexpected wins vs higher-power prey-type pieces). **The simulation does not yet isolate or report System B's contribution** — a per-matchup-affinity analysis (grouping by attacker/defender affinity pair and checking residual `wr_delta` vs power expectation) is needed.
+
+**Root cause of weakness:**
+- **System A:** Buff magnitude (±10% at strong tier, ±6%/±3% at medium/weak) is too small relative to the power-ratio cliff.
+- **System B:** The ±20% damage multiplier is more impactful per-hit, but since it applies consistently across all hits in a matchup, it shifts effective DPS linearly without introducing variance. More critically, in a round-robin simulation where each piece faces all affinities equally, the predator/prey advantages and disadvantages **cancel out in aggregate** — a piece gains +20% vs prey but loses −20% vs predator, netting ~0 in the averaged `win_rate`. System B's impact is therefore **hidden by aggregation**, not absent. A matchup-stratified analysis (filtering to predator-vs-prey pairs only) would reveal its true magnitude.
 
 ---
 
@@ -400,8 +405,8 @@ Applied in `_apply_stat_overrides(base, overrides)` which adds the override valu
 | **P1** | Buff single-target active damage/add AOE for high-tier casters | Storm Eagle, Glade Heron |
 | **P1** | Apply `stat_overrides` for survival on squishy T9 | Arcanist |
 | **P2** | Consider role-wide mana_regen / AS buff | All mages |
-| **P2** | Weather audit: isolate System A (Favor) vs System B (Clash) impact | All pieces |
-| **P3** | Strengthen weather coefficients (System A: ±10% → ±18%; System B: ±20% → ±30%) | Systemic |
+| **P2** | Weather audit: measure System A independently (own-weather WR already shows +0.011) and run matchup-stratified analysis to isolate System B (Affinity Clash) in predator-vs-prey pairs | All pieces |
+| **P3** | Strengthen weather coefficients — System A: ±10% → ±18% stat buffs; System B: ±20% → ±30% damage mult (or add variance/crit interaction so matchup advantage isn't cancelled by round-robin averaging) | Systemic |
 
 ---
 
@@ -409,5 +414,5 @@ Applied in `_apply_stat_overrides(base, overrides)` which adds the override valu
 
 1. Implement kit changes for P0 pieces (Hierarch, Marsh Thrush, Company Captain)
 2. Re-run mega simulation (`tools/simulation/mega.py`) with kit fixes
-3. Run dedicated weather isolation sweep (System A only / System B only / both) to attribute weather impact
+3. Run matchup-stratified analysis grouping battles by attacker/defender affinity pair to isolate System B (Affinity Clash) — its ±20% per-hit effect is hidden by round-robin averaging, not absent
 4. Validate `wr_delta → 0` for buffed pieces before proceeding to P1/P2
