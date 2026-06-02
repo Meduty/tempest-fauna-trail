@@ -69,7 +69,9 @@ def aggregate_stats(results: list[MatchupResult]) -> dict[str, PieceStats]:
     pair_games: dict[str, int] = {}
     expected_wr_sum: dict[str, float] = {}
     expected_wr_n: dict[str, int] = {}
-    # Per-weather tracking: {piece_id: {weather: (wins, games)}}
+    # Per-weather tracking split across two maps:
+    # weather_wins: {piece_id: {weather: wins}}
+    # weather_games: {piece_id: {weather: games}}
     weather_wins: dict[str, dict[WeatherState, float]] = {}
     weather_games: dict[str, dict[WeatherState, int]] = {}
 

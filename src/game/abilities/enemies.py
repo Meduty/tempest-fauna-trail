@@ -747,10 +747,10 @@ def hierarch_active(ctx: Any, actor: Any, targets: list) -> None:
             expires_at_tick=ctx.current_tick + 500,
         ))
     # AOE burst damage — T8 mage needs personal damage output
-    amount = _eval_scaling(90.0, "intelligence*2.4", actor)
+    amount = _eval_scaling(0.0, "intelligence*1.5", actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
-        ctx.deal_damage(actor, t, amount * 0.7, SourceTag.ABILITY)
+        ctx.deal_damage(actor, t, amount, SourceTag.ABILITY)
 
 
 @register_passive("enemy_hierarch.passive")
@@ -761,7 +761,7 @@ def hierarch_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if ctx.current_tick - state["last_tick"] >= 300:
             state["last_tick"] = ctx.current_tick
-            amount = owner.stat("intelligence") * 0.5
+            amount = owner.stat("intelligence") * 0.4
             enemies = enemies_in_radius(owner.position_q, owner.position_r, 2, owner, ctx)
             for e in enemies:
                 ctx.deal_damage(owner, e, amount, SourceTag.ABILITY)

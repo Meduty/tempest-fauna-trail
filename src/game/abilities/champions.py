@@ -535,7 +535,7 @@ def marsh_thrush_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if ctx.current_tick - state["last_tick"] >= 300:
             state["last_tick"] = ctx.current_tick
-            amount = owner.stat("intelligence") * 0.4
+            amount = owner.stat("intelligence") * 0.3
             enemies = enemies_in_radius(owner.position_q, owner.position_r, 2, owner, ctx)
             for e in enemies:
                 ctx.deal_damage(owner, e, amount, SourceTag.ABILITY)
