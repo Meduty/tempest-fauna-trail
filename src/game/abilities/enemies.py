@@ -470,23 +470,22 @@ def gunslinger_active(ctx: Any, actor: Any, targets: list) -> None:
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
 
 
-# --- Company Captain (T5) --- mark target → takes +dmg + INT burst
+# --- Company Captain (T5) --- mark target → INT-scaled armor/resistance reduction
 @register_active("enemy_company_captain.active")
 def company_captain_active(ctx: Any, actor: Any, targets: list) -> None:
     target = lowest_hp_enemy(actor, ctx)
     if not target:
         return
-    # Direct INT-scaled damage hit alongside the debuff
-    amount = _eval_scaling(55.0, "intelligence*1.8", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
-    # Mark: reduce target's resistance/armor
+    # Mark: reduce target's resistance/armor — scales from INT for stronger debuffs
+    armor_reduction = -(8.0 + actor.stat("intelligence") * 0.15)
+    resistance_reduction = -(8.0 + actor.stat("intelligence") * 0.15)
     ctx.apply_modifier(target, Modifier(
-        "armor", "add", -15.0, Lifetime.TIMED,
+        "armor", "add", armor_reduction, Lifetime.TIMED,
         "ability:enemy_company_captain.mark",
         expires_at_tick=ctx.current_tick + 600,
     ))
     ctx.apply_modifier(target, Modifier(
-        "resistance", "add", -15.0, Lifetime.TIMED,
+        "resistance", "add", resistance_reduction, Lifetime.TIMED,
         "ability:enemy_company_captain.mark",
         expires_at_tick=ctx.current_tick + 600,
     ))
@@ -494,16 +493,7 @@ def company_captain_active(ctx: Any, actor: Any, targets: list) -> None:
 
 @register_passive("enemy_company_captain.passive")
 def company_captain_passive(owner: Any) -> EffectBundle:
-    # On-attack INT-scaling bonus damage rider
-    def hook(ctx: Any, event: Any) -> None:
-        if event.attacker is not owner:
-            return
-        bonus = owner.stat("intelligence") * 0.3
-        ctx.deal_damage(owner, event.target, bonus, SourceTag.ABILITY)
-
-    return EffectBundle(hooks=[
-        Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
-    ])
+    return EffectBundle()
 
 
 # --- Steam Knight (T6) --- every 3rd hit reflect STR damage
@@ -731,53 +721,39 @@ def spymaster_passive(owner: Any) -> EffectBundle:
     ])
 
 
-# --- Hierarch (T8) --- shield whole enemy line + INT-scaled AOE burst
+# --- Hierarch (T8) --- shield whole enemy line (allies get INT-scaled armor buff)
 @register_active("enemy_hierarch.active")
 def hierarch_active(ctx: Any, actor: Any, targets: list) -> None:
     allies = list(ctx.allies_of(actor))
+    # Shield magnitude scales from INT — stronger shields for higher-tier/better-geared mages
+    armor_bonus = 20.0 + actor.stat("intelligence") * 0.4
+    resistance_bonus = 10.0 + actor.stat("intelligence") * 0.2
     for ally in allies:
         ctx.apply_modifier(ally, Modifier(
-            "armor", "add", 40.0, Lifetime.TIMED,
+            "armor", "add", armor_bonus, Lifetime.TIMED,
             "ability:enemy_hierarch.shield",
             expires_at_tick=ctx.current_tick + 500,
         ))
         ctx.apply_modifier(ally, Modifier(
-            "resistance", "add", 20.0, Lifetime.TIMED,
+            "resistance", "add", resistance_bonus, Lifetime.TIMED,
             "ability:enemy_hierarch.shield",
             expires_at_tick=ctx.current_tick + 500,
         ))
-    # AOE burst damage — T8 mage needs personal damage output
-    amount = _eval_scaling(0.0, "intelligence*1.5", actor)
-    hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
-    for t in hit_targets:
-        ctx.deal_damage(actor, t, amount, SourceTag.ABILITY)
 
 
 @register_passive("enemy_hierarch.passive")
 def hierarch_passive(owner: Any) -> EffectBundle:
-    # Periodic INT-scaled damage aura every 300 ticks
-    state = {"last_tick": 0}
-
-    def hook(ctx: Any, event: Any) -> None:
-        if ctx.current_tick - state["last_tick"] >= 300:
-            state["last_tick"] = ctx.current_tick
-            amount = owner.stat("intelligence") * 0.4
-            enemies = enemies_in_radius(owner.position_q, owner.position_r, 2, owner, ctx)
-            for e in enemies:
-                ctx.deal_damage(owner, e, amount, SourceTag.ABILITY)
-
-    return EffectBundle(hooks=[
-        Hook("on_tick", hook, scope=HookScope.PER_HIT),
-    ])
+    return EffectBundle()
 
 
-# --- Arcanist (T9) --- multi-bounce chain lightning
+# --- Arcanist (T9) --- multi-bounce chain lightning with improved scaling
 @register_active("enemy_arcanist.active")
 def arcanist_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(90.0, "intelligence*2.2", actor)
+    # Buffed scaling for T9 mage damage dealer
+    amount = _eval_scaling(100.0, "intelligence*2.8", actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
     chain_targets = []
     for n in neighbors_of(target, ctx):
@@ -790,7 +766,7 @@ def arcanist_active(ctx: Any, actor: Any, targets: list) -> None:
 
 @register_passive("enemy_arcanist.passive")
 def arcanist_passive(owner: Any) -> EffectBundle:
-    # On-attack INT-scaling bonus magic damage rider
+    # On-attack INT-scaling bonus magic damage — adds consistent DPS for damage-focused mage
     def hook(ctx: Any, event: Any) -> None:
         if event.attacker is not owner:
             return
