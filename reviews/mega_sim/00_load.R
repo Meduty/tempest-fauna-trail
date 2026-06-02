@@ -14,24 +14,30 @@ power <- function(tier, level=1) {
   2 ^ ((tier-1)/3 + tri)
 }
 
-# --- load all ratings (per-piece, per stage+weather) ---
-load_ratings <- function() {
+# --- load all ratings (per-piece, per stage+weather). dir defaults to MEGA. ---
+# schema-tolerant: mega4 dropped beta/beta_ratio/beta_deviation_pct (BT->deterministic).
+# keeps only the common column set so rbind across runs works.
+COMMON_RATING_COLS <- c("piece_id","name","affinity","role","tier","level","kind",
+  "n_matches","mean_duration_ticks","win_rate","expected_wr","wr_delta",
+  "expected_power","timeout_rate","stage","weather")
+load_ratings <- function(dir=MEGA, common=FALSE) {
   rows <- list()
   for (st in STAGES) for (w in WEATHERS) {
-    f <- file.path(MEGA, sprintf("ratings_%s_%s.csv", st, w))
+    f <- file.path(dir, sprintf("ratings_%s_%s.csv", st, w))
     if (!file.exists(f)) next
     d <- read.csv(f, stringsAsFactors=FALSE)
     d$stage <- STAGE_LBL[[st]]; d$weather <- w
+    if (common) d <- d[, intersect(COMMON_RATING_COLS, names(d))]
     rows[[paste(st,w)]] <- d
   }
   do.call(rbind, rows)
 }
 
-# --- load all per-battle results ---
-load_results <- function() {
+# --- load all per-battle results. dir defaults to MEGA. ---
+load_results <- function(dir=MEGA) {
   rows <- list()
   for (st in STAGES) for (w in WEATHERS) {
-    f <- file.path(MEGA, sprintf("results_%s_%s.csv", st, w))
+    f <- file.path(dir, sprintf("results_%s_%s.csv", st, w))
     if (!file.exists(f)) next
     d <- read.csv(f, stringsAsFactors=FALSE)
     d$stage <- STAGE_LBL[[st]]; d$weather <- w
