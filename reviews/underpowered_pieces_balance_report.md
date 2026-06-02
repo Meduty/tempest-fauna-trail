@@ -8,10 +8,11 @@
 
 The mega3/mega4 simulation (294,840 battles, 120 pieces, 6 weathers, abilities firing) identifies **mage as the one broken role** (0.33 win rate, −0.20 within-tier deficit vs non-mages) and **hybrid as mildly under-delivering** (corrected `wr_delta` = −0.082). This report covers:
 
-1. Individual stat blocks and kit descriptions for each confirmed underpowered piece
-2. Suggested active/passive powerups per piece
-3. Alternative `stat_overrides` modifications (the engine's per-piece post-generation tuning lever, capped at ±15% budget — see `src/game/content.py:218–226`)
-4. Weather system coverage in the simulation
+1. **Scaling design principle** — all ability numericals must scale from a stat (§1b)
+2. Individual stat blocks and kit descriptions for each confirmed underpowered piece
+3. Suggested active/passive powerups per piece (with creative scalings from diverse stats)
+4. Alternative `stat_overrides` modifications (the engine's per-piece post-generation tuning lever, capped at ±15% budget — see `src/game/content.py:218–226`)
+5. Weather system coverage in the simulation
 
 ---
 
@@ -34,6 +35,41 @@ The two systems are **fully decoupled** and must be evaluated separately:
 **Root cause of weakness:**
 - **System A:** Buff magnitude (±10% at strong tier, ±6%/±3% at medium/weak) is too small relative to the power-ratio cliff.
 - **System B:** The ±20% damage multiplier is more impactful per-hit, but since it applies consistently across all hits in a matchup, it shifts effective DPS linearly without introducing variance. More critically, in a round-robin simulation where each piece faces all affinities equally, the predator/prey advantages and disadvantages **cancel out in aggregate** — a piece gains +20% vs prey but loses −20% vs predator, netting ~0 in the averaged `win_rate`. System B's impact is therefore **hidden by aggregation**, not absent. A matchup-stratified analysis (filtering to predator-vs-prey pairs only) would reveal its true magnitude.
+
+---
+
+## 1b. Design Principle — Stat-Scaling Requirement
+
+**All essential numerical values in abilities must scale from a stat.** Flat values that never grow prevent a piece from powering up through higher Tier, items, or levels. This is the single most common design failure in the underpowered roster.
+
+### Scaling can be creative
+
+Scalings are not limited to the obvious INT → damage or STR → damage. Any stat can feed any numerical output:
+
+| Scaling Source | Example Output |
+|----------------|---------------|
+| Intelligence | Shield amount, heal value, resistance/armor buff granted |
+| HP (max or current) | AoE radius, duration of effects, self-heal threshold |
+| Resistance | Reflected damage, aura damage reduction to allies |
+| Armor | Shield amount, thorns damage |
+| Speed / Attack Speed | Number of hits in a burst window, dash distance |
+| Mana Regen | Passive tick rate, stacking buff frequency |
+
+### The rule
+
+> If a number in a kit description is a **flat constant** (e.g. "+40 armor"), it must instead become a **stat-scaled expression** (e.g. "+INT×0.20 armor") so that the piece's power grows with investment.
+
+This principle applies to:
+- Damage values (obvious)
+- Buff/debuff magnitudes granted to self or allies
+- Shield (temporary HP) amounts
+- Heal values
+- Duration (can scale from speed or mana regen)
+- Number of targets/bounces (can scale from a threshold check)
+
+### Roster-wide audit needed
+
+The full 120-piece roster should be reviewed with this principle in mind. Any piece whose active or passive contains flat constants that do not scale from any stat is a candidate for rework — even if its current `wr_delta` is acceptable, it will fail to scale at higher investment levels.
 
 ---
 
@@ -81,15 +117,31 @@ The two systems are **fully decoupled** and must be evaluated separately:
 
 #### Diagnosis
 
-A T8 mage with zero personal damage output from abilities and no passive. Its only contribution is team buffing, but the stat block is offensive (INT-primary, low HP/armor) so it dies before meaningfully buffing. Massive design mismatch between stat profile and kit purpose.
+**The primary failure is NOT lack of damage output.** A purely support-type piece is a valid design — its 1v1 win rate *should* be low and recover in larger team sizes where its buffs amplify allies. The real problems are:
+
+1. **No stat scaling in the ability.** "+40 armor" and "+20 resistance" are **flat constants** that never grow with Tier, items, or levels. A T8 piece with 202 INT gains zero benefit from that investment — the buff is identical whether INT is 50 or 500. This violates the scaling design principle (§1b).
+2. **No passive at all.** An empty `EffectBundle()` means zero between-cast contribution, not even stat-based.
+3. **No shield (temporary HP).** For a protective support, the absence of actual shielding (temporary hitpoints, as in TFT) is a missed opportunity that would make the support fantasy tangible and scale with INT.
 
 #### Suggested Powerups
 
-**Active rework — "Smite & Shield":** Deal INT damage (base=70, scaling=intelligence×1.8) to primary target, THEN grant all allies +25 armor and +15 resistance for 400 ticks. Combines damage with support utility.
+**Active rework — "Divine Aegis" (INT-scaling support):**
+- Grant all allies armor buff = INT×0.20 and resistance buff = INT×0.15 for 500 ticks
+- Grant the lowest-HP ally a **shield** (temporary HP) = INT×0.80 for 600 ticks
+- Zero damage — this remains a true protective support piece
 
-**Passive — "Holy Fervor":** On each cast, Hierarch gains +15% attack speed for 600 ticks (stacking up to 3×). Gives sustained DPS between casts.
+At 202 INT: +40 armor, +30 resistance, 162 HP shield. Numerically similar to current at base, but **scales with investment** — at higher Tier/items the shield and buffs grow proportionally.
 
-**Alternative passive — "Consecration Aura":** Every 400 ticks, enemies within radius 2 take intelligence×0.3 magic damage. Provides passive pressure even while support-buffing.
+**Passive option A — "Holy Presence" (stat passive):** +15% resistance and +10% armor (combat duration, self). Simple stat passive that gives survivability to reach more casts.
+
+**Passive option B — "Perpetual Casting" (creative rework):**
+- On action: fill mana to full (effectively: auto-attack is always replaced by a cast)
+- Auto-attacks deal **no damage**
+- Every action is a cast of Divine Aegis instead of a normal attack
+
+This makes Hierarch a true 0-damage piece that always casts — stronger than a normal auto because every action applies INT-scaled protection. The piece never attacks, only shields and buffs. This is a unique mechanical identity: the "always-casting pacifist support."
+
+**Passive option C — "Sanctified Aura" (INT-scaling):** Every 400 ticks, allies within radius 2 gain a shield = INT×0.25. Provides continuous passive shielding between casts, all scaling from INT.
 
 #### Stat Override Suggestion
 
@@ -98,7 +150,7 @@ stat_overrides={"max_hp": +120, "intelligence": +20, "resistance": +15, "strengt
 # Budget drift: (120+20+15-10-10) / (1212+22+202+45+45) ≈ +8.9% — within ±15% cap
 ```
 
-Rationale: More HP and resistance to survive as a ranged support, plus extra INT to boost ability scaling.
+Rationale: More HP and resistance to survive as a ranged support, plus extra INT to boost ability scaling. Since ability values now scale from INT, the +20 INT override directly amplifies buff/shield output.
 
 ---
 
@@ -127,13 +179,13 @@ Rationale: More HP and resistance to survive as a ranged support, plus extra INT
 
 #### Diagnosis
 
-Full support kit on a mage stat profile. The buffs it provides (+15 AS) are marginal. Its 0.75× attack speed means its auto-attacks are weak, and it has no personal damage at all. It buff-bots while the enemy kills it.
+Full support kit on a mage stat profile. The buffs it provides (+15 AS, +15 move_speed) are **flat constants** — they never scale with Tier/INT/items (§1b violation). Its 0.75× attack speed means its auto-attacks are weak, and it has no personal damage at all. It buff-bots while the enemy kills it.
 
 #### Suggested Powerups
 
-**Active rework — "Gale Song":** Deal INT damage (base=50, scaling=intelligence×1.5) to all enemies in radius 2 (AOE), THEN grant all allies +15 attack_speed for 400 ticks. Combines AOE damage with the existing support identity.
+**Active rework — "Gale Song" (INT-scaling support + damage):** Deal INT damage (base=50, scaling=intelligence×1.5) to all enemies in radius 2 (AOE), THEN grant all allies attack_speed buff = INT×0.10 for 400 ticks. At 160 INT: +16 AS (similar to current) but **scales with investment**.
 
-**Passive rework — "Tailwind":** When Marsh Thrush casts, the next 2 auto-attacks of each buffed ally deal +20% bonus damage. Converts the support theme into tangible DPS amplification.
+**Passive rework — "Tailwind":** When Marsh Thrush casts, the next 2 auto-attacks of each buffed ally deal bonus damage = Marsh Thrush's INT×0.12. Converts the support theme into tangible, scaling DPS amplification.
 
 **Alternative passive — "Wind Shear":** Every 3rd auto-attack launches a wind projectile dealing intelligence×0.5 magic damage to the target + 1 neighbor. Gives personal DPS contribution.
 
@@ -173,15 +225,15 @@ Rationale: Higher INT makes its (new) damage + buff scaling meaningful; extra HP
 
 #### Diagnosis
 
-Same pattern as Hierarch: utility-only kit on an offensive stat profile, with no passive. The debuff is useful in theory but a single-target −15 armor/res on an already-low-HP target is negligible compared to just dealing direct damage.
+Same pattern as Hierarch: utility-only kit with no passive. The critical failure: **−15 armor/−15 resistance are flat constants** that don't scale from INT or any stat (§1b violation). At T5 with 143 INT, none of that investment translates into debuff strength. A purely debuff-support identity is acceptable, but the debuff magnitude must scale.
 
 #### Suggested Powerups
 
-**Active rework — "Barrage Order":** Deal INT damage (base=45, scaling=intelligence×1.5) to primary target AND apply −20 armor, −20 resistance for 500 ticks. Keeps the debuff identity but adds a damage component.
+**Active rework — "Barrage Order" (INT-scaling debuff + damage):** Deal INT damage (base=45, scaling=intelligence×1.5) to primary target AND apply armor reduction = INT×0.14, resistance reduction = INT×0.14 for 500 ticks. At 143 INT: −20 armor, −20 res (stronger than current) and scales with investment.
 
 **Passive — "Command Presence":** When Company Captain autos a debuffed enemy, deal bonus intelligence×0.4 magic damage. Synergizes with own active.
 
-**Alternative passive — "Volley Command":** Every 4th auto-attack, all allied enemies within radius 2 perform a bonus attack (deals 30% of their normal auto damage to the Captain's target). Creates a "commander" fantasy.
+**Alternative passive — "Volley Command":** Every 4th auto-attack, all allies within radius 2 perform a bonus attack (deals INT×0.15 of Captain's INT as bonus damage to the Captain's target). Creates a "commander" fantasy with scaling.
 
 #### Stat Override Suggestion
 
@@ -400,19 +452,23 @@ Applied in `_apply_stat_overrides(base, overrides)` which adds the override valu
 
 | Priority | Action | Pieces Affected |
 |----------|--------|-----------------|
-| **P0** | Add damage component to support-only mage actives | Hierarch, Marsh Thrush, Company Captain |
-| **P0** | Add passives to pieces with empty `EffectBundle()` | Hierarch, Company Captain, Arcanist |
+| **P0** | Add stat scaling to all flat-constant ability values (§1b) — buffs, shields, debuffs must scale from INT/HP/res/etc. | Hierarch, Marsh Thrush, Company Captain, + full roster audit |
+| **P0** | Add passives to pieces with empty `EffectBundle()` (even stat-only passives count) | Hierarch, Company Captain, Arcanist |
+| **P1** | Convert support-only actives to INT-scaled support (shields, scaling buffs) — damage is NOT required if buffs scale | Hierarch, Marsh Thrush, Company Captain |
 | **P1** | Buff single-target active damage/add AOE for high-tier casters | Storm Eagle, Glade Heron |
 | **P1** | Apply `stat_overrides` for survival on squishy T9 | Arcanist |
 | **P2** | Consider role-wide mana_regen / AS buff | All mages |
 | **P2** | Weather audit: measure System A independently (own-weather WR already shows +0.011) and run matchup-stratified analysis to isolate System B (Affinity Clash) in predator-vs-prey pairs | All pieces |
+| **P2** | Full roster scaling audit: flag any piece with flat constants in ability kit | All 120 pieces |
 | **P3** | Strengthen weather coefficients — System A: ±10% → ±18% stat buffs; System B: ±20% → ±30% damage mult (or add variance/crit interaction so matchup advantage isn't cancelled by round-robin averaging) | Systemic |
 
 ---
 
 ## 6. Next Steps
 
-1. Implement kit changes for P0 pieces (Hierarch, Marsh Thrush, Company Captain)
-2. Re-run mega simulation (`tools/simulation/mega.py`) with kit fixes
-3. Run matchup-stratified analysis grouping battles by attacker/defender affinity pair to isolate System B (Affinity Clash) — its ±20% per-hit effect is hidden by round-robin averaging, not absent
-4. Validate `wr_delta → 0` for buffed pieces before proceeding to P1/P2
+1. **Scaling audit:** Review full 120-piece roster for flat-constant ability values that don't scale from any stat. Flag and propose scalings (see §1b for creative scaling examples)
+2. Implement kit changes for P0 pieces — Hierarch (INT-scaling shields/buffs, add passive), Marsh Thrush, Company Captain
+3. Re-run mega simulation (`tools/simulation/mega.py`) with kit fixes
+4. Run matchup-stratified analysis grouping battles by attacker/defender affinity pair to isolate System B (Affinity Clash) — its ±20% per-hit effect is hidden by round-robin averaging, not absent
+5. Validate `wr_delta → 0` for buffed pieces before proceeding to P1/P2
+6. For Hierarch specifically: validate in team-size > 1 scenarios (its support WR should recover with allies present)
