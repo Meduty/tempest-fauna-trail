@@ -505,7 +505,7 @@ def coral_colossus_active(ctx: Any, actor: Any, targets: list) -> None:
 
 
 # --- Marsh Thrush (T6, SUP-Buff) ---
-# Cast: team MS+AS buff
+# Cast: team MS+AS buff + INT-scaled damage to primary target
 @register_active("champ_marsh_thrush.active")
 def marsh_thrush_active(ctx: Any, actor: Any, targets: list) -> None:
     allies = list(ctx.allies_of(actor))
@@ -520,13 +520,34 @@ def marsh_thrush_active(ctx: Any, actor: Any, targets: list) -> None:
             "ability:champ_marsh_thrush",
             expires_at_tick=ctx.current_tick + 600,
         ))
+    # Damage rider — INT-scaled burst on primary target
+    target = primary_target(actor, ctx)
+    if target:
+        amount = _eval_scaling(65.0, "intelligence*1.8", actor)
+        ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
 
 
 @register_passive("champ_marsh_thrush.passive")
 def marsh_thrush_passive(owner: Any) -> EffectBundle:
-    return EffectBundle(modifiers=[
-        Modifier("move_speed", "add", 10.0, Lifetime.COMBAT, "passive:champ_marsh_thrush"),
-    ])
+    # Periodic INT-scaled damage aura every 300 ticks + move speed boost
+    state = {"last_tick": 0}
+
+    def hook(ctx: Any, event: Any) -> None:
+        if ctx.current_tick - state["last_tick"] >= 300:
+            state["last_tick"] = ctx.current_tick
+            amount = owner.stat("intelligence") * 0.4
+            enemies = enemies_in_radius(owner.position_q, owner.position_r, 2, owner, ctx)
+            for e in enemies:
+                ctx.deal_damage(owner, e, amount, SourceTag.ABILITY)
+
+    return EffectBundle(
+        modifiers=[
+            Modifier("move_speed", "add", 10.0, Lifetime.COMBAT, "passive:champ_marsh_thrush"),
+        ],
+        hooks=[
+            Hook("on_tick", hook, scope=HookScope.PER_HIT),
+        ],
+    )
 
 
 # --- Mirewarden Toad (T7, Tank-Guardian) ---
@@ -560,7 +581,7 @@ def mirewarden_toad_passive(owner: Any) -> EffectBundle:
 
 
 # --- Glade Heron (T8, ADC-INT Hunter) ---
-# Passive: autos apply poison stacks
+# Passive: autos apply poison stacks + execute bonus vs poisoned targets
 @register_passive("champ_glade_heron.passive")
 def glade_heron_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
@@ -568,6 +589,14 @@ def glade_heron_passive(owner: Any) -> EffectBundle:
             return
         ctx.apply_status(event.target, "poison", duration_ticks=400, stacks=1,
                         source_id=owner.id)
+        # Execute bonus: extra INT-scaled damage vs targets with 3+ poison stacks
+        if hasattr(event.target, 'status_stacks'):
+            poison_stacks = event.target.status_stacks("poison")
+        else:
+            poison_stacks = 0
+        if poison_stacks >= 3:
+            execute_bonus = owner.stat("intelligence") * 0.5
+            ctx.deal_damage(owner, event.target, execute_bonus, SourceTag.ABILITY)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
@@ -576,13 +605,13 @@ def glade_heron_passive(owner: Any) -> EffectBundle:
 
 @register_active("champ_glade_heron.active")
 def glade_heron_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Toxic volley: INT damage + extra poison stacks
+    # Toxic volley: higher INT damage + heavy poison stacks
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(60.0, "intelligence*1.8", actor)
+    amount = _eval_scaling(80.0, "intelligence*2.4", actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
-    ctx.apply_status(target, "poison", duration_ticks=500, stacks=3, source_id=actor.id)
+    ctx.apply_status(target, "poison", duration_ticks=600, stacks=4, source_id=actor.id)
 
 
 # --- Riptide Caiman (T9, ADC-STR Stalker) ---
@@ -1760,12 +1789,18 @@ def storm_eagle_passive(owner: Any) -> EffectBundle:
 
 @register_active("champ_storm_eagle.active")
 def storm_eagle_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Lightning dive: INT damage to primary + chain
+    # Lightning dive: INT damage to primary + chain to neighbors
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(80.0, "intelligence*2.0", actor)
+    amount = _eval_scaling(100.0, "intelligence*2.8", actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    # Chain bounce to up to 2 neighbors at 50% damage
+    hit_count = 0
+    for n in neighbors_of(target, ctx):
+        if ctx.is_enemy(n, actor) and n is not target and hit_count < 2:
+            ctx.deal_damage(actor, n, amount * 0.5, SourceTag.ABILITY)
+            hit_count += 1
 
 
 # --- Aerion (T10, Primordial — Thunder) ---

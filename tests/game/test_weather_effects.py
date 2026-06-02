@@ -149,23 +149,23 @@ def test_combat_modifier_self_is_strong_full_buff() -> None:
 
 
 def test_combat_modifier_predator_tiers_scale_the_buff() -> None:
-    # RAIN buff base: AS x1.10, MR x1.10. Primary predator SNOW -> medium (0.6).
+    # RAIN buff base: AS x1.15, MR x1.15. Primary predator SNOW -> medium (0.6).
     primary = combat_modifier(WeatherState.SNOW, WeatherState.RAIN)
-    assert primary.as_mult == pytest.approx(1.06)
-    assert primary.mr_mult == pytest.approx(1.06)
+    assert primary.as_mult == pytest.approx(1.09)
+    assert primary.mr_mult == pytest.approx(1.09)
     # Secondary predator THUNDER -> weak (0.3).
     secondary = combat_modifier(WeatherState.THUNDER, WeatherState.RAIN)
-    assert secondary.as_mult == pytest.approx(1.03)
-    assert secondary.mr_mult == pytest.approx(1.03)
+    assert secondary.as_mult == pytest.approx(1.045)
+    assert secondary.mr_mult == pytest.approx(1.045)
 
 
 def test_combat_modifier_prey_tiers_scale_the_debuff() -> None:
-    # RAIN debuff base: STR x0.90. Primary prey CLOUDY -> medium (0.6).
+    # RAIN debuff base: STR x0.85. Primary prey CLOUDY -> medium (0.6).
     primary = combat_modifier(WeatherState.CLOUDY, WeatherState.RAIN)
-    assert primary.str_mult == pytest.approx(0.94)
+    assert primary.str_mult == pytest.approx(0.91)
     # Secondary prey MIST -> weak (0.3).
     secondary = combat_modifier(WeatherState.MIST, WeatherState.RAIN)
-    assert secondary.str_mult == pytest.approx(0.97)
+    assert secondary.str_mult == pytest.approx(0.955)
 
 
 def test_self_is_strict_maximum_buff_tier() -> None:
@@ -202,11 +202,11 @@ def test_combat_modifier_is_deterministic() -> None:
 
 def test_damage_modifier_values_by_relation() -> None:
     # Enemy RAIN; ring positions around it.
-    assert damage_modifier(WeatherState.SNOW, WeatherState.RAIN) == 1.20
-    assert damage_modifier(WeatherState.THUNDER, WeatherState.RAIN) == 1.10
-    assert damage_modifier(WeatherState.RAIN, WeatherState.RAIN) == 1.00
-    assert damage_modifier(WeatherState.MIST, WeatherState.RAIN) == 0.90
-    assert damage_modifier(WeatherState.CLOUDY, WeatherState.RAIN) == 0.80
+    assert damage_modifier(WeatherState.SNOW, WeatherState.RAIN) == pytest.approx(1.30)
+    assert damage_modifier(WeatherState.THUNDER, WeatherState.RAIN) == pytest.approx(1.12)
+    assert damage_modifier(WeatherState.RAIN, WeatherState.RAIN) == pytest.approx(1.00)
+    assert damage_modifier(WeatherState.MIST, WeatherState.RAIN) == pytest.approx(0.88)
+    assert damage_modifier(WeatherState.CLOUDY, WeatherState.RAIN) == pytest.approx(0.70)
 
 
 def test_damage_modifier_clear_is_inert_both_ways() -> None:
@@ -226,15 +226,15 @@ def test_damage_modifier_predator_beats_one_above_prey() -> None:
 
 
 def test_damage_modifier_exchange_ratio_is_tamed() -> None:
-    # Primary predator/prey exchange ~1.50x; secondary ~1.22x.
+    # Primary predator/prey exchange ~1.86x; secondary ~1.27x.
     primary = damage_modifier(
         WeatherState.SNOW, WeatherState.RAIN
     ) / damage_modifier(WeatherState.RAIN, WeatherState.SNOW)
     secondary = damage_modifier(
         WeatherState.THUNDER, WeatherState.RAIN
     ) / damage_modifier(WeatherState.RAIN, WeatherState.THUNDER)
-    assert primary == pytest.approx(1.20 / 0.80)
-    assert secondary == pytest.approx(1.10 / 0.90)
+    assert primary == pytest.approx(1.30 / 0.70)
+    assert secondary == pytest.approx(1.12 / 0.88)
     assert primary > secondary
 
 
@@ -275,8 +275,8 @@ def test_apply_weather_self_buff_scales_strong_tier() -> None:
     champion = _make_champion(WeatherState.THUNDER)
     piece = apply_weather(champion, WeatherState.THUNDER)
 
-    assert piece.strength == round(champion.strength * 1.10)
-    assert piece.attack_speed == round(champion.attack_speed * 1.10)
+    assert piece.strength == round(champion.strength * 1.15)
+    assert piece.attack_speed == round(champion.attack_speed * 1.15)
     assert piece.intelligence == champion.intelligence
     assert piece.affinity == WeatherState.THUNDER
 
@@ -298,8 +298,8 @@ def test_apply_weather_works_with_enemy_and_flags_is_enemy() -> None:
 
     assert piece.is_enemy is True
     assert piece.affinity == WeatherState.MIST
-    assert piece.move_speed == round(enemy.move_speed * 1.10)
-    assert piece.threat == round(enemy.threat * 1.10)
+    assert piece.move_speed == round(enemy.move_speed * 1.15)
+    assert piece.threat == round(enemy.threat * 1.15)
 
 
 # --- OpenWeather id mapping --------------------------------------------------

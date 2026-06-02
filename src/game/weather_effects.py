@@ -101,24 +101,32 @@ class CombatModifier:
 
 IDENTITY = CombatModifier()
 
-# Strong-tier base stat packs per weather (primary stats ±10%, with smaller
-# offensive adds where noted). `combat_modifier` scales the deviation from 1.0
-# down for the medium/weak tiers.
+# Configurable weather favor magnitude. Controls how much fighting in
+# favorable/unfavorable weather affects stats. Target: ~10pp combined effect.
+WEATHER_FAVOR_MAGNITUDE = 0.15  # ±15% for primary stats at strong tier
+
+# Strong-tier base stat packs per weather (primary stats ±WEATHER_FAVOR_MAGNITUDE,
+# with smaller offensive adds where noted). `combat_modifier` scales the deviation
+# from 1.0 down for the medium/weak tiers.
+_buff = 1.0 + WEATHER_FAVOR_MAGNITUDE
+_debuff = 1.0 - WEATHER_FAVOR_MAGNITUDE
+_buff_minor = 1.0 + WEATHER_FAVOR_MAGNITUDE * 0.53  # ~8% secondary bonus
+
 WEATHER_BUFF_BASE: dict[WeatherState, CombatModifier] = {
-    WeatherState.CLOUDY: CombatModifier(hp_mult=1.10, res_mult=1.10, as_mult=1.05),
-    WeatherState.MIST: CombatModifier(ms_mult=1.10, thr_mult=1.10, int_mult=1.05),
-    WeatherState.SNOW: CombatModifier(armor_mult=1.10, res_mult=1.10, str_mult=1.025),
-    WeatherState.RAIN: CombatModifier(as_mult=1.10, mr_mult=1.10),
-    WeatherState.THUNDER: CombatModifier(str_mult=1.10, as_mult=1.10),
+    WeatherState.CLOUDY: CombatModifier(hp_mult=_buff, res_mult=_buff, as_mult=_buff_minor),
+    WeatherState.MIST: CombatModifier(ms_mult=_buff, thr_mult=_buff, int_mult=_buff_minor),
+    WeatherState.SNOW: CombatModifier(armor_mult=_buff, res_mult=_buff, str_mult=round(1.0 + WEATHER_FAVOR_MAGNITUDE * 0.27, 2)),
+    WeatherState.RAIN: CombatModifier(as_mult=_buff, mr_mult=_buff),
+    WeatherState.THUNDER: CombatModifier(str_mult=_buff, as_mult=_buff),
     WeatherState.CLEAR: IDENTITY,
 }
 
 WEATHER_DEBUFF_BASE: dict[WeatherState, CombatModifier] = {
-    WeatherState.CLOUDY: CombatModifier(as_mult=0.90),
+    WeatherState.CLOUDY: CombatModifier(as_mult=_debuff),
     WeatherState.MIST: CombatModifier(attack_range_delta=-1),
-    WeatherState.SNOW: CombatModifier(ms_mult=0.90),
-    WeatherState.RAIN: CombatModifier(str_mult=0.90),
-    WeatherState.THUNDER: CombatModifier(int_mult=0.90, mr_mult=0.90),
+    WeatherState.SNOW: CombatModifier(ms_mult=_debuff),
+    WeatherState.RAIN: CombatModifier(str_mult=_debuff),
+    WeatherState.THUNDER: CombatModifier(int_mult=_debuff, mr_mult=_debuff),
     WeatherState.CLEAR: IDENTITY,
 }
 
@@ -165,13 +173,23 @@ def combat_modifier(affinity: WeatherState, weather: WeatherState) -> CombatModi
 
 # --- Affinity Clash — affinity damage triangle -------------------------------------
 
+# Configurable damage multipliers for the affinity predator/prey ring.
+# Adjust these to control how much weather affinity matters in combat.
+# Target: ~10pp win-rate swing for favorable matchups.
+AFFINITY_CLASH_PRIMARY_PREDATOR = 1.30
+AFFINITY_CLASH_SECONDARY_PREDATOR = 1.12
+AFFINITY_CLASH_SELF = 1.00
+AFFINITY_CLASH_NEUTRAL = 1.00
+AFFINITY_CLASH_SECONDARY_PREY = 0.88
+AFFINITY_CLASH_PRIMARY_PREY = 0.70
+
 DAMAGE_MULT: dict[RingRelation, float] = {
-    RingRelation.PRIMARY_PREDATOR: 1.20,
-    RingRelation.SECONDARY_PREDATOR: 1.10,
-    RingRelation.SELF: 1.00,
-    RingRelation.NEUTRAL: 1.00,
-    RingRelation.SECONDARY_PREY: 0.90,
-    RingRelation.PRIMARY_PREY: 0.80,
+    RingRelation.PRIMARY_PREDATOR: AFFINITY_CLASH_PRIMARY_PREDATOR,
+    RingRelation.SECONDARY_PREDATOR: AFFINITY_CLASH_SECONDARY_PREDATOR,
+    RingRelation.SELF: AFFINITY_CLASH_SELF,
+    RingRelation.NEUTRAL: AFFINITY_CLASH_NEUTRAL,
+    RingRelation.SECONDARY_PREY: AFFINITY_CLASH_SECONDARY_PREY,
+    RingRelation.PRIMARY_PREY: AFFINITY_CLASH_PRIMARY_PREY,
 }
 
 
