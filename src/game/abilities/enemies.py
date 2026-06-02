@@ -470,20 +470,22 @@ def gunslinger_active(ctx: Any, actor: Any, targets: list) -> None:
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
 
 
-# --- Company Captain (T5) --- mark target → takes +dmg
+# --- Company Captain (T5) --- mark target → INT-scaled armor/resistance reduction
 @register_active("enemy_company_captain.active")
 def company_captain_active(ctx: Any, actor: Any, targets: list) -> None:
     target = lowest_hp_enemy(actor, ctx)
     if not target:
         return
-    # Mark: reduce target's resistance/armor
+    # Mark: reduce target's resistance/armor — scales from INT for stronger debuffs
+    armor_reduction = -(8.0 + actor.stat("intelligence") * 0.15)
+    resistance_reduction = -(8.0 + actor.stat("intelligence") * 0.15)
     ctx.apply_modifier(target, Modifier(
-        "armor", "add", -15.0, Lifetime.TIMED,
+        "armor", "add", armor_reduction, Lifetime.TIMED,
         "ability:enemy_company_captain.mark",
         expires_at_tick=ctx.current_tick + 600,
     ))
     ctx.apply_modifier(target, Modifier(
-        "resistance", "add", -15.0, Lifetime.TIMED,
+        "resistance", "add", resistance_reduction, Lifetime.TIMED,
         "ability:enemy_company_captain.mark",
         expires_at_tick=ctx.current_tick + 600,
     ))
@@ -719,18 +721,21 @@ def spymaster_passive(owner: Any) -> EffectBundle:
     ])
 
 
-# --- Hierarch (T8) --- shield whole enemy line (allies get armor buff)
+# --- Hierarch (T8) --- shield whole enemy line (allies get INT-scaled armor buff)
 @register_active("enemy_hierarch.active")
 def hierarch_active(ctx: Any, actor: Any, targets: list) -> None:
     allies = list(ctx.allies_of(actor))
+    # Shield magnitude scales from INT — stronger shields for higher-tier/better-geared mages
+    armor_bonus = 20.0 + actor.stat("intelligence") * 0.4
+    resistance_bonus = 10.0 + actor.stat("intelligence") * 0.2
     for ally in allies:
         ctx.apply_modifier(ally, Modifier(
-            "armor", "add", 40.0, Lifetime.TIMED,
+            "armor", "add", armor_bonus, Lifetime.TIMED,
             "ability:enemy_hierarch.shield",
             expires_at_tick=ctx.current_tick + 500,
         ))
         ctx.apply_modifier(ally, Modifier(
-            "resistance", "add", 20.0, Lifetime.TIMED,
+            "resistance", "add", resistance_bonus, Lifetime.TIMED,
             "ability:enemy_hierarch.shield",
             expires_at_tick=ctx.current_tick + 500,
         ))
@@ -741,13 +746,14 @@ def hierarch_passive(owner: Any) -> EffectBundle:
     return EffectBundle()
 
 
-# --- Arcanist (T9) --- multi-bounce chain lightning
+# --- Arcanist (T9) --- multi-bounce chain lightning with improved scaling
 @register_active("enemy_arcanist.active")
 def arcanist_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(90.0, "intelligence*2.2", actor)
+    # Buffed scaling for T9 mage damage dealer
+    amount = _eval_scaling(100.0, "intelligence*2.8", actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
     chain_targets = []
     for n in neighbors_of(target, ctx):
@@ -760,7 +766,16 @@ def arcanist_active(ctx: Any, actor: Any, targets: list) -> None:
 
 @register_passive("enemy_arcanist.passive")
 def arcanist_passive(owner: Any) -> EffectBundle:
-    return EffectBundle()
+    # On-attack INT-scaling bonus magic damage — adds consistent DPS for damage-focused mage
+    def hook(ctx: Any, event: Any) -> None:
+        if event.attacker is not owner:
+            return
+        bonus = owner.stat("intelligence") * 0.35
+        ctx.deal_damage(owner, event.target, bonus, SourceTag.ABILITY)
+
+    return EffectBundle(hooks=[
+        Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
+    ])
 
 
 # --- Archmagus Imperator (T9) --- STR/INT autos; both-scaling nuke

@@ -67,6 +67,7 @@ def write_ratings_csv(
             "mean_duration_ticks",
             "win_rate", "expected_wr", "wr_delta",
             "expected_power", "timeout_rate",
+            "own_weather_wr", "counter_weather_wr", "weather_sensitivity",
         ])
         for pid in piece_ids:
             try:
@@ -98,6 +99,9 @@ def write_ratings_csv(
             expected_wr = s.expected_wr if s else 0.0
             wr_delta = wr - expected_wr
             timeout_rate = (n_team_timeouts / n_matches) if n_matches > 0 else 0.0
+            own_weather_wr = s.own_weather_wr if s else 0.0
+            counter_weather_wr = s.counter_weather_wr if s else 0.0
+            weather_sensitivity = s.weather_sensitivity if s else 0.0
 
             writer.writerow([
                 pid, name, affinity, role, tier, level, kind,
@@ -107,6 +111,8 @@ def write_ratings_csv(
                 f"{wr:.4f}", f"{expected_wr:.4f}", f"{wr_delta:+.4f}",
                 f"{expected_power:.4f}",
                 f"{timeout_rate:.4f}",
+                f"{own_weather_wr:.4f}", f"{counter_weather_wr:.4f}",
+                f"{weather_sensitivity:.4f}",
             ])
 
 

@@ -416,11 +416,18 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Combat engine MAX_TICKS override for sim runs. "
                         "Default 1_000_000 (disables sudden death). Pass 0 "
                         "to keep engine default.")
+    p.add_argument("--realistic-ticks", action="store_true",
+                   help="Shortcut for --max-ticks 0: keep the engine's "
+                        "default MAX_TICKS (12,000) to surface stall/timeout "
+                        "behavior accurately.")
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+    # --realistic-ticks overrides --max-ticks to 0 (engine default)
+    if args.realistic_ticks:
+        args.max_ticks = 0
     args.out.mkdir(parents=True, exist_ok=True)
 
     weathers = [args.weather] if args.weather else ALL_WEATHERS

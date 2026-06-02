@@ -19,8 +19,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from src.game.models import CombatOutcome
+from src.game.models import CombatOutcome, WeatherState
 from src.game.scaling import power
+from src.game.weather_effects import ring_relation, RingRelation
 
 from tools.simulation.matchup import MatchupResult, get_piece
 
@@ -45,6 +46,10 @@ class PieceStats:
                             # (0.5) vs equal-power opponents, losses (0.0) vs
                             # higher-power opponents. Uses team-additive
                             # power(T,L).
+    # Weather affinity clash metrics
+    own_weather_wr: float       # win rate when fighting in own affinity weather
+    counter_weather_wr: float   # win rate when fighting in weather that preys on you
+    weather_sensitivity: float  # max(wr across weathers) - min(wr across weathers)
 
 
 def aggregate_stats(results: list[MatchupResult]) -> dict[str, PieceStats]:
@@ -64,6 +69,11 @@ def aggregate_stats(results: list[MatchupResult]) -> dict[str, PieceStats]:
     pair_games: dict[str, int] = {}
     expected_wr_sum: dict[str, float] = {}
     expected_wr_n: dict[str, int] = {}
+    # Per-weather tracking split across two maps:
+    # weather_wins: {piece_id: {weather: wins}}
+    # weather_games: {piece_id: {weather: games}}
+    weather_wins: dict[str, dict[WeatherState, float]] = {}
+    weather_games: dict[str, dict[WeatherState, int]] = {}
 
     def _power_of(pid: str) -> float:
         try:
@@ -110,6 +120,13 @@ def aggregate_stats(results: list[MatchupResult]) -> dict[str, PieceStats]:
             pair_games[pa] = pair_games.get(pa, 0) + n_opp_b
             expected_wr_sum[pa] = expected_wr_sum.get(pa, 0.0) + team_a_exp_wr * n_opp_b
             expected_wr_n[pa] = expected_wr_n.get(pa, 0) + n_opp_b
+            # Weather tracking
+            if pa not in weather_wins:
+                weather_wins[pa] = {}
+                weather_games[pa] = {}
+            w = r.config.weather
+            weather_wins[pa][w] = weather_wins[pa].get(w, 0.0) + a_score * n_opp_b
+            weather_games[pa][w] = weather_games[pa].get(w, 0) + n_opp_b
 
         for pb in r.config.piece_ids_b:
             n_matches[pb] = n_matches.get(pb, 0) + 1
@@ -124,11 +141,52 @@ def aggregate_stats(results: list[MatchupResult]) -> dict[str, PieceStats]:
             pair_games[pb] = pair_games.get(pb, 0) + n_opp_a
             expected_wr_sum[pb] = expected_wr_sum.get(pb, 0.0) + team_b_exp_wr * n_opp_a
             expected_wr_n[pb] = expected_wr_n.get(pb, 0) + n_opp_a
+            # Weather tracking
+            if pb not in weather_wins:
+                weather_wins[pb] = {}
+                weather_games[pb] = {}
+            w = r.config.weather
+            weather_wins[pb][w] = weather_wins[pb].get(w, 0.0) + b_score * n_opp_a
+            weather_games[pb][w] = weather_games[pb].get(w, 0) + n_opp_a
 
     out: dict[str, PieceStats] = {}
     for pid in n_matches:
         m = n_matches[pid]
         n_exp = expected_wr_n.get(pid, 0)
+
+        # Compute weather affinity metrics
+        own_weather_wr = 0.0
+        counter_weather_wr = 0.0
+        weather_sensitivity = 0.0
+        pw = weather_wins.get(pid, {})
+        pg = weather_games.get(pid, {})
+        try:
+            piece = get_piece(pid)
+            piece_affinity = piece.affinity
+        except (KeyError, ValueError):
+            piece_affinity = None
+
+        if piece_affinity is not None and pg:
+            # Per-weather win rates
+            per_weather_wr: dict[WeatherState, float] = {}
+            for w_state, g in pg.items():
+                if g > 0:
+                    per_weather_wr[w_state] = pw.get(w_state, 0.0) / g
+
+            # Own weather = where piece affinity matches battle weather (SELF)
+            if piece_affinity in per_weather_wr:
+                own_weather_wr = per_weather_wr[piece_affinity]
+
+            # Counter weather = weather that preys on this piece (PRIMARY_PREY)
+            for w_state, wr_val in per_weather_wr.items():
+                rel = ring_relation(piece_affinity, w_state)
+                if rel == RingRelation.PRIMARY_PREY:
+                    counter_weather_wr = wr_val
+                    break
+
+            if per_weather_wr:
+                weather_sensitivity = max(per_weather_wr.values()) - min(per_weather_wr.values())
+
         out[pid] = PieceStats(
             n_matches=m,
             n_pair_games=pair_games.get(pid, 0),
@@ -138,6 +196,9 @@ def aggregate_stats(results: list[MatchupResult]) -> dict[str, PieceStats]:
             n_team_timeouts=n_team_timeouts.get(pid, 0),
             mean_duration=duration_sum[pid] / m if m > 0 else 0.0,
             expected_wr=expected_wr_sum.get(pid, 0.0) / n_exp if n_exp > 0 else 0.0,
+            own_weather_wr=own_weather_wr,
+            counter_weather_wr=counter_weather_wr,
+            weather_sensitivity=weather_sensitivity,
         )
     return out
 

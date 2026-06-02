@@ -505,18 +505,21 @@ def coral_colossus_active(ctx: Any, actor: Any, targets: list) -> None:
 
 
 # --- Marsh Thrush (T6, SUP-Buff) ---
-# Cast: team MS+AS buff
+# Cast: team MS+AS buff — buff magnitude scales from INT
 @register_active("champ_marsh_thrush.active")
 def marsh_thrush_active(ctx: Any, actor: Any, targets: list) -> None:
     allies = list(ctx.allies_of(actor))
+    # Buff magnitude scales from INT — stronger buffs for higher-tier/better-geared support mages
+    ms_bonus = 8.0 + actor.stat("intelligence") * 0.14
+    as_bonus = 8.0 + actor.stat("intelligence") * 0.14
     for ally in allies:
         ctx.apply_modifier(ally, Modifier(
-            "move_speed", "add", 15.0, Lifetime.TIMED,
+            "move_speed", "add", ms_bonus, Lifetime.TIMED,
             "ability:champ_marsh_thrush",
             expires_at_tick=ctx.current_tick + 600,
         ))
         ctx.apply_modifier(ally, Modifier(
-            "attack_speed", "add", 15.0, Lifetime.TIMED,
+            "attack_speed", "add", as_bonus, Lifetime.TIMED,
             "ability:champ_marsh_thrush",
             expires_at_tick=ctx.current_tick + 600,
         ))
@@ -524,8 +527,10 @@ def marsh_thrush_active(ctx: Any, actor: Any, targets: list) -> None:
 
 @register_passive("champ_marsh_thrush.passive")
 def marsh_thrush_passive(owner: Any) -> EffectBundle:
+    # Passive MS buff also scales from INT
+    ms_bonus = 5.0 + owner.stat("intelligence") * 0.1
     return EffectBundle(modifiers=[
-        Modifier("move_speed", "add", 10.0, Lifetime.COMBAT, "passive:champ_marsh_thrush"),
+        Modifier("move_speed", "add", ms_bonus, Lifetime.COMBAT, "passive:champ_marsh_thrush"),
     ])
 
 
@@ -576,13 +581,19 @@ def glade_heron_passive(owner: Any) -> EffectBundle:
 
 @register_active("champ_glade_heron.active")
 def glade_heron_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Toxic volley: INT damage + extra poison stacks
+    # Toxic volley: INT damage + extra poison stacks + execute vs poisoned
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(60.0, "intelligence*1.8", actor)
+    # Buffed scaling for T8 mage damage dealer
+    amount = _eval_scaling(80.0, "intelligence*2.4", actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
-    ctx.apply_status(target, "poison", duration_ticks=500, stacks=3, source_id=actor.id)
+    ctx.apply_status(target, "poison", duration_ticks=500, stacks=4, source_id=actor.id)
+    # Execute: bonus damage if target has 3+ poison stacks
+    poison_stacks = ctx.get_status_stacks(target, "poison")
+    if poison_stacks >= 3:
+        execute_damage = actor.stat("intelligence") * 0.5
+        ctx.deal_damage(actor, target, execute_damage, SourceTag.ABILITY)
 
 
 # --- Riptide Caiman (T9, ADC-STR Stalker) ---
@@ -1760,12 +1771,19 @@ def storm_eagle_passive(owner: Any) -> EffectBundle:
 
 @register_active("champ_storm_eagle.active")
 def storm_eagle_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Lightning dive: INT damage to primary + chain
+    # Lightning dive: INT damage to primary + chain to 2 neighbors
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(80.0, "intelligence*2.0", actor)
+    # Buffed scaling for T9 mage damage dealer + chain bounce at 50%
+    amount = _eval_scaling(100.0, "intelligence*2.8", actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    # Chain to 2 neighbors at 50% damage
+    hit_count = 0
+    for n in neighbors_of(target, ctx):
+        if ctx.is_enemy(n, actor) and n is not target and hit_count < 2:
+            ctx.deal_damage(actor, n, amount * 0.5, SourceTag.ABILITY)
+            hit_count += 1
 
 
 # --- Aerion (T10, Primordial — Thunder) ---
