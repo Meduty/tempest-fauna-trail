@@ -104,18 +104,22 @@ IDENTITY = CombatModifier()
 # Configurable weather favor magnitude. Controls how much fighting in
 # favorable/unfavorable weather affects stats. Target: ~10pp combined effect.
 WEATHER_FAVOR_MAGNITUDE = 0.15  # ±15% for primary stats at strong tier
+# Secondary bonuses scale down from the primary magnitude.
+_SECONDARY_BONUS_RATIO = 0.53   # ~8% secondary stat (e.g., offensive add)
+_TERTIARY_BONUS_RATIO = 0.27    # ~4% tertiary stat (minor offensive add)
 
 # Strong-tier base stat packs per weather (primary stats ±WEATHER_FAVOR_MAGNITUDE,
 # with smaller offensive adds where noted). `combat_modifier` scales the deviation
 # from 1.0 down for the medium/weak tiers.
 _buff = 1.0 + WEATHER_FAVOR_MAGNITUDE
 _debuff = 1.0 - WEATHER_FAVOR_MAGNITUDE
-_buff_minor = 1.0 + WEATHER_FAVOR_MAGNITUDE * 0.53  # ~8% secondary bonus
+_buff_minor = 1.0 + WEATHER_FAVOR_MAGNITUDE * _SECONDARY_BONUS_RATIO
+_buff_tertiary = round(1.0 + WEATHER_FAVOR_MAGNITUDE * _TERTIARY_BONUS_RATIO, 2)
 
 WEATHER_BUFF_BASE: dict[WeatherState, CombatModifier] = {
     WeatherState.CLOUDY: CombatModifier(hp_mult=_buff, res_mult=_buff, as_mult=_buff_minor),
     WeatherState.MIST: CombatModifier(ms_mult=_buff, thr_mult=_buff, int_mult=_buff_minor),
-    WeatherState.SNOW: CombatModifier(armor_mult=_buff, res_mult=_buff, str_mult=round(1.0 + WEATHER_FAVOR_MAGNITUDE * 0.27, 2)),
+    WeatherState.SNOW: CombatModifier(armor_mult=_buff, res_mult=_buff, str_mult=_buff_tertiary),
     WeatherState.RAIN: CombatModifier(as_mult=_buff, mr_mult=_buff),
     WeatherState.THUNDER: CombatModifier(str_mult=_buff, as_mult=_buff),
     WeatherState.CLEAR: IDENTITY,
