@@ -233,7 +233,7 @@ Same pattern as Hierarch: utility-only kit with no passive. The critical failure
 
 **Passive — "Command Presence":** When Company Captain autos a debuffed enemy, deal bonus intelligence×0.4 magic damage. Synergizes with own active.
 
-**Alternative passive — "Volley Command":** Every 4th auto-attack, all allies within radius 2 perform a bonus attack (deals INT×0.15 of Captain's INT as bonus damage to the Captain's target). Creates a "commander" fantasy with scaling.
+**Alternative passive — "Volley Command":** Every 4th auto-attack, all allies within radius 2 perform a bonus attack (deals Captain's INT×0.15 as bonus damage to the Captain's target). Creates a "commander" fantasy with scaling.
 
 #### Stat Override Suggestion
 
