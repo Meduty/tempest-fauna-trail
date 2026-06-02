@@ -43,9 +43,11 @@ def test_as_team_piece_drops_traits():
 
 
 def test_all_piece_ids_covers_full_roster():
+    from tools.simulation.matchup import LEVELS, base_of
     ids = all_piece_ids()
-    assert len(ids) == len(CHAMPION_ROSTER) + len(ENEMY_ROSTER)
-    assert set(ids) == set(CHAMPION_ROSTER) | set(ENEMY_ROSTER)
+    # Each base champ is expanded across every level.
+    assert len(ids) == (len(CHAMPION_ROSTER) + len(ENEMY_ROSTER)) * len(LEVELS)
+    assert {base_of(i) for i in ids} == set(CHAMPION_ROSTER) | set(ENEMY_ROSTER)
 
 
 def test_get_piece_unknown_raises():

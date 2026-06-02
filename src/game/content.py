@@ -230,7 +230,7 @@ def _apply_stat_overrides(base: dict[str, Any], overrides: dict[str, int]) -> di
     return {k: base[k] + overrides.get(k, 0) for k in base}
 
 
-def _build_champion(d: ChampionDef) -> Champion:
+def _build_champion(d: ChampionDef, level: int = 1) -> Champion:
     base = compose_stats(
         d.primary_stat,
         d.range_,
@@ -241,6 +241,11 @@ def _build_champion(d: ChampionDef) -> Champion:
         ability_cost=d.ability_cost,
     )
     _assert_budget(d, base)
+    if level > 1:
+        from .scaling import stat_multiplier as sm
+        scale = sm(d.tier, level) / sm(d.tier, 1)
+        for k in ("max_hp", "strength", "intelligence", "armor", "resistance"):
+            base[k] = round(base[k] * scale)
     stats = _apply_stat_overrides(base, d.stat_overrides)
     return Champion(
         id=d.id,
@@ -248,7 +253,7 @@ def _build_champion(d: ChampionDef) -> Champion:
         affinity=d.affinity,
         role=_ROLE_FROM_AXES[d.primary_stat][d.range_],
         tier=d.tier,
-        level=1,
+        level=level,
         max_hp=max(1, stats["max_hp"]),
         strength=max(0, stats["strength"]),
         intelligence=max(0, stats["intelligence"]),
@@ -266,7 +271,7 @@ def _build_champion(d: ChampionDef) -> Champion:
     )
 
 
-def _build_enemy(d: EnemyDef) -> Enemy:
+def _build_enemy(d: EnemyDef, level: int = 1) -> Enemy:
     base = compose_stats(
         d.primary_stat,
         d.range_,
@@ -277,6 +282,11 @@ def _build_enemy(d: EnemyDef) -> Enemy:
         ability_cost=d.ability_cost,
     )
     _assert_budget(d, base)
+    if level > 1:
+        from .scaling import stat_multiplier as sm
+        scale = sm(d.tier, level) / sm(d.tier, 1)
+        for k in ("max_hp", "strength", "intelligence", "armor", "resistance"):
+            base[k] = round(base[k] * scale)
     stats = _apply_stat_overrides(base, d.stat_overrides)
     return Enemy(
         id=d.id,
@@ -284,7 +294,7 @@ def _build_enemy(d: EnemyDef) -> Enemy:
         affinity=d.affinity,
         role=_ROLE_FROM_AXES[d.primary_stat][d.range_],
         tier=d.tier,
-        level=1,
+        level=level,
         max_hp=max(1, stats["max_hp"]),
         strength=max(0, stats["strength"]),
         intelligence=max(0, stats["intelligence"]),
@@ -531,6 +541,7 @@ CHAMPION_ROSTER: dict[str, Champion] = _build_champion_roster(_CHAMPION_DEFS)
 ENEMY_ROSTER: dict[str, Enemy] = _build_enemy_roster(_ENEMY_DEFS)
 ENEMY_TAGS_MAP: dict[str, frozenset[str]] = {d.id: d.tags for d in _ENEMY_DEFS}
 ENEMY_DEF_BY_ID: dict[str, EnemyDef] = {d.id: d for d in _ENEMY_DEFS}
+CHAMPION_DEF_BY_ID: dict[str, ChampionDef] = {d.id: d for d in _CHAMPION_DEFS}
 
 
 def get_champion(champion_id: str) -> Champion:
@@ -539,6 +550,16 @@ def get_champion(champion_id: str) -> Champion:
 
 def get_enemy(enemy_id: str) -> Enemy:
     return ENEMY_ROSTER[enemy_id]
+
+
+def build_champion_at_level(champion_id: str, level: int) -> Champion:
+    """Rebuild a roster champion at the given level (1-3) with level-scaled stats."""
+    return _build_champion(CHAMPION_DEF_BY_ID[champion_id], level)
+
+
+def build_enemy_at_level(enemy_id: str, level: int) -> Enemy:
+    """Rebuild a roster enemy at the given level (1-3) with level-scaled stats."""
+    return _build_enemy(ENEMY_DEF_BY_ID[enemy_id], level)
 
 
 def champions_by_affinity(weather: WeatherState) -> list[Champion]:

@@ -13,7 +13,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.game.combat import resolve_combat
-from src.game.content import CHAMPION_ROSTER, ENEMY_ROSTER
+from src.game.content import (
+    CHAMPION_ROSTER,
+    ENEMY_ROSTER,
+    build_champion_at_level,
+    build_enemy_at_level,
+)
 from src.game.models import (
     BattleResult,
     Champion,
@@ -25,6 +30,30 @@ from src.game.models import (
 
 SIDE_A_SUFFIX = "_a"
 SIDE_B_SUFFIX = "_b"
+
+# Piece ids carry an optional level tag `<base>@<level>`. Level 1 may be
+# written bare (`<base>`) for backward compatibility. `@` never appears in a
+# roster id, so it is a safe separator.
+LEVELS = (1, 2, 3)
+LEVEL_SEP = "@"
+
+
+def make_piece_id(base_id: str, level: int) -> str:
+    """Encode a leveled piece id. Level 1 stays bare for back-compat."""
+    return base_id if level == 1 else f"{base_id}{LEVEL_SEP}{level}"
+
+
+def parse_piece_id(piece_id: str) -> tuple[str, int]:
+    """Split a (possibly leveled) piece id into (base_id, level)."""
+    base, sep, lvl = piece_id.rpartition(LEVEL_SEP)
+    if sep and lvl.isdigit():
+        return base, int(lvl)
+    return piece_id, 1
+
+
+def base_of(piece_id: str) -> str:
+    """Base roster id with any level tag stripped."""
+    return parse_piece_id(piece_id)[0]
 
 
 # ---------------------------------------------------------------------------
@@ -114,17 +143,26 @@ def as_enemy_piece(piece: Champion | Enemy, *, suffix: str = SIDE_B_SUFFIX) -> E
 
 
 def get_piece(piece_id: str) -> Champion | Enemy:
-    """Resolve a piece by its raw id (champion roster first, then enemy)."""
-    if piece_id in CHAMPION_ROSTER:
-        return CHAMPION_ROSTER[piece_id]
-    if piece_id in ENEMY_ROSTER:
-        return ENEMY_ROSTER[piece_id]
-    raise KeyError(f"Unknown piece id: {piece_id!r}")
+    """Resolve a (possibly leveled) piece id into a level-scaled piece.
+
+    The returned piece's `.id` is the full leveled id so downstream side
+    suffixing (`_a`/`_b`) and survivor lookups stay unique per level.
+    """
+    base, level = parse_piece_id(piece_id)
+    if base in CHAMPION_ROSTER:
+        piece: Champion | Enemy = build_champion_at_level(base, level)
+    elif base in ENEMY_ROSTER:
+        piece = build_enemy_at_level(base, level)
+    else:
+        raise KeyError(f"Unknown piece id: {piece_id!r}")
+    piece.id = piece_id
+    return piece
 
 
 def all_piece_ids() -> list[str]:
-    """Stable union of champion + enemy roster ids."""
-    return sorted(CHAMPION_ROSTER) + sorted(ENEMY_ROSTER)
+    """Stable union of champion + enemy roster ids, expanded across all levels."""
+    bases = sorted(CHAMPION_ROSTER) + sorted(ENEMY_ROSTER)
+    return [make_piece_id(b, lvl) for b in bases for lvl in LEVELS]
 
 
 # ---------------------------------------------------------------------------

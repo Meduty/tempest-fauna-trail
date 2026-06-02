@@ -590,7 +590,7 @@ def glade_heron_active(ctx: Any, actor: Any, targets: list) -> None:
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
     ctx.apply_status(target, "poison", duration_ticks=500, stacks=4, source_id=actor.id)
     # Execute: bonus damage if target has 3+ poison stacks
-    poison_stacks = ctx.get_status_stacks(target, "poison")
+    poison_stacks = target.status_stacks("poison")
     if poison_stacks >= 3:
         execute_damage = actor.stat("intelligence") * 0.5
         ctx.deal_damage(actor, target, execute_damage, SourceTag.ABILITY)

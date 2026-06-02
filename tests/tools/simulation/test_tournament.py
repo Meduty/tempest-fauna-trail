@@ -25,9 +25,17 @@ def test_enumerate_1v1_pair_count():
 
 
 def test_enumerate_1v1_full_roster_size():
+    from tools.simulation.matchup import base_of
+    ids = all_piece_ids()
     configs = enumerate_1v1(WeatherState.CLEAR)
-    n = len(all_piece_ids())
-    assert len(configs) == n * (n - 1) // 2
+    n = len(ids)
+    # C(n,2) minus same-base pairs (a champ never fights another level of itself).
+    n_bases = len({base_of(i) for i in ids})
+    per_base = len(ids) // n_bases  # levels per base (uniform)
+    same_base_pairs = n_bases * (per_base * (per_base - 1) // 2)
+    assert len(configs) == n * (n - 1) // 2 - same_base_pairs
+    # No config pairs two levels of the same base champ.
+    assert all(base_of(c.piece_ids_a[0]) != base_of(c.piece_ids_b[0]) for c in configs)
 
 
 def test_enumerate_team2_disjoint():

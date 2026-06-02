@@ -22,6 +22,7 @@ from tools.simulation.matchup import (
     MatchupResult,
     _pool_initializer,
     all_piece_ids,
+    base_of,
     configure_sim_max_ticks,
     get_piece,
     run_matchup,
@@ -40,12 +41,14 @@ def enumerate_1v1(
 ) -> list[MatchupConfig]:
     """All unordered pairs of distinct pieces (no self-mirrors).
 
-    Output size = C(len(piece_ids), 2). With the shipped 120-piece roster
-    that is 7140 configs per weather.
+    Pairs sharing a base champ — e.g. the same champion at two levels — are
+    excluded (no dupe of the same champ in one fight).
     """
     pieces = piece_ids if piece_ids is not None else all_piece_ids()
     configs: list[MatchupConfig] = []
     for a, b in itertools.combinations(pieces, 2):
+        if base_of(a) == base_of(b):
+            continue
         configs.append(MatchupConfig(piece_ids_a=(a,), piece_ids_b=(b,), weather=weather))
     return configs
 
@@ -62,10 +65,16 @@ def enumerate_team2(
     confirm runtime budget before invoking.
     """
     pieces = piece_ids if piece_ids is not None else all_piece_ids()
-    teams = list(itertools.combinations(pieces, 2))
+    # No dupe of the same base champ within a team.
+    teams = [
+        t for t in itertools.combinations(pieces, 2)
+        if base_of(t[0]) != base_of(t[1])
+    ]
     configs: list[MatchupConfig] = []
     for team_a, team_b in itertools.combinations(teams, 2):
-        if set(team_a) & set(team_b):
+        bases_a = {base_of(p) for p in team_a}
+        bases_b = {base_of(p) for p in team_b}
+        if bases_a & bases_b:
             continue
         configs.append(
             MatchupConfig(piece_ids_a=team_a, piece_ids_b=team_b, weather=weather)
@@ -97,9 +106,13 @@ def sample_teams(
         raise ValueError(f"n_battles must be >= 0, got {n_battles}")
 
     pieces = piece_ids if piece_ids is not None else all_piece_ids()
-    if len(pieces) < 2 * team_size:
+    # Dedupe by base champ means distinct base count, not raw id count, is
+    # what bounds team formation.
+    n_bases = len({base_of(p) for p in pieces})
+    if n_bases < 2 * team_size:
         raise ValueError(
-            f"Need >= {2 * team_size} pieces to sample {team_size}v{team_size} teams"
+            f"Need >= {2 * team_size} distinct base champs to sample "
+            f"{team_size}v{team_size} teams (have {n_bases})"
         )
 
     rng = random.Random(seed)
@@ -109,7 +122,10 @@ def sample_teams(
         for pid in pieces:
             tier = get_piece(pid).tier
             pool_by_tier.setdefault(tier, []).append(pid)
-        usable_tiers = [t for t, ids in pool_by_tier.items() if len(ids) >= 2 * team_size]
+        usable_tiers = [
+            t for t, ids in pool_by_tier.items()
+            if len({base_of(p) for p in ids}) >= 2 * team_size
+        ]
         if not usable_tiers:
             raise ValueError(
                 f"No tier has >= {2 * team_size} pieces for stratified sampling"
@@ -128,6 +144,9 @@ def sample_teams(
         else:
             pool = pieces
         drawn = rng.sample(pool, 2 * team_size)
+        # No dupe of the same base champ anywhere in the fight (both teams).
+        if len({base_of(p) for p in drawn}) < len(drawn):
+            continue
         team_a = tuple(sorted(drawn[:team_size]))
         team_b = tuple(sorted(drawn[team_size:]))
         # Canonicalise so (A,B) and (B,A) dedupe identically.

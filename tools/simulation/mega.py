@@ -8,13 +8,14 @@ progress bar. Outputs land under --out (default results/mega/):
     run.log                          stdout snapshot (when redirected)
 
 Stages:
-    1v1            full C(120,2) pairs per weather (default ALL weathers)
-    team2-sample   N random 2v2 matchups per weather
-    team3-sample   N random 3v3 matchups per weather
-    team2-full     opt-in (~25M battles per weather; requires --enable-2v2-full)
+    1v1                full C(120,2) pairs per weather (default ALL weathers)
+    team2-sample ..    N random KvK matchups per weather, for K in 2..10
+    team10-sample      (one stage per team size; tune via --n2 .. --n10)
+    team2-full         opt-in (~25M battles per weather; requires --enable-2v2-full)
 
-Defaults are conservative; raise --n2 / --n3 to scale up. Each stage runs
-through one shared pool so workers are reused.
+Defaults are conservative and taper as team size grows; raise the per-size
+--nK flags to scale up. Each stage runs through one shared pool so workers
+are reused.
 
 Engine is byte-deterministic; same flags reproduce the same CSV byte-for-byte.
 
@@ -276,6 +277,27 @@ ALL_WEATHERS = [
 ]
 
 
+# Team-sample stages: one stage per size in 2v2 .. 10v10. Each gets a
+# `--n{size}` flag (dest `n{size}`) and a `team{size}-sample` skip choice.
+# Defaults decline as size grows — larger teams cost more ticks per fight
+# (3v3 ≈ 3× a 2v2; the trend continues), so per-stage sample counts taper
+# to keep total runtime sane. Raise individual `--n{size}` for tighter
+# convergence on a specific team size.
+TEAM_SAMPLE_SIZES = list(range(2, 11))
+DEFAULT_TEAM_SAMPLES: dict[int, int] = {
+    2: 50_000,
+    3: 30_000,
+    4: 20_000,
+    5: 15_000,
+    6: 12_000,
+    7: 10_000,
+    8: 8_000,
+    9: 7_000,
+    10: 6_000,
+}
+TEAM_SKIP_CHOICES = [f"team{size}-sample" for size in TEAM_SAMPLE_SIZES]
+
+
 # ---------------------------------------------------------------------------
 # Stage description
 # ---------------------------------------------------------------------------
@@ -337,21 +359,19 @@ def build_stages(
         for w in weathers:
             stages.append(Stage("1v1", w, enumerate_1v1(w)))
 
-    if "team2-sample" not in skip:
+    for size in TEAM_SAMPLE_SIZES:
+        stage_name = f"team{size}-sample"
+        if stage_name in skip:
+            continue
+        n_battles = getattr(args, f"n{size}")
+        if n_battles <= 0:
+            continue
         for w in weathers:
             configs = sample_teams(
-                w, team_size=2, n_battles=args.n2,
+                w, team_size=size, n_battles=n_battles,
                 seed=args.seed, tier_stratified=args.tier_stratified,
             )
-            stages.append(Stage("team2-sample", w, configs))
-
-    if "team3-sample" not in skip:
-        for w in weathers:
-            configs = sample_teams(
-                w, team_size=3, n_battles=args.n3,
-                seed=args.seed, tier_stratified=args.tier_stratified,
-            )
-            stages.append(Stage("team3-sample", w, configs))
+            stages.append(Stage(stage_name, w, configs))
 
     if args.enable_2v2_full and "team2-full" not in skip:
         for w in weathers:
@@ -400,15 +420,16 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Process pool size. Default 8. Pass 1 for serial.")
     p.add_argument("--weather", type=_parse_weather, default=None,
                    help="Restrict to one weather. Default: all 6.")
-    p.add_argument("--n2", type=int, default=50_000,
-                   help="Battle count per weather for team2-sample. Default 50000.")
-    p.add_argument("--n3", type=int, default=30_000,
-                   help="Battle count per weather for team3-sample. Default 30000.")
+    for size in TEAM_SAMPLE_SIZES:
+        default_n = DEFAULT_TEAM_SAMPLES[size]
+        p.add_argument(f"--n{size}", type=int, default=default_n,
+                       help=f"Battle count per weather for team{size}-sample "
+                            f"({size}v{size}). Default {default_n}. Pass 0 to skip.")
     p.add_argument("--seed", type=int, default=42, help="Sampling RNG seed.")
     p.add_argument("--tier-stratified", action="store_true",
                    help="Draw teams within one tier band per battle.")
-    p.add_argument("--skip", action="append", choices=["1v1", "team2-sample",
-                                                        "team3-sample", "team2-full"],
+    p.add_argument("--skip", action="append",
+                   choices=["1v1", *TEAM_SKIP_CHOICES, "team2-full"],
                    help="Stage(s) to skip. Repeatable.")
     p.add_argument("--enable-2v2-full", action="store_true",
                    help="Include full 2v2 Cartesian stage (~25M battles per weather).")
