@@ -578,7 +578,17 @@ class Run:
     current_node_index: int
     battle_log: list[BattleResult] = field(default_factory=list)
     inventory: dict[str, int] = field(default_factory=dict)
-    gold: int = 0
+    amber: int = 0
+    # Team-size cap progression (T.22). tempest_rank == deployable field cap.
+    # tempest is progress toward the *next* rank-up; both monotonic non-decreasing.
+    tempest: int = 0
+    tempest_rank: int = 1
+    # Champion shop economy (T.22). champion_copies maps a champion id to the
+    # total base copies bought; the materialized level is derived (3 copies → L2,
+    # 9 copies → L3). shop_offers holds the 5 current slots (None = bought/empty).
+    champion_copies: dict[str, int] = field(default_factory=dict)
+    shop_offers: list[str | None] = field(default_factory=list)
+    shop_rerolls: int = 0
     content_version: str = "1.0.0"
     difficulty_coefficient: float = 1.0
 
@@ -587,8 +597,15 @@ class Run:
             raise ValueError("schema_version must be >= 1.")
         if not self.route:
             raise ValueError("Run route must contain at least one node.")
-        if self.gold < 0:
-            raise ValueError("Run gold must be >= 0.")
+        if self.amber < 0:
+            raise ValueError("Run amber must be >= 0.")
+        if self.tempest < 0:
+            raise ValueError("Run tempest must be >= 0.")
+        _require_range(self.tempest_rank, "Run tempest_rank", 1, 10)
+        if self.shop_rerolls < 0:
+            raise ValueError("Run shop_rerolls must be >= 0.")
+        if any(copies < 1 for copies in self.champion_copies.values()):
+            raise ValueError("Run champion_copies values must be >= 1.")
 
         roster_ids = [champion.id for champion in self.roster]
         if len(roster_ids) != len(set(roster_ids)):
@@ -672,7 +689,12 @@ class Run:
             "run_id": self.run_id,
             "seed": self.seed,
             "status": self.status.value,
-            "gold": self.gold,
+            "amber": self.amber,
+            "tempest": self.tempest,
+            "tempest_rank": self.tempest_rank,
+            "champion_copies": dict(self.champion_copies),
+            "shop_offers": list(self.shop_offers),
+            "shop_rerolls": self.shop_rerolls,
             "inventory": self.inventory,
             "current_node_index": self.current_node_index,
             "roster": [champion.to_dict() for champion in self.roster],
@@ -702,7 +724,13 @@ class Run:
                 for raw_result in payload.get("battle_log", [])
             ],
             inventory=dict(payload.get("inventory", {})),
-            gold=payload.get("gold", 0),
+            # Accept the legacy "gold" key on read for back-compat (SPEC B.4).
+            amber=payload.get("amber", payload.get("gold", 0)),
+            tempest=payload.get("tempest", 0),
+            tempest_rank=payload.get("tempest_rank", 1),
+            champion_copies=dict(payload.get("champion_copies", {})),
+            shop_offers=list(payload.get("shop_offers", [])),
+            shop_rerolls=payload.get("shop_rerolls", 0),
             content_version=payload.get("content_version", "1.0.0"),
             difficulty_coefficient=payload.get("difficulty_coefficient", 1.0),
         )

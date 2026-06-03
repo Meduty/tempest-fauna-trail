@@ -86,7 +86,7 @@ def _make_run() -> Run:
         current_node_index=1,
         battle_log=[],
         inventory={"potion_small": 2},
-        gold=10,
+        amber=10,
     )
 
 
@@ -148,6 +148,27 @@ def test_run_to_dict_from_dict_roundtrip() -> None:
     loaded = Run.from_dict(payload)
 
     assert loaded.to_dict() == payload
+
+
+def test_run_amber_serialization_and_legacy_gold_read() -> None:
+    # New shape writes "amber".
+    run = _make_run()
+    assert run.to_dict()["amber"] == 10
+    assert "gold" not in run.to_dict()
+
+    # Legacy saves used "gold"; from_dict must still read it (SPEC B.4).
+    legacy = run.to_dict()
+    legacy["gold"] = legacy.pop("amber")
+    assert Run.from_dict(legacy).amber == 10
+
+
+def test_run_tempest_defaults_and_serialization() -> None:
+    run = _make_run()
+    assert run.tempest == 0
+    assert run.tempest_rank == 1
+    payload = run.to_dict()
+    assert payload["tempest"] == 0 and payload["tempest_rank"] == 1
+    assert Run.from_dict(payload).tempest_rank == 1
 
 
 def test_run_advance_updates_node_states() -> None:

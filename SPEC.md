@@ -18,7 +18,7 @@ auto-resolved — the player's decisions happen *between* fights.
 weather-aware roster swaps, and board positioning.
 
 **Run-start conditions:**
-- Team-size cap: **3** at rank 1 (field 1 champion, bench holds 2 spares); grows with Tempest rank up to **6** at max rank (see D.14).
+- Team-size cap: **3** at rank 1 (field 1 champion, bench holds 2 spares); grows with Tempest rank up to **10** at max rank (see D.14).
 - Starting champion: player picks 1 from a seed-random offer of 3 (Tier 1–2).
 - Starting shop: 5 Tier-1 champions (auto-populated; first reroll per node is free).
 - Starting Amber: **10** (enough to buy 2 Tier-1 champions or 1 Tier-2 + save).
@@ -73,7 +73,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 ## V. Invariants
 
 - V.1: `game/` has zero Flet imports — pure logic, no UI coupling
-- V.2: Combat is pure function — `resolve_combat(team, enemies, weather) -> BattleResult`. Single public entry point; the new ability/passive/status framework is invoked through it, never alongside it. `resolve_combat` internally delegates to `compile_loadout → CombatContext → combat/loop_new.run → BattleResultRecorder.build_result`. Boss fights use the same delegation chain but attach `map_effect_id` via `attach_map_effect` before running the loop (T.26).
+- V.2: Combat is pure function — `resolve_combat(team, enemies, weather) -> BattleResult`. Single public entry point; the new ability/passive/status framework is invoked through it, never alongside it. `resolve_combat` internally delegates to `compile_loadout → CombatContext → combat/loop_new.run → BattleResultRecorder.build_result`. Boss fights use the same delegation chain but attach `map_effect_id` via `attach_map_effect` before running the loop (T.26). `resolve_combat`/`resolve_boss_combat` also accept an optional `run_mods: RunModifiers` (active augment ids + a mutable `augment_state` for quest trackers); it stays pure and deterministic, and the `None` default leaves all non-augment callers — including every balance sim — byte-for-byte unchanged (T.31).
 - V.3: API failure never crashes app — failed fetch leaves node `unknown` (never-succeeded) or `substitute` (holds `CITIES[city_id].default_weather`); refresher streams keep retrying, never escalate
 - V.4: All HTTP calls run on `threading.Thread`, never main thread
 - V.5: Weather state enum: exactly 6 values (Clear, Cloudy, Mist, Rain, Snow, Thunder), mapped 1:1 to OpenWeather id main groups
@@ -88,6 +88,10 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - V.14: `tools/simulation/` imports only from `src/game/` — no `ui/`, no `api/`. Matches the V.1 isolation rule extended to the sim layer; keeps `resolve_combat` as the only engine entry. (T.25)
 - V.15: Every `ability_id` and `passive_id` referenced by `ChampionDef`, `EnemyDef`, or `BossDef` in content/roster data **must** resolve in `ABILITY_REGISTRY` or `PASSIVE_REGISTRY` respectively — enforced by CI guard test (`test_ability_catalog.py::test_all_*_resolve` and `test_all_boss_abilities_resolve`). BossDef coverage includes `phase1_active`, `phase1_passive`, `phase1_phase_hook`, `phase2_active`, `phase2_passive`, and `on_death_hook`. (T.30)
 - V.16: Sim weather-affinity metrics (`own_weather_wr`, `counter_weather_wr`, `weather_sensitivity` on `PieceStats`) are **cross-weather** — derived only via `ratings.weather_metrics()` over per-piece win-rates pooled across **all** weathers, never from a single-weather `aggregate_stats` pass. A single weather yields `weather_sensitivity ≡ 0` by construction; `mega`/`runner` must pool weathers then inject before writing per-weather ratings CSVs. (T.25)
+- V.17: Every id in `Run.active_augments` (and every quest-tracker id it implies) **must** resolve in `AUGMENT_REGISTRY` / `QUEST_TRACKER_REGISTRY` — enforced by CI guard test, mirroring V.15. (T.31)
+- V.18: Augments are **run-long**: `TEAM`/`PIECE` augment effects are rebuilt fresh in `compile_loadout` each combat from `Run.active_augments`, never persisted as combat state; `RUN`-scope augments mutate `Run` exactly once at pick time. (T.31)
+- V.19: Economy / shop / offer rolls are **seed-deterministic** — shop offers from `(run_seed, visit_index, reroll_count)` via `CH_SHOP`, SUPPLY from `(run_seed, node_index)` via `CH_SUPPLY`, Amber win-bonus from `(run_seed, node_index)` via `CH_ECONOMY`; same seed → same draws, mirroring the T.19 encounter contract (extends V.14-style determinism to the economy layer). (T.22)
+- V.20: `Tempest` rank is **monotonic non-decreasing** — starts at 1, capped at 10, `rank == deployable board cap`. `Run.tempest` accumulates (+2/fight, +challenge bonus, or Amber rush) and cascades into rank-ups consuming the per-rank thresholds; overflow Tempest carries to the next rank, never decrements rank. (T.22)
 
 ## T. Tasks
 
@@ -116,7 +120,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.19 | Encounter generation — seed-deterministic squad/offer fill, enemy power clustering, node budgets | `game/encounter.py`, `docs/design/tasks/t19_encounter_generation_plan.md` | T.1, T.4, T.5, T.18 | M | ✅ Done |
 | T.20 | Ability/passive/status framework — registry, typed event bus, status gates, boss phase hook | `game/abilities/`, `game/effects.py`, `game/events.py`, `game/status.py`, `game/registries.py`, `docs/design/tasks/t20_ability_framework_plan.md` | T.3 | L | ✅ Done |
 | T.21 | Challenge & boss encounters — champion-faction challenges, 2-phase bosses, auto-battle-aware map effects | `game/encounter.py`, `game/board.py`, `game/map_effects.py`, `game/bosses/`, `docs/design/tasks/t21_challenge_boss_plan.md` | T.19, T.20 | M | ✅ Done |
-| T.22 | Economy & shop — Amber income per node (+3 base, +1-3 win bonus), shop refresh (5 slots, auto-refresh each node, manual reroll 1 Amber, first reroll per node free), buy `Cost(T)=T`, sell `floor(Cost/2)`, team-size Tempest leveling (rank N costs 2N, max rank 6), stage-gated tier probabilities | `game/economy.py`, `game/shop.py`, `docs/design/tasks/t22_meta_progression_plan.md` | T.1, T.5, T.18 | L | 📋 Plan |
+| T.22 | Economy & shop — Amber income per node (+3 base, +1-3 win bonus, +interest 1/10 cap 5), shop refresh (5 slots, auto-refresh each node, manual reroll 1 Amber, first reroll per node free), buy `Cost(T)=T`, sell `floor(Cost/2)`, 3-copy leveling, SUPPLY 1-of-5 free recruit, team-size Tempest leveling (accelerating thresholds 2/4/6/10/14/18/24/30/36, free +2/fight, all-or-nothing Amber rush 1:1, max rank 10), stage-gated tier probabilities | `game/economy.py`, `game/shop.py`, `game/models.py`, `docs/design/tasks/t22_meta_progression_plan.md` | T.1, T.5, T.18 | L | ✅ Done |
 | T.23 | Prep formation snapshot integration — lock player board placement in Prep, validate deployment constraints, pass explicit coordinates into combat init | `ui/views/prep.py`, `game/models.py`, `game/combat.py`, `docs/design/tasks/t23_prep_formation_snapshot_plan.md` | T.1, T.3, T.15 | M | 📋 Plan |
 | T.24 | Enemy formation policy — deterministic role-aware spawn planner (frontline forward, backline protected, size-aware packing) with safe fallback | `game/formation.py`, `game/combat.py`, `docs/design/tasks/t24_enemy_formation_plan.md` | T.3, T.5, T.23 | M | ✅ Done |
 | T.25 | Power simulation & balance benchmarking — deterministic matchup sweeps and empirical power ratings | `tools/simulation/`, `docs/design/tasks/t25_power_simulation_plan.md` | T.3, T.5 | M | ✅ Done |
@@ -125,6 +129,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.28 | Synergy trait effects — implement `TraitDef` / `TraitBreakpoint` types, `@register_trait` factories for all Kinship/Calling/Affinity traits, team roll-up step in `compile_loadout`, `BattleResult` activation events | `game/traits/`, `game/loadout.py`, `docs/design/content/trait_catalog.md` | T.5, T.20, T.26 | L | ❌ Not started |
 | T.29 | Item engine — `Item`, `Component`, `ItemSlot` models, `RECIPE_MAP` (8 components → 36 combined), equip/unequip logic (3 slots per piece), `EffectBundle` factories per item, emblem Kinship grant, special-item run-actions, drop-table integration with REWARD nodes | `game/items.py`, `game/item_effects.py`, `docs/design/tasks/t29_item_engine_plan.md` | T.1, T.20, T.22 | L | ❌ Not started |
 | T.30 | Ability & passive catalog — implement all 120 roster ability/passive handlers (60 champions + 60 enemies) plus 6 full 2-phase boss kits; fix registration IDs, fix generic-fallback bias, add summon lifecycle primitives, add CI guard test for ability-id resolution | `game/abilities/champions.py`, `game/abilities/enemies.py`, `game/abilities/bosses.py`, `game/piece.py`, `game/combat/loop_new.py`, `docs/design/tasks/t30_ability_catalog_plan.md` | T.5, T.20, T.21, T.26 | L | ✅ Done |
+| T.31 | Augment system — `Augment`/`AugmentScope`/`AugmentQuality` model + `@register_augment`; all ~50 catalog augments (4 qualities × 3 scopes `TEAM`/`PIECE`/`RUN`, incl. quest trackers); deterministic 1-of-3 offers + one reroll + Prismatic gating + per-stage quality-weight curve; `Run.active_augments`/`augment_state` (+ serialization, id-validation); `compile_loadout` augment-bundle application (step 6) + quest-tracker wiring (step 9); `RunModifiers` combat seam (optional, `None`-default back-compat); `sim_run` augment resolution — `--augment-policy {first,random,highest-quality,none}` + `--interactive` manual run | `game/augments.py`, `game/loadout.py`, `game/models.py`, `game/combat/legacy.py`, `tools/playtest/sim_run.py`, `docs/design/tasks/t31_augment_system_plan.md` | T.20, T.22, T.26, T.28, T.29 | L | 📋 Plan |
 
 **Size**: S = <1h, M = 1-3h, L = 3-6h
 
@@ -162,7 +167,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - UI age warnings (subtle top-right indicator when any `substitute` present or any `live` aged > 2h, hover lists affected cities) deferred — see D.17.
 - Detailed plan: `docs/design/tasks/t7_cache_refresher_plan.md`.
 
-### T.18-T.29 Planning Notes (Systems Expansion)
+### T.18-T.31 Planning Notes (Systems Expansion)
 
 - T.18 power scalar `P = 1.5 ** ((T-1)/2 + (L-1))` drives encounter budgets and
   piece stat generation; "two tiers == one level".
@@ -172,10 +177,12 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   are its first consumer.
 - T.21 layers spirit challenges and 2-phase bosses on the T.19 generator.
 - T.22 implements the full economy loop: Amber income (+3 base/node, +1-3 win
-  bonus), shop (5 slots, auto-refresh per node, reroll = 1 Amber, first free),
-  buy/sell (`Cost(T) = T` / `floor(Cost/2)`), Tempest team-size leveling
-  (rank N costs 2N Tempest, max rank 6), and stage-gated tier probabilities.
-  Also covers augment/supply node resolution and augment pool.
+  bonus, +interest 1/10 cap 5), shop (5 slots, auto-refresh per node, reroll =
+  1 Amber, first free), buy/sell (`Cost(T) = T` / `floor(Cost/2)`), 3-copy
+  leveling, Tempest team-size leveling (accelerating thresholds, free +2/fight,
+  all-or-nothing Amber rush, max rank 10), and stage-gated tier probabilities.
+  Also covers supply node resolution (1-of-5 free recruit). (Augment node
+  resolution + the augment pool moved to T.31; T.22 stays a dependency.)
 - T.23 makes Prep placement authoritative: board coordinates from Prep become
   combat init input; combat no longer overwrites player layout when a valid
   placement snapshot is provided.
@@ -211,6 +218,17 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   are full 2-phase with phase-transition map effects (Q5). Also fixes the
   generic fallback formula (`max(STR, INT)` instead of INT-biased) and re-keys
   all ability registration IDs to match content roster prefixes.
+- T.31 implements the full augment system on the T.20 effect substrate
+  (`effect_systems_design.md` §9): `Augment` model with `TEAM`/`PIECE`/`RUN`
+  scopes, all ~50 augments from `augment_catalog.md` across 4 qualities, and
+  quest augments as `RUN`-scope + persistent cross-combat trackers. Augments are
+  run-long (V.18) — picked at `AUGMENT` nodes, re-applied every combat via
+  `compile_loadout`, threaded in through the optional `RunModifiers` seam (V.2).
+  Sequenced **after** T.22/T.28/T.29 because most augment content reaches into
+  economy/trait/item systems those tasks build. The `sim_run` CLI walks a
+  complete run (headless `--augment-policy` + rudimentary interactive mode),
+  groundwork the eventual Flet view fires. Detailed plan:
+  `docs/design/tasks/t31_augment_system_plan.md`.
 - Detailed plans: `docs/design/tasks/t18_power_scaling_plan.md` through
   `docs/design/tasks/t25_power_simulation_plan.md`;
   `docs/design/playtesting/plan.md` covers T.27;
@@ -234,6 +252,10 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   (`1 Amber : 1 Tempest`). The `Run.gold` model field should be renamed
   `Run.amber` — touches `models.py`, `to_dict`/`from_dict`, `test_models.py`,
   and `t1_model_contracts.md`.
+  **RESOLVED [2026-06-03] (T.22):** `Run.gold` → `Run.amber` (`from_dict` reads
+  the legacy `gold` key for back-compat); `Run` also gained `tempest`,
+  `tempest_rank`, `champion_copies`, `shop_offers`, `shop_rerolls`
+  (+ validation + serialization). See V.19/V.20.
 
 - B.6 Combat gains a **penetration** stat pair — `penetration` (flat) and
   `penetration_pct` (`[0.0, 1.0]`) on `Champion`, `Enemy`, and
@@ -307,28 +329,39 @@ in their T-task plan docs; what remains here is genuinely undecided.
   REWARD-node drops, SUPPLY-node picks, and the prep shop.
 - D.10 Champion / enemy archetypes: the ~6-8 role archetypes and their `P = 1`
   base stats, enemy power tags, and the spirit roster (T.5 / T.18).
-- D.11 Augment content: the augment pool, the 4 quality tiers, and per-augment
-  effects (T.22).
+- D.11 Augment content: augment pool, 4 quality tiers, 3 scopes, and per-augment
+  effects **owned by T.31** (substrate `effect_systems_design.md` §9, content
+  `augment_catalog.md`, plan `t31_augment_system_plan.md`). Open tuning only: the
+  per-stage quality-weight curve and a degenerate-combo (interaction-cap) audit.
 - D.12 Drop tables: `REWARD`-node loot content (Amber / item / champion weights).
 
 ### Economy & Meta
 
-- D.13 Champion economy: **LOCKED.** Amber sources: +3 base per node, +1-3
-  bonus on win, REWARD-node loot. Sinks: buy champion `Cost(T) = T` Amber,
-  shop reroll = 1 Amber (first reroll each node is free), Tempest buy-up
-  (`1 Amber : 1 Tempest`). Sell value: `floor(Cost / 2)` Amber. Interest: none
-  (keeps runs short).
-- D.14 Team-size cap: `Tempest` counter (the XP analogue) — start at rank `1`
-  (field 1 + 2 bench = team-size 3), `+2` Tempest per fight, raise rank `N` at
-  `2N` Tempest; Amber can complete a rank-up instantly at `1 Amber : 1 Tempest`,
-  full remaining cost only, all-or-nothing (T.22). Max rank **6** (field 6
-  pieces).
-- D.15 Shop: **LOCKED.** Lives in the Prep view. 5 champion slots, auto-refreshed
-  each node entry (free). Manual reroll costs 1 Amber; the first reroll each
-  node is free (counter resets every node advance). Stage-gated tier
-  probabilities: stage 1 sees Tier 1-2 only; stage 6 sees Tier 1-10 with
-  higher-tier weight. Exact probability table authored in
-  `docs/design/tasks/t22_meta_progression_plan.md`.
+- D.13 Champion economy: **LOCKED — implemented in T.22.** Amber sources: +3
+  base per node, +1-3 bonus on win (seed-deterministic), REWARD-node loot.
+  Sinks: buy champion `Cost(T) = T` Amber, shop reroll = 1 Amber (first reroll
+  each node is free), Tempest buy-up (`1 Amber : 1 Tempest`). Sell value:
+  `floor(Cost / 2)` Amber per copy. Leveling: 3 copies → L2, 9 → L3
+  (`Run.champion_copies`). **Interest [revised T.22]:** TFT-style +1 Amber per
+  10 banked, cap +5 (computed on Amber held *before* node income) — supersedes
+  the original "interest: none", added to deepen the save-vs-spend choice.
+- D.14 Team-size cap: **LOCKED — implemented in T.22.** `Tempest` counter (the
+  XP analogue) — start at rank `1` (field 1 + 2 bench = team-size 3), `+2`
+  Tempest per fight (challenge clears +1 more). Rank-up thresholds are an
+  **accelerating** curve (rank `N→N+1`): `1→2:2, 2→3:4, 3→4:6, 4→5:10, 5→6:14,
+  6→7:18, 7→8:24, 8→9:30, 9→10:36`; reaching a threshold auto-ranks and overflow
+  carries. Over ~38 combat nodes, free `+2`/fight tops out ~rank 7-8; ranks 9-10
+  need the Amber rush (`1 Amber : 1 Tempest`, full remaining cost only,
+  all-or-nothing). Max rank **10** (field cap == `tempest_rank`). [Was "max rank
+  6"; corrected — shipped T.21 `CHALLENGE_TEAM_SIZE` stage-6 = 11 at design's
+  `cap+1`/final`+2` implies cap ~10; code beat the spec.]
+- D.15 Shop: **LOCKED — implemented in T.22.** Lives in the Prep view. 5 champion
+  slots, auto-refreshed each node entry (free). Manual reroll costs 1 Amber; the
+  first reroll each node is free (counter resets every node advance). Stage-gated
+  tier probabilities: stage 1 sees Tier 1-2 only; stage 6 widens to Tier 1-9 with
+  higher-tier weight. **Buyable ceiling is T9** — T10 Primordials stay boss-only,
+  so "Tier 1-10" reads as "up to the buyable max T9". Probability table authored
+  in `docs/design/tasks/t22_meta_progression_plan.md` and `shop.STAGE_TIER_WEIGHTS`.
 
 ### UI / Flow
 
@@ -348,7 +381,7 @@ in their T-task plan docs; what remains here is genuinely undecided.
 T.1 → T.2 → T.3 → T.4 → T.18 → T.5 → T.19 → T.20 → T.21 → T.24 → T.26 → T.16 (game tests) → T.27 (playtest CLI)
 
 ### Phase 1b: Economy & Content Systems (Week 3-4) ← NEW critical path
-T.22 (economy + shop) → T.28 (traits) → T.29 (items)
+T.22 (economy + shop) → T.28 (traits) → T.29 (items) → T.31 (augments)
 
 ### Phase 2: API + Data (Week 2-3)
 T.6 → T.7 → T.16 (API tests)

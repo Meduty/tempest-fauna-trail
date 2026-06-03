@@ -41,6 +41,12 @@ CH_REROLL: Final[int] = 3
 CH_CHALLENGE: Final[int] = 4
 CH_BOSS: Final[int] = 5
 CH_SHOP: Final[int] = 6
+CH_ECONOMY: Final[int] = 7
+
+# Per-visit reroll stride: folds reroll_count into the shop sub-seed node arg so
+# each reroll is deterministic and distinct without colliding across visits. Far
+# above any realistic per-node reroll count (each reroll costs Amber).
+SHOP_REROLL_STRIDE: Final[int] = 1000
 
 # ---------------------------------------------------------------------------
 # Content version (populated from roster hash, used by save/load T14)
@@ -497,9 +503,20 @@ def supply_seed(run_seed: int, node_index: int, rerolled: bool = False) -> int:
     return derive_seed(run_seed, node_index, channel)
 
 
-def shop_seed(run_seed: int, visit_index: int) -> int:
-    """Return the sub-seed for champion shop offers at a given visit."""
-    return derive_seed(run_seed, visit_index, CH_SHOP)
+def shop_seed(run_seed: int, visit_index: int, reroll_count: int = 0) -> int:
+    """Return the sub-seed for champion shop offers at a given visit.
+
+    Each manual reroll within a visit folds ``reroll_count`` into the node arg so
+    successive rerolls are deterministic *and* distinct. ``reroll_count=0`` (the
+    default) is the free auto-refresh draw on node entry — back-compatible with
+    the original single-arg signature.
+    """
+    return derive_seed(run_seed, visit_index * SHOP_REROLL_STRIDE + reroll_count, CH_SHOP)
+
+
+def economy_seed(run_seed: int, node_index: int) -> int:
+    """Return the sub-seed for per-node Amber income rolls (win bonus)."""
+    return derive_seed(run_seed, node_index, CH_ECONOMY)
 
 
 # ===========================================================================
