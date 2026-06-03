@@ -103,10 +103,10 @@ IDENTITY = CombatModifier()
 
 # Configurable weather favor magnitude. Controls how much fighting in
 # favorable/unfavorable weather affects stats. Target: ~10pp combined effect.
-WEATHER_FAVOR_MAGNITUDE = 0.15  # ±15% for primary stats at strong tier
+WEATHER_FAVOR_MAGNITUDE = 0.3  # ±30% for primary stats at strong tier
 # Secondary bonuses scale down from the primary magnitude.
-_SECONDARY_BONUS_RATIO = 0.53   # ~8% secondary stat (e.g., offensive add)
-_TERTIARY_BONUS_RATIO = 0.27    # ~4% tertiary stat (minor offensive add)
+_SECONDARY_BONUS_RATIO = 0.5   # ~15% secondary stat (e.g., offensive add)
+_TERTIARY_BONUS_RATIO = 0.25    # ~0.5*0.5*primary% tertiary stat (minor offensive add)
 
 # Strong-tier base stat packs per weather (primary stats ±WEATHER_FAVOR_MAGNITUDE,
 # with smaller offensive adds where noted). `combat_modifier` scales the deviation
