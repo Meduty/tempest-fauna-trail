@@ -88,17 +88,24 @@ def test_weather_metrics_own_counter_sensitivity():
 
 
 def test_weather_metrics_single_weather_zero_sensitivity():
-    """One weather -> sensitivity is exactly 0 (was the bug: always 0 per-file)."""
+    """One weather -> sensitivity is exactly 0 (was the bug: always 0 per-file).
+
+    counter is NaN, not 0.0: the counter weather is absent (no data), which must
+    be distinguished from a genuine 0% win rate so aggregators can skip it.
+    """
+    import math
     wm = weather_metrics({"champ_aerion": {WeatherState.THUNDER: 0.7}})
     own, counter, sens = wm["champ_aerion"]
-    assert own == 0.7      # thunder is its own weather
-    assert counter == 0.0  # mist absent
+    assert own == 0.7              # thunder is its own weather
+    assert math.isnan(counter)     # mist absent -> no data, not 0%
     assert sens == 0.0
 
 
-def test_weather_metrics_unknown_piece_is_zero():
+def test_weather_metrics_unknown_piece_is_nan():
+    import math
     wm = weather_metrics({"nonexistent_piece": {WeatherState.CLEAR: 0.9}})
-    assert wm["nonexistent_piece"] == (0.0, 0.0, 0.0)
+    own, counter, sens = wm["nonexistent_piece"]
+    assert math.isnan(own) and math.isnan(counter) and math.isnan(sens)
 
 
 def test_aggregate_stats_weather_sensitivity_across_weathers():
