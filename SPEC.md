@@ -96,6 +96,9 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - V.22: Every tag in `Champion.traits` **must** resolve in `TRAIT_REGISTRY`, and every champion carries ≥1 Kinship + ≥1 Calling (+ `Primordial` at T10) — CI-guarded, mirroring V.15. Enemies carry trait tags as opaque labels only and never light up breakpoints. (T.28)
 - V.23: Items apply **only** via `compile_loadout` (combat-facing `EffectBundle` factories in `ITEM_REGISTRY`) or `RUN_ACTION_REGISTRY` (run-facing); ≤3 equipped items per piece; item procs are deterministic (cadence counters / one-shot flags, never RNG). (T.29)
 - V.24: Special items (`RUN_ACTION_REGISTRY`) operate on `Run` state only and are **never** referenced from `game/combat/` — combat sees only their result (`effect_systems_design.md` §8.4). (T.29)
+- V.25: Damage-over-time fires on a **per-status cadence**, not per engine tick — `StatusDef.dot_interval_ticks` (default `100` ticks = 1s; `sudden_death` = `1` = per-tick timeout failsafe). DOT damage **and** stack decay (`decay_stacks_per_dot`, renamed from `decay_stacks_per_tick`) apply only when the per-instance clock `StatusInstance.ticks_to_next_dot` reaches 0. That clock **free-runs**: re-applying a status refreshes duration/stacks but never resets the next-DOT timer (so poison-on-every-auto can't starve or delay ticks). A DOT pays its final tick on the same engine tick it expires (DOT runs **before** the expiry check); expiry itself stays tick-precise (`remaining_ticks` decremented every tick). Rationale: 1 action ≈ 600 ticks, so the old per-tick DOT was ~100× mis-scaled and spammed `on_damage_*` hooks. `dot_per_tick` magnitudes are now per-DOT-tick (≈ per-second): burn `40.0`, poison `18.0`/stack, sudden_death `0.5` (provisional, pending sim sweep). (T.20, T.30)
+- V.26: A status has **one** `StatusInstance` per `status_id` per piece — identity is `status_id` only, non-stacking across sources (Option 1 / TFT-style). Re-application merges into that single instance; `ctx.apply_status(..., potency=)` lets a caster override per-DOT-tick damage (`StatusInstance.potency`, `0` → fall back to `StatusDef.dot_per_tick`), and on merge the **strongest potency wins** and takes damage credit (`source_id`). Intensity that should *accumulate* across applications uses `StackBehaviour.STACK` (poison), never separate instances. (T.20, T.30)
+- V.27: The combat `Piece` carries `level` (in-tier 1–3), copied from `Champion.level`/`Enemy.level` in `loadout.piece_from_*`, so level-scaling passives can read `owner.level`. The marker status `focus_fire` (no gates, no DOT) backs the `enemy_company_captain` **Focus Fire** passive: a captain hit marks the struck enemy **and raises its `threat`** (targeting priority — a TIMED modifier expiring with the mark) so the captain's allies focus it; an ally *other than* the captain hitting a marked target triggers bonus INT magic damage from the captain. Both the bonus and the threat bump scale with captain `level` — guarded against re-triggering on its own bonus hit. (T.30)
 
 ## T. Tasks
 
@@ -317,6 +320,21 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   vocabulary. **Fix (T.29):** map components to real `Piece.base_stats` keys (mana
   handled per-`ActiveSlot`), annotate §8.1 → 36, and make
   `t29_item_engine_plan.md` §3.3 the 3-slot authority.
+
+- B.11 [2026-06-03] DOT decay was mis-scaled to the engine tick: `poison`
+  `decay_stacks_per_tick` removed one stack **every 10ms tick** while
+  `duration_ticks` (400–500) was sized for the action clock — so a 4-stack
+  poison drained in 4 ticks (~40ms, ~15 dmg), its `duration_ticks` was dead
+  code, and poison sat ~40× weaker than `burn` (600+) with nothing visible at
+  the call site. Separately, `StatusDef.dot_per_tick` was static on the shared
+  def, so no caster could scale a DOT (every burn identical T1↔T10). **Cause:**
+  DOT cadence + decay written as if 1 tick ≈ 1 turn, but a tick is ~600× finer
+  than an action; intensity hard-coded on the shared def. **Fix → V.25/V.26:**
+  data-driven `dot_interval_ticks` (1s default, `sudden_death` = 1),
+  free-running per-instance DOT clock, `decay_stacks_per_dot`, per-instance
+  `potency` with strongest-wins merge; magnitudes retuned to per-second. Touches
+  `status.py`, `piece.py`, `loadout.py`, `combat/context.py`,
+  `combat/loop_new.py`, `combat/loop.py`, `effect_systems_design.md`.
 
 ## D. Systems Yet To Be Determined
 

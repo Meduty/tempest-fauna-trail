@@ -247,7 +247,10 @@ class CombatContext:
     def heal(self, source: Piece, target: Piece, amount: float) -> float: ...
 
     # --- status & modifiers ---
-    def apply_status(self, target: Piece, status_id: str, duration_ticks: int, stacks: int = 1) -> None: ...
+    # potency overrides per-DOT-tick damage (0 → StatusDef.dot_per_tick). One instance
+    # per status_id per piece; reapply merges, strongest potency wins. See §15 #11 / SPEC V.25-V.26.
+    def apply_status(self, target: Piece, status_id: str, duration_ticks: int, stacks: int = 1,
+                     source_id: str = "", potency: float = 0.0) -> None: ...
     def remove_status(self, target: Piece, status_id: str) -> None: ...
     def apply_modifier(self, target: Piece, modifier: Modifier) -> None: ...
 
@@ -784,7 +787,7 @@ def apply_bundle(target: Piece, bundle: EffectBundle, bus: EventBus, ctx: Combat
         if ctx:
             ctx.apply_status(target, status_id, duration)
         else:
-            target.statuses.append(StatusInstance(id=status_id, duration=duration))
+            target.statuses.append(StatusInstance(status_id=status_id, remaining_ticks=duration))
     for ability_id in bundle.granted_abilities:
         target.actives.append(ActiveSlot(
             ability_id=ability_id,
@@ -1048,3 +1051,4 @@ All three differentiation axes from the design conversation in one example:
 | 8 | Special items (reforger, gems, champion-copy) are run-actions, not combat content | Keeps the combat path clean of meta operations |
 | 9 | Quest augments wire trackers at Run level, persist across combats | Quest state is a Run concept; combat fires the events, trackers accumulate |
 | 10 | Bus enforces `HookScope` dedup; handlers are stateless re: dedup | Single place for bug-prone logic; designers don't repeat it 80× |
+| 11 | DOT fires on a per-status cadence (`StatusDef.dot_interval_ticks`, default 100t=1s; `sudden_death`=1), not every engine tick; per-instance `ticks_to_next_dot` free-runs across reapply; status identity = `status_id` only (one instance, strongest-`potency`-wins merge) | A tick is ~600× finer than an action, so per-tick DOT was ~100× mis-scaled and spammed `on_damage_*` hooks; free-running clock stops reapply-spam from starving ticks; single-instance keeps CC/DoT identity predictable (TFT-style). See SPEC V.25-V.26 |

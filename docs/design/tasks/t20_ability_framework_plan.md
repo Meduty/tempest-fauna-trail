@@ -286,7 +286,7 @@ Per `combat_system_proposal.md` §9.4 and the combat engine:
 | `silence` | Block cast; mana regen continues |
 | `disarm` | Block auto-attack; if mana low → idle |
 | `root` | Block movement only |
-| `burn` | DOT: damage per tick |
+| `burn` | DOT: damage per DOT tick (`dot_interval_ticks`, default 100t=1s; magnitude via `dot_per_tick` or per-instance `potency`) — see SPEC V.25 |
 | `slow` | Reduce move_speed for duration |
 | `charged` | Conditional flag — other effects check for it |
 | `soaked` | Conditional flag — water-themed interactions |

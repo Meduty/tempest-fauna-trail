@@ -500,6 +500,8 @@ def company_captain_passive(owner: Any) -> EffectBundle:
     # original L1 0.12·INT, L2 0.15·INT, L3 0.18·INT per ally hit on a marked target.
     level = getattr(owner, "level", 1)
     bonus_coeff = 0.1 * level
+    # Marked targets draw the captain's allies onto them (threat = targeting priority).
+    threat_bonus = 15.0 * level
     _TRIGGER_TAGS = (SourceTag.BASIC_ATTACK.value, SourceTag.ABILITY.value)
     # Reentrancy guard: the bonus hit re-enters on_damage_dealt; this flag stops
     # it from re-marking the target or chaining bonus-on-bonus.
@@ -515,12 +517,18 @@ def company_captain_passive(owner: Any) -> EffectBundle:
         attacker = event.attacker
         target = event.target
 
-        # Captain's own attack/ability → mark the struck enemy.
+        # Captain's own attack/ability → mark the struck enemy and raise its
+        # threat so the captain's allies focus it (expires with the mark).
         if attacker is owner:
             if target.alive and ctx.is_enemy(owner, target):
                 ctx.apply_status(target, "focus_fire",
                                  duration_ticks=FOCUS_FIRE_DURATION,
                                  source_id=owner.id)
+                ctx.apply_modifier(target, Modifier(
+                    "threat", "add", threat_bonus, Lifetime.TIMED,
+                    "passive:enemy_company_captain.focus_fire",
+                    expires_at_tick=ctx.current_tick + FOCUS_FIRE_DURATION,
+                ))
             return
 
         # An ally other than the captain hits a marked target → bonus magic dmg.
