@@ -431,10 +431,17 @@ def process_statuses(ctx: CombatContext, pieces: list[Piece]) -> None:
                         ctx.deal_damage(attacker, piece, dot_amount, SourceTag.TRUE)
                     else:
                         ctx.deal_damage(attacker, piece, dot_amount, SourceTag.DOT, damage_type="magical")
-                    # "Decreases if it does" — lose one stack per DOT tick (poison).
+                    # "Decreases if it does" — shed stacks per DOT tick (poison).
+                    # decay_fraction>0 → percentage decay (truncated, floor 1), giving
+                    # an investment-scaling plateau with no hard cap; else flat 1.
                     if status_def.decay_stacks_per_dot and status.stacks > 0:
-                        status.stacks -= 1
-                        if status.stacks == 0:
+                        if status_def.decay_fraction > 0.0:
+                            loss = max(1, int(status.stacks * status_def.decay_fraction))
+                        else:
+                            loss = 1
+                        status.stacks -= loss
+                        if status.stacks <= 0:
+                            status.stacks = 0
                             expired.append(i)
                             continue
 
@@ -458,13 +465,18 @@ def process_statuses(ctx: CombatContext, pieces: list[Piece]) -> None:
 
 
 def expire_modifiers(ctx: CombatContext, pieces: list[Piece]) -> None:
-    """Remove TIMED modifiers that have expired."""
+    """Remove TIMED modifiers and barrier segments that have expired."""
     tick = ctx.current_tick
     for piece in pieces:
         piece.modifiers = [
             m for m in piece.modifiers
             if not (m.lifetime == Lifetime.TIMED and m.expires_at_tick is not None and tick >= m.expires_at_tick)
         ]
+        if piece.barriers:
+            piece.barriers = [
+                b for b in piece.barriers
+                if b.expires_at_tick is None or tick < b.expires_at_tick
+            ]
 
 
 # ---------------------------------------------------------------------------

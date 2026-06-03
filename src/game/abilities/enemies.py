@@ -794,9 +794,24 @@ def hierarch_active(ctx: Any, actor: Any, targets: list) -> None:
         ))
 
 
+# On-death: Last Rites — grant all surviving allies an INT-scaled barrier
+# (temp absorb pool, not armor) lasting 600·level ticks. Rewards killing the
+# Hierarch last; killing it early denies the team-wide barrier.
 @register_passive("enemy_hierarch.passive")
 def hierarch_passive(owner: Any) -> EffectBundle:
-    return EffectBundle()
+    def hook(ctx: Any, event: Any) -> None:
+        if event.victim is not owner:
+            return
+        barrier = 50.0 + owner.stat("intelligence") * 2.0
+        duration = 600 * owner.level
+        for ally in ctx.allies_of(owner):
+            if ally is owner or not ally.alive:
+                continue
+            ctx.grant_barrier(ally, barrier, duration_ticks=duration)
+
+    return EffectBundle(hooks=[
+        Hook("on_death", hook, scope=HookScope.PER_HIT),
+    ])
 
 
 # --- Arcanist (T9) --- multi-bounce chain lightning with improved scaling

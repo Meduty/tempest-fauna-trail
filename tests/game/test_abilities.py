@@ -6,7 +6,7 @@ import pytest
 
 from src.game.abilities import reference  # Trigger registrations
 from src.game.combat.context import CombatContext, hex_distance
-from src.game.combat.loop import run, process_statuses, process_casts, expire_modifiers
+from src.game.combat.loop_new import run, process_statuses, process_casts, expire_modifiers
 from src.game.effects import (
     EffectBundle,
     EventBus,
@@ -16,7 +16,7 @@ from src.game.effects import (
     Modifier,
     SourceTag,
 )
-from src.game.events import DamageEvent, AttackEvent
+from src.game.events import DamageEvent, AttackEvent, DeathEvent
 from src.game.loadout import (
     apply_bundle,
     compile_loadout,
@@ -575,3 +575,209 @@ class TestBackwardCompatibility:
         )
         result = resolve_combat([champ], [enemy], WeatherState.CLEAR)
         assert result.outcome == CombatOutcome.WIN
+
+
+class TestBarrier:
+    """Barrier — temp absorb pool consumed before HP (distinct from armor 'shields')."""
+
+    def test_barrier_absorbs_before_hp(self):
+        attacker = _make_piece("attacker")
+        target = _make_piece("target", hp=2000.0, is_enemy=True, resistance=0.0)
+        ctx = _make_ctx(team=[attacker], enemies=[target])
+        ctx.grant_barrier(target, 100.0)
+
+        final = ctx.deal_damage(attacker, target, 60.0, SourceTag.TRUE)
+        # Damage event still reports full 60; HP untouched, barrier soaks it
+        assert final == 60.0
+        assert target.hp == 2000.0
+        assert target.barrier_total == 40.0
+
+    def test_barrier_spills_remainder_to_hp(self):
+        attacker = _make_piece("attacker")
+        target = _make_piece("target", hp=2000.0, is_enemy=True, resistance=0.0)
+        ctx = _make_ctx(team=[attacker], enemies=[target])
+        ctx.grant_barrier(target, 100.0)
+
+        ctx.deal_damage(attacker, target, 150.0, SourceTag.TRUE)
+        # 100 soaked, 50 spills to HP, barrier depleted+dropped
+        assert target.hp == 1950.0
+        assert target.barrier_total == 0.0
+        assert target.barriers == []
+
+    def test_barrier_segments_consumed_fifo(self):
+        attacker = _make_piece("attacker")
+        target = _make_piece("target", hp=2000.0, is_enemy=True, resistance=0.0)
+        ctx = _make_ctx(team=[attacker], enemies=[target])
+        ctx.grant_barrier(target, 30.0)
+        ctx.grant_barrier(target, 50.0)
+
+        ctx.deal_damage(attacker, target, 40.0, SourceTag.TRUE)
+        # First segment (30) fully gone, second drained by 10 → 40 left
+        assert target.hp == 2000.0
+        assert [b.amount for b in target.barriers] == [40.0]
+
+    def test_barrier_expires_on_tick(self):
+        target = _make_piece("target", hp=2000.0, is_enemy=True)
+        ctx = _make_ctx(team=[], enemies=[target])
+        ctx.current_tick = 0
+        ctx.grant_barrier(target, 100.0, duration_ticks=100)
+        assert target.barrier_total == 100.0
+
+        ctx.current_tick = 100
+        expire_modifiers(ctx, [target])
+        assert target.barrier_total == 0.0
+
+    def test_zero_barrier_not_added(self):
+        target = _make_piece("target", is_enemy=True)
+        ctx = _make_ctx(team=[], enemies=[target])
+        ctx.grant_barrier(target, 0.0)
+        assert target.barriers == []
+
+
+class TestHierarchBarrier:
+    """Hierarch on-death passive — grants allies an INT-scaled barrier (T8)."""
+
+    def test_on_death_grants_allies_barrier(self):
+        import src.game.abilities.enemies  # noqa: F401 — ensure registration
+
+        hierarch = _make_piece("hierarch", is_enemy=True, intelligence=100.0)
+        ally = _make_piece("ally", hp=2000.0, is_enemy=True)
+        ctx = _make_ctx(team=[], enemies=[hierarch, ally])
+
+        bundle = PASSIVE_REGISTRY["enemy_hierarch.passive"](hierarch)
+        apply_bundle(hierarch, bundle, ctx.bus)
+
+        ctx.bus.fire("on_death", DeathEvent(victim=hierarch, killer=ally), ctx=ctx)
+
+        # 50 + INT(100)*2.0 = 250 barrier on the surviving ally
+        assert ally.barrier_total == 250.0
+        # Duration = 600 * level(1); not expired yet at tick 0
+        ctx.current_tick = 599
+        expire_modifiers(ctx, [ally])
+        assert ally.barrier_total == 250.0
+        ctx.current_tick = 600
+        expire_modifiers(ctx, [ally])
+        assert ally.barrier_total == 0.0
+
+    def test_other_deaths_do_not_trigger(self):
+        import src.game.abilities.enemies  # noqa: F401
+
+        hierarch = _make_piece("hierarch", is_enemy=True, intelligence=100.0)
+        ally = _make_piece("ally", hp=2000.0, is_enemy=True)
+        ctx = _make_ctx(team=[], enemies=[hierarch, ally])
+
+        bundle = PASSIVE_REGISTRY["enemy_hierarch.passive"](hierarch)
+        apply_bundle(hierarch, bundle, ctx.bus)
+
+        # A different piece dies — passive must not fire
+        ctx.bus.fire("on_death", DeathEvent(victim=ally, killer=hierarch), ctx=ctx)
+        assert ally.barrier_total == 0.0
+
+
+class TestGladeHeronRework:
+    """Glade Heron: INT->attack-speed haste active + poison-burst passive."""
+
+    def _heron(self, intelligence=200.0):
+        import src.game.abilities.champions  # noqa: F401 — ensure registration
+        return _make_piece("heron", intelligence=intelligence, attack_speed=100.0)
+
+    def test_active_grants_as_scaled_by_int(self):
+        heron = self._heron(intelligence=200.0)
+        target = _make_piece("t", is_enemy=True)
+        ctx = _make_ctx(team=[heron], enemies=[target])
+
+        ABILITY_REGISTRY["champ_glade_heron.active"](ctx, heron, [])
+        # base 100 + INT(200)*0.8 = 260
+        assert heron.stat("attack_speed") == 260.0
+
+    def test_active_refreshes_not_stacks(self):
+        heron = self._heron(intelligence=200.0)
+        target = _make_piece("t", is_enemy=True)
+        ctx = _make_ctx(team=[heron], enemies=[target])
+
+        handler = ABILITY_REGISTRY["champ_glade_heron.active"]
+        handler(ctx, heron, [])
+        handler(ctx, heron, [])
+        handler(ctx, heron, [])
+        # Still a single haste modifier; AS not multiplied by recasts
+        haste = [m for m in heron.modifiers if m.source_id == "ability:champ_glade_heron.haste"]
+        assert len(haste) == 1
+        assert heron.stat("attack_speed") == 260.0
+
+    def test_passive_applies_poison_per_auto(self):
+        heron = self._heron()
+        target = _make_piece("t", hp=5000.0, is_enemy=True, resistance=0.0)
+        ctx = _make_ctx(team=[heron], enemies=[target])
+        bundle = PASSIVE_REGISTRY["champ_glade_heron.passive"](heron)
+        apply_bundle(heron, bundle, ctx.bus)
+
+        ctx.bus.fire("on_attack_landed", AttackEvent(attacker=heron, target=target, amount=10.0), ctx=ctx)
+        assert target.status_stacks("poison") == 1
+
+    def test_passive_no_burst_below_three_stacks(self):
+        heron = self._heron(intelligence=200.0)
+        target = _make_piece("t", hp=5000.0, is_enemy=True, resistance=0.0)
+        ctx = _make_ctx(team=[heron], enemies=[target])
+        bundle = PASSIVE_REGISTRY["champ_glade_heron.passive"](heron)
+        apply_bundle(heron, bundle, ctx.bus)
+
+        # First auto -> 1 stack, no burst -> hp unchanged
+        ctx.bus.fire("on_attack_landed", AttackEvent(attacker=heron, target=target, amount=10.0), ctx=ctx)
+        assert target.hp == 5000.0
+
+    def test_passive_burst_at_three_plus_stacks(self):
+        heron = self._heron(intelligence=200.0)
+        target = _make_piece("t", hp=5000.0, is_enemy=True, resistance=0.0)
+        ctx = _make_ctx(team=[heron], enemies=[target])
+        bundle = PASSIVE_REGISTRY["champ_glade_heron.passive"](heron)
+        apply_bundle(heron, bundle, ctx.bus)
+
+        # Pre-poison to 2 stacks; next auto adds the 3rd -> burst fires
+        ctx.apply_status(target, "poison", duration_ticks=400, stacks=2, source_id=heron.id)
+        ctx.bus.fire("on_attack_landed", AttackEvent(attacker=heron, target=target, amount=10.0), ctx=ctx)
+        # burst = INT(200)*0.2 = 40, res=0 -> full
+        assert target.status_stacks("poison") == 3
+        assert target.hp == 5000.0 - 40.0
+
+
+class TestGladeHeronFlatStacks:
+    """Venom Tip applies exactly 1 poison stack per auto, regardless of level."""
+
+    def test_poison_one_stack_per_auto_any_level(self):
+        import src.game.abilities.champions  # noqa: F401
+        for lvl in (1, 2, 3):
+            heron = _make_piece(f"heron_l{lvl}", intelligence=200.0, attack_speed=100.0)
+            heron.level = lvl
+            target = _make_piece("t", hp=5000.0, is_enemy=True, resistance=0.0)
+            ctx = _make_ctx(team=[heron], enemies=[target])
+            bundle = PASSIVE_REGISTRY["champ_glade_heron.passive"](heron)
+            apply_bundle(heron, bundle, ctx.bus)
+
+            ctx.bus.fire("on_attack_landed", AttackEvent(attacker=heron, target=target, amount=10.0), ctx=ctx)
+            assert target.status_stacks("poison") == 1
+
+
+class TestPoisonPercentageDecay:
+    """Poison sheds max(1, trunc(stacks*0.2)) per DOT tick — plateau, no cap."""
+
+    def test_percentage_decay_truncates(self):
+        src = _make_piece("s")
+        target = _make_piece("t", hp=100000.0, is_enemy=True, resistance=0.0)
+        ctx = _make_ctx(team=[src], enemies=[target])
+        ctx.apply_status(target, "poison", duration_ticks=10000, stacks=20, source_id=src.id)
+        inst = target.get_status("poison")
+        inst.ticks_to_next_dot = 1  # fire one DOT tick on next process
+        process_statuses(ctx, [target])
+        # trunc(20 * 0.2) = 4 -> 16
+        assert target.status_stacks("poison") == 16
+
+    def test_decay_floor_is_one(self):
+        src = _make_piece("s")
+        target = _make_piece("t", hp=100000.0, is_enemy=True, resistance=0.0)
+        ctx = _make_ctx(team=[src], enemies=[target])
+        ctx.apply_status(target, "poison", duration_ticks=10000, stacks=3, source_id=src.id)
+        inst = target.get_status("poison")
+        inst.ticks_to_next_dot = 1
+        process_statuses(ctx, [target])
+        # trunc(3 * 0.2) = trunc(0.6) = 0 -> floored to 1 -> 2
+        assert target.status_stacks("poison") == 2

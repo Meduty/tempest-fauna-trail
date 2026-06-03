@@ -43,7 +43,8 @@ class StatusDef:
     dot_per_tick: float = 0.0  # Damage per DOT tick (NOT per engine tick — see dot_interval_ticks)
     dot_interval_ticks: int = 100  # Ticks between DOT applications. 100 = 1s. Data, not a constant.
     dot_scales_with_stacks: bool = False  # Poison: damage * stacks
-    decay_stacks_per_dot: bool = False  # Poison: lose one stack per DOT tick ("decreases if it does")
+    decay_stacks_per_dot: bool = False  # Poison: lose stacks per DOT tick ("decreases if it does")
+    decay_fraction: float = 0.0  # If >0: per-DOT-tick decay = max(1, trunc(stacks*frac)) instead of flat 1. Yields an investment-scaling plateau (stacks_eq ≈ apply_rate/frac), no hard cap.
     dot_true_damage: bool = False  # True: DOT bypasses all mitigation (sudden death)
 
 
@@ -101,7 +102,8 @@ POISON = _register(StatusDef(
     stack_behaviour=StackBehaviour.STACK,
     dot_per_tick=18.0,  # Per DOT tick (1s), × stacks.
     dot_scales_with_stacks=True,
-    decay_stacks_per_dot=True,  # One stack removed per DOT tick
+    decay_stacks_per_dot=True,  # Sheds stacks per DOT tick ("decreases if it does")
+    decay_fraction=0.2,  # Percentage decay (trunc, floor 1) → plateau ≈ apply_rate/0.2, no cap
 ))
 
 SLOW = _register(StatusDef(

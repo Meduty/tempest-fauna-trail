@@ -565,7 +565,17 @@ def mirewarden_toad_passive(owner: Any) -> EffectBundle:
 
 
 # --- Glade Heron (T8, ADC-INT Hunter) ---
-# Passive: autos apply poison stacks
+# Identity: poison-stack DPS carry whose INT routes into damage via *speed*, not
+# auto-punch. Autos apply poison + (once ramped) a poison burst; the active is a
+# self-haste that, with enough INT, lets autos out-pace poison decay.
+_HERON_HASTE_SOURCE = "ability:champ_glade_heron.haste"
+
+
+# Passive: Venom Tip — each auto applies one poison stack, and once the target is
+# deeply poisoned (3+ stacks) every auto detonates a small INT-scaled poison burst.
+# The burst is the Heron's INT damage outlet (autos themselves barely scale on INT);
+# it does NOT consume stacks, so it reinforces the sustain loop rather than
+# fighting it. (Tuned to ~T8 peer DPS at L3 — see active.)
 @register_passive("champ_glade_heron.passive")
 def glade_heron_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
@@ -573,27 +583,30 @@ def glade_heron_passive(owner: Any) -> EffectBundle:
             return
         ctx.apply_status(event.target, "poison", duration_ticks=400, stacks=1,
                         source_id=owner.id)
+        # Poison burst: bonus magic damage once poison has ramped to 3+ stacks.
+        if event.target.status_stacks("poison") >= 3:
+            burst = owner.stat("intelligence") * 0.2
+            ctx.deal_damage(owner, event.target, burst, SourceTag.ABILITY)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
     ])
 
 
+# Active: Quickening — self attack-speed buff = INT×0.8 (additive). Auto interval =
+# 60000 / AS ticks; poison net-stacks once apply out-paces decay, which uses
+# percentage decay (V.25 decay_fraction) → poison settles at an investment-scaling
+# plateau (stacks_eq ≈ apply_rate / frac) instead of running away — the build
+# scales with INT/AS/items, no hard cap. Coeff 0.8 lands L3 DPS at ~T8 peer level.
+# Refresh-replace (strip prior modifier first) so repeated casts never stack.
 @register_active("champ_glade_heron.active")
 def glade_heron_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Toxic volley: INT damage + extra poison stacks + execute vs poisoned
-    target = primary_target(actor, ctx)
-    if not target:
-        return
-    # Buffed scaling for T8 mage damage dealer
-    amount = _eval_scaling(80.0, "intelligence*2.4", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
-    ctx.apply_status(target, "poison", duration_ticks=500, stacks=4, source_id=actor.id)
-    # Execute: bonus damage if target has 3+ poison stacks
-    poison_stacks = target.status_stacks("poison")
-    if poison_stacks >= 3:
-        execute_damage = actor.stat("intelligence") * 0.5
-        ctx.deal_damage(actor, target, execute_damage, SourceTag.ABILITY)
+    as_bonus = actor.stat("intelligence") * 0.8
+    actor.modifiers = [m for m in actor.modifiers if m.source_id != _HERON_HASTE_SOURCE]
+    ctx.apply_modifier(actor, Modifier(
+        "attack_speed", "add", as_bonus, Lifetime.TIMED,
+        _HERON_HASTE_SOURCE, expires_at_tick=ctx.current_tick + 2500,
+    ))
 
 
 # --- Riptide Caiman (T9, ADC-STR Stalker) ---

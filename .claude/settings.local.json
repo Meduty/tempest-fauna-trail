@@ -4,7 +4,8 @@
       "Bash(python3 -m pytest tests/game/ -q)",
       "Bash(uv run *)",
       "Bash(.venv/bin/python -m tools.playtest.sim_fight --team champ_blaze_fox,champ_drift_yak,champ_tide_otter --enemies enemy_frost_drone,enemy_smog_bot --weather rain --seed 42)",
-      "Bash(Rscript --version)"
+      "Bash(Rscript --version)",
+      "WebSearch"
     ]
   }
 }

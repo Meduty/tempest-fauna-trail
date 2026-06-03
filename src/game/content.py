@@ -403,7 +403,7 @@ _CHAMPION_DEFS: tuple[ChampionDef, ...] = (
     _champion_def("champ_coral_colossus", "Coral Colossus", WeatherState.RAIN, 5, "str", "melee", "tanky_hp", "hybrid", ["Tidekin", "Guardian", "Mender"], speed="heavy"),
     _champion_def("champ_marsh_thrush", "Marsh Thrush", WeatherState.RAIN, 6, "int", "ranged", "standard", "ability", ["Skyborn", "Warden"]),
     _champion_def("champ_mirewarden_toad", "Mirewarden Toad", WeatherState.RAIN, 7, "int", "melee", "tanky_hp", "ability", ["Tidekin", "Guardian"]),
-    _champion_def("champ_glade_heron", "Glade Heron", WeatherState.RAIN, 8, "int", "ranged", "standard", "ability", ["Skyborn", "Hunter", "Trickster"]),
+    _champion_def("champ_glade_heron", "Glade Heron", WeatherState.RAIN, 8, "int", "ranged", "standard", "ability", ["Skyborn", "Hunter", "Trickster"], stat_overrides={"resistance": 40}),
     _champion_def("champ_riptide_caiman", "Riptide Caiman", WeatherState.RAIN, 9, "str", "melee", "squishy", "auto", ["Scaled", "Stalker"], speed="speedy"),
     _champion_def("champ_nerei", "Nerei, the Floodmother", WeatherState.RAIN, 10, "hybrid", "ranged", "standard", "hybrid", ["Spirit", "Primordial", "Channeler"]),
     _champion_def("champ_snowpelt_cub", "Snowpelt Cub", WeatherState.SNOW, 1, "str", "melee", "tanky_hp", "hybrid", ["Beast", "Guardian"], speed="heavy"),

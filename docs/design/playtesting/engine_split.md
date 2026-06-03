@@ -29,7 +29,7 @@ live, each with its own test surface.
 | New unified tick loop with meters / pathing / status processing / map effects. | `src/game/combat/loop_new.py` |
 | Bus-subscriber recorder that reconstructs `BattleResult` from the unified loop. | `src/game/combat/recorder.py` |
 | `resolve_combat` rewritten as a 20-line shim: `compile_loadout → CombatContext → attach recorder → loop_new.run → recorder.build_result`. | `src/game/combat/legacy.py` |
-| `combat/__init__.py` exports `run` from `loop_new`; old `loop.py` retained but no longer the entry. | `src/game/combat/__init__.py` |
+| `combat/__init__.py` exports `run` from `loop_new`; old `loop.py` later deleted (see below). | `src/game/combat/__init__.py` |
 
 All 388 pre-T.26 tests pass against the unified engine without modification.
 
@@ -55,5 +55,11 @@ inline in `sim_node.py`.
   `combat/__init__.py` for backward compatibility with old tests. Future
   cleanup task: move the shim out of `legacy.py`, delete the deprecated
   helpers, drop the re-exports. Not blocking the playtest work.
-- `combat/loop.py` (the pre-T.26 partial loop) still exists in tree alongside
-  `loop_new.py`. Candidate for deletion in the same cleanup pass.
+- ~~`combat/loop.py` (the pre-T.26 partial loop) still exists in tree alongside
+  `loop_new.py`.~~ **Deleted.** It was dead production code — only
+  `tests/game/test_abilities.py` still imported `run` / `process_statuses` /
+  `process_casts` / `expire_modifiers` from it. That import was repointed to
+  `loop_new` (all funcs present, identical signatures, 38 tests pass) and the
+  file removed. `loop_new.py` is now the sole tick loop. The barrier system
+  surfaced the dupe: a per-tick prune had to be written twice until the second
+  copy was deleted.

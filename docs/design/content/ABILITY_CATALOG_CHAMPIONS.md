@@ -143,8 +143,8 @@ This document provides comprehensive descriptions and implementation details for
 
 | Ability | Type | Description | Implementation |
 |---|---|---|---|
-| **Toxic Volley** (`champ_glade_heron.active`) | Active | INT strike with heavy poison | INT damage: base=60, scaling="intelligence*1.8". Applies poison 500 ticks (3 stacks) |
-| **Venom Tip** (`champ_glade_heron.passive`) | Passive | Autos apply poison stacks | Hook: `on_attack_landed`. Applies poison 400 ticks (1 stack) |
+| **Quickening** (`champ_glade_heron.active`) | Active | Self attack-speed haste scaled by INT | Adds `attack_speed += INT×0.8` (TIMED 2500t, refresh-replace — never stacks). More AS → poison net-stacks to a higher *plateau* (poison uses percentage decay, V.25 `decay_fraction=0.2`, so stacks settle at ≈apply_rate/0.2 — no hard cap). Coeff 0.8 lands L3 DPS at ~T8 peer level (~47) |
+| **Venom Tip** (`champ_glade_heron.passive`) | Passive | Autos apply 1 poison stack + INT poison burst once ramped | Hook: `on_attack_landed`. Applies poison 400 ticks (1 stack); if target has ≥3 poison stacks, also deals `INT×0.2` magic burst (does NOT consume stacks). MR rework: `stat_overrides={"resistance": +40}` |
 
 ### Riptide Caiman (T9, ADC-STR Stalker)
 

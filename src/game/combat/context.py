@@ -35,7 +35,7 @@ from src.game.events import (
     TickEvent,
 )
 from src.game.models import WeatherState
-from src.game.piece import ActiveSlot, Piece
+from src.game.piece import ActiveSlot, BarrierSegment, Piece
 from src.game.rng import SeededRng
 from src.game.status import (
     STATUS_DEFS,
@@ -252,8 +252,11 @@ class CombatContext:
 
         final = max(1.0, final)
 
+        # Barrier soaks damage before HP (temp pool, not counted in hp/max_hp)
+        to_hp = target.absorb_with_barrier(final)
+
         # Apply damage
-        target.hp = max(0.0, target.hp - final)
+        target.hp = max(0.0, target.hp - to_hp)
 
         # Fire on_damage_dealt (attacker view)
         dealt_event = DamageEvent(
@@ -285,6 +288,17 @@ class CombatContext:
         event = HealEvent(source=source, target=target, amount=actual)
         self._bus.fire("on_heal", event, ctx=self)
         return actual
+
+    def grant_barrier(self, target: Piece, amount: float, duration_ticks: int = 0) -> None:
+        """Grant a barrier — temp damage-absorb pool consumed before HP.
+
+        duration_ticks <= 0 means the barrier lasts until fully consumed.
+        Multiple grants stack as independent segments (consumed FIFO).
+        """
+        if not target.alive or amount <= 0.0:
+            return
+        expires = self.current_tick + duration_ticks if duration_ticks > 0 else None
+        target.barriers.append(BarrierSegment(amount=amount, expires_at_tick=expires))
 
     def apply_status(
         self, target: Piece, status_id: str, duration_ticks: int, stacks: int = 1,

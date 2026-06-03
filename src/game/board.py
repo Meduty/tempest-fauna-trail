@@ -7,7 +7,7 @@ Used by:
   - combat/context.py  (carries a BoardState instance on CombatContext)
   - map_effects.py     (writes cell modifiers)
   - targeting.py       (reads fog_range)
-  - combat/loop.py     (reads slow_cells for status application)
+  - combat/loop_new.py (reads slow_cells for status application)
 
 No Flet imports (V.1). No I/O.
 """

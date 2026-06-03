@@ -149,23 +149,23 @@ def test_combat_modifier_self_is_strong_full_buff() -> None:
 
 
 def test_combat_modifier_predator_tiers_scale_the_buff() -> None:
-    # RAIN buff base: AS x1.15, MR x1.15. Primary predator SNOW -> medium (0.6).
+    # RAIN buff base: AS x1.3, MR x1.3 (magnitude 0.3). Primary predator SNOW -> medium (0.6).
     primary = combat_modifier(WeatherState.SNOW, WeatherState.RAIN)
-    assert primary.as_mult == pytest.approx(1.09)
-    assert primary.mr_mult == pytest.approx(1.09)
+    assert primary.as_mult == pytest.approx(1.18)
+    assert primary.mr_mult == pytest.approx(1.18)
     # Secondary predator THUNDER -> weak (0.3).
     secondary = combat_modifier(WeatherState.THUNDER, WeatherState.RAIN)
-    assert secondary.as_mult == pytest.approx(1.045)
-    assert secondary.mr_mult == pytest.approx(1.045)
+    assert secondary.as_mult == pytest.approx(1.09)
+    assert secondary.mr_mult == pytest.approx(1.09)
 
 
 def test_combat_modifier_prey_tiers_scale_the_debuff() -> None:
-    # RAIN debuff base: STR x0.85. Primary prey CLOUDY -> medium (0.6).
+    # RAIN debuff base: STR x0.7 (magnitude 0.3). Primary prey CLOUDY -> medium (0.6).
     primary = combat_modifier(WeatherState.CLOUDY, WeatherState.RAIN)
-    assert primary.str_mult == pytest.approx(0.91)
+    assert primary.str_mult == pytest.approx(0.82)
     # Secondary prey MIST -> weak (0.3).
     secondary = combat_modifier(WeatherState.MIST, WeatherState.RAIN)
-    assert secondary.str_mult == pytest.approx(0.955)
+    assert secondary.str_mult == pytest.approx(0.91)
 
 
 def test_self_is_strict_maximum_buff_tier() -> None:
@@ -275,8 +275,9 @@ def test_apply_weather_self_buff_scales_strong_tier() -> None:
     champion = _make_champion(WeatherState.THUNDER)
     piece = apply_weather(champion, WeatherState.THUNDER)
 
-    assert piece.strength == round(champion.strength * 1.15)
-    assert piece.attack_speed == round(champion.attack_speed * 1.15)
+    # SELF tier = full magnitude 0.3 -> x1.3.
+    assert piece.strength == round(champion.strength * 1.3)
+    assert piece.attack_speed == round(champion.attack_speed * 1.3)
     assert piece.intelligence == champion.intelligence
     assert piece.affinity == WeatherState.THUNDER
 
@@ -298,8 +299,8 @@ def test_apply_weather_works_with_enemy_and_flags_is_enemy() -> None:
 
     assert piece.is_enemy is True
     assert piece.affinity == WeatherState.MIST
-    assert piece.move_speed == round(enemy.move_speed * 1.15)
-    assert piece.threat == round(enemy.threat * 1.15)
+    assert piece.move_speed == round(enemy.move_speed * 1.3)
+    assert piece.threat == round(enemy.threat * 1.3)
 
 
 # --- OpenWeather id mapping --------------------------------------------------

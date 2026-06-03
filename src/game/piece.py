@@ -25,6 +25,17 @@ class ActiveSlot:
 
 
 @dataclass
+class BarrierSegment:
+    """One barrier grant — temporary damage-absorb pool, consumed before HP.
+
+    Distinct from "shield" abilities (which buff armor/resistance): a barrier
+    soaks raw incoming damage and never counts toward hp / max_hp.
+    """
+    amount: float
+    expires_at_tick: int | None = None  # None = lasts until consumed
+
+
+@dataclass
 class Piece:
     """Runtime combat piece — the live entity during combat.
 
@@ -63,9 +74,33 @@ class Piece:
     summon_owner_id: str = ""
     summon_expires_tick: int = 0  # 0 means no expiry
 
+    # Barrier state — temporary absorb pools, consumed before HP (FIFO)
+    barriers: list[BarrierSegment] = field(default_factory=list)
+
     def stat(self, stat_name: str) -> float:
         """Get computed stat value including all modifiers."""
         return compute_stat(self, stat_name)
+
+    @property
+    def barrier_total(self) -> float:
+        """Sum of all active barrier segments."""
+        return sum(b.amount for b in self.barriers)
+
+    def absorb_with_barrier(self, amount: float) -> float:
+        """Soak incoming damage with barrier segments (FIFO).
+
+        Mutates segments in place, drops depleted ones, and returns the
+        remainder that should still be applied to HP.
+        """
+        remaining = amount
+        for seg in self.barriers:
+            if remaining <= 0.0:
+                break
+            soaked = min(seg.amount, remaining)
+            seg.amount -= soaked
+            remaining -= soaked
+        self.barriers = [b for b in self.barriers if b.amount > 1e-9]
+        return remaining
 
     def has_status(self, status_id: str) -> bool:
         """Check if piece has an active instance of the given status."""
