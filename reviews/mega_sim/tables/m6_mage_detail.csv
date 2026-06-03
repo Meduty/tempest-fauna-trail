@@ -1,0 +1,100 @@
+"piece_id","name","tier","affinity","level","win_rate","wr_delta"
+"enemy_company_captain@3","Company Captain",5,"clear",3,0.430535714285714,-0.200383333333333
+"enemy_hierarch@3","Hierarch",8,"clear",3,0.542645238095238,-0.188716666666667
+"champ_glade_heron@3","Glade Heron",8,"rain",3,0.665309523809524,-0.150109523809524
+"champ_geode_beetle@3","Geode Beetle",4,"cloudy",3,0.408378571428571,-0.145
+"enemy_steam_engineer@3","Steam Engineer",4,"clear",3,0.411533333333333,-0.134759523809524
+"champ_coppercrest_stork@3","Coppercrest Stork",4,"thunder",3,0.425747619047619,-0.123378571428571
+"champ_goldcrest_lark@3","Goldcrest Lark",4,"clear",3,0.4679,-0.121809523809524
+"champ_marsh_thrush@3","Marsh Thrush",6,"rain",3,0.567883333333333,-0.120992857142857
+"champ_spectral_heron@3","Spectral Heron",9,"mist",3,0.720242857142857,-0.112095238095238
+"champ_will_o_fawn@3","Will-o-Fawn",2,"mist",3,0.462016666666667,-0.103659523809524
+"enemy_voltaic_diviner@3","Voltaic Diviner",5,"thunder",3,0.521111904761905,-0.100992857142857
+"enemy_battlemage@3","Battlemage",5,"clear",3,0.519773809523809,-0.0929380952380952
+"champ_fogveil_moth@3","Fogveil Moth",5,"mist",3,0.53325,-0.0874309523809524
+"enemy_drowned_siren@3","Drowned Siren",4,"rain",3,0.392397619047619,-0.0866142857142857
+"enemy_standard_bearer@3","Standard Bearer",3,"clear",3,0.420369047619048,-0.0858833333333333
+"enemy_caged_banshee@3","Caged Banshee",5,"mist",3,0.508552380952381,-0.083397619047619
+"champ_storm_eagle@3","Storm Eagle",9,"thunder",3,0.774140476190476,-0.0706190476190476
+"champ_geode_beetle@2","Geode Beetle",4,"cloudy",2,0.38957380952381,-0.0644952380952381
+"champ_tempest_eel@3","Tempest Eel",6,"thunder",3,0.5954,-0.0623190476190476
+"enemy_signal_drummer@3","Signal Drummer",1,"clear",3,0.370380952380952,-0.0566380952380952
+"enemy_stormhawk@2","Stormhawk",4,"thunder",2,0.398345238095238,-0.0561952380952381
+"champ_hoarfrost_owl@3","Hoarfrost Owl",4,"snow",3,0.491919047619048,-0.0548166666666667
+"enemy_company_captain@2","Company Captain",5,"clear",2,0.357969047619048,-0.0545952380952381
+"enemy_field_medic@3","Field Medic",2,"clear",3,0.471597619047619,-0.0538714285714286
+"enemy_field_chaplain@3","Field Chaplain",3,"clear",3,0.444180952380952,-0.0527547619047619
+"champ_hoarfrost_owl","Hoarfrost Owl",4,"snow",1,0.434690476190476,-0.049897619047619
+"enemy_steam_engineer@2","Steam Engineer",4,"clear",2,0.361783333333333,-0.0491571428571429
+"champ_will_o_fawn@2","Will-o-Fawn",2,"mist",2,0.346966666666667,-0.0467904761904762
+"enemy_battlemage@2","Battlemage",5,"clear",2,0.416883333333333,-0.0456714285714286
+"enemy_drowned_siren@2","Drowned Siren",4,"rain",2,0.332645238095238,-0.040097619047619
+"champ_sparkfly@3","Sparkfly",1,"thunder",3,0.507509523809524,-0.0398309523809524
+"enemy_drained_stalker@2","Drained Stalker",4,"mist",2,0.389333333333333,-0.0375571428571429
+"champ_fogveil_moth@2","Fogveil Moth",5,"mist",2,0.444164285714286,-0.0369976190476191
+"champ_dusk_bat@3","Dusk Bat",2,"cloudy",3,0.356633333333333,-0.034797619047619
+"champ_wintermoth","Wintermoth",2,"snow",1,0.32677380952381,-0.0317904761904762
+"enemy_drowned_siren","Drowned Siren",4,"rain",1,0.33275,-0.0304761904761905
+"champ_goldcrest_lark","Goldcrest Lark",4,"clear",1,0.347057142857143,-0.0298761904761905
+"enemy_hierarch@2","Hierarch",8,"clear",2,0.5035,-0.0295547619047619
+"champ_sparkfly","Sparkfly",1,"thunder",1,0.33452380952381,-0.0272214285714286
+"enemy_company_captain","Company Captain",5,"clear",1,0.383169047619048,-0.026452380952381
+"champ_dawnwisp","Dawnwisp",1,"clear",1,0.371352380952381,-0.0259928571428571
+"enemy_stretcher_hand","Stretcher-Hand",1,"clear",1,0.393678571428571,-0.0256285714285714
+"enemy_voltaic_diviner","Voltaic Diviner",5,"thunder",1,0.36257380952381,-0.0255857142857143
+"champ_geode_beetle","Geode Beetle",4,"cloudy",1,0.344328571428571,-0.0248690476190476
+"champ_tempest_eel","Tempest Eel",6,"thunder",1,0.438730952380952,-0.024647619047619
+"champ_ember_salamander","Ember Salamander",3,"clear",1,0.409159523809524,-0.0230142857142857
+"enemy_field_chaplain","Field Chaplain",3,"clear",1,0.37962380952381,-0.0215119047619048
+"enemy_drained_stalker@3","Drained Stalker",4,"mist",3,0.474559523809524,-0.0212452380952381
+"enemy_signal_drummer@2","Signal Drummer",1,"clear",2,0.436302380952381,-0.019
+"champ_coppercrest_stork@2","Coppercrest Stork",4,"thunder",2,0.397259523809524,-0.01855
+"enemy_hierarch","Hierarch",8,"clear",1,0.406452380952381,-0.0182880952380952
+"enemy_field_medic@2","Field Medic",2,"clear",2,0.35707380952381,-0.0171166666666667
+"champ_marsh_thrush@2","Marsh Thrush",6,"rain",2,0.403942857142857,-0.0165285714285714
+"enemy_stormhawk@3","Stormhawk",4,"thunder",3,0.523047619047619,-0.0158357142857143
+"champ_goldcrest_lark@2","Goldcrest Lark",4,"clear",2,0.350038095238095,-0.0156666666666667
+"champ_wintermoth@3","Wintermoth",2,"snow",3,0.443061904761905,-0.0144619047619048
+"champ_marsh_thrush","Marsh Thrush",6,"rain",1,0.400285714285714,-0.0142880952380952
+"enemy_signal_drummer","Signal Drummer",1,"clear",1,0.451759523809524,-0.00860238095238095
+"enemy_field_medic","Field Medic",2,"clear",1,0.4036,-0.00776666666666667
+"champ_wintermoth@2","Wintermoth",2,"snow",2,0.467357142857143,-0.00765476190476191
+"enemy_drained_stalker","Drained Stalker",4,"mist",1,0.424211904761905,-0.00604761904761905
+"enemy_standard_bearer@2","Standard Bearer",3,"clear",2,0.374871428571429,-0.00427857142857143
+"champ_dawnwisp@2","Dawnwisp",1,"clear",2,0.375761904761905,-0.00268333333333333
+"champ_hoarfrost_owl@2","Hoarfrost Owl",4,"snow",2,0.437204761904762,-0.000864285714285715
+"enemy_battlemage","Battlemage",5,"clear",1,0.426561904761905,0.000178571428571429
+"enemy_stretcher_hand@3","Stretcher-Hand",1,"clear",3,0.400021428571429,0.00328333333333333
+"champ_ember_salamander@2","Ember Salamander",3,"clear",2,0.444797619047619,0.00441190476190476
+"enemy_voltaic_diviner@2","Voltaic Diviner",5,"thunder",2,0.48642380952381,0.00460238095238095
+"champ_tempest_eel@2","Tempest Eel",6,"thunder",2,0.44762380952381,0.00609285714285714
+"champ_sparkfly@2","Sparkfly",1,"thunder",2,0.331109523809524,0.00779523809523809
+"champ_fogveil_moth","Fogveil Moth",5,"mist",1,0.386414285714286,0.0102904761904762
+"champ_dusk_bat@2","Dusk Bat",2,"cloudy",2,0.380071428571429,0.0107428571428571
+"champ_will_o_fawn","Will-o-Fawn",2,"mist",1,0.326259523809524,0.0112928571428571
+"champ_spectral_heron@2","Spectral Heron",9,"mist",2,0.571059523809524,0.0113738095238095
+"enemy_stretcher_hand@2","Stretcher-Hand",1,"clear",2,0.318592857142857,0.0114809523809524
+"champ_storm_eagle@2","Storm Eagle",9,"thunder",2,0.534309523809524,0.0121119047619048
+"enemy_standard_bearer","Standard Bearer",3,"clear",1,0.325707142857143,0.0122571428571429
+"enemy_field_chaplain@2","Field Chaplain",3,"clear",2,0.409966666666667,0.0141095238095238
+"champ_springfrog","Springfrog",1,"rain",1,0.393480952380952,0.0151880952380952
+"enemy_steam_engineer","Steam Engineer",4,"clear",1,0.329516666666667,0.0201833333333333
+"enemy_arcanist@3","Arcanist",9,"clear",3,0.823445238095238,0.02115
+"champ_coppercrest_stork","Coppercrest Stork",4,"thunder",1,0.3601,0.0213166666666667
+"champ_dusk_bat","Dusk Bat",2,"cloudy",1,0.358830952380952,0.0246928571428571
+"enemy_stormhawk","Stormhawk",4,"thunder",1,0.437819047619048,0.0271452380952381
+"champ_spectral_heron","Spectral Heron",9,"mist",1,0.462564285714286,0.0303333333333333
+"enemy_caged_banshee","Caged Banshee",5,"mist",1,0.37302619047619,0.0330047619047619
+"champ_lostlight_wisp@2","Lostlight Wisp",1,"mist",2,0.373297619047619,0.0334166666666667
+"champ_glade_heron@2","Glade Heron",8,"rain",2,0.552052380952381,0.0343119047619048
+"champ_ember_salamander@3","Ember Salamander",3,"clear",3,0.567671428571429,0.0374619047619048
+"champ_glade_heron","Glade Heron",8,"rain",1,0.4248,0.0399642857142857
+"champ_storm_eagle","Storm Eagle",9,"thunder",1,0.504673809523809,0.0417833333333333
+"enemy_caged_banshee@2","Caged Banshee",5,"mist",2,0.462230952380952,0.0472190476190476
+"champ_dawnwisp@3","Dawnwisp",1,"clear",3,0.491654761904762,0.0497904761904762
+"enemy_arcanist@2","Arcanist",9,"clear",2,0.638623809523809,0.0502928571428571
+"champ_lostlight_wisp","Lostlight Wisp",1,"mist",1,0.423164285714286,0.0573642857142857
+"enemy_arcanist","Arcanist",9,"clear",1,0.380364285714286,0.0587309523809524
+"champ_lostlight_wisp@3","Lostlight Wisp",1,"mist",3,0.561861904761905,0.0751904761904762
+"champ_springfrog@2","Springfrog",1,"rain",2,0.481319047619048,0.0795785714285714
+"champ_springfrog@3","Springfrog",1,"rain",3,0.628526190476191,0.11535
