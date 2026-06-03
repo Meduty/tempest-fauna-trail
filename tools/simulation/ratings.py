@@ -88,6 +88,176 @@ def weather_metrics(
     return out
 
 
+def _power_of(pid: str) -> float:
+    try:
+        p = get_piece(pid)
+        return power(p.tier, p.level)
+    except (KeyError, ValueError):
+        return 1.0
+
+
+class StatsAccumulator:
+    """Incremental per-piece tally.
+
+    Ingest any number of `MatchupResult` batches via `add()`, then call
+    `build()` once to materialise `PieceStats`. Lets callers pool battles
+    across stages and weathers without ever holding every result in memory
+    (mega feeds each stage in, frees the results, and builds one combined
+    ratings file at the end). `build()`'s weather metrics are cross-weather
+    over *everything* added — V.16-correct for the combined view.
+    """
+
+    def __init__(self) -> None:
+        self.n_matches: dict[str, int] = {}
+        self.n_team_wins: dict[str, int] = {}
+        self.n_team_draws: dict[str, int] = {}
+        self.n_team_timeouts: dict[str, int] = {}
+        self.duration_sum: dict[str, int] = {}
+        self.pair_wins: dict[str, float] = {}
+        self.pair_games: dict[str, int] = {}
+        self.expected_wr_sum: dict[str, float] = {}
+        self.expected_wr_n: dict[str, int] = {}
+        # Per-weather tracking split across two maps:
+        # weather_wins: {piece_id: {weather: wins}}
+        # weather_games: {piece_id: {weather: games}}
+        self.weather_wins: dict[str, dict[WeatherState, float]] = {}
+        self.weather_games: dict[str, dict[WeatherState, int]] = {}
+
+    def add(self, results: list[MatchupResult]) -> None:
+        # Alias instance dicts to locals so the accumulation body below stays
+        # identical to the original single-pass aggregate_stats (dicts are
+        # mutated in place, never reassigned).
+        n_matches = self.n_matches
+        n_team_wins = self.n_team_wins
+        n_team_draws = self.n_team_draws
+        n_team_timeouts = self.n_team_timeouts
+        duration_sum = self.duration_sum
+        pair_wins = self.pair_wins
+        pair_games = self.pair_games
+        expected_wr_sum = self.expected_wr_sum
+        expected_wr_n = self.expected_wr_n
+        weather_wins = self.weather_wins
+        weather_games = self.weather_games
+
+        for r in results:
+            a_score = 1.0 if r.outcome == CombatOutcome.WIN else (
+                0.5 if r.outcome == CombatOutcome.DRAW else 0.0
+            )
+            b_score = 1.0 - a_score
+            is_a_win = r.outcome == CombatOutcome.WIN
+            is_draw = r.outcome == CombatOutcome.DRAW
+            n_opp_a = len(r.config.piece_ids_a)
+            n_opp_b = len(r.config.piece_ids_b)
+
+            # Deterministic power-threshold expected WR: higher total power
+            # wins (1.0), lower loses (0.0), equal scores 0.5.
+            team_a_power = sum(_power_of(pid) for pid in r.config.piece_ids_a)
+            team_b_power = sum(_power_of(pid) for pid in r.config.piece_ids_b)
+            if team_a_power > team_b_power:
+                team_a_exp_wr = 1.0
+            elif team_a_power < team_b_power:
+                team_a_exp_wr = 0.0
+            else:
+                team_a_exp_wr = 0.5
+            team_b_exp_wr = 1.0 - team_a_exp_wr
+
+            for pa in r.config.piece_ids_a:
+                n_matches[pa] = n_matches.get(pa, 0) + 1
+                if is_a_win:
+                    n_team_wins[pa] = n_team_wins.get(pa, 0) + 1
+                if is_draw:
+                    n_team_draws[pa] = n_team_draws.get(pa, 0) + 1
+                if r.timed_out:
+                    n_team_timeouts[pa] = n_team_timeouts.get(pa, 0) + 1
+                duration_sum[pa] = duration_sum.get(pa, 0) + r.duration_ticks
+                # Per-opponent pair accounting matches binary_win_rate's
+                # denominator: each opponent contributes one "pair game" with
+                # the team-level expected WR replicated across the row.
+                pair_wins[pa] = pair_wins.get(pa, 0.0) + a_score * n_opp_b
+                pair_games[pa] = pair_games.get(pa, 0) + n_opp_b
+                expected_wr_sum[pa] = expected_wr_sum.get(pa, 0.0) + team_a_exp_wr * n_opp_b
+                expected_wr_n[pa] = expected_wr_n.get(pa, 0) + n_opp_b
+                # Weather tracking
+                if pa not in weather_wins:
+                    weather_wins[pa] = {}
+                    weather_games[pa] = {}
+                w = r.config.weather
+                weather_wins[pa][w] = weather_wins[pa].get(w, 0.0) + a_score * n_opp_b
+                weather_games[pa][w] = weather_games[pa].get(w, 0) + n_opp_b
+
+            for pb in r.config.piece_ids_b:
+                n_matches[pb] = n_matches.get(pb, 0) + 1
+                if not is_a_win and not is_draw:
+                    n_team_wins[pb] = n_team_wins.get(pb, 0) + 1
+                if is_draw:
+                    n_team_draws[pb] = n_team_draws.get(pb, 0) + 1
+                if r.timed_out:
+                    n_team_timeouts[pb] = n_team_timeouts.get(pb, 0) + 1
+                duration_sum[pb] = duration_sum.get(pb, 0) + r.duration_ticks
+                pair_wins[pb] = pair_wins.get(pb, 0.0) + b_score * n_opp_a
+                pair_games[pb] = pair_games.get(pb, 0) + n_opp_a
+                expected_wr_sum[pb] = expected_wr_sum.get(pb, 0.0) + team_b_exp_wr * n_opp_a
+                expected_wr_n[pb] = expected_wr_n.get(pb, 0) + n_opp_a
+                # Weather tracking
+                if pb not in weather_wins:
+                    weather_wins[pb] = {}
+                    weather_games[pb] = {}
+                w = r.config.weather
+                weather_wins[pb][w] = weather_wins[pb].get(w, 0.0) + b_score * n_opp_a
+                weather_games[pb][w] = weather_games[pb].get(w, 0) + n_opp_a
+
+    def build(self) -> dict[str, PieceStats]:
+        n_matches = self.n_matches
+        n_team_wins = self.n_team_wins
+        n_team_draws = self.n_team_draws
+        n_team_timeouts = self.n_team_timeouts
+        duration_sum = self.duration_sum
+        pair_wins = self.pair_wins
+        pair_games = self.pair_games
+        expected_wr_sum = self.expected_wr_sum
+        expected_wr_n = self.expected_wr_n
+        weather_wins = self.weather_wins
+        weather_games = self.weather_games
+
+        # Weather metrics are inherently cross-weather: own/counter/sensitivity
+        # are only meaningful when the accumulated battles span more than one
+        # weather. A single-weather accumulator yields sensitivity 0 (the
+        # per-weather files carry placeholders the caller overwrites via
+        # `weather_metrics()`); a combined accumulator spans all weathers and
+        # is therefore V.16-correct as-is.
+        per_weather_wr_by_piece: dict[str, dict[WeatherState, float]] = {}
+        for pid in n_matches:
+            pw = weather_wins.get(pid, {})
+            pg = weather_games.get(pid, {})
+            wr_by_w = {w: pw.get(w, 0.0) / g for w, g in pg.items() if g > 0}
+            if wr_by_w:
+                per_weather_wr_by_piece[pid] = wr_by_w
+        wmetrics = weather_metrics(per_weather_wr_by_piece)
+
+        out: dict[str, PieceStats] = {}
+        for pid in n_matches:
+            m = n_matches[pid]
+            n_exp = expected_wr_n.get(pid, 0)
+            own_weather_wr, counter_weather_wr, weather_sensitivity = wmetrics.get(
+                pid, (0.0, 0.0, 0.0)
+            )
+
+            out[pid] = PieceStats(
+                n_matches=m,
+                n_pair_games=pair_games.get(pid, 0),
+                n_pair_wins=pair_wins.get(pid, 0.0),
+                n_team_wins=n_team_wins.get(pid, 0),
+                n_team_draws=n_team_draws.get(pid, 0),
+                n_team_timeouts=n_team_timeouts.get(pid, 0),
+                mean_duration=duration_sum[pid] / m if m > 0 else 0.0,
+                expected_wr=expected_wr_sum.get(pid, 0.0) / n_exp if n_exp > 0 else 0.0,
+                own_weather_wr=own_weather_wr,
+                counter_weather_wr=counter_weather_wr,
+                weather_sensitivity=weather_sensitivity,
+            )
+        return out
+
+
 def aggregate_stats(results: list[MatchupResult]) -> dict[str, PieceStats]:
     """Per-piece tournament stats.
 
@@ -96,133 +266,9 @@ def aggregate_stats(results: list[MatchupResult]) -> dict[str, PieceStats]:
     expected WR than one that faced T1s. Use to read whether a piece beats
     its tier-implied expectation given who it actually fought.
     """
-    n_matches: dict[str, int] = {}
-    n_team_wins: dict[str, int] = {}
-    n_team_draws: dict[str, int] = {}
-    n_team_timeouts: dict[str, int] = {}
-    duration_sum: dict[str, int] = {}
-    pair_wins: dict[str, float] = {}
-    pair_games: dict[str, int] = {}
-    expected_wr_sum: dict[str, float] = {}
-    expected_wr_n: dict[str, int] = {}
-    # Per-weather tracking split across two maps:
-    # weather_wins: {piece_id: {weather: wins}}
-    # weather_games: {piece_id: {weather: games}}
-    weather_wins: dict[str, dict[WeatherState, float]] = {}
-    weather_games: dict[str, dict[WeatherState, int]] = {}
-
-    def _power_of(pid: str) -> float:
-        try:
-            p = get_piece(pid)
-            return power(p.tier, p.level)
-        except (KeyError, ValueError):
-            return 1.0
-
-    for r in results:
-        a_score = 1.0 if r.outcome == CombatOutcome.WIN else (
-            0.5 if r.outcome == CombatOutcome.DRAW else 0.0
-        )
-        b_score = 1.0 - a_score
-        is_a_win = r.outcome == CombatOutcome.WIN
-        is_draw = r.outcome == CombatOutcome.DRAW
-        n_opp_a = len(r.config.piece_ids_a)
-        n_opp_b = len(r.config.piece_ids_b)
-
-        # Deterministic power-threshold expected WR: higher total power
-        # wins (1.0), lower loses (0.0), equal scores 0.5.
-        team_a_power = sum(_power_of(pid) for pid in r.config.piece_ids_a)
-        team_b_power = sum(_power_of(pid) for pid in r.config.piece_ids_b)
-        if team_a_power > team_b_power:
-            team_a_exp_wr = 1.0
-        elif team_a_power < team_b_power:
-            team_a_exp_wr = 0.0
-        else:
-            team_a_exp_wr = 0.5
-        team_b_exp_wr = 1.0 - team_a_exp_wr
-
-        for pa in r.config.piece_ids_a:
-            n_matches[pa] = n_matches.get(pa, 0) + 1
-            if is_a_win:
-                n_team_wins[pa] = n_team_wins.get(pa, 0) + 1
-            if is_draw:
-                n_team_draws[pa] = n_team_draws.get(pa, 0) + 1
-            if r.timed_out:
-                n_team_timeouts[pa] = n_team_timeouts.get(pa, 0) + 1
-            duration_sum[pa] = duration_sum.get(pa, 0) + r.duration_ticks
-            # Per-opponent pair accounting matches binary_win_rate's
-            # denominator: each opponent contributes one "pair game" with
-            # the team-level expected WR replicated across the row.
-            pair_wins[pa] = pair_wins.get(pa, 0.0) + a_score * n_opp_b
-            pair_games[pa] = pair_games.get(pa, 0) + n_opp_b
-            expected_wr_sum[pa] = expected_wr_sum.get(pa, 0.0) + team_a_exp_wr * n_opp_b
-            expected_wr_n[pa] = expected_wr_n.get(pa, 0) + n_opp_b
-            # Weather tracking
-            if pa not in weather_wins:
-                weather_wins[pa] = {}
-                weather_games[pa] = {}
-            w = r.config.weather
-            weather_wins[pa][w] = weather_wins[pa].get(w, 0.0) + a_score * n_opp_b
-            weather_games[pa][w] = weather_games[pa].get(w, 0) + n_opp_b
-
-        for pb in r.config.piece_ids_b:
-            n_matches[pb] = n_matches.get(pb, 0) + 1
-            if not is_a_win and not is_draw:
-                n_team_wins[pb] = n_team_wins.get(pb, 0) + 1
-            if is_draw:
-                n_team_draws[pb] = n_team_draws.get(pb, 0) + 1
-            if r.timed_out:
-                n_team_timeouts[pb] = n_team_timeouts.get(pb, 0) + 1
-            duration_sum[pb] = duration_sum.get(pb, 0) + r.duration_ticks
-            pair_wins[pb] = pair_wins.get(pb, 0.0) + b_score * n_opp_a
-            pair_games[pb] = pair_games.get(pb, 0) + n_opp_a
-            expected_wr_sum[pb] = expected_wr_sum.get(pb, 0.0) + team_b_exp_wr * n_opp_a
-            expected_wr_n[pb] = expected_wr_n.get(pb, 0) + n_opp_a
-            # Weather tracking
-            if pb not in weather_wins:
-                weather_wins[pb] = {}
-                weather_games[pb] = {}
-            w = r.config.weather
-            weather_wins[pb][w] = weather_wins[pb].get(w, 0.0) + b_score * n_opp_a
-            weather_games[pb][w] = weather_games[pb].get(w, 0) + n_opp_a
-
-    # Weather metrics are inherently cross-weather: own/counter/sensitivity
-    # are only meaningful when `results` spans more than one weather. When a
-    # caller aggregates per single-weather file (mega/runner write one
-    # `ratings_<stage>_<weather>.csv` per weather), this map has one entry per
-    # piece and sensitivity is correctly 0 — the per-weather files then carry
-    # placeholder weather columns that the caller overwrites via
-    # `weather_metrics()` after pooling all weathers (V.16; see mega.py).
-    per_weather_wr_by_piece: dict[str, dict[WeatherState, float]] = {}
-    for pid in n_matches:
-        pw = weather_wins.get(pid, {})
-        pg = weather_games.get(pid, {})
-        wr_by_w = {w: pw.get(w, 0.0) / g for w, g in pg.items() if g > 0}
-        if wr_by_w:
-            per_weather_wr_by_piece[pid] = wr_by_w
-    wmetrics = weather_metrics(per_weather_wr_by_piece)
-
-    out: dict[str, PieceStats] = {}
-    for pid in n_matches:
-        m = n_matches[pid]
-        n_exp = expected_wr_n.get(pid, 0)
-        own_weather_wr, counter_weather_wr, weather_sensitivity = wmetrics.get(
-            pid, (0.0, 0.0, 0.0)
-        )
-
-        out[pid] = PieceStats(
-            n_matches=m,
-            n_pair_games=pair_games.get(pid, 0),
-            n_pair_wins=pair_wins.get(pid, 0.0),
-            n_team_wins=n_team_wins.get(pid, 0),
-            n_team_draws=n_team_draws.get(pid, 0),
-            n_team_timeouts=n_team_timeouts.get(pid, 0),
-            mean_duration=duration_sum[pid] / m if m > 0 else 0.0,
-            expected_wr=expected_wr_sum.get(pid, 0.0) / n_exp if n_exp > 0 else 0.0,
-            own_weather_wr=own_weather_wr,
-            counter_weather_wr=counter_weather_wr,
-            weather_sensitivity=weather_sensitivity,
-        )
-    return out
+    acc = StatsAccumulator()
+    acc.add(results)
+    return acc.build()
 
 
 def binary_win_rate(results: list[MatchupResult]) -> dict[str, float]:
@@ -243,3 +289,17 @@ def binary_win_rate(results: list[MatchupResult]) -> dict[str, float]:
             wins_total[pb] = wins_total.get(pb, 0.0) + b_score * n_opp_a
             games_total[pb] = games_total.get(pb, 0) + n_opp_a
     return {pid: wins_total[pid] / games_total[pid] for pid in wins_total if games_total[pid] > 0}
+
+
+def win_rate_from_stats(stats: dict[str, PieceStats]) -> dict[str, float]:
+    """Recover `binary_win_rate` from already-accumulated `PieceStats`.
+
+    `binary_win_rate` and `aggregate_stats` use the same pair accounting, so
+    `n_pair_wins / n_pair_games` reproduces the binary win rate exactly —
+    without re-scanning the (possibly already-freed) results.
+    """
+    return {
+        pid: s.n_pair_wins / s.n_pair_games
+        for pid, s in stats.items()
+        if s.n_pair_games > 0
+    }

@@ -5,6 +5,9 @@ progress bar. Outputs land under --out (default results/mega/):
 
     results_<stage>_<weather>.csv    raw battle log
     ratings_<stage>_<weather>.csv    win-rate + expected WR (deterministic power model)
+    ratings_combined.csv             one flat ratings file pooling EVERY battle
+                                     (all stages + all weathers) — cross-weather
+                                     metrics computed over the whole sweep
     run.log                          stdout snapshot (when redirected)
 
 Stages:
@@ -80,12 +83,23 @@ Arguments — what each flag controls
     this opt-in flag to prevent accidental overnight jobs. Use when you
     want absolute confidence on a single weather, not statistical samples.
 
+--total-battles N
+    Total sampled team battles to spread across the team{2..10}-sample
+    stages. Split by the default taper weights (bigger teams cost more per
+    fight, so they get proportionally fewer battles) and then evenly across
+    weathers, since the per-stage counts are per-weather. Overrides every
+    --nK. The exhaustive 1v1 stage is a full matrix, not sampled, so it is
+    NOT part of this budget. Default 0 = use the per-size --nK defaults.
+    Use this when you want to say "give me ~N battles" and not hand-tune
+    nine --nK flags.
+
 --max-ticks N
     Override the combat engine's `MAX_TICKS` constant inside each worker.
-    Default: 1_000_000 — effectively disables the sudden-death DOT so
-    battles resolve organically on stats alone, not on whichever piece
-    happened to lose the timeout race. Pass 0 to keep the engine default
-    (12_000 ticks ≈ 120s sim time, with sudden death engaged).
+    Default: 0 — keep the engine's NORMAL fight timeout (MAX_TICKS = 12_000
+    ≈ 120s sim time, sudden death engaged), so the sim measures what the
+    shipped auto-resolver actually does. Pass a large value (e.g. 1_000_000)
+    to effectively disable the sudden-death DOT and let battles resolve
+    organically on stats alone, not on whichever piece lost the timeout race.
 
 ----------------------------------------------------------------------------
 Usage examples — paired with what each measures
@@ -180,23 +194,39 @@ Workstation scaling — match physical core count:
     set workers > physical cores — Python on this workload loses to SMT
     contention.
 
-Engine default MAX_TICKS (sudden death engaged):
+Engine default MAX_TICKS (sudden death engaged) — now the default:
 
-    python -m tools.simulation.mega --max-ticks 0 --workers 8
+    python -m tools.simulation.mega --workers 8
 
-    Measures: balance under the SHIPPED engine constraint. Useful as a
-    reality check — the auto-resolver players actually see uses the
-    12_000-tick cap, so this run shows whether sudden-death-prone pieces
-    suffer in real play. Expect `timeout_rate` columns to be >0 on
-    stalemate-prone matchups, biasing them down.
+    Measures: balance under the SHIPPED engine constraint (12_000-tick cap).
+    This is the default — the auto-resolver players actually see uses this
+    cap, so the run shows whether sudden-death-prone pieces suffer in real
+    play. Expect `timeout_rate` columns to be >0 on stalemate-prone matchups,
+    biasing them down.
+
+Disable sudden death — organic stat-only resolution:
+
+    python -m tools.simulation.mega --max-ticks 1000000 --workers 8
+
+    Measures: balance with the sudden-death DOT effectively off, so battles
+    resolve on stats/kit alone rather than on whichever piece lost the
+    timeout race. Use to separate "weak kit" from "stalls past the cap".
+
+Total-battles budget — let the sweep distribute samples for you:
+
+    python -m tools.simulation.mega --total-battles 200000 --workers 8
+
+    Measures: same team-sample grid, but you specify the aggregate sample
+    count and the sweep splits it across team sizes (by taper weight) and
+    weathers. Hands-off alternative to tuning nine --nK flags.
 
 Custom MAX_TICKS — explicit ceiling between the two extremes:
 
     python -m tools.simulation.mega --max-ticks 500000 --workers 8
 
-    Measures: balance under a middle-ground time budget. Default 1_000_000
-    effectively never times out; 12_000 hits sudden death often. 500_000
-    catches genuine deadlocks without biasing fast-resolving matchups.
+    Measures: balance under a middle-ground time budget. 1_000_000
+    effectively never times out; the 12_000 default hits sudden death
+    often. 500_000 catches genuine deadlocks without biasing fast matchups.
 
 Live log capture — watch progress AND keep an audit trail:
 
@@ -264,9 +294,11 @@ from tools.simulation.matchup import (
 )
 from tools.simulation.ratings import (
     PieceStats,
+    StatsAccumulator,
     aggregate_stats,
     binary_win_rate,
     weather_metrics,
+    win_rate_from_stats,
 )
 from tools.simulation.report import print_summary, write_ratings_csv, write_results_csv
 from tools.simulation.tournament import enumerate_1v1, enumerate_team2, sample_teams
@@ -456,6 +488,12 @@ def _build_parser() -> argparse.ArgumentParser:
         p.add_argument(f"--n{size}", type=int, default=default_n,
                        help=f"Battle count per weather for team{size}-sample "
                             f"({size}v{size}). Default {default_n}. Pass 0 to skip.")
+    p.add_argument("--total-battles", type=int, default=0,
+                   help="Total sampled team battles to distribute across the "
+                        "team{2..10}-sample stages (by the default taper weights) "
+                        "and equally across weathers. Overrides every --nK. The "
+                        "exhaustive 1v1 stage is NOT counted (it's a full matrix, "
+                        "not sampled). 0 = use per-size --nK defaults.")
     p.add_argument("--seed", type=int, default=42, help="Sampling RNG seed.")
     p.add_argument("--tier-stratified", action="store_true",
                    help="Draw teams within one tier band per battle.")
@@ -464,14 +502,16 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Stage(s) to skip. Repeatable.")
     p.add_argument("--enable-2v2-full", action="store_true",
                    help="Include full 2v2 Cartesian stage (~25M battles per weather).")
-    p.add_argument("--max-ticks", type=int, default=1_000_000,
+    p.add_argument("--max-ticks", type=int, default=0,
                    help="Combat engine MAX_TICKS override for sim runs. "
-                        "Default 1_000_000 (disables sudden death). Pass 0 "
-                        "to keep engine default.")
+                        "Default 0 = keep the engine's normal fight timeout "
+                        "(MAX_TICKS = 12,000, sudden death engaged) — sims see "
+                        "what players see. Pass a large value (e.g. 1_000_000) "
+                        "to disable sudden death and let battles resolve "
+                        "organically on stats alone.")
     p.add_argument("--realistic-ticks", action="store_true",
-                   help="Shortcut for --max-ticks 0: keep the engine's "
-                        "default MAX_TICKS (12,000) to surface stall/timeout "
-                        "behavior accurately.")
+                   help="Deprecated no-op: the engine's normal 12,000-tick "
+                        "timeout is now the default. Kept for script compat.")
     return p
 
 
@@ -485,6 +525,25 @@ def main(argv: list[str] | None = None) -> int:
     weathers = [args.weather] if args.weather else ALL_WEATHERS
     print(f"[mega] weathers = {[w.value for w in weathers]}; "
           f"workers = {args.workers}; out = {args.out}")
+
+    # --total-battles: split the budget across the active team-sample sizes by
+    # the default taper weights, then evenly across weathers (the --nK values
+    # are per-weather). Overrides every --nK. 1v1 is exhaustive, not counted.
+    if args.total_battles and args.total_battles > 0:
+        skip = set(args.skip or [])
+        active = [s for s in TEAM_SAMPLE_SIZES if f"team{s}-sample" not in skip]
+        wsum = sum(DEFAULT_TEAM_SAMPLES[s] for s in active)
+        n_weathers = len(weathers)
+        if active and wsum > 0:
+            for s in active:
+                share = args.total_battles * DEFAULT_TEAM_SAMPLES[s] / wsum
+                setattr(args, f"n{s}", max(1, int(share / n_weathers)))
+            realised = sum(getattr(args, f"n{s}") for s in active) * n_weathers
+            print(f"[mega] --total-battles {args.total_battles:,} distributed across "
+                  f"{len(active)} team sizes × {n_weathers} weather(s) "
+                  f"(≈{realised:,} after rounding):")
+            for s in active:
+                print(f"    team{s}-sample: {getattr(args, f'n{s}'):>10,}/weather")
 
     print("[mega] enumerating stages...")
     stages = build_stages(args, weathers)
@@ -518,6 +577,10 @@ def main(argv: list[str] | None = None) -> int:
     for stage in stages:
         by_name.setdefault(stage.name, []).append(stage)
 
+    # Pools EVERY battle (all stages + all weathers) into one combined ratings
+    # file. Fed incrementally so we never hold all results at once.
+    combined_acc = StatsAccumulator()
+
     try:
         for name, group in by_name.items():
             # per-piece win rate keyed by weather, accumulated across the group
@@ -533,6 +596,7 @@ def main(argv: list[str] | None = None) -> int:
                 # Write raw results immediately and free them; keep only the
                 # small per-piece score dicts in memory across the weather loop.
                 wr, stats = write_stage_results(stage, results, args.out)
+                combined_acc.add(results)
                 del results
                 for pid, w in wr.items():
                     per_weather_wr.setdefault(pid, {})[stage.weather] = w
@@ -547,6 +611,17 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         if pool is not None:
             pool.shutdown(wait=True)
+
+    # Combined ratings — every battle from every stage and weather pooled into
+    # one flat file. Weather metrics are cross-weather over the whole sweep.
+    combined_stats = combined_acc.build()
+    if combined_stats:
+        combined_wr = win_rate_from_stats(combined_stats)
+        combined_path = args.out / "ratings_combined.csv"
+        write_ratings_csv(combined_path, win_rates=combined_wr, stats=combined_stats)
+        print(f"[mega] wrote {combined_path} "
+              f"({len(combined_stats)} pieces, all stages + weathers pooled)")
+        print_summary(win_rates=combined_wr, stats=combined_stats)
 
     print(f"[mega] all stages done in {time.monotonic() - t0:.1f}s")
     return 0
