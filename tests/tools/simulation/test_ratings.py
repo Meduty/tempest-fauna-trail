@@ -4,7 +4,7 @@ from __future__ import annotations
 from src.game.models import CombatOutcome, WeatherState
 
 from tools.simulation.matchup import MatchupConfig, MatchupResult
-from tools.simulation.ratings import aggregate_stats, binary_win_rate
+from tools.simulation.ratings import aggregate_stats, binary_win_rate, weather_metrics
 
 
 def _make_result(
@@ -50,6 +50,71 @@ def test_binary_win_rate_draw_is_half():
     wr = binary_win_rate(results)
     assert wr["A"] == 0.5
     assert wr["B"] == 0.5
+
+
+def _result_w(
+    team_a: tuple[str, ...],
+    team_b: tuple[str, ...],
+    outcome: CombatOutcome,
+    weather: WeatherState,
+) -> MatchupResult:
+    return MatchupResult(
+        config=MatchupConfig(team_a, team_b, weather),
+        outcome=outcome,
+        duration_ticks=100,
+        hp_remaining_a=10 if outcome == CombatOutcome.WIN else 0,
+        hp_remaining_b=10 if outcome == CombatOutcome.LOSS else 0,
+        timed_out=False,
+    )
+
+
+# --- weather metrics (V.16) ---------------------------------------------------
+# champ_aerion: affinity THUNDER, PRIMARY_PREY weather = MIST.
+
+def test_weather_metrics_own_counter_sensitivity():
+    """own = own-affinity weather wr; counter = prey weather wr; sens = range."""
+    per_weather_wr = {
+        "champ_aerion": {
+            WeatherState.THUNDER: 0.7,  # own (affinity)
+            WeatherState.MIST: 0.3,     # counter (preys on thunder)
+            WeatherState.CLEAR: 0.5,
+        }
+    }
+    wm = weather_metrics(per_weather_wr)
+    own, counter, sens = wm["champ_aerion"]
+    assert own == 0.7
+    assert counter == 0.3
+    assert abs(sens - 0.4) < 1e-9  # max 0.7 - min 0.3
+
+
+def test_weather_metrics_single_weather_zero_sensitivity():
+    """One weather -> sensitivity is exactly 0 (was the bug: always 0 per-file)."""
+    wm = weather_metrics({"champ_aerion": {WeatherState.THUNDER: 0.7}})
+    own, counter, sens = wm["champ_aerion"]
+    assert own == 0.7      # thunder is its own weather
+    assert counter == 0.0  # mist absent
+    assert sens == 0.0
+
+
+def test_weather_metrics_unknown_piece_is_zero():
+    wm = weather_metrics({"nonexistent_piece": {WeatherState.CLEAR: 0.9}})
+    assert wm["nonexistent_piece"] == (0.0, 0.0, 0.0)
+
+
+def test_aggregate_stats_weather_sensitivity_across_weathers():
+    """Regression: aggregate_stats over multi-weather results yields a real,
+    non-zero sensitivity — the per-weather-file caller bug aside, the math
+    must work when fed multiple weathers."""
+    results = [
+        _result_w(("champ_aerion",), ("enemy_conscript",), CombatOutcome.WIN,
+                  WeatherState.THUNDER),
+        _result_w(("champ_aerion",), ("enemy_conscript",), CombatOutcome.LOSS,
+                  WeatherState.MIST),
+    ]
+    s = aggregate_stats(results)["champ_aerion"]
+    assert s.own_weather_wr == 1.0       # won in thunder (own)
+    assert s.counter_weather_wr == 0.0   # lost in mist (prey)
+    assert s.weather_sensitivity == 1.0  # 1.0 - 0.0
 
 
 def test_aggregate_stats_match_counts():

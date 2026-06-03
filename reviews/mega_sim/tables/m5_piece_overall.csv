@@ -1,0 +1,361 @@
+"piece_id","name","affinity","role","tier","level","win_rate","wr_delta"
+"enemy_hierarch@3","Hierarch","clear","mage",8,3,0.578593333333333,-0.202111666666667
+"enemy_steam_engineer@3","Steam Engineer","clear","mage",4,3,0.378523333333333,-0.162881666666667
+"enemy_company_captain@3","Company Captain","clear","mage",5,3,0.427203333333333,-0.142943333333333
+"champ_aurion@3","Aurion, the First Dawn","clear","hybrid",10,3,0.78194,-0.132051666666667
+"champ_goldcrest_lark@3","Goldcrest Lark","clear","mage",4,3,0.457605,-0.131633333333333
+"champ_aerion@3","Aerion, the Skybreaker","thunder","hybrid",10,3,0.739868333333333,-0.12891
+"enemy_drowned_siren@3","Drowned Siren","rain","mage",4,3,0.444428333333333,-0.126716666666667
+"enemy_veil_lord@3","Veil Lord","mist","hybrid",10,3,0.752101666666667,-0.117775
+"champ_umbra@3","Umbra, the Mountain's Shadow","cloudy","hybrid",10,3,0.73917,-0.11769
+"champ_coppercrest_stork@3","Coppercrest Stork","thunder","mage",4,3,0.430685,-0.117085
+"champ_dusk_bat@3","Dusk Bat","cloudy","mage",2,3,0.38374,-0.117003333333333
+"enemy_spymaster@3","Spymaster","clear","assassin",8,3,0.653438333333333,-0.115928333333333
+"champ_geode_beetle@3","Geode Beetle","cloudy","mage",4,3,0.417718333333333,-0.114926666666667
+"champ_mournhollow@3","Mournhollow, the Pale Stag","mist","hybrid",10,3,0.76479,-0.111453333333333
+"champ_marsh_thrush@3","Marsh Thrush","rain","mage",6,3,0.583781666666667,-0.110278333333333
+"enemy_stone_warden@3","Stone Warden","cloudy","bruiser",10,3,0.774246666666667,-0.106926666666667
+"champ_nerei@3","Nerei, the Floodmother","rain","hybrid",10,3,0.771468333333333,-0.105616666666667
+"champ_borealis@3","Borealis, the Pale Aurora","snow","hybrid",10,3,0.762258333333333,-0.104648333333333
+"champ_will_o_fawn@3","Will-o-Fawn","mist","mage",2,3,0.416821666666667,-0.0989183333333333
+"champ_hoarfrost_owl@3","Hoarfrost Owl","snow","mage",4,3,0.499095,-0.0981383333333333
+"enemy_caged_storm_drake@3","Caged Storm-Drake","thunder","hybrid",9,3,0.684586666666667,-0.0976983333333333
+"champ_fogveil_moth@3","Fogveil Moth","mist","mage",5,3,0.539895,-0.0926933333333333
+"enemy_voltaic_diviner@3","Voltaic Diviner","thunder","mage",5,3,0.538443333333333,-0.0924233333333333
+"enemy_flood_tyrant@3","Flood Tyrant","rain","hybrid",10,3,0.785721666666667,-0.0914983333333333
+"enemy_standard_bearer@3","Standard Bearer","clear","mage",3,3,0.435848333333333,-0.0912733333333333
+"enemy_maw_of_the_drowned@3","Maw of the Drowned","rain","hybrid",9,3,0.70051,-0.0908166666666667
+"champ_glade_heron@3","Glade Heron","rain","mage",8,3,0.69384,-0.0897716666666667
+"champ_spectral_heron@3","Spectral Heron","mist","mage",9,3,0.744206666666667,-0.0887533333333333
+"enemy_frost_sovereign@3","Frost Sovereign","snow","hybrid",10,3,0.78784,-0.0880266666666667
+"champ_voltmane_jackal@3","Voltmane Jackal","thunder","hybrid",7,3,0.635203333333333,-0.0863016666666667
+"champ_nightglass_mantis@3","Nightglass Mantis","cloudy","assassin",8,3,0.678121666666667,-0.082515
+"enemy_hierarch@2","Hierarch","clear","mage",8,2,0.435373333333333,-0.0823683333333333
+"enemy_battlemage@3","Battlemage","clear","mage",5,3,0.530075,-0.080955
+"champ_mirewarden_toad@3","Mirewarden Toad","rain","assassin",7,3,0.621381666666667,-0.07909
+"enemy_riven_frost_wyrm@3","Riven Frost-Wyrm","snow","hybrid",9,3,0.741813333333333,-0.0779116666666667
+"enemy_caged_banshee@3","Caged Banshee","mist","mage",5,3,0.539053333333333,-0.0776083333333333
+"champ_mirage_caracal@3","Mirage Caracal","clear","assassin",8,3,0.652878333333333,-0.0771983333333333
+"enemy_storm_tyrant@3","Storm Tyrant","thunder","hybrid",10,3,0.815955,-0.0730433333333333
+"enemy_signal_drummer@3","Signal Drummer","clear","mage",1,3,0.404346666666667,-0.0710983333333333
+"champ_geode_beetle@2","Geode Beetle","cloudy","mage",4,2,0.375465,-0.0669516666666667
+"enemy_steam_engineer@2","Steam Engineer","clear","mage",4,2,0.372251666666667,-0.0660833333333333
+"enemy_archmagus_imperator@3","Archmagus Imperator","clear","hybrid",9,3,0.734505,-0.0624033333333333
+"champ_storm_eagle@3","Storm Eagle","thunder","mage",9,3,0.729101666666667,-0.0608916666666667
+"enemy_field_chaplain@3","Field Chaplain","clear","mage",3,3,0.489146666666667,-0.0592933333333333
+"champ_tempest_eel@3","Tempest Eel","thunder","mage",6,3,0.608678333333333,-0.0588533333333333
+"champ_umbra@2","Umbra, the Mountain's Shadow","cloudy","hybrid",10,2,0.537591666666667,-0.0586616666666667
+"champ_granite_gorilla@3","Granite Gorilla","cloudy","assassin",6,3,0.627391666666667,-0.0582066666666667
+"enemy_sundered_lord@3","Sundered Lord","mist","hybrid",9,3,0.728261666666667,-0.0579
+"enemy_shaftmaw@3","Shaftmaw","cloudy","assassin",5,3,0.56448,-0.0569466666666667
+"enemy_inquisitor@3","Inquisitor","clear","hybrid",6,3,0.617606666666667,-0.0561366666666667
+"champ_marsh_thrush@2","Marsh Thrush","rain","mage",6,2,0.412296666666667,-0.0523716666666667
+"champ_wintermoth@3","Wintermoth","snow","mage",2,3,0.427598333333333,-0.05191
+"enemy_quarried_behemoth@3","Quarried Behemoth","cloudy","bruiser",9,3,0.771848333333333,-0.047295
+"enemy_company_captain@2","Company Captain","clear","mage",5,2,0.348913333333333,-0.04598
+"enemy_drowned_siren@2","Drowned Siren","rain","mage",4,2,0.32668,-0.04542
+"enemy_company_guard@2","Company Guard","clear","bruiser",4,2,0.410206666666667,-0.03992
+"enemy_hollowed_wisp@3","Hollowed Wisp","mist","assassin",3,3,0.488111666666667,-0.0398133333333333
+"enemy_drained_stalker@3","Drained Stalker","mist","mage",4,3,0.550261666666667,-0.0395966666666667
+"champ_coppercrest_stork@2","Coppercrest Stork","thunder","mage",4,2,0.375531666666667,-0.03947
+"champ_sparkfly@3","Sparkfly","thunder","mage",1,3,0.46078,-0.0391566666666667
+"enemy_stormhawk@2","Stormhawk","thunder","mage",4,2,0.384061666666667,-0.03914
+"enemy_reaver_of_the_reach@3","Reaver of the Reach","cloudy","hybrid",7,3,0.660836666666667,-0.0382883333333333
+"enemy_maw_of_the_drowned@2","Maw of the Drowned","rain","hybrid",9,2,0.50917,-0.03768
+"champ_will_o_fawn@2","Will-o-Fawn","mist","mage",2,2,0.352711666666667,-0.0355916666666667
+"enemy_shroud_killer@3","Shroud-Killer","mist","warrior",7,3,0.693365,-0.034285
+"enemy_arcanist@3","Arcanist","clear","mage",9,3,0.789925,-0.0338416666666667
+"champ_phantom_lynx@3","Phantom Lynx","mist","assassin",3,3,0.495391666666667,-0.0334933333333333
+"champ_mournhollow@2","Mournhollow, the Pale Stag","mist","hybrid",10,2,0.54706,-0.0330783333333333
+"enemy_hexblade_officer@3","Hexblade Officer","clear","assassin",6,3,0.659661666666667,-0.032885
+"enemy_inquisitor","Inquisitor","clear","hybrid",6,1,0.39023,-0.03237
+"champ_voltscale_mamba@2","Voltscale Mamba","thunder","warrior",3,2,0.364855,-0.0315116666666667
+"enemy_dredge_hulk@3","Dredge-Hulk","rain","bruiser",7,3,0.70664,-0.0308033333333333
+"enemy_stretcher_hand@2","Stretcher-Hand","clear","mage",1,2,0.34241,-0.0296216666666667
+"champ_dusk_bat@2","Dusk Bat","cloudy","mage",2,2,0.360346666666667,-0.0292
+"champ_mirage_caracal","Mirage Caracal","clear","assassin",8,1,0.424138333333333,-0.0286766666666667
+"champ_eclipse_jaguar@3","Eclipse Jaguar","cloudy","hybrid",7,3,0.667261666666667,-0.027975
+"enemy_stormhawk@3","Stormhawk","thunder","mage",4,3,0.51613,-0.0271716666666667
+"champ_cliffeyrie_eagle@3","Cliffeyrie Eagle","cloudy","marksman",9,3,0.823948333333333,-0.0270483333333333
+"enemy_stretcher_hand@3","Stretcher-Hand","clear","mage",1,3,0.430471666666667,-0.0266633333333333
+"champ_nightglass_mantis@2","Nightglass Mantis","cloudy","assassin",8,2,0.50167,-0.0266366666666667
+"champ_fogveil_moth@2","Fogveil Moth","mist","mage",5,2,0.398613333333333,-0.02653
+"champ_voltscale_mamba@3","Voltscale Mamba","thunder","warrior",3,3,0.500465,-0.026315
+"champ_hollow_elk@3","Hollow Elk","mist","assassin",4,3,0.58571,-0.024585
+"champ_hoarfrost_owl@2","Hoarfrost Owl","snow","mage",4,2,0.411865,-0.0242133333333333
+"champ_wintermoth@2","Wintermoth","snow","mage",2,2,0.37389,-0.0239916666666667
+"enemy_veil_lord@2","Veil Lord","mist","hybrid",10,2,0.565998333333333,-0.0239633333333333
+"enemy_drained_stalker@2","Drained Stalker","mist","mage",4,2,0.404946666666667,-0.023185
+"champ_marsh_thrush","Marsh Thrush","rain","mage",6,1,0.357616666666667,-0.0222833333333333
+"enemy_hollowed_wisp","Hollowed Wisp","mist","assassin",3,1,0.361535,-0.0216016666666667
+"enemy_battlemage@2","Battlemage","clear","mage",5,2,0.409825,-0.0210033333333333
+"enemy_field_medic@3","Field Medic","clear","mage",2,3,0.50407,-0.0209783333333333
+"enemy_riven_frost_wyrm","Riven Frost-Wyrm","snow","hybrid",9,1,0.457113333333333,-0.02073
+"champ_mirewarden_toad@2","Mirewarden Toad","rain","assassin",7,2,0.43503,-0.0205666666666667
+"champ_goldhide_rhino@3","Goldhide Rhino","clear","bruiser",7,3,0.677738333333333,-0.019825
+"enemy_company_captain","Company Captain","clear","mage",5,1,0.365465,-0.0196816666666667
+"enemy_stretcher_hand","Stretcher-Hand","clear","mage",1,1,0.312518333333333,-0.019205
+"enemy_drowned_siren","Drowned Siren","rain","mage",4,1,0.345378333333333,-0.018775
+"enemy_signal_drummer@2","Signal Drummer","clear","mage",1,2,0.337931666666667,-0.018575
+"enemy_signal_drummer","Signal Drummer","clear","mage",1,1,0.360201666666667,-0.01834
+"champ_marshghast_boar@3","Marshghast Boar","mist","bruiser",7,3,0.674391666666667,-0.01815
+"enemy_company_guard@3","Company Guard","clear","bruiser",4,3,0.586905,-0.0164433333333333
+"enemy_steam_engineer","Steam Engineer","clear","mage",4,1,0.344601666666667,-0.0162783333333333
+"enemy_voltaic_diviner@2","Voltaic Diviner","thunder","mage",5,2,0.431061666666667,-0.0162533333333333
+"enemy_hollowed_wisp@2","Hollowed Wisp","mist","assassin",3,2,0.348388333333333,-0.0156033333333333
+"enemy_caged_storm_drake@2","Caged Storm-Drake","thunder","hybrid",9,2,0.514148333333333,-0.0154266666666667
+"enemy_standard_bearer@2","Standard Bearer","clear","mage",3,2,0.368843333333333,-0.015015
+"champ_frostfang_wolverine@3","Frostfang Wolverine","snow","warrior",8,3,0.762486666666667,-0.0147616666666667
+"champ_veilfang_wolf@3","Veilfang Wolf","mist","assassin",8,3,0.767841666666667,-0.0143466666666667
+"champ_sparkfly","Sparkfly","thunder","mage",1,1,0.337471666666667,-0.0133633333333333
+"champ_goldcrest_lark@2","Goldcrest Lark","clear","mage",4,2,0.367341666666667,-0.0126616666666667
+"enemy_field_chaplain@2","Field Chaplain","clear","mage",3,2,0.367583333333333,-0.0123516666666667
+"enemy_voltaic_diviner","Voltaic Diviner","thunder","mage",5,1,0.338491666666667,-0.0121883333333333
+"enemy_quarry_crawler","Quarry Crawler","cloudy","warrior",3,1,0.391211666666667,-0.0116883333333333
+"champ_nerei@2","Nerei, the Floodmother","rain","hybrid",10,2,0.540696666666667,-0.011035
+"champ_dawnwisp@3","Dawnwisp","clear","mage",1,3,0.46335,-0.01097
+"enemy_shaftmaw@2","Shaftmaw","cloudy","assassin",5,2,0.40303,-0.010895
+"enemy_iron_collared_hound@2","Iron-Collared Hound","snow","warrior",3,2,0.459775,-0.01078
+"enemy_iron_maiden@3","Iron Maiden","clear","bruiser",7,3,0.70589,-0.00985
+"champ_mirage_caracal@2","Mirage Caracal","clear","assassin",8,2,0.489035,-0.00958833333333333
+"enemy_caged_banshee@2","Caged Banshee","mist","mage",5,2,0.408856666666667,-0.00956166666666667
+"champ_goldcrest_lark","Goldcrest Lark","clear","mage",4,1,0.344305,-0.00943333333333333
+"enemy_flood_tyrant@2","Flood Tyrant","rain","hybrid",10,2,0.561535,-0.00902333333333333
+"champ_iceclaw_lynx@3","Iceclaw Lynx","snow","assassin",6,3,0.670138333333333,-0.0089
+"champ_pebbleback_pangolin","Pebbleback Pangolin","cloudy","warrior",1,1,0.353911666666667,-0.00879
+"enemy_inquisitor@2","Inquisitor","clear","hybrid",6,2,0.429631666666667,-0.00780666666666667
+"enemy_riven_frost_wyrm@2","Riven Frost-Wyrm","snow","hybrid",9,2,0.505925,-0.00752166666666667
+"enemy_flood_tyrant","Flood Tyrant","rain","hybrid",10,1,0.482356666666667,-0.00730333333333333
+"champ_voltmane_jackal","Voltmane Jackal","thunder","hybrid",7,1,0.433185,-0.00718666666666667
+"enemy_hexblade_officer","Hexblade Officer","clear","assassin",6,1,0.422003333333333,-0.00711666666666667
+"champ_riptide_caiman@2","Riptide Caiman","rain","warrior",9,2,0.563775,-0.00674333333333333
+"champ_aerion@2","Aerion, the Skybreaker","thunder","hybrid",10,2,0.545148333333333,-0.00673833333333333
+"champ_hoarfrost_owl","Hoarfrost Owl","snow","mage",4,1,0.390458333333333,-0.00662166666666667
+"enemy_shroud_killer","Shroud-Killer","mist","warrior",7,1,0.388643333333333,-0.00656833333333333
+"champ_wintermoth","Wintermoth","snow","mage",2,1,0.367153333333333,-0.00642166666666667
+"champ_coppercrest_stork","Coppercrest Stork","thunder","mage",4,1,0.359411666666667,-0.00625833333333333
+"champ_tempest_eel@2","Tempest Eel","thunder","mage",6,2,0.443381666666667,-0.00568666666666667
+"champ_aegis_tortoise@3","Aegis Tortoise","clear","warrior",5,3,0.608813333333333,-0.00548333333333333
+"champ_voltmane_jackal@2","Voltmane Jackal","thunder","hybrid",7,2,0.504853333333333,-0.00540166666666667
+"enemy_hierarch","Hierarch","clear","mage",8,1,0.395575,-0.00536
+"champ_tempest_eel","Tempest Eel","thunder","mage",6,1,0.410175,-0.00477
+"enemy_frost_sovereign@2","Frost Sovereign","snow","hybrid",10,2,0.60662,-0.00470166666666667
+"champ_phantom_lynx@2","Phantom Lynx","mist","assassin",3,2,0.39044,-0.00449333333333333
+"enemy_spymaster","Spymaster","clear","assassin",8,1,0.477848333333333,-0.00358833333333333
+"enemy_spymaster@2","Spymaster","clear","assassin",8,2,0.493118333333333,-0.00312166666666667
+"champ_storm_eagle@2","Storm Eagle","thunder","mage",9,2,0.546976666666667,-0.00291666666666667
+"champ_spectral_heron@2","Spectral Heron","mist","mage",9,2,0.566253333333333,-0.00270833333333333
+"enemy_glacier_goliath@3","Glacier Goliath","snow","warrior",7,3,0.695751666666667,-0.00233
+"enemy_reaver_of_the_reach@2","Reaver of the Reach","cloudy","hybrid",7,2,0.481733333333333,-0.00211
+"enemy_archmagus_imperator@2","Archmagus Imperator","clear","hybrid",9,2,0.48453,-0.00169166666666667
+"enemy_conscript@2","Conscript","clear","warrior",1,2,0.407365,-0.00146
+"champ_will_o_fawn","Will-o-Fawn","mist","mage",2,1,0.330935,-0.00144333333333333
+"champ_nightglass_mantis","Nightglass Mantis","cloudy","assassin",8,1,0.458706666666667,-0.00129333333333333
+"enemy_battlemage","Battlemage","clear","mage",5,1,0.37617,-0.000981666666666667
+"enemy_field_chaplain","Field Chaplain","clear","mage",3,1,0.376118333333333,-0.00088
+"enemy_picket@2","Picket","clear","marksman",1,2,0.352085,-0.000788333333333333
+"champ_phantom_lynx","Phantom Lynx","mist","assassin",3,1,0.356635,-0.000536666666666667
+"champ_thunderhide_bison","Thunderhide Bison","thunder","warrior",5,1,0.413118333333333,-0.000216666666666666
+"champ_thunderhide_bison@2","Thunderhide Bison","thunder","warrior",5,2,0.469078333333333,-0.000108333333333334
+"enemy_iron_collared_hound","Iron-Collared Hound","snow","warrior",3,1,0.358626666666667,-4.83333333333323e-05
+"enemy_reaver_of_the_reach","Reaver of the Reach","cloudy","hybrid",7,1,0.402788333333333,3.33333333333336e-05
+"enemy_caged_banshee","Caged Banshee","mist","mage",5,1,0.350055,0.000356666666666667
+"champ_frostplate_tortoise@3","Frostplate Tortoise","snow","warrior",5,3,0.628873333333333,0.000701666666666666
+"enemy_pikeman@3","Pikeman","clear","warrior",2,3,0.549325,0.000728333333333333
+"enemy_standard_bearer","Standard Bearer","clear","mage",3,1,0.32865,0.000885
+"champ_veldt_pronghorn@2","Veldt Pronghorn","clear","warrior",2,2,0.435095,0.00106166666666667
+"champ_geode_beetle","Geode Beetle","cloudy","mage",4,1,0.362148333333333,0.00176833333333333
+"enemy_cannoneer@3","Cannoneer","clear","marksman",8,3,0.758936666666667,0.00215666666666667
+"champ_torrent_heron@2","Torrent Heron","rain","marksman",3,2,0.416831666666667,0.00222833333333333
+"enemy_stormhawk","Stormhawk","thunder","mage",4,1,0.38121,0.00251833333333333
+"champ_storm_eagle","Storm Eagle","thunder","mage",9,1,0.458998333333333,0.00259666666666667
+"champ_glade_heron@2","Glade Heron","rain","mage",8,2,0.530146666666667,0.00271333333333333
+"champ_duskstep_marten@3","Duskstep Marten","cloudy","assassin",5,3,0.579678333333333,0.003015
+"champ_pebbleback_pangolin@2","Pebbleback Pangolin","cloudy","warrior",1,2,0.412771666666667,0.00319666666666667
+"enemy_pikeman","Pikeman","clear","warrior",2,1,0.334286666666667,0.00387833333333333
+"enemy_shaftmaw","Shaftmaw","cloudy","assassin",5,1,0.36935,0.00423
+"enemy_maw_of_the_drowned","Maw of the Drowned","rain","hybrid",9,1,0.420998333333333,0.00429333333333333
+"champ_sparkfly@2","Sparkfly","thunder","mage",1,2,0.358496666666667,0.004295
+"champ_voltscale_mamba","Voltscale Mamba","thunder","warrior",3,1,0.361678333333333,0.005025
+"champ_frostquill_porcupine@3","Frostquill Porcupine","snow","marksman",9,3,0.832226666666667,0.00519833333333333
+"champ_mirewarden_toad","Mirewarden Toad","rain","assassin",7,1,0.441903333333333,0.00549833333333333
+"champ_sunspear_falcon@3","Sunspear Falcon","clear","marksman",9,3,0.845996666666667,0.00556666666666667
+"champ_mournhollow","Mournhollow, the Pale Stag","mist","hybrid",10,1,0.482338333333333,0.00576833333333333
+"champ_spectral_heron","Spectral Heron","mist","mage",9,1,0.451338333333333,0.00588666666666667
+"enemy_powder_sapper@3","Powder Sapper","clear","marksman",2,3,0.517911666666667,0.00593166666666667
+"enemy_sergeant_at_arms@3","Sergeant-at-Arms","clear","bruiser",3,3,0.559196666666667,0.00595833333333333
+"enemy_dredge_hulk","Dredge-Hulk","rain","bruiser",7,1,0.439496666666667,0.00666
+"champ_veilfang_wolf","Veilfang Wolf","mist","assassin",8,1,0.439925,0.00704833333333333
+"enemy_slag_sentinel@2","Slag Sentinel","cloudy","warrior",4,2,0.408083333333333,0.007175
+"enemy_caged_storm_drake","Caged Storm-Drake","thunder","hybrid",9,1,0.441143333333333,0.00746833333333333
+"enemy_hexblade_officer@2","Hexblade Officer","clear","assassin",6,2,0.44633,0.00789166666666667
+"champ_aerion","Aerion, the Skybreaker","thunder","hybrid",10,1,0.513945,0.008155
+"enemy_picket","Picket","clear","marksman",1,1,0.387988333333333,0.00830166666666667
+"enemy_conscript","Conscript","clear","warrior",1,1,0.349801666666667,0.00857833333333333
+"enemy_thunder_bull","Thunder Bull","thunder","warrior",7,1,0.439481666666667,0.00870333333333333
+"enemy_slag_sentinel@3","Slag Sentinel","cloudy","warrior",4,3,0.61079,0.00876333333333333
+"enemy_shroud_killer@2","Shroud-Killer","mist","warrior",7,2,0.478541666666667,0.008795
+"champ_aegis_tortoise@2","Aegis Tortoise","clear","warrior",5,2,0.416588333333333,0.00898333333333333
+"champ_granite_gorilla@2","Granite Gorilla","cloudy","assassin",6,2,0.449503333333333,0.00964166666666667
+"enemy_field_medic","Field Medic","clear","mage",2,1,0.370373333333333,0.0100033333333333
+"champ_thunderhoof_colt@2","Thunderhoof Colt","thunder","warrior",2,2,0.409358333333333,0.0101633333333333
+"champ_dawnwisp","Dawnwisp","clear","mage",1,1,0.291393333333333,0.0104416666666667
+"enemy_powder_sapper@2","Powder Sapper","clear","marksman",2,2,0.406103333333333,0.010985
+"enemy_pikeman@2","Pikeman","clear","warrior",2,2,0.368638333333333,0.0113733333333333
+"champ_dusk_bat","Dusk Bat","cloudy","mage",2,1,0.329656666666667,0.0114016666666667
+"champ_pebbleback_pangolin@3","Pebbleback Pangolin","cloudy","warrior",1,3,0.49077,0.0116533333333333
+"enemy_capture_rig_wolf","Capture-Rig Wolf","thunder","warrior",3,1,0.35758,0.0128666666666667
+"enemy_dredge_hulk@2","Dredge-Hulk","rain","bruiser",7,2,0.494875,0.0128683333333333
+"enemy_crossbow_levy","Crossbow Levy","clear","marksman",2,1,0.361485,0.01337
+"champ_ember_salamander@3","Ember Salamander","clear","mage",3,3,0.56176,0.0135266666666667
+"champ_permafrost_walrus","Permafrost Walrus","snow","marksman",3,1,0.359956666666667,0.0145133333333333
+"enemy_riflemaster@3","Riflemaster","clear","marksman",6,3,0.67682,0.01485
+"champ_aegis_tortoise","Aegis Tortoise","clear","warrior",5,1,0.392121666666667,0.0151066666666667
+"champ_duskstep_marten","Duskstep Marten","cloudy","assassin",5,1,0.386226666666667,0.0152316666666667
+"champ_sunmane_lion@2","Sunmane Lion","clear","warrior",6,2,0.517951666666667,0.0152633333333333
+"enemy_cold_iron_yeti","Cold-Iron Yeti","snow","warrior",4,1,0.420208333333333,0.0159016666666667
+"champ_fogveil_moth","Fogveil Moth","mist","mage",5,1,0.360055,0.0164583333333333
+"champ_veldt_pronghorn","Veldt Pronghorn","clear","warrior",2,1,0.390473333333333,0.0166366666666667
+"enemy_drained_stalker","Drained Stalker","mist","mage",4,1,0.371085,0.0171816666666667
+"champ_umbra","Umbra, the Mountain's Shadow","cloudy","hybrid",10,1,0.462103333333333,0.01744
+"enemy_lord_commander","Lord Commander","clear","warrior",7,1,0.409383333333333,0.0174766666666667
+"champ_torrent_heron","Torrent Heron","rain","marksman",3,1,0.374768333333333,0.0175633333333333
+"enemy_archmagus_imperator","Archmagus Imperator","clear","hybrid",9,1,0.467921666666667,0.017835
+"enemy_brineblight_berserker","Brineblight Berserker","rain","warrior",5,1,0.385885,0.0178716666666667
+"champ_snowpelt_cub","Snowpelt Cub","snow","warrior",1,1,0.413261666666667,0.018085
+"enemy_avalanche_engine","Avalanche Engine","snow","marksman",5,1,0.416308333333333,0.0182216666666667
+"champ_nerei","Nerei, the Floodmother","rain","hybrid",10,1,0.449206666666667,0.01842
+"enemy_heavy_knight","Heavy Knight","clear","warrior",4,1,0.400226666666667,0.018455
+"champ_riptide_caiman@3","Riptide Caiman","rain","warrior",9,3,0.760213333333333,0.0190016666666667
+"enemy_quarry_crawler@2","Quarry Crawler","cloudy","warrior",3,2,0.414243333333333,0.0194266666666667
+"champ_reedbank_otter@2","Reedbank Otter","rain","warrior",2,2,0.401963333333333,0.0206066666666667
+"champ_glade_heron","Glade Heron","rain","mage",8,1,0.487653333333333,0.0213433333333333
+"champ_ember_salamander","Ember Salamander","clear","mage",3,1,0.402266666666667,0.0214683333333333
+"enemy_sergeant_at_arms@2","Sergeant-at-Arms","clear","bruiser",3,2,0.408025,0.0217783333333333
+"enemy_field_medic@2","Field Medic","clear","mage",2,2,0.365978333333333,0.0220566666666667
+"champ_thunderhide_bison@3","Thunderhide Bison","thunder","warrior",5,3,0.6442,0.0222633333333333
+"champ_goldhide_rhino@2","Goldhide Rhino","clear","bruiser",7,2,0.48174,0.0223716666666667
+"enemy_sundered_lord","Sundered Lord","mist","hybrid",9,1,0.438691666666667,0.02321
+"champ_permafrost_walrus@3","Permafrost Walrus","snow","marksman",3,3,0.583906666666667,0.0233133333333333
+"champ_iceclaw_lynx","Iceclaw Lynx","snow","assassin",6,1,0.399498333333333,0.0236366666666667
+"champ_thunderhoof_colt","Thunderhoof Colt","thunder","warrior",2,1,0.33093,0.0236916666666667
+"enemy_veil_lord","Veil Lord","mist","hybrid",10,1,0.504326666666667,0.0237383333333333
+"enemy_sergeant_at_arms","Sergeant-at-Arms","clear","bruiser",3,1,0.366928333333333,0.023795
+"champ_hollow_elk","Hollow Elk","mist","assassin",4,1,0.379373333333333,0.02399
+"enemy_heavy_knight@3","Heavy Knight","clear","warrior",4,3,0.61923,0.0243533333333333
+"enemy_avalanche_engine@3","Avalanche Engine","snow","marksman",5,3,0.60781,0.0243966666666667
+"enemy_gunslinger@2","Gunslinger","clear","marksman",5,2,0.47921,0.02499
+"enemy_sundered_lord@2","Sundered Lord","mist","hybrid",9,2,0.525768333333333,0.0249916666666667
+"enemy_powder_sapper","Powder Sapper","clear","marksman",2,1,0.329213333333333,0.0251033333333333
+"champ_riptide_caiman","Riptide Caiman","rain","warrior",9,1,0.43979,0.0253366666666667
+"champ_frostfang_wolverine","Frostfang Wolverine","snow","warrior",8,1,0.440213333333333,0.025705
+"enemy_gunslinger@3","Gunslinger","clear","marksman",5,3,0.674528333333333,0.026015
+"champ_cliffeyrie_eagle@2","Cliffeyrie Eagle","cloudy","marksman",9,2,0.627798333333333,0.0264866666666667
+"enemy_company_guard","Company Guard","clear","bruiser",4,1,0.370071666666667,0.0265766666666667
+"champ_duskstep_marten@2","Duskstep Marten","cloudy","assassin",5,2,0.45595,0.0266016666666667
+"champ_granite_gorilla","Granite Gorilla","cloudy","assassin",6,1,0.394016666666667,0.026905
+"enemy_avalanche_engine@2","Avalanche Engine","snow","marksman",5,2,0.431923333333333,0.027155
+"champ_hollow_elk@2","Hollow Elk","mist","assassin",4,2,0.439053333333333,0.0274416666666667
+"enemy_capture_rig_wolf@2","Capture-Rig Wolf","thunder","warrior",3,2,0.4095,0.0275733333333333
+"enemy_cannoneer","Cannoneer","clear","marksman",8,1,0.522256666666667,0.0279566666666667
+"champ_thunderclap_gorilla","Thunderclap Gorilla","thunder","warrior",8,1,0.446046666666667,0.0289016666666667
+"enemy_frost_sovereign","Frost Sovereign","snow","hybrid",10,1,0.486678333333333,0.0295383333333333
+"champ_boulderhide_skink","Boulderhide Skink","cloudy","marksman",3,1,0.387293333333333,0.0299366666666667
+"champ_dawnwisp@2","Dawnwisp","clear","mage",1,2,0.39523,0.0301883333333333
+"enemy_levyman@3","Levyman","clear","warrior",1,3,0.503876666666667,0.0306366666666667
+"champ_boulderhide_skink@3","Boulderhide Skink","cloudy","marksman",3,3,0.562768333333333,0.0308433333333333
+"champ_glacierback_mammoth@3","Glacierback Mammoth","snow","bruiser",7,3,0.707715,0.0310416666666667
+"champ_reedbank_otter","Reedbank Otter","rain","warrior",2,1,0.353536666666667,0.03113
+"champ_grovekeeper_tapir","Grovekeeper Tapir","rain","bruiser",4,1,0.423911666666667,0.031495
+"champ_marshghast_boar@2","Marshghast Boar","mist","bruiser",7,2,0.506965,0.0321883333333333
+"enemy_iron_maiden","Iron Maiden","clear","bruiser",7,1,0.458463333333333,0.0322566666666667
+"enemy_picket@3","Picket","clear","marksman",1,3,0.523505,0.03251
+"champ_borealis@2","Borealis, the Pale Aurora","snow","hybrid",10,2,0.589103333333333,0.0327483333333333
+"champ_reedbank_otter@3","Reedbank Otter","rain","warrior",2,3,0.550965,0.0328333333333333
+"champ_iceclaw_lynx@2","Iceclaw Lynx","snow","assassin",6,2,0.505736666666667,0.0329416666666667
+"champ_aurion@2","Aurion, the First Dawn","clear","hybrid",10,2,0.580125,0.0330883333333333
+"champ_boulderhide_skink@2","Boulderhide Skink","cloudy","marksman",3,2,0.441171666666667,0.0340116666666667
+"champ_sunmane_lion","Sunmane Lion","clear","warrior",6,1,0.425756666666667,0.034225
+"enemy_crossbow_levy@3","Crossbow Levy","clear","marksman",2,3,0.567456666666667,0.0344866666666667
+"enemy_glacier_goliath","Glacier Goliath","snow","warrior",7,1,0.465395,0.034545
+"champ_frostplate_tortoise@2","Frostplate Tortoise","snow","warrior",5,2,0.482685,0.0348016666666667
+"enemy_gunslinger","Gunslinger","clear","marksman",5,1,0.403661666666667,0.0358116666666667
+"enemy_brineblight_berserker@2","Brineblight Berserker","rain","warrior",5,2,0.487886666666667,0.03593
+"champ_eclipse_jaguar@2","Eclipse Jaguar","cloudy","hybrid",7,2,0.504301666666667,0.03648
+"enemy_storm_tyrant@2","Storm Tyrant","thunder","hybrid",10,2,0.618281666666667,0.0365766666666667
+"champ_grovekeeper_tapir@2","Grovekeeper Tapir","rain","bruiser",4,2,0.470168333333333,0.037305
+"champ_frostfang_wolverine@2","Frostfang Wolverine","snow","warrior",8,2,0.549301666666667,0.037885
+"champ_wraithorn_stag@2","Wraithorn Stag","mist","warrior",6,2,0.480888333333333,0.0381483333333333
+"enemy_grand_marshal@3","Grand Marshal","clear","warrior",10,3,0.90251,0.0384133333333333
+"champ_frostplate_tortoise","Frostplate Tortoise","snow","warrior",5,1,0.393536666666667,0.0387016666666667
+"champ_borealis","Borealis, the Pale Aurora","snow","hybrid",10,1,0.519896666666667,0.0387283333333333
+"champ_permafrost_walrus@2","Permafrost Walrus","snow","marksman",3,2,0.413866666666667,0.0389983333333333
+"enemy_conscript@3","Conscript","clear","warrior",1,3,0.54089,0.0391333333333333
+"enemy_blight_lurker@2","Blight Lurker","rain","warrior",3,2,0.429758333333333,0.0395366666666667
+"enemy_lord_commander@2","Lord Commander","clear","warrior",7,2,0.547535,0.0398833333333333
+"enemy_slag_sentinel","Slag Sentinel","cloudy","warrior",4,1,0.409246666666667,0.0408983333333333
+"champ_wraithorn_stag","Wraithorn Stag","mist","warrior",6,1,0.408171666666667,0.0415916666666667
+"enemy_storm_tyrant","Storm Tyrant","thunder","hybrid",10,1,0.524155,0.0416233333333333
+"enemy_blight_lurker","Blight Lurker","rain","warrior",3,1,0.33641,0.041735
+"enemy_arcanist@2","Arcanist","clear","mage",9,2,0.601108333333333,0.0422366666666667
+"champ_snowpelt_cub@2","Snowpelt Cub","snow","warrior",1,2,0.394908333333333,0.0422783333333333
+"enemy_riflemaster","Riflemaster","clear","marksman",6,1,0.4548,0.042785
+"champ_eclipse_jaguar","Eclipse Jaguar","cloudy","hybrid",7,1,0.424493333333333,0.0430383333333333
+"enemy_cold_iron_yeti@2","Cold-Iron Yeti","snow","warrior",4,2,0.475631666666667,0.0433433333333333
+"enemy_steam_knight","Steam Knight","clear","warrior",6,1,0.390935,0.04374
+"champ_goldhide_rhino","Goldhide Rhino","clear","bruiser",7,1,0.455026666666667,0.0451783333333333
+"champ_veilfang_wolf@2","Veilfang Wolf","mist","assassin",8,2,0.533093333333333,0.045185
+"champ_wraithorn_stag@3","Wraithorn Stag","mist","warrior",6,3,0.702105,0.04527
+"champ_torrent_heron@3","Torrent Heron","rain","marksman",3,3,0.537996666666667,0.0463566666666667
+"enemy_cannoneer@2","Cannoneer","clear","marksman",8,2,0.54598,0.04675
+"enemy_levyman@2","Levyman","clear","warrior",1,2,0.394831666666667,0.0476466666666667
+"enemy_iron_maiden@2","Iron Maiden","clear","bruiser",7,2,0.519846666666667,0.0482966666666667
+"champ_thunderhoof_colt@3","Thunderhoof Colt","thunder","warrior",2,3,0.568731666666667,0.0484266666666667
+"champ_marshghast_boar","Marshghast Boar","mist","bruiser",7,1,0.46525,0.049315
+"enemy_levyman","Levyman","clear","warrior",1,1,0.407608333333333,0.0504383333333333
+"champ_lostlight_wisp","Lostlight Wisp","mist","mage",1,1,0.420525,0.052695
+"champ_grovekeeper_tapir@3","Grovekeeper Tapir","rain","bruiser",4,3,0.601403333333333,0.0542866666666667
+"enemy_glacier_goliath@2","Glacier Goliath","snow","warrior",7,2,0.522046666666667,0.054965
+"champ_veldt_pronghorn@3","Veldt Pronghorn","clear","warrior",2,3,0.573876666666667,0.0551666666666667
+"champ_coral_colossus","Coral Colossus","rain","warrior",5,1,0.41486,0.0553866666666667
+"champ_sunspear_falcon@2","Sunspear Falcon","clear","marksman",9,2,0.60274,0.055545
+"enemy_thunder_bull@3","Thunder Bull","thunder","warrior",7,3,0.74992,0.055665
+"enemy_capture_rig_wolf@3","Capture-Rig Wolf","thunder","warrior",3,3,0.625658333333333,0.0559966666666667
+"enemy_arcanist","Arcanist","clear","mage",9,1,0.445518333333333,0.0579716666666667
+"champ_cliffeyrie_eagle","Cliffeyrie Eagle","cloudy","marksman",9,1,0.524461666666667,0.0580616666666667
+"enemy_crossbow_levy@2","Crossbow Levy","clear","marksman",2,2,0.41201,0.0583633333333333
+"enemy_quarried_behemoth@2","Quarried Behemoth","cloudy","bruiser",9,2,0.631871666666667,0.0589383333333333
+"champ_lostlight_wisp@3","Lostlight Wisp","mist","mage",1,3,0.5531,0.0592883333333333
+"champ_coral_colossus@3","Coral Colossus","rain","warrior",5,3,0.633781666666667,0.059685
+"champ_lostlight_wisp@2","Lostlight Wisp","mist","mage",1,2,0.427698333333333,0.0608166666666667
+"enemy_thunder_bull@2","Thunder Bull","thunder","warrior",7,2,0.571048333333333,0.0609616666666667
+"enemy_heavy_knight@2","Heavy Knight","clear","warrior",4,2,0.428135,0.0620916666666667
+"champ_frostquill_porcupine@2","Frostquill Porcupine","snow","marksman",9,2,0.583246666666667,0.0623233333333333
+"champ_snowpelt_cub@3","Snowpelt Cub","snow","warrior",1,3,0.5485,0.0625883333333333
+"champ_sunspear_falcon","Sunspear Falcon","clear","marksman",9,1,0.518938333333333,0.062925
+"champ_aurion","Aurion, the First Dawn","clear","hybrid",10,1,0.49262,0.0639533333333333
+"champ_ember_salamander@2","Ember Salamander","clear","mage",3,2,0.433391666666667,0.0650233333333333
+"champ_frostquill_porcupine","Frostquill Porcupine","snow","marksman",9,1,0.527721666666667,0.065025
+"champ_thunderclap_gorilla@3","Thunderclap Gorilla","thunder","warrior",8,3,0.850421666666667,0.0655683333333333
+"champ_thunderclap_gorilla@2","Thunderclap Gorilla","thunder","warrior",8,2,0.567348333333333,0.066965
+"enemy_riflemaster@2","Riflemaster","clear","marksman",6,2,0.516513333333333,0.067205
+"enemy_quarried_behemoth","Quarried Behemoth","cloudy","bruiser",9,1,0.541951666666667,0.0682366666666667
+"enemy_quarry_crawler@3","Quarry Crawler","cloudy","warrior",3,3,0.584816666666667,0.0700316666666667
+"enemy_brineblight_berserker@3","Brineblight Berserker","rain","warrior",5,3,0.67416,0.0703283333333333
+"champ_springfrog","Springfrog","rain","mage",1,1,0.411515,0.0721
+"enemy_steam_knight@2","Steam Knight","clear","warrior",6,2,0.48884,0.0727816666666667
+"champ_glacierback_mammoth@2","Glacierback Mammoth","snow","bruiser",7,2,0.559273333333333,0.073205
+"champ_glacierback_mammoth","Glacierback Mammoth","snow","bruiser",7,1,0.494231666666667,0.074435
+"enemy_iron_collared_hound@3","Iron-Collared Hound","snow","warrior",3,3,0.572866666666667,0.0754633333333333
+"enemy_blight_lurker@3","Blight Lurker","rain","warrior",3,3,0.595908333333333,0.0770733333333333
+"enemy_steam_knight@3","Steam Knight","clear","warrior",6,3,0.716606666666667,0.0772066666666667
+"enemy_grand_marshal@2","Grand Marshal","clear","warrior",10,2,0.66908,0.0773316666666667
+"enemy_cold_iron_yeti@3","Cold-Iron Yeti","snow","warrior",4,3,0.658231666666667,0.077835
+"champ_sunmane_lion@3","Sunmane Lion","clear","warrior",6,3,0.704281666666667,0.0781616666666667
+"enemy_stone_warden@2","Stone Warden","cloudy","bruiser",10,2,0.626231666666667,0.08367
+"champ_springfrog@2","Springfrog","rain","mage",1,2,0.454706666666667,0.09025
+"champ_springfrog@3","Springfrog","rain","mage",1,3,0.600958333333333,0.094365
+"enemy_grand_marshal","Grand Marshal","clear","warrior",10,1,0.573601666666667,0.096565
+"enemy_lord_commander@3","Lord Commander","clear","warrior",7,3,0.762206666666667,0.09834
+"enemy_stone_warden","Stone Warden","cloudy","bruiser",10,1,0.577458333333333,0.102858333333333
+"champ_coral_colossus@2","Coral Colossus","rain","warrior",5,2,0.482761666666667,0.10607

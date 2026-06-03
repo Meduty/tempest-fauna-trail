@@ -52,6 +52,42 @@ class PieceStats:
     weather_sensitivity: float  # max(wr across weathers) - min(wr across weathers)
 
 
+def weather_metrics(
+    per_weather_wr: dict[str, dict[WeatherState, float]],
+) -> dict[str, tuple[float, float, float]]:
+    """Cross-weather affinity metrics from per-piece, per-weather win rates.
+
+    Returns `{piece_id: (own_weather_wr, counter_weather_wr, sensitivity)}`:
+      * own       — win rate in the piece's own affinity weather
+      * counter   — win rate in the weather that preys on the piece (PRIMARY_PREY)
+      * sensitivity — max(wr) − min(wr) across the weathers present
+
+    Single source of truth for the weather columns. **Only meaningful when the
+    input spans multiple weathers** — with a single weather, `sensitivity` is
+    0 and own/counter are populated only if that weather happens to match. The
+    per-weather sim workflow (one ratings file per weather) must therefore pool
+    win rates across all weathers and call this, not rely on a single-weather
+    `aggregate_stats` pass. See V.16.
+    """
+    out: dict[str, tuple[float, float, float]] = {}
+    for pid, wr_by_w in per_weather_wr.items():
+        own = counter = sens = 0.0
+        try:
+            affinity = get_piece(pid).affinity
+        except (KeyError, ValueError):
+            affinity = None
+        if affinity is not None and wr_by_w:
+            if affinity in wr_by_w:
+                own = wr_by_w[affinity]
+            for w_state, wr_val in wr_by_w.items():
+                if ring_relation(affinity, w_state) == RingRelation.PRIMARY_PREY:
+                    counter = wr_val
+                    break
+            sens = max(wr_by_w.values()) - min(wr_by_w.values())
+        out[pid] = (own, counter, sens)
+    return out
+
+
 def aggregate_stats(results: list[MatchupResult]) -> dict[str, PieceStats]:
     """Per-piece tournament stats.
 
@@ -149,43 +185,29 @@ def aggregate_stats(results: list[MatchupResult]) -> dict[str, PieceStats]:
             weather_wins[pb][w] = weather_wins[pb].get(w, 0.0) + b_score * n_opp_a
             weather_games[pb][w] = weather_games[pb].get(w, 0) + n_opp_a
 
+    # Weather metrics are inherently cross-weather: own/counter/sensitivity
+    # are only meaningful when `results` spans more than one weather. When a
+    # caller aggregates per single-weather file (mega/runner write one
+    # `ratings_<stage>_<weather>.csv` per weather), this map has one entry per
+    # piece and sensitivity is correctly 0 — the per-weather files then carry
+    # placeholder weather columns that the caller overwrites via
+    # `weather_metrics()` after pooling all weathers (V.16; see mega.py).
+    per_weather_wr_by_piece: dict[str, dict[WeatherState, float]] = {}
+    for pid in n_matches:
+        pw = weather_wins.get(pid, {})
+        pg = weather_games.get(pid, {})
+        wr_by_w = {w: pw.get(w, 0.0) / g for w, g in pg.items() if g > 0}
+        if wr_by_w:
+            per_weather_wr_by_piece[pid] = wr_by_w
+    wmetrics = weather_metrics(per_weather_wr_by_piece)
+
     out: dict[str, PieceStats] = {}
     for pid in n_matches:
         m = n_matches[pid]
         n_exp = expected_wr_n.get(pid, 0)
-
-        # Compute weather affinity metrics
-        own_weather_wr = 0.0
-        counter_weather_wr = 0.0
-        weather_sensitivity = 0.0
-        pw = weather_wins.get(pid, {})
-        pg = weather_games.get(pid, {})
-        try:
-            piece = get_piece(pid)
-            piece_affinity = piece.affinity
-        except (KeyError, ValueError):
-            piece_affinity = None
-
-        if piece_affinity is not None and pg:
-            # Per-weather win rates
-            per_weather_wr: dict[WeatherState, float] = {}
-            for w_state, g in pg.items():
-                if g > 0:
-                    per_weather_wr[w_state] = pw.get(w_state, 0.0) / g
-
-            # Own weather = where piece affinity matches battle weather (SELF)
-            if piece_affinity in per_weather_wr:
-                own_weather_wr = per_weather_wr[piece_affinity]
-
-            # Counter weather = weather that preys on this piece (PRIMARY_PREY)
-            for w_state, wr_val in per_weather_wr.items():
-                rel = ring_relation(piece_affinity, w_state)
-                if rel == RingRelation.PRIMARY_PREY:
-                    counter_weather_wr = wr_val
-                    break
-
-            if per_weather_wr:
-                weather_sensitivity = max(per_weather_wr.values()) - min(per_weather_wr.values())
+        own_weather_wr, counter_weather_wr, weather_sensitivity = wmetrics.get(
+            pid, (0.0, 0.0, 0.0)
+        )
 
         out[pid] = PieceStats(
             n_matches=m,

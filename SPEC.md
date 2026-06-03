@@ -87,6 +87,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - V.13: Advance to `unknown` triggers one synchronous fetch + lock; on fetch fail, lock `substitute` with `CITIES[city_id].default_weather`
 - V.14: `tools/simulation/` imports only from `src/game/` — no `ui/`, no `api/`. Matches the V.1 isolation rule extended to the sim layer; keeps `resolve_combat` as the only engine entry. (T.25)
 - V.15: Every `ability_id` and `passive_id` referenced by `ChampionDef`, `EnemyDef`, or `BossDef` in content/roster data **must** resolve in `ABILITY_REGISTRY` or `PASSIVE_REGISTRY` respectively — enforced by CI guard test (`test_ability_catalog.py::test_all_*_resolve` and `test_all_boss_abilities_resolve`). BossDef coverage includes `phase1_active`, `phase1_passive`, `phase1_phase_hook`, `phase2_active`, `phase2_passive`, and `on_death_hook`. (T.30)
+- V.16: Sim weather-affinity metrics (`own_weather_wr`, `counter_weather_wr`, `weather_sensitivity` on `PieceStats`) are **cross-weather** — derived only via `ratings.weather_metrics()` over per-piece win-rates pooled across **all** weathers, never from a single-weather `aggregate_stats` pass. A single weather yields `weather_sensitivity ≡ 0` by construction; `mega`/`runner` must pool weathers then inject before writing per-weather ratings CSVs. (T.25)
 
 ## T. Tasks
 
@@ -251,6 +252,18 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   boss fight moved to Vienna. Supersedes the "~6 cities" content budget. Touches
   `t4_city_route_plan.md`, `boss_roster.md`, `CLAUDE.md`, and (when built)
   `route.py`.
+
+- B.8 [2026-06-03] Sim weather columns (`own_weather_wr`, `counter_weather_wr`,
+  `weather_sensitivity`) were dead — computed inside `aggregate_stats`, which
+  `mega`/`runner` call once **per single-weather** ratings file, so
+  `weather_sensitivity = max−min` over one value ≡ always `0.0` and own/counter
+  were sparse-zero. **Cause:** a cross-weather metric derived from single-weather
+  input. **Fix → V.16:** extracted `ratings.weather_metrics()` (single source of
+  truth); `mega`/`runner` now pool per-weather win-rates and inject before
+  writing. Tests: `test_ratings.py` (own/counter/sensitivity + single-weather→0).
+  Note: the report's "weather inert" verdict was a *separate* analysis error —
+  the cross-weather sweep measures only Weather Favor, never Affinity Clash
+  (target-dependent, weather-independent); both must be measured separately.
 
 ## D. Systems Yet To Be Determined
 

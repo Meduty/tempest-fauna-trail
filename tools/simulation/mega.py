@@ -247,7 +247,7 @@ import argparse
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable
 
@@ -262,7 +262,12 @@ from tools.simulation.matchup import (
     configure_sim_max_ticks,
     run_matchup,
 )
-from tools.simulation.ratings import PieceStats, aggregate_stats, binary_win_rate
+from tools.simulation.ratings import (
+    PieceStats,
+    aggregate_stats,
+    binary_win_rate,
+    weather_metrics,
+)
 from tools.simulation.report import print_summary, write_ratings_csv, write_results_csv
 from tools.simulation.tournament import enumerate_1v1, enumerate_team2, sample_teams
 
@@ -385,17 +390,43 @@ def build_stages(
 # ---------------------------------------------------------------------------
 
 
-def write_stage_outputs(
+def write_stage_results(
     stage: Stage, results: list[MatchupResult], out_dir: Path
 ) -> tuple[dict[str, float], dict[str, PieceStats]]:
+    """Write the raw per-battle results CSV and score the stage.
+
+    Returns `(win_rates, stats)`. The weather columns in `stats` are
+    single-weather placeholders — they are overwritten in
+    `write_stage_ratings` once all weathers of the stage are pooled (V.16).
+    """
     results_path = out_dir / f"results_{stage.name}_{stage.weather.value}.csv"
-    ratings_path = out_dir / f"ratings_{stage.name}_{stage.weather.value}.csv"
     write_results_csv(results_path, results)
     wr = binary_win_rate(results)
     stats = aggregate_stats(results)
-    write_ratings_csv(ratings_path, win_rates=wr, stats=stats)
-    print(f"[mega] wrote {results_path} + {ratings_path}")
+    print(f"[mega] wrote {results_path}")
     return wr, stats
+
+
+def write_stage_ratings(
+    stage: Stage,
+    wr: dict[str, float],
+    stats: dict[str, PieceStats],
+    wmetrics: dict[str, tuple[float, float, float]],
+    out_dir: Path,
+) -> None:
+    """Write the ratings CSV with cross-weather metrics injected (V.16)."""
+    merged = {
+        pid: replace(
+            s,
+            own_weather_wr=wmetrics.get(pid, (0.0, 0.0, 0.0))[0],
+            counter_weather_wr=wmetrics.get(pid, (0.0, 0.0, 0.0))[1],
+            weather_sensitivity=wmetrics.get(pid, (0.0, 0.0, 0.0))[2],
+        )
+        for pid, s in stats.items()
+    }
+    ratings_path = out_dir / f"ratings_{stage.name}_{stage.weather.value}.csv"
+    write_ratings_csv(ratings_path, win_rates=wr, stats=merged)
+    print(f"[mega] wrote {ratings_path}")
 
 
 # ---------------------------------------------------------------------------
@@ -480,18 +511,39 @@ def main(argv: list[str] | None = None) -> int:
             initializer=_pool_initializer,
             initargs=(args.max_ticks,),
         )
-    try:
-        for stage in stages:
-            t_stage = time.monotonic()
-            results = run_stage(stage, pool)
-            elapsed = time.monotonic() - t_stage
-            rate = len(results) / elapsed if elapsed > 0 else 0.0
-            print(f"[mega] {stage.name} @ {stage.weather.value}: "
-                  f"{len(results):,} battles in {elapsed:.1f}s ({rate:.0f}/s)")
-            wr, stats = write_stage_outputs(stage, results, args.out)
+    # Group stages by name so all weathers of one stage are pooled before the
+    # ratings CSVs are written — weather metrics (own/counter/sensitivity) are
+    # cross-weather and cannot be computed from a single-weather file (V.16).
+    by_name: dict[str, list[Stage]] = {}
+    for stage in stages:
+        by_name.setdefault(stage.name, []).append(stage)
 
-            # Per-stage console summary (tier-bucketed)
-            print_summary(win_rates=wr, stats=stats)
+    try:
+        for name, group in by_name.items():
+            # per-piece win rate keyed by weather, accumulated across the group
+            per_weather_wr: dict[str, dict[WeatherState, float]] = {}
+            pending: list[tuple[Stage, dict[str, float], dict[str, PieceStats]]] = []
+            for stage in group:
+                t_stage = time.monotonic()
+                results = run_stage(stage, pool)
+                elapsed = time.monotonic() - t_stage
+                rate = len(results) / elapsed if elapsed > 0 else 0.0
+                print(f"[mega] {stage.name} @ {stage.weather.value}: "
+                      f"{len(results):,} battles in {elapsed:.1f}s ({rate:.0f}/s)")
+                # Write raw results immediately and free them; keep only the
+                # small per-piece score dicts in memory across the weather loop.
+                wr, stats = write_stage_results(stage, results, args.out)
+                del results
+                for pid, w in wr.items():
+                    per_weather_wr.setdefault(pid, {})[stage.weather] = w
+                pending.append((stage, wr, stats))
+
+            # Pool weathers -> correct cross-weather metrics, then write ratings.
+            wmetrics = weather_metrics(per_weather_wr)
+            for stage, wr, stats in pending:
+                write_stage_ratings(stage, wr, stats, wmetrics, args.out)
+                # Per-stage console summary (tier-bucketed)
+                print_summary(win_rates=wr, stats=stats)
     finally:
         if pool is not None:
             pool.shutdown(wait=True)

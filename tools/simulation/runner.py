@@ -106,7 +106,12 @@ def _build_configs(args: argparse.Namespace, weather: WeatherState) -> list:
     raise SystemExit(f"unknown mode: {args.mode}")
 
 
-def _run_weather(args: argparse.Namespace, weather: WeatherState) -> None:
+def _run_weather(args: argparse.Namespace, weather: WeatherState):
+    """Run one weather, write its raw results CSV, return (wr, stats).
+
+    Ratings are written later in `main` once all weathers are pooled, so the
+    cross-weather metrics (own/counter/sensitivity) are correct (V.16).
+    """
     print(f"[runner] {args.mode} @ {weather.value}: generating configs...")
     configs = _build_configs(args, weather)
     print(f"[runner] {args.mode} @ {weather.value}: {len(configs)} battles "
@@ -119,19 +124,10 @@ def _run_weather(args: argparse.Namespace, weather: WeatherState) -> None:
     print(f"[runner] {args.mode} @ {weather.value}: done in {elapsed:.1f}s "
           f"({rate:.0f} battles/s)")
 
-    out_dir = args.out
-    results_path = out_dir / f"results_{args.mode}_{weather.value}.csv"
-    ratings_path = out_dir / f"ratings_{args.mode}_{weather.value}.csv"
-
+    results_path = args.out / f"results_{args.mode}_{weather.value}.csv"
     write_results_csv(results_path, results)
-
-    wr = binary_win_rate(results)
-    stats = aggregate_stats(results)
-    write_ratings_csv(ratings_path, win_rates=wr, stats=stats)
-
     print(f"[runner] wrote {results_path}")
-    print(f"[runner] wrote {ratings_path}")
-    print_summary(win_rates=wr, stats=stats)
+    return binary_win_rate(results), aggregate_stats(results)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -139,8 +135,31 @@ def main(argv: list[str] | None = None) -> int:
     weathers = _WEATHERS if args.all_weathers else [args.weather]
     print(f"[runner] roster size = {len(all_piece_ids())}; "
           f"weathers = {[w.value for w in weathers]}")
+
+    per_weather_wr: dict[str, dict[WeatherState, float]] = {}
+    pending = []
     for w in weathers:
-        _run_weather(args, w)
+        wr, stats = _run_weather(args, w)
+        for pid, v in wr.items():
+            per_weather_wr.setdefault(pid, {})[w] = v
+        pending.append((w, wr, stats))
+
+    # Pool weathers -> correct cross-weather metrics, then write ratings.
+    wmetrics = weather_metrics(per_weather_wr)
+    for w, wr, stats in pending:
+        merged = {
+            pid: replace(
+                s,
+                own_weather_wr=wmetrics.get(pid, (0.0, 0.0, 0.0))[0],
+                counter_weather_wr=wmetrics.get(pid, (0.0, 0.0, 0.0))[1],
+                weather_sensitivity=wmetrics.get(pid, (0.0, 0.0, 0.0))[2],
+            )
+            for pid, s in stats.items()
+        }
+        ratings_path = args.out / f"ratings_{args.mode}_{w.value}.csv"
+        write_ratings_csv(ratings_path, win_rates=wr, stats=merged)
+        print(f"[runner] wrote {ratings_path}")
+        print_summary(win_rates=wr, stats=merged)
     return 0
 
 
