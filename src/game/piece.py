@@ -33,6 +33,7 @@ class Piece:
     """
     id: str
     base_stats: dict[str, float] = field(default_factory=dict)
+    level: int = 1  # In-tier level (1-3) carried from the source model; read by level-scaling passives
     affinity: WeatherState = WeatherState.CLEAR
     traits: list[str] = field(default_factory=list)
     is_enemy: bool = False

@@ -86,6 +86,7 @@ def piece_from_champion(champion: Champion) -> Piece:
         affinity=champion.affinity,
         traits=list(champion.traits),
         is_enemy=False,
+        level=champion.level,
         passives=[champion.passive_ability] if champion.passive_ability else [],
     )
     # Set up active ability slot (0 starting mana by default)
@@ -123,6 +124,7 @@ def piece_from_enemy(enemy: Enemy) -> Piece:
         affinity=enemy.affinity,
         traits=[],
         is_enemy=True,
+        level=enemy.level,
         passives=[enemy.passive_ability] if enemy.passive_ability else [],
     )
     # Set up active ability slot

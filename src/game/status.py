@@ -40,9 +40,10 @@ class StatusDef:
     display_name: str
     stack_behaviour: StackBehaviour = StackBehaviour.REFRESH
     gates: tuple[StatusGate, ...] = ()
-    dot_per_tick: float = 0.0  # Damage per tick (burn, poison)
+    dot_per_tick: float = 0.0  # Damage per DOT tick (NOT per engine tick — see dot_interval_ticks)
+    dot_interval_ticks: int = 100  # Ticks between DOT applications. 100 = 1s. Data, not a constant.
     dot_scales_with_stacks: bool = False  # Poison: damage * stacks
-    decay_stacks_per_tick: bool = False  # Poison: each tick removes one stack
+    decay_stacks_per_dot: bool = False  # Poison: lose one stack per DOT tick ("decreases if it does")
     dot_true_damage: bool = False  # True: DOT bypasses all mitigation (sudden death)
 
 
@@ -90,7 +91,7 @@ BURN = _register(StatusDef(
     id="burn",
     display_name="Burn",
     stack_behaviour=StackBehaviour.REFRESH,
-    dot_per_tick=2.0,
+    dot_per_tick=40.0,  # Per DOT tick (1s). Caster may override via potency.
     dot_scales_with_stacks=False,
 ))
 
@@ -98,9 +99,9 @@ POISON = _register(StatusDef(
     id="poison",
     display_name="Poison",
     stack_behaviour=StackBehaviour.STACK,
-    dot_per_tick=1.5,
+    dot_per_tick=18.0,  # Per DOT tick (1s), × stacks.
     dot_scales_with_stacks=True,
-    decay_stacks_per_tick=True,  # One stack removed per tick after DOT is applied
+    decay_stacks_per_dot=True,  # One stack removed per DOT tick
 ))
 
 SLOW = _register(StatusDef(
@@ -112,6 +113,14 @@ SLOW = _register(StatusDef(
 CHARGED = _register(StatusDef(
     id="charged",
     display_name="Charged",
+    stack_behaviour=StackBehaviour.REFRESH,
+))
+
+# Focus Fire — pure marker (no gates, no DOT). Company Captain's passive reads
+# it to deal bonus damage when allies pile onto the marked target.
+FOCUS_FIRE = _register(StatusDef(
+    id="focus_fire",
+    display_name="Focus Fire",
     stack_behaviour=StackBehaviour.REFRESH,
 ))
 
@@ -141,6 +150,7 @@ SUDDEN_DEATH = _register(StatusDef(
     display_name="Sudden Death",
     stack_behaviour=StackBehaviour.STACK,  # Stacks escalate each tick
     dot_per_tick=0.5,
+    dot_interval_ticks=1,  # Exception: per-engine-tick. Timeout failsafe — see process_statuses.
     dot_scales_with_stacks=True,
     dot_true_damage=True,  # Bypasses all mitigation — unstoppable timeout mechanic
 ))
@@ -158,6 +168,8 @@ class StatusInstance:
     remaining_ticks: int
     stacks: int = 1
     source_id: str = ""
+    potency: float = 0.0  # Per-DOT-tick damage override; 0 → fall back to StatusDef.dot_per_tick
+    ticks_to_next_dot: int = 0  # Free-running DOT clock; 0 → lazily seeded to dot_interval_ticks
 
     @property
     def definition(self) -> StatusDef:

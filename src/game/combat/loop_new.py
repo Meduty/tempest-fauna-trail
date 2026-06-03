@@ -393,37 +393,55 @@ def _event_sort_key(entry: tuple[Piece, str]) -> tuple[float, float, int, int]:
 
 
 def process_statuses(ctx: CombatContext, pieces: list[Piece]) -> None:
-    """Process status effects each tick: expire, DOT, decay."""
+    """Process status effects each tick: DOT + decay (on cadence), then expiry.
+
+    DOT damage and stack-decay fire on each status's own cadence
+    (StatusDef.dot_interval_ticks — 100 ticks = 1s; sudden_death = 1 = per-tick).
+    The per-instance clock (ticks_to_next_dot) free-runs: reapplying a status
+    refreshes its duration/stacks but never pushes back the next DOT.
+
+    Ordering is Option A — DOT pays out BEFORE the expiry check, so a status
+    deals its final tick on the same engine tick it expires. Expiry itself
+    stays tick-precise (remaining_ticks decremented every tick).
+    """
     for piece in pieces:
         if not piece.alive:
             continue
         expired = []
         for i, status in enumerate(piece.statuses):
+            status_def = STATUS_DEFS.get(status.status_id)
+
+            # --- DOT + decay on the status's own interval (before expiry) ---
+            if status_def is not None and (status_def.dot_per_tick > 0 or status.potency > 0):
+                # Lazily seed the DOT clock for directly-built instances (clock=0).
+                if status.ticks_to_next_dot <= 0:
+                    status.ticks_to_next_dot = status_def.dot_interval_ticks
+                status.ticks_to_next_dot -= 1
+                if status.ticks_to_next_dot <= 0:
+                    status.ticks_to_next_dot = status_def.dot_interval_ticks
+                    base = status.potency if status.potency > 0 else status_def.dot_per_tick
+                    dot_amount = base * status.stacks if status_def.dot_scales_with_stacks else base
+                    attacker = piece
+                    if status.source_id:
+                        for p in ctx.all_pieces():
+                            if p.id == status.source_id and p.alive:
+                                attacker = p
+                                break
+                    if status_def.dot_true_damage:
+                        ctx.deal_damage(attacker, piece, dot_amount, SourceTag.TRUE)
+                    else:
+                        ctx.deal_damage(attacker, piece, dot_amount, SourceTag.DOT, damage_type="magical")
+                    # "Decreases if it does" — lose one stack per DOT tick (poison).
+                    if status_def.decay_stacks_per_dot and status.stacks > 0:
+                        status.stacks -= 1
+                        if status.stacks == 0:
+                            expired.append(i)
+                            continue
+
+            # --- Expiry (tick-precise) ---
             status.remaining_ticks -= 1
             if status.remaining_ticks <= 0:
                 expired.append(i)
-                continue
-            # DOT processing
-            status_def = STATUS_DEFS.get(status.status_id)
-            if status_def and status_def.dot_per_tick > 0:
-                dot_amount = status_def.dot_per_tick
-                if status_def.dot_scales_with_stacks:
-                    dot_amount *= status.stacks
-                attacker = piece
-                if status.source_id:
-                    for p in ctx.all_pieces():
-                        if p.id == status.source_id and p.alive:
-                            attacker = p
-                            break
-                if status_def.dot_true_damage:
-                    ctx.deal_damage(attacker, piece, dot_amount, SourceTag.TRUE)
-                else:
-                    ctx.deal_damage(attacker, piece, dot_amount, SourceTag.DOT, damage_type="magical")
-                # Decay stacks after DOT
-                if status_def.decay_stacks_per_tick and status.stacks > 0:
-                    status.stacks -= 1
-                    if status.stacks == 0:
-                        expired.append(i)
 
         # Remove expired statuses (in reverse order to maintain indices)
         for i in reversed(expired):

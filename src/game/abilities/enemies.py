@@ -491,9 +491,54 @@ def company_captain_active(ctx: Any, actor: Any, targets: list) -> None:
     ))
 
 
+# --- Company Captain (T5) --- Focus Fire: mark hit targets; allies piling on
+# a marked target trigger bonus INT magic damage from the captain.
 @register_passive("enemy_company_captain.passive")
 def company_captain_passive(owner: Any) -> EffectBundle:
-    return EffectBundle()
+    FOCUS_FIRE_DURATION = 600
+    # Conservative INT scaling with a modest per-level bump:
+    # original L1 0.12·INT, L2 0.15·INT, L3 0.18·INT per ally hit on a marked target.
+    level = getattr(owner, "level", 1)
+    bonus_coeff = 0.1 * level
+    _TRIGGER_TAGS = (SourceTag.BASIC_ATTACK.value, SourceTag.ABILITY.value)
+    # Reentrancy guard: the bonus hit re-enters on_damage_dealt; this flag stops
+    # it from re-marking the target or chaining bonus-on-bonus.
+    state = {"in_bonus": False}
+
+    def hook(ctx: Any, event: Any) -> None:
+        if state["in_bonus"]:
+            return
+        if not owner.alive:
+            return
+        if event.tag not in _TRIGGER_TAGS:
+            return
+        attacker = event.attacker
+        target = event.target
+
+        # Captain's own attack/ability → mark the struck enemy.
+        if attacker is owner:
+            if target.alive and ctx.is_enemy(owner, target):
+                ctx.apply_status(target, "focus_fire",
+                                 duration_ticks=FOCUS_FIRE_DURATION,
+                                 source_id=owner.id)
+            return
+
+        # An ally other than the captain hits a marked target → bonus magic dmg.
+        if (attacker.is_enemy == owner.is_enemy
+                and target.has_status("focus_fire")):
+            bonus = owner.stat("intelligence") * bonus_coeff
+            if bonus <= 0:
+                return
+            state["in_bonus"] = True
+            try:
+                ctx.deal_damage(owner, target, bonus, SourceTag.ABILITY,
+                                damage_type="magical")
+            finally:
+                state["in_bonus"] = False
+
+    return EffectBundle(hooks=[
+        Hook("on_damage_dealt", hook, scope=HookScope.PER_HIT),
+    ])
 
 
 # --- Steam Knight (T6) --- every 3rd hit reflect STR damage

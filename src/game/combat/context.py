@@ -288,9 +288,16 @@ class CombatContext:
 
     def apply_status(
         self, target: Piece, status_id: str, duration_ticks: int, stacks: int = 1,
-        source_id: str = "",
+        source_id: str = "", potency: float = 0.0,
     ) -> None:
-        """Apply a status effect to a target."""
+        """Apply a status effect to a target.
+
+        Status identity is status_id only — one instance per status per piece
+        (Option 1 / TFT-style). Re-application by a different source merges into
+        the single instance; the DOT clock (ticks_to_next_dot) is NOT reset so it
+        free-runs regardless of reapply spam. `potency` overrides per-DOT-tick
+        damage; on merge the STRONGER potency wins and takes damage credit.
+        """
         if not target.alive:
             return
 
@@ -309,12 +316,19 @@ class CombatContext:
                 # Stack: add stacks, refresh duration
                 existing.stacks += stacks
                 existing.remaining_ticks = max(existing.remaining_ticks, duration_ticks)
+            # Strongest-wins: a higher-potency reapply takes over magnitude + credit.
+            if potency > existing.potency:
+                existing.potency = potency
+                existing.source_id = source_id or existing.source_id
         else:
+            interval = status_def.dot_interval_ticks if status_def else 100
             target.statuses.append(StatusInstance(
                 status_id=status_id,
                 remaining_ticks=duration_ticks,
                 stacks=stacks,
                 source_id=source_id,
+                potency=potency,
+                ticks_to_next_dot=interval,
             ))
 
         event = StatusEvent(target=target, status_id=status_id,
