@@ -64,27 +64,30 @@ def compute_stat(piece: Any, stat: str) -> float:
     Order: (base + sum(adds)) * prod(muls). 'set' overrides everything.
     """
     base = piece.base_stats.get(stat, 0.0)
-    adds = 0.0
-    muls: list[float] = []
-    setters: list[float] = []
+    mods = piece.modifiers
+    # Fast path: the overwhelmingly common case is a piece with no modifiers
+    # (weather is folded into base_stats; only passives/abilities add modifiers).
+    # Skip the temp-list allocations and the scan entirely.
+    if not mods:
+        return base
 
-    for m in piece.modifiers:
+    adds = 0.0
+    mul = 1.0
+    setter: float | None = None  # last 'set' wins, matching the previous setters[-1]
+    for m in mods:
         if m.stat != stat:
             continue
-        if m.op == "add":
+        op = m.op
+        if op == "add":
             adds += m.value
-        elif m.op == "mul":
-            muls.append(m.value)
-        elif m.op == "set":
-            setters.append(m.value)
+        elif op == "mul":
+            mul *= m.value
+        else:  # "set"
+            setter = m.value
 
-    if setters:
-        return setters[-1]
-
-    result = base + adds
-    for mul in muls:
-        result *= mul
-    return result
+    if setter is not None:
+        return setter
+    return (base + adds) * mul
 
 
 # ---------------------------------------------------------------------------

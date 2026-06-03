@@ -577,7 +577,7 @@ def run(ctx: CombatContext, recorder: BattleResultRecorder | None = None) -> str
     # Fire on_combat_start
     ctx.bus.fire("on_combat_start", CombatStartEvent(), ctx=ctx)
 
-    if not _both_sides_alive(pieces):
+    if not ctx.both_sides_alive():
         # Immediate resolution
         team_alive = any(p.alive and not p.is_enemy for p in pieces)
         winner = "team" if team_alive else "enemy"
@@ -620,10 +620,9 @@ def run(ctx: CombatContext, recorder: BattleResultRecorder | None = None) -> str
         for piece in pieces:
             if piece.alive and piece.summon and piece.summon_expires_tick > 0:
                 if tick >= piece.summon_expires_tick:
-                    piece.alive = False
-                    piece.hp = 0.0
+                    ctx.expire_summon(piece)
 
-        if not _both_sides_alive(pieces):
+        if not ctx.both_sides_alive():
             ended_early = True
             break
 
@@ -666,7 +665,7 @@ def run(ctx: CombatContext, recorder: BattleResultRecorder | None = None) -> str
                 _resolve_movement(piece, pieces, tick, recorder)
             else:
                 _resolve_action(piece, pieces, tick, recorder, ctx)
-            if not _both_sides_alive(pieces):
+            if not ctx.both_sides_alive():
                 ended_early = True
                 break
         if ended_early:
@@ -677,7 +676,7 @@ def run(ctx: CombatContext, recorder: BattleResultRecorder | None = None) -> str
             if not piece.alive:
                 continue
             process_casts(ctx, piece)
-            if not _both_sides_alive(pieces):
+            if not ctx.both_sides_alive():
                 ended_early = True
                 break
 

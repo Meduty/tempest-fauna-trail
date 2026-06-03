@@ -66,7 +66,9 @@ HEX_DIRECTIONS: tuple[tuple[int, int], ...] = (
 
 def hex_distance(q1: int, r1: int, q2: int, r2: int) -> int:
     """Axial hex distance between two cells."""
-    return (abs(q1 - q2) + abs(r1 - r2) + abs(q1 + r1 - q2 - r2)) // 2
+    dq = q1 - q2
+    dr = r1 - r2
+    return (abs(dq) + abs(dr) + abs(dq + dr)) // 2
 
 
 # ---------------------------------------------------------------------------
@@ -105,6 +107,11 @@ class CombatContext:
         self._board_height: int = BOARD_HEIGHT
         # Board state (map effects write cell modifiers; targeting reads fog_range)
         self._board_state: BoardState = board_state if board_state is not None else BoardState()
+        # Live liveness counts — maintained incrementally by kill/spawn/expire_summon
+        # so the per-tick / per-action "both sides alive?" check is O(1) instead of
+        # rescanning the whole roster (see both_sides_alive). Mutated only here.
+        self._alive_team: int = sum(1 for p in pieces if p.alive and not p.is_enemy)
+        self._alive_enemy: int = sum(1 for p in pieces if p.alive and p.is_enemy)
 
     # --- Read-only queries ---
 
@@ -156,6 +163,11 @@ class CombatContext:
     def all_pieces(self) -> list[Piece]:
         """All pieces (alive or dead)."""
         return self._pieces
+
+    def both_sides_alive(self) -> bool:
+        """O(1) — at least one living piece on each side. Counts are maintained
+        incrementally by kill / spawn / expire_summon."""
+        return self._alive_team > 0 and self._alive_enemy > 0
 
     def living_pieces(self) -> list[Piece]:
         """All currently alive pieces."""
@@ -399,9 +411,27 @@ class CombatContext:
         piece.position_q = position_q
         piece.position_r = position_r
         piece.alive = True
+        if piece.is_enemy:
+            self._alive_enemy += 1
+        else:
+            self._alive_team += 1
         self._pieces.append(piece)
         event = SpawnEvent(piece=piece, position=(position_q, position_r))
         self._bus.fire("on_spawn", event, ctx=self)
+
+    def expire_summon(self, piece: Piece) -> None:
+        """Remove an expired summon WITHOUT firing on_death (G6 lifecycle).
+
+        Mirrors the inline despawn the loop used to do, but keeps the O(1)
+        liveness counts correct."""
+        if not piece.alive:
+            return
+        piece.alive = False
+        piece.hp = 0.0
+        if piece.is_enemy:
+            self._alive_enemy -= 1
+        else:
+            self._alive_team -= 1
 
     def kill(self, target: Piece, killer: Piece | None = None) -> None:
         """Kill a piece. Fires on_kill and on_death."""
@@ -409,6 +439,10 @@ class CombatContext:
             return
         target.alive = False
         target.hp = 0.0
+        if target.is_enemy:
+            self._alive_enemy -= 1
+        else:
+            self._alive_team -= 1
 
         if killer:
             kill_event = KillEvent(killer=killer, victim=target)
