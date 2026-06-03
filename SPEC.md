@@ -92,6 +92,10 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - V.18: Augments are **run-long**: `TEAM`/`PIECE` augment effects are rebuilt fresh in `compile_loadout` each combat from `Run.active_augments`, never persisted as combat state; `RUN`-scope augments mutate `Run` exactly once at pick time. (T.31)
 - V.19: Economy / shop / offer rolls are **seed-deterministic** — shop offers from `(run_seed, visit_index, reroll_count)` via `CH_SHOP`, SUPPLY from `(run_seed, node_index)` via `CH_SUPPLY`, Amber win-bonus from `(run_seed, node_index)` via `CH_ECONOMY`; same seed → same draws, mirroring the T.19 encounter contract (extends V.14-style determinism to the economy layer). (T.22)
 - V.20: `Tempest` rank is **monotonic non-decreasing** — starts at 1, capped at 10, `rank == deployable board cap`. `Run.tempest` accumulates (+2/fight, +challenge bonus, or Amber rush) and cascades into rank-ups consuming the per-rank thresholds; overflow Tempest carries to the next rank, never decrements rank. (T.22)
+- V.21: Trait breakpoints count **unique champion ids** (duplicate copies count once); trait effects enter combat **only** via `compile_loadout` (never alongside `resolve_combat`); `_resolve_traits` is a pure, RNG-free function of the team — replay-stable. (T.28)
+- V.22: Every tag in `Champion.traits` **must** resolve in `TRAIT_REGISTRY`, and every champion carries ≥1 Kinship + ≥1 Calling (+ `Primordial` at T10) — CI-guarded, mirroring V.15. Enemies carry trait tags as opaque labels only and never light up breakpoints. (T.28)
+- V.23: Items apply **only** via `compile_loadout` (combat-facing `EffectBundle` factories in `ITEM_REGISTRY`) or `RUN_ACTION_REGISTRY` (run-facing); ≤3 equipped items per piece; item procs are deterministic (cadence counters / one-shot flags, never RNG). (T.29)
+- V.24: Special items (`RUN_ACTION_REGISTRY`) operate on `Run` state only and are **never** referenced from `game/combat/` — combat sees only their result (`effect_systems_design.md` §8.4). (T.29)
 
 ## T. Tasks
 
@@ -126,10 +130,12 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.25 | Power simulation & balance benchmarking — deterministic matchup sweeps and empirical power ratings | `tools/simulation/`, `docs/design/tasks/t25_power_simulation_plan.md` | T.3, T.5 | M | ✅ Done |
 | T.26 | Combat engine unification — `resolve_combat` delegates to the new loop via `BattleResultRecorder`; legacy tick loop retired; Weather Favor applied in `compile_loadout` | `game/combat/legacy.py`, `game/combat/loop_new.py`, `game/combat/recorder.py`, `game/loadout.py` | T.3, T.20 | M | ✅ Done |
 | T.27 | Playtesting CLI — dev-facing tools for sim_fight / sim_node / sim_run / inspect / inspect_node, no Flet, pure consumers of `src/game/` | `tools/playtest/`, `docs/design/playtesting/` | T.3, T.5, T.19, T.21, T.26 | M | ✅ Done |
-| T.28 | Synergy trait effects — implement `TraitDef` / `TraitBreakpoint` types, `@register_trait` factories for all Kinship/Calling/Affinity traits, team roll-up step in `compile_loadout`, `BattleResult` activation events | `game/traits/`, `game/loadout.py`, `docs/design/content/trait_catalog.md` | T.5, T.20, T.26 | L | ❌ Not started |
-| T.29 | Item engine — `Item`, `Component`, `ItemSlot` models, `RECIPE_MAP` (8 components → 36 combined), equip/unequip logic (3 slots per piece), `EffectBundle` factories per item, emblem Kinship grant, special-item run-actions, drop-table integration with REWARD nodes | `game/items.py`, `game/item_effects.py`, `docs/design/tasks/t29_item_engine_plan.md` | T.1, T.20, T.22 | L | ❌ Not started |
+| T.28a | Synergy trait framework + declarative content — `TraitScope`/`TraitBreakpoint` types + `@register_trait`; `_resolve_traits` team roll-up in `compile_loadout` (unique-id count, scope, §10.1 order); affinity-trait synthesis from `affinity`; Calling-vocabulary reconciliation (drop 4 dead T.5 tags, add `Packmate` + carriers); `BattleResult.trait_activations`; all stat-pack breakpoints (Affinities + Kinship/Calling stat portions) | `game/traits/`, `game/loadout.py`, `game/models.py`, `game/content.py`, `docs/design/tasks/t28_trait_effects_plan.md` | T.5, T.20, T.26 | M | 📋 Plan |
+| T.28b | Trait combat primitives + mechanic breakpoints — `Piece.shield_hp` absorb, `StatusGate.UNTARGETABLE`, `taunt`, deterministic dodge, revive-once, time-ramp, echo/double-cast, mana-denial aura (all RNG-free); Tier-B proxies (Skyborn collision/tie, Stalker reposition); all hook-based breakpoint effects | `game/status.py`, `game/piece.py`, `game/combat/loop_new.py`, `game/combat/context.py`, `game/targeting.py`, `game/traits/`, `docs/design/tasks/t28_trait_effects_plan.md` | T.28a | M | 📋 Plan |
+| T.29a | Item engine — components + combined + 16 core cut — real component→stat mapping (mana per-`ActiveSlot`, not a stat), `RECIPE_MAP` (8×8 = 36) + `combine()` recipe branch, `Champion.items` (≤3 persistent) equip applied in `compile_loadout`, `@register_item` factories for 8 components + 16 core-cut items (modifier + hook, closure-per-combat), seed-deterministic REWARD-node drops | `game/items/`, `game/loadout.py`, `game/models.py`, `game/encounter.py`, `docs/design/tasks/t29_item_engine_plan.md` | T.1, T.20, T.22 | L | 📋 Plan |
+| T.29b | Items — remaining 20 combined + emblems + special — remaining 20 combined-item factories, 6 emblems (`granted_traits`, counted via T.28a) + Spirit-Gem `combine()` branch, 6 special run-actions (`RUN_ACTION_REGISTRY`, operate on `Run`) + interactive `sim_run` driver (shared shell with T.31), Spellfang Crown `ability_can_crit` unlock | `game/items/`, `game/registries.py`, `tools/playtest/sim_run.py`, `docs/design/tasks/t29_item_engine_plan.md` | T.29a, T.28a | M | 📋 Plan |
 | T.30 | Ability & passive catalog — implement all 120 roster ability/passive handlers (60 champions + 60 enemies) plus 6 full 2-phase boss kits; fix registration IDs, fix generic-fallback bias, add summon lifecycle primitives, add CI guard test for ability-id resolution | `game/abilities/champions.py`, `game/abilities/enemies.py`, `game/abilities/bosses.py`, `game/piece.py`, `game/combat/loop_new.py`, `docs/design/tasks/t30_ability_catalog_plan.md` | T.5, T.20, T.21, T.26 | L | ✅ Done |
-| T.31 | Augment system — `Augment`/`AugmentScope`/`AugmentQuality` model + `@register_augment`; all ~50 catalog augments (4 qualities × 3 scopes `TEAM`/`PIECE`/`RUN`, incl. quest trackers); deterministic 1-of-3 offers + one reroll + Prismatic gating + per-stage quality-weight curve; `Run.active_augments`/`augment_state` (+ serialization, id-validation); `compile_loadout` augment-bundle application (step 6) + quest-tracker wiring (step 9); `RunModifiers` combat seam (optional, `None`-default back-compat); `sim_run` augment resolution — `--augment-policy {first,random,highest-quality,none}` + `--interactive` manual run | `game/augments.py`, `game/loadout.py`, `game/models.py`, `game/combat/legacy.py`, `tools/playtest/sim_run.py`, `docs/design/tasks/t31_augment_system_plan.md` | T.20, T.22, T.26, T.28, T.29 | L | 📋 Plan |
+| T.31 | Augment system — `Augment`/`AugmentScope`/`AugmentQuality` model + `@register_augment`; all ~50 catalog augments (4 qualities × 3 scopes `TEAM`/`PIECE`/`RUN`, incl. quest trackers); deterministic 1-of-3 offers + one reroll + Prismatic gating + per-stage quality-weight curve; `Run.active_augments`/`augment_state` (+ serialization, id-validation); `compile_loadout` augment-bundle application (step 6) + quest-tracker wiring (step 9); `RunModifiers` combat seam (optional, `None`-default back-compat); `sim_run` augment resolution — `--augment-policy {first,random,highest-quality,none}` + `--interactive` manual run | `game/augments.py`, `game/loadout.py`, `game/models.py`, `game/combat/legacy.py`, `tools/playtest/sim_run.py`, `docs/design/tasks/t31_augment_system_plan.md` | T.20, T.22, T.26, T.28b, T.29b | L | 📋 Plan |
 
 **Size**: S = <1h, M = 1-3h, L = 3-6h
 
@@ -204,13 +210,21 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - T.27 ships the dev-facing playtest CLI suite (`tools/playtest/`) used to
   exercise the engine before the Flet UI exists; pure consumer of
   `src/game/`. See `docs/design/playtesting/plan.md`.
-- T.28 implements synergy trait breakpoint effects — the team-building payoff
-  layer. Depends on T.22 for the economy that feeds champion acquisition.
-- T.29 implements the item engine: `Item`/`Component` models, `RECIPE_MAP`,
-  equip/unequip (3 slots/piece), per-item `EffectBundle` factories, emblem
-  Kinship-grant, special-item run-actions, and REWARD-node drop integration.
-  Content authored in `docs/design/content/item_catalog.md`; substrate spec'd
-  in `docs/design/systems/effect_systems_design.md` §8.
+- T.28 (split **T.28a/T.28b**) implements synergy trait breakpoint effects on the
+  T.20 substrate. T.28a = framework + declarative stat-pack content + the
+  Calling-vocabulary reconciliation (B.9); T.28b = combat primitives
+  (shield/untargetable/taunt/dodge/revive/ramp/echo/aura — deterministic, no RNG)
+  + hook-based breakpoints, with the most engine-invasive ones (Skyborn
+  collision/tie, Stalker reposition) MVP-simplified to proxies. Affinity traits
+  are derived from `affinity`. Plan: `docs/design/tasks/t28_trait_effects_plan.md`.
+- T.29 (split **T.29a/T.29b**) implements the item engine: components + combined
+  items + 3-slot equip + REWARD drops + 16-item core cut (T.29a), then the
+  remaining 20 combined + emblems + special run-actions with an interactive
+  `sim_run` driver (T.29b). Components map to **real** engine stats (mana handled
+  per-`ActiveSlot`, not as a base stat — see B.10); emblems gate on T.28a.
+  Content `docs/design/content/item_catalog.md`; substrate
+  `docs/design/systems/effect_systems_design.md` §8; plan
+  `docs/design/tasks/t29_item_engine_plan.md`.
 - T.30 implements the full ability & passive catalog for all 120 roster pieces
   and 6 bosses. Key design decisions: round = 600 ticks (G8, convention only,
   no round abstraction); summons are full Piece objects (G6); auras use periodic
@@ -287,6 +301,23 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   the cross-weather sweep measures only Weather Favor, never Affinity Clash
   (target-dependent, weather-independent); both must be measured separately.
 
+- B.9 [2026-06-03] Calling-vocabulary drift: `CALLING_TAGS` (`content.py`) carried
+  4 dead tags (`Bulwark/Drifter/Harbinger/Emissary`) introduced in the T.5 content
+  commit — 0 carriers, referenced nowhere else, never present in any design doc —
+  and omitted `Packmate` (the catalog's 12th Calling). **Cause:** the T.5 ad-hoc
+  calling set was never reconciled with the later `trait_catalog.md` /
+  `champion_roster.md` 12-Calling design. **Fix (T.28a):** drop the 4 dead tags,
+  add `Packmate` + ~8 T1-3 carriers; **V.22** prevents recurrence.
+
+- B.10 [2026-06-03] Item-doc drift: `effect_systems_design.md` §8.1 budgets "15
+  combined" and §8.2/§8.3 use placeholder component ids + stat keys that don't
+  exist in the engine (`ability_power`, `attack_damage`, `mana_max`); `item_catalog.md`
+  §6 cites a non-existent "§14" for the 3-slot rule. **Cause:** the §8 sketch
+  predates the 8-component/36-item `item_catalog.md` and the engine's real stat
+  vocabulary. **Fix (T.29):** map components to real `Piece.base_stats` keys (mana
+  handled per-`ActiveSlot`), annotate §8.1 → 36, and make
+  `t29_item_engine_plan.md` §3.3 the 3-slot authority.
+
 ## D. Systems Yet To Be Determined
 
 Live backlog of big design decisions still open. Items now locked are recorded
@@ -318,15 +349,20 @@ in their T-task plan docs; what remains here is genuinely undecided.
 ### Content
 
 - D.8 Synergy traits: V.8 reserves `Champion.traits` as auto-chess synergy tags.
-  **Design complete** — breakpoints and bonuses authored in
-  `docs/design/content/trait_catalog.md`; technical substrate in
-  `docs/design/systems/effect_systems_design.md` §7. Implementation tracked as
-  T.28.
-- D.9 Item system: **LOCKED — design in `docs/design/content/item_catalog.md`**;
-  implementation tracked as T.29. 8 base components, 36 combined items via
-  `RECIPE_MAP`, 6 emblems (Spirit Gem + component → Kinship), 6 special
-  run-action items. 3 item slots per champion piece. Items acquired from
-  REWARD-node drops, SUPPLY-node picks, and the prep shop.
+  **Design complete; implementation planned as T.28a/T.28b**
+  (`docs/design/tasks/t28_trait_effects_plan.md`) — breakpoint *concepts* in
+  `docs/design/content/trait_catalog.md`, substrate in
+  `docs/design/systems/effect_systems_design.md` §7, breakpoint **stat values
+  authored in the plan (first pass)**. Open: breakpoint-value tuning, the Tier-B
+  fidelity pass (Skyborn collision/tie + Stalker reposition ship as MVP proxies),
+  and two-Kinship hybrids.
+- D.9 Item system: **LOCKED — design in `docs/design/content/item_catalog.md`,
+  implementation planned as T.29a/T.29b** (`docs/design/tasks/t29_item_engine_plan.md`).
+  8 base components, 36 combined items via `RECIPE_MAP` (16-item core cut in
+  T.29a, rest in T.29b), 6 emblems (Spirit Gem + component → Kinship; counted via
+  T.28a), 6 special `RUN_ACTION_REGISTRY` items. 3 item slots per champion piece.
+  Items acquired from REWARD-node drops, SUPPLY-node picks, and the prep shop.
+  Open: Heartwood/radiant tier + component magnitude (% vs flat) tuning.
 - D.10 Champion / enemy archetypes: the ~6-8 role archetypes and their `P = 1`
   base stats, enemy power tags, and the spirit roster (T.5 / T.18).
 - D.11 Augment content: augment pool, 4 quality tiers, 3 scopes, and per-augment
@@ -334,6 +370,8 @@ in their T-task plan docs; what remains here is genuinely undecided.
   `augment_catalog.md`, plan `t31_augment_system_plan.md`). Open tuning only: the
   per-stage quality-weight curve and a degenerate-combo (interaction-cap) audit.
 - D.12 Drop tables: `REWARD`-node loot content (Amber / item / champion weights).
+  **REWARD item drops integrated in T.29a** (seed-deterministic roll); the
+  drop-table *weights* remain T.22/economy's to author.
 
 ### Economy & Meta
 
@@ -381,7 +419,7 @@ in their T-task plan docs; what remains here is genuinely undecided.
 T.1 → T.2 → T.3 → T.4 → T.18 → T.5 → T.19 → T.20 → T.21 → T.24 → T.26 → T.16 (game tests) → T.27 (playtest CLI)
 
 ### Phase 1b: Economy & Content Systems (Week 3-4) ← NEW critical path
-T.22 (economy + shop) → T.28 (traits) → T.29 (items) → T.31 (augments)
+T.22 (economy + shop) → T.28a → T.28b (traits) → T.29a → T.29b (items) → T.31 (augments)
 
 ### Phase 2: API + Data (Week 2-3)
 T.6 → T.7 → T.16 (API tests)

@@ -33,6 +33,17 @@ Flet (Python) roguelike — animal champions travel real-world cities, live Open
 - **Drift audit**: invoke `/check` for read-only SPEC-vs-code report.
 - **Journal**: append `docs/journal/<date>_<topic>.md` after non-trivial milestones — captures the "why" that SPEC.md compresses out.
 
+### Planning a §T task (before any `/build`)
+
+Write `docs/design/tasks/tN_*_plan.md` from [docs/templates/task_plan.md](docs/templates/task_plan.md). Prompts for an *approved* plan use [docs/templates/task_implementation_prompt.md](docs/templates/task_implementation_prompt.md). Hard-won rules (a planning miss here costs a whole build):
+
+- **Verify, don't trust the design docs.** `effect_systems_design.md` examples use **illustrative stat keys that don't exist** (`ability_power`→`intelligence`, `attack_damage`, `mana_max`; mana is per-`ActiveSlot`, not a `Piece` stat). Before citing a primitive/stat/function, grep it — confirm it exists and the real key/signature. Cite touch points as `file.py:line`.
+- **Run a content↔design drift check.** Code rosters drift from `*_catalog.md` / `*_roster.md` (e.g. `CALLING_TAGS` carried 4 dead T.5 tags + omitted `Packmate`). Diff the code's vocabulary against the design docs; reconcile in the task; add a V-guard so it can't recur.
+- **Determinism is non-negotiable (V.2/V.14).** Any "chance"/"every few" mechanic uses a deterministic cadence counter (like `crit_counter`), never RNG — sims must stay byte-identical.
+- **Ask open questions *before* writing the plan, not after.** Use `AskUserQuestion` for genuine design forks (scope, vocab reconciliation, mechanic fidelity). Investigate origins (git history) before asking the user to decide.
+- **Split large tasks** into `Tn_a`/`Tn_b` along a real seam (e.g. declarative-content vs engine-primitives) so each substep ships and tests independently.
+- Plan ends with a **"SPEC changes needed"** section enumerating the `/spec` deltas (rows, invariants, §B, §D, order) — applied only on user OK.
+
 ## Project Structure
 
 ### Implemented
