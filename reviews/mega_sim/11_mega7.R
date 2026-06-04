@@ -206,16 +206,61 @@ print(round(to7, 3))
 
 # ============================================================================
 hr("7. OUTLIERS — from COMBINED (pooled, pair-game weighted)")
+# Within-tier z-score of wr_delta: how odd is this piece RELATIVE to its tier
+# cohort (controls for the fact that high tiers carry larger residual variance).
+CB$wd_z <- ave(CB$wr_delta, CB$tier, FUN=function(x){
+  s <- sd(x); if (is.na(s) || s==0) rep(0, length(x)) else (x-mean(x))/s })
+abs_cols <- c("name","affinity","role","tier","level","win_rate","wr_delta","wd_z","n_matches")
+
 ord_wr <- CB[order(CB$win_rate),]
-cat("\nWEAKEST 12 (win_rate):\n")
-print(head(ord_wr[,c("name","affinity","role","tier","level","win_rate","wr_delta","n_matches")],12), row.names=FALSE, digits=3)
-cat("\nSTRONGEST 12 (win_rate):\n")
-print(head(ord_wr[order(-ord_wr$win_rate),c("name","affinity","role","tier","level","win_rate","wr_delta","n_matches")],12), row.names=FALSE, digits=3)
+cat("\nWEAKEST 20 (win_rate):\n")
+print(head(ord_wr[,c("name","affinity","role","tier","level","win_rate","wr_delta","n_matches")],20), row.names=FALSE, digits=3)
+cat("\nSTRONGEST 20 (win_rate):\n")
+print(head(ord_wr[order(-ord_wr$win_rate),c("name","affinity","role","tier","level","win_rate","wr_delta","n_matches")],20), row.names=FALSE, digits=3)
 ord_wd <- CB[order(CB$wr_delta),]
-cat("\nMOST UNDER-TUNED 12 (wr_delta):\n")
-print(head(ord_wd[,c("name","affinity","role","tier","level","win_rate","wr_delta")],12), row.names=FALSE, digits=3)
-cat("\nMOST OVER-TUNED 12 (wr_delta):\n")
-print(head(ord_wd[order(-ord_wd$wr_delta),c("name","affinity","role","tier","level","win_rate","wr_delta")],12), row.names=FALSE, digits=3)
+cat("\nMOST UNDER-TUNED 20 (wr_delta; wd_z = within-tier z):\n")
+print(head(ord_wd[,abs_cols],20), row.names=FALSE, digits=3)
+cat("\nMOST OVER-TUNED 20 (wr_delta; wd_z = within-tier z):\n")
+print(head(ord_wd[order(-ord_wd$wr_delta),abs_cols],20), row.names=FALSE, digits=3)
+cat("\nMOST ODD vs TIER COHORT 20 (|within-tier z| of wr_delta):\n")
+print(head(CB[order(-abs(CB$wd_z)),abs_cols],20), row.names=FALSE, digits=3)
+
+# Absolute-outlier table (union of the extremes) for the report / plots.
+abs_out <- CB[order(-abs(CB$wr_delta)),][1:30, abs_cols]
+
+# ============================================================================
+hr("7b. SPREAD OUTLIERS — wr_delta volatility across stage x weather contexts")
+# "Odd" can also mean INCONSISTENT: a piece whose pooled wr_delta sits near 0
+# but swings hard across formats/weathers is just as much an outlier as one
+# with a large pooled residual. Per-cell samples are thin, so raw spread is
+# dominated by binomial noise — we subtract the EXPECTED noise sd and rank by
+# the EXCESS (context-driven) spread.
+spread7 <- do.call(rbind, lapply(split(R7, R7$piece_id), function(d) {
+  w  <- d$n_matches; w[is.na(w)] <- 0
+  wd <- d$wr_delta;  wr <- d$win_rate; nm <- d$n_matches
+  k  <- !is.na(wd) & !is.na(wr) & w > 0
+  if (sum(k) < 3) return(NULL)
+  wd <- wd[k]; wt <- w[k]; wr <- wr[k]; nm <- nm[k]
+  wbar  <- sum(wt*wd)/sum(wt)
+  wsd   <- sqrt(sum(wt*(wd-wbar)^2)/sum(wt))      # match-weighted sd of wr_delta
+  # Expected per-cell binomial sd. Use the piece's POOLED win-rate for the
+  # variance numerator — a per-cell wr(1-wr) collapses to 0 on single-match
+  # cells (p=0/1), which would understate noise and fake excess spread.
+  pbar  <- sum(wt*wr)/sum(wt)
+  noise <- sqrt(pbar*(1-pbar)*mean(1/pmax(nm,1)))
+  data.frame(name=d$name[1], affinity=d$affinity[1], role=d$role[1],
+             tier=d$tier[1], n_ctx=sum(k), tot_matches=sum(nm),
+             wd_pooled=wbar, wd_sd=wsd, wd_range=max(wd)-min(wd),
+             noise_sd=noise, excess_sd=wsd-noise, stringsAsFactors=FALSE)
+}))
+spread7 <- spread7[order(-spread7$excess_sd),]
+cat("\nMOST CONTEXT-VOLATILE 25 (excess wr_delta sd beyond sampling noise):\n")
+print(head(spread7[,c("name","affinity","role","tier","n_ctx","tot_matches",
+                      "wd_pooled","wd_sd","noise_sd","excess_sd","wd_range")],25),
+      row.names=FALSE, digits=3)
+cat(sprintf("\n  excess_sd > 0 in %d/%d pieces; median excess=%.3f, p90=%.3f\n",
+    sum(spread7$excess_sd>0), nrow(spread7), median(spread7$excess_sd),
+    quantile(spread7$excess_sd, .9)))
 
 # ============================================================================
 hr("8. MAGE DEEP-DIVE (combined, per piece)")
@@ -255,9 +300,12 @@ write.csv(as.data.frame(role_wd7), file.path(OUTDIR,"tables/m7_role_wd_by_size.c
 write.csv(as.data.frame(to7),      file.path(OUTDIR,"tables/m7_timeout_by_size.csv"))
 write.csv(CB,   file.path(OUTDIR,"tables/m7_combined.csv"), row.names=FALSE)
 write.csv(mc,   file.path(OUTDIR,"tables/m7_mage_detail.csv"), row.names=FALSE)
+write.csv(abs_out,  file.path(OUTDIR,"tables/m7_abs_outliers.csv"), row.names=FALSE)
+write.csv(spread7,  file.path(OUTDIR,"tables/m7_spread_outliers.csv"), row.names=FALSE)
 
 saveRDS(list(R7=R7, CB=CB, R6=R6, bal7=bal7, mt7=mt7, lv7=lv7, lvc=lvc, wx7=wx7,
              aff7=aff7, role_wr7=role_wr7, role_wd7=role_wd7, to7=to7,
+             abs_out=abs_out, spread7=spread7,
              roles=roles, ORD7_pres=ORD7_pres, SIZE7=SIZE7),
         file.path(OUTDIR,"cache_mega7.rds"))
 cat("\n[saved] tables/m7_*.csv + cache_mega7.rds\n")

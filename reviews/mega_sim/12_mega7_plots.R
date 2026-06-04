@@ -153,4 +153,58 @@ segments(0, y, mc$wr_delta, y, col=adjustcolor(cols,alpha.f=0.5))
 abline(v=0, lty=2, col="grey40")
 dev.off()
 
-cat("[plots] wrote m7_01..m7_08 to", PLOTS, "\n")
+# ---- 9. wr_delta BOXPLOTS by role and by tier (combined) -------------------
+# How odd are the residuals? Boxplots show the full per-piece spread, not just
+# the mean — the IQR/whiskers/outlier dots make the distribution legible.
+png(px("m7_09_wrdelta_boxplots.png"), 1200, 560, res=120)
+par(mfrow=c(1,2), mar=c(5,4,3,1))
+rd_ord <- names(sort(tapply(CB$wr_delta, CB$role, mn)))
+bcol <- ROLE_COLS[rd_ord]
+boxplot(wr_delta~factor(role, levels=rd_ord), data=CB, col=bcol, las=2,
+        ylab="pooled wr_delta", xlab="", outpch=19, outcex=0.5, outcol="grey30",
+        main="wr_delta distribution by role (mega7 combined)")
+abline(h=0, lty=2, col="grey40")
+boxplot(wr_delta~tier, data=CB, col="#9ecae1", outpch=19, outcex=0.5,
+        outcol="grey30", xlab="tier", ylab="pooled wr_delta",
+        main="wr_delta distribution by tier")
+abline(h=0, lty=2, col="grey40")
+dev.off()
+
+# ---- 10. wr_delta DISTRIBUTION: histogram+density + per-piece spread --------
+png(px("m7_10_wrdelta_distribution.png"), 1200, 560, res=120)
+par(mfrow=c(1,2), mar=c(4,4,3,1))
+wd <- CB$wr_delta
+h <- hist(wd, breaks=30, col="#c6dbef", border="white", freq=FALSE,
+          xlab="pooled wr_delta", main="wr_delta distribution (combined)")
+lines(density(wd, na.rm=TRUE), col="#08519c", lwd=2)
+xs <- seq(min(wd), max(wd), length=200)
+lines(xs, dnorm(xs, mean(wd), sd(wd)), col="#d62728", lwd=2, lty=2)  # normal ref
+abline(v=0, lty=3, col="grey40")
+legend("topright", c("density","normal ref"), col=c("#08519c","#d62728"),
+       lwd=2, lty=c(1,2), bty="n", cex=.85)
+qqnorm(wd, pch=19, cex=0.5, col=adjustcolor("#08519c",alpha.f=0.5),
+       main="Normal Q-Q of wr_delta")
+qqline(wd, col="#d62728", lwd=2)
+dev.off()
+
+# ---- 11. CONTEXT-VOLATILITY (excess wr_delta sd) lollipop, top 25 ----------
+sp <- C$spread7
+if (!is.null(sp) && nrow(sp)) {
+  top <- head(sp[order(-sp$excess_sd),], 25)
+  top <- top[order(top$excess_sd),]              # ascending for bottom-up bars
+  png(px("m7_11_spread_outliers.png"), 1100, 900, res=120)
+  par(mar=c(4,11,3,2))
+  y <- seq_len(nrow(top))
+  cols <- ROLE_COLS[top$role]; cols[is.na(cols)] <- "grey50"
+  plot(top$excess_sd, y, pch=19, col=cols, yaxt="n",
+       xlab="excess wr_delta sd (observed - binomial-noise sd)", ylab="",
+       main="Most context-volatile pieces (mega7)",
+       xlim=c(0, max(top$excess_sd)*1.05))
+  axis(2, y, sprintf("%s T%d", top$name, top$tier), las=2, cex.axis=0.55)
+  segments(0, y, top$excess_sd, y, col=adjustcolor(cols, alpha.f=0.5))
+  legend("bottomright", names(ROLE_COLS)[names(ROLE_COLS) %in% top$role],
+         col=ROLE_COLS[names(ROLE_COLS) %in% top$role], pch=19, bty="n", cex=.8)
+  dev.off()
+}
+
+cat("[plots] wrote m7_01..m7_11 to", PLOTS, "\n")

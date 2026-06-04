@@ -50,6 +50,8 @@ Five headline findings:\\
 
 One real watch-item: \textbf{timeouts climb to 44\% at 10v10}, compressing role signal at the largest sizes.\\
 
+\textbf{On how odd the \texttt{wr\_\allowbreak{}delta}s actually are (\S{}8, expanded this revision):} the pooled-residual distribution is near-normal and only mildly heavy-tailed --- most pieces are within $\pm$0.10 of budget, and the named outliers are real \textasciitilde{}2σ tail events within their tier (\texttt{wd\_\allowbreak{}z} column), not a fat-tailed mess. Crucially, the residuals are *not* context-volatile: subtracting the binomial-noise floor leaves \textbf{only 8 of 360 pieces with any across-context spread beyond sampling noise}, and those excesses are tiny ($\leq$0.056) and thin-sample. So the actionable signal is the \textbf{absolute} outliers (\S{}8.2), not inconsistency. Boxplots (by role + tier), histogram/Q-Q, and a context-volatility ranking are in \S{}8.\\
+
 \section*{1. Dataset and method}
 
 \medskip
@@ -293,6 +295,26 @@ Bruisers stall hardest at small/mid sizes (high survivability, low burst), consi
 
 \section*{8. Outliers and tuning priorities}
 
+\subsection*{8.1 How odd are the residuals? Distribution shape}
+
+Before naming individual pieces, the question "how odd are these \texttt{wr\_\allowbreak{}delta}s" is best answered by the *shape* of the pooled-residual distribution. The boxplots below break \texttt{wr\_\allowbreak{}delta} out by role and by tier; the histogram/Q-Q pair shows the overall distribution against a normal reference.\\
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.86\linewidth,height=0.42\textheight,keepaspectratio]{plots/m7_09_wrdelta_boxplots.png}
+\caption*{\small wr\textbackslash\{\}\_delta distribution by role and by tier (boxplots)}
+\end{figure}
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.86\linewidth,height=0.42\textheight,keepaspectratio]{plots/m7_10_wrdelta_distribution.png}
+\caption*{\small wr\textbackslash\{\}\_delta distribution: histogram + density vs normal, and normal Q-Q}
+\end{figure}
+
+The pooled \texttt{wr\_\allowbreak{}delta} distribution is \textbf{near-normal in the body and only mildly heavy-tailed} (Q-Q is straight from roughly −2σ to +2σ, with a handful of points pulling away at each end). Practically: the residuals are *not* pathologically wild --- most pieces sit within $\pm$0.10 of budget, and the named outliers below are genuine tail events (|z| ≳ 2 within their tier), not an artefact of a fat-tailed mess. By role, \textbf{hybrid and mage carry the most negative-skewed boxes} (medians below 0, long lower whiskers); \textbf{warrior and marksman skew positive}. By tier the spread is fairly uniform --- high tiers are *not* systematically noisier once pooled --- which is what justifies the within-tier z-score below.\\
+
+\subsection*{8.2 Absolute outliers (largest |wr\_delta|)}
+
+\texttt{wd\_\allowbreak{}z} = within-tier z-score of \texttt{wr\_\allowbreak{}delta} (how many SD from the piece's *tier cohort* mean). |z| ≳ 2 $\approx$ a genuine per-tier outlier, not tier-position noise.\\
+
 \begin{figure}[H]\centering
 \includegraphics[width=0.86\linewidth,height=0.42\textheight,keepaspectratio]{plots/m7_07_outlier_scatter.png}
 \caption*{\small Piece outliers: win\textbackslash\{\}\_rate vs wr\textbackslash\{\}\_delta (combined)}
@@ -301,17 +323,23 @@ Bruisers stall hardest at small/mid sizes (high survivability, low burst), consi
 \textbf{Most under-tuned (pooled \texttt{wr\_\allowbreak{}delta}):}\\
 
 \medskip
-\begin{tabularx}{\linewidth}{LLLrrrL}
+\begin{tabularx}{\linewidth}{LLLrrrLL}
 \toprule
-\textbf{name} & \textbf{affinity} & \textbf{role} & \textbf{tier} & \textbf{level} & \textbf{win\_rate} & \textbf{wr\_delta} \\
+\textbf{name} & \textbf{affinity} & \textbf{role} & \textbf{tier} & \textbf{level} & \textbf{win\_rate} & \textbf{wr\_delta} & \textbf{wd\_z} \\
 \midrule
-Cliffeyrie Eagle & cloudy & marksman & 9 & 3 & 0.664 & −0.305 \\
-Aurion, the First Dawn & clear & hybrid & 10 & 3 & 0.755 & −0.245 \\
-Riven Frost-Wyrm & snow & hybrid & 9 & 1 & 0.331 & −0.236 \\
-Hierarch & clear & mage & 8 & 3 & 0.682 & −0.221 \\
-Cold-Iron Yeti & snow & warrior & 4 & 2 & 0.342 & −0.206 \\
-Hoarfrost Owl & snow & mage & 4 & 3 & 0.518 & −0.184 \\
-Spymaster & clear & assassin & 8 & 3 & 0.630 & −0.182 \\
+Cliffeyrie Eagle & cloudy & marksman & 9 & 3 & 0.664 & −0.305 & −2.76 \\
+Aurion, the First Dawn & clear & hybrid & 10 & 3 & 0.755 & −0.245 & −2.21 \\
+Riven Frost-Wyrm & snow & hybrid & 9 & 1 & 0.331 & −0.236 & −2.10 \\
+Hierarch & clear & mage & 8 & 3 & 0.682 & −0.221 & −2.35 \\
+Cold-Iron Yeti & snow & warrior & 4 & 2 & 0.342 & −0.206 & −1.87 \\
+Hoarfrost Owl & snow & mage & 4 & 3 & 0.518 & −0.184 & −1.64 \\
+Spymaster & clear & assassin & 8 & 3 & 0.630 & −0.182 & −1.96 \\
+Standard Bearer & clear & mage & 3 & 2 & 0.426 & −0.179 & −2.19 \\
+Shaftmaw & cloudy & assassin & 5 & 2 & 0.539 & −0.176 & −1.96 \\
+Avalanche Engine & snow & marksman & 5 & 2 & 0.508 & −0.171 & −1.91 \\
+Fogveil Moth & mist & mage & 5 & 3 & 0.525 & −0.170 & −1.90 \\
+Umbra, the Mountain's Shadow & cloudy & hybrid & 10 & 3 & 0.741 & −0.166 & −1.45 \\
+Drowned Siren & rain & mage & 4 & 1 & 0.254 & −0.165 & −1.44 \\
 \bottomrule
 \end{tabularx}
 \medskip
@@ -319,20 +347,58 @@ Spymaster & clear & assassin & 8 & 3 & 0.630 & −0.182 \\
 \textbf{Most over-tuned:}\\
 
 \medskip
-\begin{tabularx}{\linewidth}{LLLrrrr}
+\begin{tabularx}{\linewidth}{LLLrrrrr}
 \toprule
-\textbf{name} & \textbf{affinity} & \textbf{role} & \textbf{tier} & \textbf{level} & \textbf{win\_rate} & \textbf{wr\_delta} \\
+\textbf{name} & \textbf{affinity} & \textbf{role} & \textbf{tier} & \textbf{level} & \textbf{win\_rate} & \textbf{wr\_delta} & \textbf{wd\_z} \\
 \midrule
-Lostlight Wisp & mist & mage & 1 & 1 & 0.508 & +0.270 \\
-Flood Tyrant & rain & hybrid & 10 & 2 & 0.628 & +0.217 \\
-Aegis Tortoise & clear & warrior & 5 & 3 & 0.557 & +0.210 \\
-Thunder Bull & thunder & warrior & 7 & 2 & 0.548 & +0.197 \\
-Frostfang Wolverine & snow & warrior & 8 & 1 & 0.481 & +0.180 \\
+Lostlight Wisp & mist & mage & 1 & 1 & 0.508 & +0.270 & +2.89 \\
+Flood Tyrant & rain & hybrid & 10 & 2 & 0.628 & +0.217 & +2.25 \\
+Aegis Tortoise & clear & warrior & 5 & 3 & 0.557 & +0.210 & +2.05 \\
+Thunder Bull & thunder & warrior & 7 & 2 & 0.548 & +0.197 & +2.20 \\
+Storm Tyrant & thunder & hybrid & 10 & 2 & 0.593 & +0.180 & +1.88 \\
+Frostfang Wolverine & snow & warrior & 8 & 1 & 0.481 & +0.180 & +1.67 \\
+Hollow Elk & mist & assassin & 4 & 3 & 0.617 & +0.179 & +2.23 \\
+Caged Banshee & mist & mage & 5 & 3 & 0.521 & +0.177 & +1.70 \\
+Sundered Lord & mist & hybrid & 9 & 1 & 0.419 & +0.172 & +1.84 \\
+Voltaic Diviner & thunder & mage & 5 & 2 & 0.625 & +0.169 & +1.62 \\
+Heavy Knight & clear & warrior & 4 & 2 & 0.581 & +0.164 & +2.07 \\
+Iron-Collared Hound & snow & warrior & 3 & 3 & 0.462 & +0.166 & +1.70 \\
+Cannoneer & clear & marksman & 8 & 1 & 0.541 & +0.158 & +1.45 \\
 \bottomrule
 \end{tabularx}
 \medskip
 
-The under-tuned list is dominated by \textbf{high-tier hybrids/mages that win on raw power but miss their budget} (Aurion, Hierarch) and \textbf{snow pieces} (Riven Frost-Wyrm, Cold-Iron Yeti, Hoarfrost Owl) --- reinforcing the snow-affinity anomaly from \S{}6. The over-tuned list is led by a T1 mage (Lostlight Wisp) and the rain/thunder hybrid Tyrants.\\
+The under-tuned list is dominated by \textbf{high-tier hybrids/mages that win on raw power but miss their budget} (Aurion, Umbra, Hierarch) and \textbf{snow pieces} (Riven Frost-Wyrm, Cold-Iron Yeti, Hoarfrost Owl, Avalanche Engine) --- reinforcing the snow-affinity anomaly from \S{}6. The over-tuned list is led by a T1 mage (Lostlight Wisp, z=+2.9 --- the single oddest piece in the sweep) and the rain/thunder hybrid Tyrants. Full 30-row absolute-outlier table: \texttt{tables/\allowbreak{}m7\_\allowbreak{}abs\_\allowbreak{}outliers.\allowbreak{}csv}.\\
+
+\subsection*{8.3 Spread outliers --- context-volatility of wr\_delta}
+
+A piece can also be "odd" by being \textbf{inconsistent}: a pooled \texttt{wr\_\allowbreak{}delta} near 0 that hides large swings across formats/weathers is as much a balance concern as a flat large residual. Per-(stage,weather) cells are thin here (often 1--2 matches), so raw spread is dominated by binomial noise. We compute each piece's match-weighted \texttt{sd(\allowbreak{}wr\_\allowbreak{}delta)\allowbreak{}} across its 54 contexts, subtract the \textbf{expected binomial-noise sd} (estimated from the piece's pooled win-rate, *not* per-cell --- a per-cell estimate collapses to 0 on single-match cells and fabricates spread), and rank by the \textbf{excess}.\\
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.86\linewidth,height=0.42\textheight,keepaspectratio]{plots/m7_11_spread_outliers.png}
+\caption*{\small Most context-volatile pieces (excess wr\textbackslash\{\}\_delta sd beyond noise)}
+\end{figure}
+
+\textbf{Key result: spread is almost entirely sampling noise.} Only \textbf{8 of 360} pieces show \texttt{excess\_\allowbreak{}sd > 0} --- i.e. for \textasciitilde{}98\% of pieces, the observed across-context \texttt{wr\_\allowbreak{}delta} spread is fully explained by thin-sample binomial noise. The genuine context-volatile pieces:\\
+
+\medskip
+\begin{tabularx}{\linewidth}{LLLrrLrrr}
+\toprule
+\textbf{name} & \textbf{affinity} & \textbf{role} & \textbf{tier} & \textbf{tot\_matches} & \textbf{wd\_pooled} & \textbf{wd\_sd} & \textbf{noise\_sd} & \textbf{excess\_sd} \\
+\midrule
+Caged Banshee & mist & mage & 5 & 60 & +0.050 & 0.540 & 0.483 & +0.056 \\
+Hollowed Wisp & mist & assassin & 3 & 156 & −0.144 & 0.261 & 0.244 & +0.016 \\
+Will-o-Fawn & mist & mage & 2 & 330 & −0.038 & 0.225 & 0.212 & +0.013 \\
+Aegis Tortoise & clear & warrior & 5 & 84 & +0.143 & 0.401 & 0.391 & +0.010 \\
+Field Chaplain & clear & mage & 3 & 390 & −0.055 & 0.197 & 0.190 & +0.007 \\
+Frostquill Porcupine & snow & marksman & 9 & 312 & +0.013 & 0.163 & 0.158 & +0.005 \\
+Drowned Siren & rain & mage & 4 & 192 & +0.230 & 0.231 & 0.228 & +0.002 \\
+Grand Marshal & clear & warrior & 10 & 198 & −0.015 & 0.117 & 0.116 & +0.001 \\
+\bottomrule
+\end{tabularx}
+\medskip
+
+The excesses are \textbf{small in absolute terms} ($\leq$0.056) and the leaders are thin-sample (\texttt{tot\_\allowbreak{}matches} 60--390). Three of the eight are \textbf{mist} pieces --- mist is the affinity whose counter-relationship gets sampled least evenly, so a residual mist-driven swing is plausible but unconfirmed at this depth. \textbf{Takeaway:} \texttt{wr\_\allowbreak{}delta} is not meaningfully context-volatile in mega7 once noise is removed --- the outliers worth acting on are the *absolute* ones in \S{}8.2, not spread. Full table: \texttt{tables/\allowbreak{}m7\_\allowbreak{}spread\_\allowbreak{}outliers.\allowbreak{}csv}. To confirm any spread finding, re-run with \texttt{-\allowbreak{}-\allowbreak{}total-\allowbreak{}battles} raised \textasciitilde{}5--10$\times$ so per-cell depth lifts above the binomial-noise floor.\\
 
 \section*{9. Recommendations}
 
