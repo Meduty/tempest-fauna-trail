@@ -22,6 +22,9 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+# ...but keep the vendored `build` SDD skill (not a build artifact)
+!.claude/skills/build/
+!.claude/skills/build/**
 develop-eggs/
 dist/
 downloads/
