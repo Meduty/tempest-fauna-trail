@@ -67,6 +67,7 @@ def inline(text):
 
 def is_num(cell):
     c = re.sub(r"\\textbf\{|\}|\s|\\texttt\{", "", cell).strip()
+    c = c.replace("−", "-").replace("–", "-").replace("—", "-")
     c = c.replace("$", "").replace("+", "").replace("-", "").replace(",", "")
     c = c.replace(".", "").replace("%", "").replace(r"\pm", "")
     return c.isdigit() and len(re.sub(r"[^\d]", "", cell)) > 0
