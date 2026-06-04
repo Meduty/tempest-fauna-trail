@@ -64,18 +64,18 @@ def classify_role(enemy_def: "EnemyDef") -> PlacementRole:
       - Ranged (mages, marksmen, supports) → BACKLINE
     """
     durability = enemy_def.durability
-    range_ = enemy_def.range_
+    reach = enemy_def.reach
 
     # Tanks go front — they have the stats to absorb damage
     if durability in ("tanky_hp", "tanky_arm"):
         return PlacementRole.FRONTLINE
 
     # Melee squishy = assassin → flank (mid-to-back edges, not frontline)
-    if range_ == "melee" and durability == "squishy":
+    if reach == "melee" and durability == "squishy":
         return PlacementRole.FLANK
 
-    # Melee standard = warrior/bruiser → midline (behind tanks)
-    if range_ == "melee":
+    # Melee = warrior/bruiser → midline (behind tanks)
+    if reach == "melee":
         return PlacementRole.MIDLINE
 
     # Ranged = backline (mages, marksmen, supports)

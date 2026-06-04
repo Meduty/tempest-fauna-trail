@@ -42,7 +42,7 @@ Per task in order:
 1. Flip §T.n status cell `.` → `~`. Just write to SPEC.md.
 2. Edit code per plan.
 3. Run verification command.
-4. **Pass** → flip `~` → `x`. Next task.
+4. **Pass** → check `ARCHITECTURE.md` for drift (see "ARCHITECTURE drift"); reconcile if needed. Flip `~` → `x`. Next task.
 5. **Fail** → invoke backprop skill. Do NOT retry blindly.
 
 ## FAIL → BACKPROP
@@ -68,6 +68,26 @@ Task `x` only if:
 - Verification command exits 0.
 - New test(s) added per plan.
 - No §V invariant regressed (run full test suite at end).
+- `ARCHITECTURE.md` drift checked + reconciled (see "ARCHITECTURE drift").
+
+## ARCHITECTURE drift (post-implementation)
+
+After a task's code lands and tests pass, before marking it `x`, check
+`ARCHITECTURE.md` — the system map (how systems work + interact, where each
+lives). Grep it for the vocabulary your change touched (renamed primitives,
+moved responsibilities, new modules/entry points/fields). Reconcile when the
+change:
+
+- added / removed / renamed a module, or moved a responsibility between files;
+- changed how a system works or how two systems interact;
+- added a first-class data field, entry point, or seam a future reader looks up.
+
+Edit `ARCHITECTURE.md` directly — it is **not** SPEC, so no spec skill is needed.
+Fix only statements the change made **false** (a stale path, a deleted
+primitive, a renamed seam); generic descriptions that stay true need no edit. A
+purely internal change with no map-level effect is a no-op — but the check is
+**mandatory**, and the task report states the outcome ("no drift" or what was
+reconciled).
 
 ## NON-GOALS
 

@@ -62,6 +62,10 @@ class BossDef:
     threat: int = 90
     attack_range: int = 2
     ability_cost: int = 48_000      # mana units (mana_regen ticks to fill)
+    # Combat-purpose axis (T.32, V.31). Bosses are authored set-pieces (role stays
+    # "boss", outside the 8-role classifier), but still carry a valid `intent`;
+    # multi-threat 2-phase commanders default to `hybrid`.
+    intent: str = "hybrid"
 
     # Phase 1 kit
     phase1_active: str = ""
@@ -99,6 +103,8 @@ class BossDef:
             name=self.name,
             affinity=self.affinity,
             role="boss",
+            role_code="boss",
+            intent=self.intent,
             tier=10,
             level=1,
             max_hp=self.max_hp,

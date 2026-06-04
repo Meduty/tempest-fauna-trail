@@ -82,6 +82,13 @@ def _roster_tab(page: ft.Page) -> tuple[str, ft.Control]:
         width=120,
     )
     role = ft.TextField(label="Role filter", width=160, value="")
+    intent = ft.Dropdown(
+        label="Intent",
+        value="",
+        options=[ft.dropdown.Option("", "any")]
+        + [ft.dropdown.Option(i) for i in ("damage", "hybrid", "utility")],
+        width=140,
+    )
     favor = ft.Dropdown(
         label="Show favor",
         value="",
@@ -99,6 +106,8 @@ def _roster_tab(page: ft.Page) -> tuple[str, ft.Control]:
             args += ["--tier", tier.value]
         if role.value.strip():
             args += ["--role", role.value.strip()]
+        if intent.value:
+            args += ["--intent", intent.value]
         if favor.value:
             args += ["--show-favor", favor.value]
         output.value = _capture(inspect_main, args)
@@ -106,7 +115,7 @@ def _roster_tab(page: ft.Page) -> tuple[str, ft.Control]:
 
     return "Roster", ft.Column(
         [
-            ft.Row([kind, affinity, tier, role, favor, ft.FilledButton("Run", on_click=run)]),
+            ft.Row([kind, affinity, tier, role, intent, favor, ft.FilledButton("Run", on_click=run)]),
             _scroll(output),
         ],
         expand=True,

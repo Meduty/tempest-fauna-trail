@@ -141,7 +141,7 @@ class TestStatMonotonicity:
 
         by_archetype: dict[tuple, list] = {}
         for d in _CHAMPION_DEFS:
-            key = (d.primary_stat, d.range_, d.durability, d.playstyle, d.speed)
+            key = (d.stat, d.reach, d.durability, d.playstyle, d.speed, d.intent)
             by_archetype.setdefault(key, []).append(d)
 
         for key, defs in by_archetype.items():
@@ -164,7 +164,7 @@ class TestStatMonotonicity:
 
         by_archetype: dict[tuple, list] = {}
         for d in _CHAMPION_DEFS:
-            key = (d.primary_stat, d.range_, d.durability, d.playstyle, d.speed)
+            key = (d.stat, d.reach, d.durability, d.playstyle, d.speed, d.intent)
             by_archetype.setdefault(key, []).append(d)
 
         for key, defs in by_archetype.items():
@@ -237,56 +237,61 @@ class TestEnemyTagsMap:
 
 class TestComposeStats:
     def test_returns_dict_with_expected_keys(self) -> None:
-        result = compose_stats("str", "melee", "standard", "auto", 1)
+        result = compose_stats("str", "melee", "hybrid", "auto", "hybrid", "hybrid", 1)
         expected_keys = {
             "max_hp", "strength", "intelligence", "armor", "resistance",
-            "attack_speed", "mana_regen", "attack_range", "ability_cost",
+            "attack_speed", "mana_regen", "move_speed", "threat",
+            "attack_range", "ability_cost",
         }
         assert expected_keys.issubset(result.keys())
 
     def test_tier_1_base(self) -> None:
-        # At tier 1, stat_multiplier is 1.0
-        result = compose_stats("hybrid", "melee", "standard", "hybrid", 1)
+        # At tier 1, stat_multiplier is 1.0; all-hybrid (intent included) is identity.
+        result = compose_stats("hybrid", "melee", "hybrid", "hybrid", "hybrid", "hybrid", 1)
         assert result["max_hp"] == 600
         assert result["strength"] == 50
         assert result["intelligence"] == 50
 
     def test_speed_axis_changes_attack_style_stats(self) -> None:
-        speedy = compose_stats("str", "melee", "standard", "auto", 1, speed="speedy")
-        neutral = compose_stats("str", "melee", "standard", "auto", 1, speed="neutral")
-        heavy = compose_stats("str", "melee", "standard", "auto", 1, speed="heavy")
+        speedy = compose_stats("str", "melee", "hybrid", "auto", "speedy", "hybrid", 1)
+        neutral = compose_stats("str", "melee", "hybrid", "auto", "hybrid", "hybrid", 1)
+        heavy = compose_stats("str", "melee", "hybrid", "auto", "heavy", "hybrid", 1)
         assert speedy["attack_speed"] > neutral["attack_speed"] > heavy["attack_speed"]
         assert speedy["strength"] < neutral["strength"] < heavy["strength"]
+        # Speed also drives move_speed (T.32): speedy ↑, heavy ↓.
+        assert speedy["move_speed"] > neutral["move_speed"] > heavy["move_speed"]
 
     def test_speed_axis_changes_ability_style_stats(self) -> None:
-        speedy = compose_stats("int", "ranged", "standard", "ability", 1, speed="speedy")
-        neutral = compose_stats("int", "ranged", "standard", "ability", 1, speed="neutral")
-        heavy = compose_stats("int", "ranged", "standard", "ability", 1, speed="heavy")
+        speedy = compose_stats("int", "ranged", "hybrid", "ability", "speedy", "hybrid", 1)
+        neutral = compose_stats("int", "ranged", "hybrid", "ability", "hybrid", "hybrid", 1)
+        heavy = compose_stats("int", "ranged", "hybrid", "ability", "heavy", "hybrid", 1)
         assert speedy["resistance"] > neutral["resistance"] > heavy["resistance"]
         assert speedy["intelligence"] < neutral["intelligence"] < heavy["intelligence"]
 
     def test_invalid_speed_axis_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Unknown speed axis value"):
-            compose_stats("str", "melee", "standard", "auto", 1, speed="ultra")
+            compose_stats("str", "melee", "hybrid", "auto", "ultra", "hybrid", 1)
 
     @pytest.mark.parametrize(
-        ("primary_stat", "range_", "durability", "msg"),
+        ("stat", "reach", "durability", "intent", "msg"),
         [
-            ("vigor", "melee", "standard", "Unknown primary_stat axis value"),
-            ("str", "sniper", "standard", "Unknown range axis value"),
-            ("str", "melee", "glass", "Unknown durability axis value"),
+            ("vigor", "melee", "hybrid", "damage", "Unknown stat axis value"),
+            ("str", "sniper", "hybrid", "damage", "Unknown reach axis value"),
+            ("str", "melee", "glass", "damage", "Unknown durability axis value"),
+            ("str", "melee", "hybrid", "vibes", "Unknown intent axis value"),
         ],
     )
     def test_invalid_axis_values_raise_value_error(
         self,
-        primary_stat: str,
-        range_: str,
+        stat: str,
+        reach: str,
         durability: str,
+        intent: str,
         msg: str,
     ) -> None:
         with pytest.raises(ValueError, match=msg):
-            compose_stats(primary_stat, range_, durability, "auto", 1, speed="neutral")
+            compose_stats(stat, reach, durability, "auto", "hybrid", intent, 1)
 
     def test_invalid_playstyle_axis_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Unknown playstyle axis value"):
-            compose_stats("str", "melee", "standard", "burst", 1, speed="neutral")
+            compose_stats("str", "melee", "hybrid", "burst", "hybrid", "hybrid", 1)

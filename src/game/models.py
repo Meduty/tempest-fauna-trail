@@ -112,6 +112,8 @@ class Champion:
     passive_ability: str
     ability_cost: int
     traits: list[str] = field(default_factory=list)
+    intent: str = "hybrid"
+    role_code: str = ""
     crit_chance: float = 0.0
     penetration: int = 0
     penetration_pct: float = 0.0
@@ -139,6 +141,10 @@ class Champion:
             raise ValueError("Champion traits must be non-empty strings.")
         if len(set(self.traits)) != len(self.traits):
             raise ValueError("Champion traits must be unique.")
+        if self.intent not in ("damage", "hybrid", "utility"):
+            raise ValueError(
+                f"Champion intent must be one of damage/hybrid/utility, got {self.intent!r}."
+            )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -147,6 +153,8 @@ class Champion:
             "affinity": self.affinity.value,
             "traits": list(self.traits),
             "role": self.role,
+            "role_code": self.role_code,
+            "intent": self.intent,
             "tier": self.tier,
             "level": self.level,
             "max_hp": self.max_hp,
@@ -175,6 +183,8 @@ class Champion:
             affinity=_parse_enum(WeatherState, payload["affinity"], "affinity"),
             traits=list(payload.get("traits", [])),
             role=payload["role"],
+            role_code=payload.get("role_code", ""),
+            intent=payload.get("intent", "hybrid"),
             tier=payload["tier"],
             level=payload["level"],
             max_hp=payload["max_hp"],
@@ -217,6 +227,8 @@ class Enemy:
     active_ability: str
     passive_ability: str
     ability_cost: int
+    intent: str = "hybrid"
+    role_code: str = ""
     crit_chance: float = 0.0
     penetration: int = 0
     penetration_pct: float = 0.0
@@ -238,6 +250,10 @@ class Enemy:
         _require_unit_float(self.crit_chance, "Enemy crit_chance")
         _require_non_negative_int(self.penetration, "Enemy penetration")
         _require_unit_float(self.penetration_pct, "Enemy penetration_pct")
+        if self.intent not in ("damage", "hybrid", "utility"):
+            raise ValueError(
+                f"Enemy intent must be one of damage/hybrid/utility, got {self.intent!r}."
+            )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -245,6 +261,8 @@ class Enemy:
             "name": self.name,
             "affinity": self.affinity.value,
             "role": self.role,
+            "role_code": self.role_code,
+            "intent": self.intent,
             "tier": self.tier,
             "level": self.level,
             "max_hp": self.max_hp,
@@ -272,6 +290,8 @@ class Enemy:
             name=payload["name"],
             affinity=_parse_enum(WeatherState, payload["affinity"], "affinity"),
             role=payload["role"],
+            role_code=payload.get("role_code", ""),
+            intent=payload.get("intent", "hybrid"),
             tier=payload["tier"],
             level=payload["level"],
             max_hp=payload["max_hp"],

@@ -59,9 +59,10 @@ def _make_piece(piece_id: str, tier: int = 3) -> CombatPieceState:
 
 def _make_enemy_def(
     id: str,
-    range_: str = "melee",
-    durability: str = "standard",
-    primary_stat: str = "str",
+    reach: str = "melee",
+    durability: str = "hybrid",
+    stat: str = "str",
+    intent: str = "damage",
 ) -> EnemyDef:
     """Create a minimal EnemyDef for testing."""
     return EnemyDef(
@@ -69,10 +70,11 @@ def _make_enemy_def(
         name=id,
         affinity=WeatherState.CLEAR,
         tier=3,
-        primary_stat=primary_stat,
-        range_=range_,
+        stat=stat,
+        reach=reach,
         durability=durability,
         playstyle="auto",
+        intent=intent,
         tags=frozenset({"human"}),
         active_ability="",
         passive_ability="",
@@ -134,24 +136,24 @@ class TestClassifyRole:
         assert classify_role(d) == PlacementRole.FRONTLINE
 
     def test_melee_squishy_is_flank(self):
-        d = _make_enemy_def("assassin", range_="melee", durability="squishy")
+        d = _make_enemy_def("assassin", reach="melee", durability="squishy")
         assert classify_role(d) == PlacementRole.FLANK
 
     def test_melee_standard_is_midline(self):
-        d = _make_enemy_def("warrior", range_="melee", durability="standard")
+        d = _make_enemy_def("warrior", reach="melee", durability="hybrid")
         assert classify_role(d) == PlacementRole.MIDLINE
 
     def test_ranged_standard_is_backline(self):
-        d = _make_enemy_def("mage", range_="ranged", durability="standard")
+        d = _make_enemy_def("mage", reach="ranged", durability="hybrid")
         assert classify_role(d) == PlacementRole.BACKLINE
 
     def test_ranged_squishy_is_backline(self):
-        d = _make_enemy_def("mage", range_="ranged", durability="squishy")
+        d = _make_enemy_def("mage", reach="ranged", durability="squishy")
         assert classify_role(d) == PlacementRole.BACKLINE
 
     def test_hybrid_tank_dmg_is_frontline(self):
         """Hybrid-Tank/DMG: tanky durability → FRONTLINE."""
-        d = _make_enemy_def("hybrid", range_="melee", durability="tanky_hp", primary_stat="hybrid")
+        d = _make_enemy_def("hybrid", reach="melee", durability="tanky_hp", stat="hybrid")
         assert classify_role(d) == PlacementRole.FRONTLINE
 
 

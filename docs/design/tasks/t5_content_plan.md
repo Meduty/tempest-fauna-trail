@@ -63,10 +63,19 @@ All helpers are pure functions with no side effects.
 
 ### 4.0 Design principle
 
-Stats are generated compositionally from **4 orthogonal axes**. Each axis
-provides stat multipliers applied in sequence to a single standard base. No
-per-combination templates exist — each unit declares 4 axis tags and the
+Stats are generated compositionally from orthogonal axes. Each axis provides
+stat multipliers applied in sequence to a single standard base. No
+per-combination templates exist — each unit declares its axis tags and the
 formula produces the stat block.
+
+> **Axis-count history (B.13):** this section originally said "4 orthogonal
+> axes"; `speed` was added after the T.5 plan (→ 5) and **`intent` in T.32**
+> (→ **6**: `stat`, `reach`, `durability`, `playstyle`, `speed`, `intent`).
+> T.32 also renamed `primary_stat`→`stat`, `range_`→`reach`, the middle
+> `standard`/`neutral` values→`hybrid`, and replaced the flat
+> `_ROLE_FROM_AXES[stat][reach]` map with `classify_role`/`build_role_code`.
+> The 4-axis composer code shown below is the **T.5-era** form — see
+> `t32_role_intent_revamp_plan.md` and SPEC §V.31-V.33 for the current shape.
 
 ### 4.1 Standard base (T1 L1)
 

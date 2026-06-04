@@ -62,7 +62,8 @@ def write_ratings_csv(
     with path.open("w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([
-            "piece_id", "name", "affinity", "role", "tier", "level", "kind",
+            "piece_id", "name", "affinity", "role", "role_code", "intent",
+            "tier", "level", "kind",
             "n_matches", "n_pair_games", "n_pair_wins",
             "n_team_wins", "n_team_draws", "n_team_timeouts",
             "mean_duration_ticks",
@@ -76,6 +77,8 @@ def write_ratings_csv(
                 name = piece.name
                 affinity = piece.affinity.value
                 role = piece.role
+                role_code = piece.role_code
+                intent = piece.intent
                 tier = piece.tier
                 level = piece.level
                 expected_power = power(tier, level)
@@ -84,6 +87,8 @@ def write_ratings_csv(
                 name = ""
                 affinity = ""
                 role = ""
+                role_code = ""
+                intent = ""
                 tier = 0
                 level = 0
                 expected_power = 0.0
@@ -110,7 +115,7 @@ def write_ratings_csv(
                 return "" if math.isnan(x) else f"{x:.4f}"
 
             writer.writerow([
-                pid, name, affinity, role, tier, level, kind,
+                pid, name, affinity, role, role_code, intent, tier, level, kind,
                 n_matches, n_pair_games, f"{n_pair_wins:.2f}",
                 n_team_wins, n_team_draws, n_team_timeouts,
                 f"{mean_duration:.1f}",

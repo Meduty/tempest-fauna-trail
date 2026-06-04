@@ -22,8 +22,9 @@ from .content import (
     EnemyDef,
     _CHAMPION_DEFS,
     _ENEMY_DEFS,
-    _ROLE_FROM_AXES,
     _apply_stat_overrides,
+    build_role_code,
+    classify_role,
     compose_stats,
 )
 from .models import Enemy, WeatherState
@@ -208,7 +209,9 @@ def _is_tanky(d: EnemyDef) -> bool:
 
 
 def _is_support(d: EnemyDef) -> bool:
-    return d.primary_stat in _SUPPORT_AXES and d.range_ == "ranged" and d.playstyle == "ability"
+    # T.32: support intent is now first-class (`intent == "utility"` on a
+    # non-tanky frame) instead of inferred from int/ranged/ability axes.
+    return d.intent == "utility" and not _is_tanky(d)
 
 
 def _is_dps(d: EnemyDef) -> bool:
@@ -274,36 +277,40 @@ def _instantiate_enemy(d: EnemyDef, level: int) -> Enemy:
     from .scaling import stat_multiplier as sm
 
     base = compose_stats(
-        d.primary_stat, d.range_, d.durability, d.playstyle, d.tier,
-        speed=d.speed, ability_cost=d.ability_cost,
+        d.stat, d.reach, d.durability, d.playstyle, d.speed, d.intent, d.tier
     )
+    base = _apply_stat_overrides(base, d.stat_overrides)
     # Recompute stat scaling for the target level
     if level > 1:
         s = sm(d.tier, level) / sm(d.tier, 1)
         for k in ("max_hp", "strength", "intelligence", "armor", "resistance"):
             base[k] = round(base[k] * s)
 
-    stats = _apply_stat_overrides(base, d.stat_overrides)
     return Enemy(
         id=d.id,
         name=d.name,
         affinity=d.affinity,
-        role=_ROLE_FROM_AXES[d.primary_stat][d.range_],
+        role=classify_role(d.stat, d.reach, d.durability, d.playstyle, d.speed, d.intent),
+        role_code=build_role_code(d.stat, d.reach, d.durability, d.playstyle, d.speed, d.intent),
+        intent=d.intent,
         tier=d.tier,
         level=level,
-        max_hp=max(1, stats["max_hp"]),
-        strength=max(0, stats["strength"]),
-        intelligence=max(0, stats["intelligence"]),
-        armor=max(0, stats["armor"]),
-        resistance=max(0, stats["resistance"]),
-        attack_speed=round(stats["attack_speed"]),
-        mana_regen=round(stats["mana_regen"]),
-        move_speed=d.move_speed,
-        threat=d.threat,
-        attack_range=stats["attack_range"],
-        ability_cost=d.ability_cost,
+        max_hp=max(1, base["max_hp"]),
+        strength=max(0, base["strength"]),
+        intelligence=max(0, base["intelligence"]),
+        armor=max(0, base["armor"]),
+        resistance=max(0, base["resistance"]),
+        attack_speed=round(base["attack_speed"]),
+        mana_regen=round(base["mana_regen"]),
+        move_speed=round(base["move_speed"]),
+        threat=round(base["threat"]),
+        attack_range=base["attack_range"],
+        ability_cost=base["ability_cost"],
         active_ability=d.active_ability,
         passive_ability=d.passive_ability,
+        crit_chance=base["crit_chance"],
+        penetration=base["penetration"],
+        penetration_pct=base["penetration_pct"],
     )
 
 
@@ -598,35 +605,39 @@ def _champion_def_to_enemy(d: ChampionDef, level: int = 1) -> "Enemy":
     from .scaling import stat_multiplier as sm
 
     base = compose_stats(
-        d.primary_stat, d.range_, d.durability, d.playstyle, d.tier,
-        speed=d.speed, ability_cost=d.ability_cost,
+        d.stat, d.reach, d.durability, d.playstyle, d.speed, d.intent, d.tier
     )
+    base = _apply_stat_overrides(base, d.stat_overrides)
     if level > 1:
         scale = sm(d.tier, level) / sm(d.tier, 1)
         for k in ("max_hp", "strength", "intelligence", "armor", "resistance"):
             base[k] = round(base[k] * scale)
 
-    stats = _apply_stat_overrides(base, d.stat_overrides)
     return Enemy(
         id=d.id,
         name=d.name,
         affinity=d.affinity,
-        role=_ROLE_FROM_AXES[d.primary_stat][d.range_],
+        role=classify_role(d.stat, d.reach, d.durability, d.playstyle, d.speed, d.intent),
+        role_code=build_role_code(d.stat, d.reach, d.durability, d.playstyle, d.speed, d.intent),
+        intent=d.intent,
         tier=d.tier,
         level=level,
-        max_hp=max(1, stats["max_hp"]),
-        strength=max(0, stats["strength"]),
-        intelligence=max(0, stats["intelligence"]),
-        armor=max(0, stats["armor"]),
-        resistance=max(0, stats["resistance"]),
-        attack_speed=round(stats["attack_speed"]),
-        mana_regen=round(stats["mana_regen"]),
-        move_speed=d.move_speed,
-        threat=d.threat,
-        attack_range=stats["attack_range"],
-        ability_cost=d.ability_cost,
+        max_hp=max(1, base["max_hp"]),
+        strength=max(0, base["strength"]),
+        intelligence=max(0, base["intelligence"]),
+        armor=max(0, base["armor"]),
+        resistance=max(0, base["resistance"]),
+        attack_speed=round(base["attack_speed"]),
+        mana_regen=round(base["mana_regen"]),
+        move_speed=round(base["move_speed"]),
+        threat=round(base["threat"]),
+        attack_range=base["attack_range"],
+        ability_cost=base["ability_cost"],
         active_ability=d.active_ability,
         passive_ability=d.passive_ability,
+        crit_chance=base["crit_chance"],
+        penetration=base["penetration"],
+        penetration_pct=base["penetration_pct"],
     )
 
 

@@ -76,6 +76,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Filter by role string (case-insensitive substring match).",
     )
     parser.add_argument(
+        "--intent",
+        choices=["damage", "hybrid", "utility"],
+        default=None,
+        help="Filter by combat intent (damage / hybrid / utility).",
+    )
+    parser.add_argument(
         "--show-favor",
         type=parse_weather,
         default=None,
@@ -105,6 +111,8 @@ def _filter_champions(args: argparse.Namespace) -> list[Champion]:
     if args.role is not None:
         needle = args.role.lower()
         pieces = [c for c in pieces if needle in c.role.lower()]
+    if args.intent is not None:
+        pieces = [c for c in pieces if c.intent == args.intent]
     pieces.sort(key=lambda c: (c.affinity.value, c.tier, c.id))
     return pieces
 
@@ -118,6 +126,8 @@ def _filter_enemies(args: argparse.Namespace) -> list[Enemy]:
     if args.role is not None:
         needle = args.role.lower()
         pieces = [e for e in pieces if needle in e.role.lower()]
+    if args.intent is not None:
+        pieces = [e for e in pieces if e.intent == args.intent]
     pieces.sort(key=lambda e: (e.affinity.value, e.tier, e.id))
     return pieces
 

@@ -97,6 +97,8 @@ def _stat_kwargs(piece: Champion | Enemy) -> dict:
     return {
         "affinity": piece.affinity,
         "role": piece.role,
+        "role_code": piece.role_code,
+        "intent": piece.intent,
         "tier": piece.tier,
         "level": piece.level,
         "max_hp": piece.max_hp,
