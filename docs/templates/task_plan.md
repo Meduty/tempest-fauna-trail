@@ -3,9 +3,11 @@
 Fill `{{...}}`. Drop optional sections if unused. Mirrors the structure of
 `t28_trait_effects_plan.md` / `t30_ability_catalog_plan.md` / `t31_augment_system_plan.md`.
 
-**Before writing:** grep every primitive/stat/function you cite (design-doc
-examples lie — see CLAUDE.md "Planning a §T task"). Run a content↔design drift
-check. Ask genuine open questions (`AskUserQuestion`) *first*. Investigate
+**Before writing:** complete CLAUDE.md → "Required reading before any task work"
+(SPEC.md, [ARCHITECTURE.md](../../ARCHITECTURE.md), prior task plans, the touched
+design docs, the touched code). Then grep every primitive/stat/function you cite
+(design-doc examples lie — see CLAUDE.md "Planning a §T task"). Run a content↔design
+drift check. Ask genuine open questions (`AskUserQuestion`) *first*. Investigate
 origins (git history) before asking the user to decide anything.
 
 ---

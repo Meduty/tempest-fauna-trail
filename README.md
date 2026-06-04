@@ -6,7 +6,12 @@ Built with [Flet](https://flet.dev) (Python), cross-platform desktop + web. Desi
 
 ## Status
 
-Early development. Engine + content layers (data models, combat, weather effects, route, content roster, scaling, OpenWeather client) are landing first. UI / cache-refresher / encounter generator are planned per [SPEC.md §T](SPEC.md).
+**Engine + content + simulation layers are largely complete; the player-facing Flet UI is the main remaining build.**
+
+- ✅ **Done** — data models, tick combat engine (ability/passive/status framework, bosses, map effects), weather effects, 50-city route, champion/enemy/boss rosters + ability catalog, power scaling, encounter generation, economy & shop, OpenWeather client + cache + 3-stream refresher, theme/components, playtest CLI, power-simulation tooling.
+- 📋 **Planned** — most Flet views (menu, trail, prep, combat, summary), route-map + run-summary visualizations, save/load. See [SPEC.md §T](SPEC.md) for per-task status.
+
+For how the systems fit together and where to find them, read **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 ## Quickstart
 
@@ -32,12 +37,21 @@ uv run flet run               # desktop
 uv run flet run --web         # browser
 ```
 
+> **Note:** the Flet entry point is still a placeholder shell (the game views are
+> in progress — see Status). To actually exercise the game today, use the headless
+> **playtest CLI**, which drives the complete engine without a UI:
+>
+> ```bash
+> uv run python -m tools.playtest.sim_fight --help     # resolve one fight
+> uv run python -m tools.playtest.sim_run --help        # simulate a full run
+> ```
+
 ### Tests
 
 ```bash
-pytest tests/                          # all tests
-pytest tests/ -m "not integration"     # unit only (no network)
-pytest tests/ -m integration           # live API tests (needs OPENWEATHER_API_KEY)
+uv run pytest                            # all tests
+uv run pytest -m "not integration"       # unit only (no network)
+uv run pytest -m integration             # live API tests (needs OPENWEATHER_API_KEY)
 ```
 
 ## Project Map
@@ -45,6 +59,7 @@ pytest tests/ -m integration           # live API tests (needs OPENWEATHER_API_K
 | Path | Purpose |
 |---|---|
 | [SPEC.md](SPEC.md) | Canonical spec — goals, invariants, tasks, bugs. **Source of truth.** |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System map — how the engine/content/weather/economy systems work and where each lives in the code |
 | [CLAUDE.md](CLAUDE.md) | AI agent onboarding — project structure, conventions, workflow |
 | [docs/proposal.md](docs/proposal.md) | Pitch + design framing |
 | [docs/design/tasks/](docs/design/tasks/) | Per-task plan docs (`tN_*_plan.md`) |
