@@ -101,6 +101,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - V.27: The combat `Piece` carries `level` (in-tier 1–3), copied from `Champion.level`/`Enemy.level` in `loadout.piece_from_*`, so level-scaling passives can read `owner.level`. The marker status `focus_fire` (no gates, no DOT) backs the `enemy_company_captain` **Focus Fire** passive: a captain hit marks the struck enemy **and raises its `threat`** (targeting priority — a TIMED modifier expiring with the mark) so the captain's allies focus it; an ally *other than* the captain hitting a marked target triggers bonus INT magic damage from the captain. Both the bonus and the threat bump scale with captain `level` — guarded against re-triggering on its own bonus hit. (T.30)
 - V.28: **Barrier ≠ shield.** A *barrier* is a temporary damage-absorb pool (`Piece.barriers: list[BarrierSegment]`), consumed **before** HP inside `deal_damage` (`absorb_with_barrier` soaks `final` post-mitigation; remainder hits HP) and **never** counted toward `hp`/`max_hp`. Multi-segment, consumed **FIFO**; each segment has optional tick expiry (`expires_at_tick=None` → until consumed) pruned in `expire_modifiers` alongside TIMED modifiers. Granted only via `ctx.grant_barrier(target, amount, duration_ticks)` (`duration_ticks<=0` → no expiry; `amount<=0` or dead target → no-op). `on_damage_*` events still fire the **full** pre-barrier amount (DPS accounting unchanged). The word *"shield"* in content/ids (e.g. `enemy_hierarch.shield`) means an armor/resistance **buff**, a distinct mechanic — do not conflate. (barrier system)
 - V.29: **Single combat tick engine.** `src/game/combat/loop_new.py` is the sole tick loop; `combat/loop.py` (pre-T.26 partial loop) was **deleted** after the T.26 unification (it was dead production code kept alive only by one test import). No parallel/duplicate engine may be reintroduced — a per-tick mechanic (e.g. barrier prune) must live in exactly one place. Tests import loop internals from `combat.loop_new`. (T.26, barrier system)
+- V.30: **Sim weather metrics treat an absent weather as missing (NaN), never 0.** `weather_metrics` returns `NaN` for `own_weather_wr`/`counter_weather_wr` when the piece played **no games** in that weather — a genuine 0% (played, lost all) stays `0.0`; `clear` affinity has no counter weather (NEUTRAL ring), so its counter is always `NaN`. `report.py` writes an **empty CSV cell** for `NaN`; every cross-weather aggregate **must skip NA** (`mean(..., na.rm=TRUE)` / nm-weighted raw recompute), never average missing-as-0. Averaging missing-as-0 fabricated the mega7 `+0.18` own-vs-counter swing (true ≈ `+0.01`). Extends V.16. (T.25, B.12)
 
 ## T. Tasks
 
@@ -110,7 +111,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 |---|---|---|---|---|---|
 | T.1 | Data models — Champion, Enemy, Node, Run, BattleResult, WeatherState + NodeType/NodeState + combat runtime state + JSON serialization helpers | `game/models.py`, `docs/design/tasks/t1_data_models_plan.md`, `docs/design/tasks/t1_model_contracts.md` | — | M | ✅ Done |
 | T.2 | Weather effects — directional predator/prey ring; two decoupled systems (node-weather buff/debuff + affinity damage triangle), per-weather stat packs, shop weight, `apply_weather` for combat init | `game/weather_effects.py`, `docs/design/tasks/t2_weather_effects_plan.md` | T.1 | M | ✅ Done |
-| T.3 | Combat engine — tick-based auto-resolve (10ms tick simulation), apply weather modifiers | `game/combat.py` | T.1, T.2 | M | ✅ Done |
+| T.3 | Combat engine — tick-based auto-resolve (10ms tick simulation), apply weather modifiers | `game/combat/` | T.1, T.2 | M | ✅ Done |
 | T.4 | City route — ~50 cities (one per node) across 6 staged continents, coordinates, stage affinity, enemy pools | `game/route.py` | T.1 | M | ✅ Done |
 | T.5 | Content — define champion roster (target: 1 per affinity × 10 tiers = ~60 champions; MVP cut OK) + ~5 enemy types with stats + synergy trait catalog | `game/content.py` | T.1 | M | ✅ Done |
 | T.6 | OpenWeather client — fetch current weather, parse to WeatherState | `api/weather.py` | T.1 | S | ✅ Done |
@@ -130,8 +131,8 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.20 | Ability/passive/status framework — registry, typed event bus, status gates, boss phase hook | `game/abilities/`, `game/effects.py`, `game/events.py`, `game/status.py`, `game/registries.py`, `docs/design/tasks/t20_ability_framework_plan.md` | T.3 | L | ✅ Done |
 | T.21 | Challenge & boss encounters — champion-faction challenges, 2-phase bosses, auto-battle-aware map effects | `game/encounter.py`, `game/board.py`, `game/map_effects.py`, `game/bosses/`, `docs/design/tasks/t21_challenge_boss_plan.md` | T.19, T.20 | M | ✅ Done |
 | T.22 | Economy & shop — Amber income per node (+3 base, +1-3 win bonus, +interest 1/10 cap 5), shop refresh (5 slots, auto-refresh each node, manual reroll 1 Amber, first reroll per node free), buy `Cost(T)=T`, sell `floor(Cost/2)`, 3-copy leveling, SUPPLY 1-of-5 free recruit, team-size Tempest leveling (accelerating thresholds 2/4/6/10/14/18/24/30/36, free +2/fight, all-or-nothing Amber rush 1:1, max rank 10), stage-gated tier probabilities | `game/economy.py`, `game/shop.py`, `game/models.py`, `docs/design/tasks/t22_meta_progression_plan.md` | T.1, T.5, T.18 | L | ✅ Done |
-| T.23 | Prep formation snapshot integration — lock player board placement in Prep, validate deployment constraints, pass explicit coordinates into combat init | `ui/views/prep.py`, `game/models.py`, `game/combat.py`, `docs/design/tasks/t23_prep_formation_snapshot_plan.md` | T.1, T.3, T.15 | M | 📋 Plan |
-| T.24 | Enemy formation policy — deterministic role-aware spawn planner (frontline forward, backline protected, size-aware packing) with safe fallback | `game/formation.py`, `game/combat.py`, `docs/design/tasks/t24_enemy_formation_plan.md` | T.3, T.5, T.23 | M | ✅ Done |
+| T.23 | Prep formation snapshot integration — lock player board placement in Prep, validate deployment constraints, pass explicit coordinates into combat init | `ui/views/prep.py`, `game/models.py`, `game/combat/`, `docs/design/tasks/t23_prep_formation_snapshot_plan.md` | T.1, T.3, T.15 | M | 📋 Plan |
+| T.24 | Enemy formation policy — deterministic role-aware spawn planner (frontline forward, backline protected, size-aware packing) with safe fallback | `game/formation.py`, `game/combat/`, `docs/design/tasks/t24_enemy_formation_plan.md` | T.3, T.5, T.23 | M | ✅ Done |
 | T.25 | Power simulation & balance benchmarking — deterministic matchup sweeps and empirical power ratings | `tools/simulation/`, `docs/design/tasks/t25_power_simulation_plan.md` | T.3, T.5 | M | ✅ Done |
 | T.26 | Combat engine unification — `resolve_combat` delegates to the new loop via `BattleResultRecorder`; legacy tick loop retired; Weather Favor applied in `compile_loadout` | `game/combat/legacy.py`, `game/combat/loop_new.py`, `game/combat/recorder.py`, `game/loadout.py` | T.3, T.20 | M | ✅ Done |
 | T.27 | Playtesting CLI — dev-facing tools for sim_fight / sim_node / sim_run / inspect / inspect_node, no Flet, pure consumers of `src/game/` | `tools/playtest/`, `docs/design/playtesting/` | T.3, T.5, T.19, T.21, T.26 | M | ✅ Done |
@@ -337,6 +338,20 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   `potency` with strongest-wins merge; magnitudes retuned to per-second. Touches
   `status.py`, `piece.py`, `loadout.py`, `combat/context.py`,
   `combat/loop_new.py`, `combat/loop.py`, `effect_systems_design.md`.
+
+- B.12 [2026-06-03] `weather_metrics` zero-filled `own_weather_wr` /
+  `counter_weather_wr` when a piece had no games in that weather — and `clear`
+  affinity has no counter weather at all (NEUTRAL ring), so ~37% of mega7 rows
+  carried `counter_weather_wr == 0.0` as if a real 0% win rate. Unweighted
+  column-averaging in the report then manufactured a `+0.18` own-vs-counter
+  weather swing (true effect ≈ `+0.01`) plus a spurious snow/thunder
+  "inversion" (thin-slice noise on the same metric). **Cause:** missing data
+  conflated with `0.0` at the metric source. **Fix → V.30:** `weather_metrics`
+  emits `NaN` for no-data (genuine `0.0` preserved), `report.py` writes an empty
+  CSV cell, aggregators skip NA / recompute from raw per-weather win rates.
+  Touches `tools/simulation/ratings.py`, `tools/simulation/report.py`,
+  `tests/tools/simulation/test_ratings.py`, `reviews/mega_sim/11_mega7.R`,
+  `reviews/mega7_analysis_report.md`.
 
 ## D. Systems Yet To Be Determined
 

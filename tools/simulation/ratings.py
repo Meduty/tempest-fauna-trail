@@ -62,27 +62,32 @@ def weather_metrics(
       * counter   — win rate in the weather that preys on the piece (PRIMARY_PREY)
       * sensitivity — max(wr) − min(wr) across the weathers present
 
+    **`NaN` means "no data", NOT 0% win rate.** own/counter are `NaN` when the
+    piece has no games in that specific weather — e.g. a `clear`-affinity piece
+    has no counter weather (NEUTRAL ring), and any piece may simply not have
+    drawn its single counter weather under sampling. A real 0.0 (the piece
+    played that weather and lost every game) is preserved. Aggregators MUST skip
+    NaN (`mean(..., na.rm=TRUE)` / pandas `skipna`) — averaging missing entries
+    as 0.0 fabricates a huge own-vs-counter gap (the mega7 §6 +0.18 artefact).
+
     Single source of truth for the weather columns. **Only meaningful when the
-    input spans multiple weathers** — with a single weather, `sensitivity` is
-    0 and own/counter are populated only if that weather happens to match. The
-    per-weather sim workflow (one ratings file per weather) must therefore pool
-    win rates across all weathers and call this, not rely on a single-weather
-    `aggregate_stats` pass. See V.16.
+    input spans multiple weathers**; the per-weather sim workflow must pool win
+    rates across all weathers and call this. See V.16.
     """
+    NA = float("nan")
     out: dict[str, tuple[float, float, float]] = {}
     for pid, wr_by_w in per_weather_wr.items():
-        own = counter = sens = 0.0
+        own = counter = sens = NA
         try:
             affinity = get_piece(pid).affinity
         except (KeyError, ValueError):
             affinity = None
         if affinity is not None and wr_by_w:
-            if affinity in wr_by_w:
-                own = wr_by_w[affinity]
+            own = wr_by_w.get(affinity, NA)   # NaN if no games in own weather
             for w_state, wr_val in wr_by_w.items():
                 if ring_relation(affinity, w_state) == RingRelation.PRIMARY_PREY:
-                    counter = wr_val
-                    break
+                    counter = wr_val          # real value (incl. genuine 0.0)
+                    break                     # else stays NaN — no counter games
             sens = max(wr_by_w.values()) - min(wr_by_w.values())
         out[pid] = (own, counter, sens)
     return out

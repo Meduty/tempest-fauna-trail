@@ -18,6 +18,7 @@ Flet (Python) roguelike — animal champions travel real-world cities, live Open
 | Path | Purpose |
 |---|---|
 | [SPEC.md](SPEC.md) | Canonical spec — §G goal, §C context, §I interfaces, §V invariants, §T tasks, §B bugs, §D deferred. All design decisions land here. |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System map — how all systems work + interact, and where each lives in the code. The "find your way around" guide. |
 | [docs/proposal.md](docs/proposal.md) | Pitch / problem framing / target users. |
 | [docs/design/tasks/](docs/design/tasks/) | Per-task plan docs (`tN_*_plan.md`). Detailed designs for §T rows. |
 | [docs/design/content/](docs/design/content/) | Champion / enemy / boss / augment / item / trait rosters. |
@@ -28,10 +29,22 @@ Flet (Python) roguelike — animal champions travel real-world cities, live Open
 
 ## AI Workflow
 
+### Required reading before any task work (MANDATORY)
+
+Before writing or editing **any** code for a task, an agent **must** read, in order:
+
+1. **[SPEC.md](SPEC.md)** — the relevant §T row(s), every §V invariant that could apply, and any §B bug history near the area. SPEC is the contract; it wins on conflict.
+2. **[ARCHITECTURE.md](ARCHITECTURE.md)** — the system map: how the touched system works, how it interacts with others, and where it lives. Start here to find your way around.
+3. **The task plan doc** — `docs/design/tasks/tN_*_plan.md` for the task (write one first if absent — see "Planning a §T task" below).
+4. **Every design doc the task touches** — the `docs/design/{systems,content}/*.md` files for the systems/rosters in scope (the plan doc lists them).
+5. **Every piece of code the change touches** — read the actual modules and their integration touch points before editing, not just their names. Cite touch points as `file.py:line`.
+
+This is not optional context — it is the groundwork. Design docs contain illustrative-but-wrong examples (see the planning rules), so **verify every primitive/stat/function against the code** before relying on it. The same checklist is enforced in [docs/templates/task_implementation_prompt.md](docs/templates/task_implementation_prompt.md), [docs/templates/task_plan.md](docs/templates/task_plan.md), the `.claude/rules/*` path guardrails, and [.github/copilot-instructions.md](.github/copilot-instructions.md).
+
 - **Spec changes**: invoke `/spec` (sole mutator of SPEC.md). Bug report → `/spec bug: <desc>` triggers §B backprop with optional new §V invariant.
 - **Implementation**: invoke `/build` for plan-then-execute against §T tasks. Auto-runs `/backprop` on test failure.
 - **Drift audit**: invoke `/check` for read-only SPEC-vs-code report.
-- **Journal**: append `docs/journal/<date>_<topic>.md` after non-trivial milestones — captures the "why" that SPEC.md compresses out.
+- **Journal**: append `docs/journal/<date>_<topic>.md` after non-trivial milestones — captures the "why" that SPEC.md compresses out. Use [docs/templates/journal_entry.md](docs/templates/journal_entry.md). **Every entry MUST carry a "Process notes (AI collaboration)" section** documenting conflicts/misalignments (CLAUDE.md vs SPEC vs design-docs vs code), agent errors and wrong turns, guardrails added, and drift caught — plus a **prompting-strategy reflection** on what prompt shapes worked and how your approach to driving the agent is evolving across the project. This repo is a vibe-coding case study; that signal is invisible in the diff and must be written down, not just the code's "why".
 
 ### Planning a §T task (before any `/build`)
 

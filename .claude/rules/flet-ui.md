@@ -6,6 +6,8 @@ paths:
 
 # Flet UI Rules
 
+> **Before editing:** complete the required reading in [CLAUDE.md](../../CLAUDE.md) → "Required reading before any task work" — SPEC.md (§I routes, §V), ARCHITECTURE.md (§11 UI layer), the task plan doc, `views_spec.md`, and the touched code.
+
 - Each screen is a function returning `ft.View`, not a class
 - Navigate with `page.go("/route")`, handle in `page.on_route_change`
 - Root control in each View: single `ft.Container` or `ft.Column`

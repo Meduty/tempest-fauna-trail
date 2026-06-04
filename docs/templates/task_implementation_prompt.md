@@ -18,17 +18,20 @@ _Bullet list of deltas vs plan doc. Write "None" if plan stands as written._
 
 ## Pre-Implementation Research
 
-Before writing any code, thoroughly review:
+Complete the **Required reading before any task work** checklist from CLAUDE.md.
+For {{TASK_ID}} that means, in order:
 
-- The code (existing modules touched by {{TASK_ID}})
+- SPEC.md rows for {{TASK_ID}} (§T, §V, §C as applicable) — the contract
+- [ARCHITECTURE.md](../../ARCHITECTURE.md) — the system(s) {{TASK_ID}} touches + where they live
 - The {{TASK_ID}} plan document: [{{PLAN_PATH}}]({{PLAN_PATH}})
-- SPEC.md rows for {{TASK_ID}} (§T, §V, §C as applicable)
-- Any other specialized documentation referenced by {{TASK_ID}}
+- Any other specialized design docs referenced by {{TASK_ID}}
   ({{LIST_REFERENCED_DOCS}})
-- Existing code at integration touch points to ensure clean integration
+- The existing code at every integration touch point — read it, don't trust names
   ({{LIST_TOUCH_POINTS}})
 
-Treat the design document review as mandatory groundwork, not optional context.
+Treat this review as mandatory groundwork, not optional context. Verify every
+primitive/stat/function against the code — design-doc examples are illustrative and
+sometimes wrong.
 
 ## Implementation Constraints
 
@@ -43,7 +46,9 @@ Treat the design document review as mandatory groundwork, not optional context.
   bugs caught mid-build) via `/spec`
 - Update any other affected design documentation
   ({{PLAN_PATH}}, content rosters, system designs) to reflect changes made
-- Write a journal entry at `docs/journal/{{YYYY-MM-DD}}_{{topic}}.md` capturing:
-  the why, key decisions, deviations from plan, follow-ups
-- Run `uv run pytest tests/` (or `pytest tests/`) — all green before declaring done
+- Write a journal entry at `docs/journal/{{YYYY-MM-DD}}_{{topic}}.md` from
+  [docs/templates/journal_entry.md](journal_entry.md) — capturing the why, key
+  decisions, deviations from plan, follow-ups, and the **mandatory Process notes (AI
+  collaboration) + prompting-strategy reflection** sections
+- Run `uv run pytest` — all green before declaring done
 - Run `/check` to confirm no SPEC drift introduced
