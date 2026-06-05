@@ -1,9 +1,9 @@
 # Save / serialization
 
-> **Status: LIVING** — must match `Run`/`BattleResult` (de)serialization in `src/game/models.py`. Audited by `/check`.
-> **Scope:** how game state round-trips to/from JSON, and the back-compat rules. **Reconciled:** 2026-06-05.
+> **Status: LIVING** — must match `Run`/`BattleResult` (de)serialization in `src/game/models.py` + the file-I/O layer in `src/game/save.py`. Audited by `/check`.
+> **Scope:** how game state round-trips to/from JSON, the back-compat rules, and the file read/write contract. **Reconciled:** 2026-06-05.
 >
-> Citations by symbol, not line. A dedicated game/save.py (file I/O) is planned (T.14); **today the (de)serialization contract lives on the model dataclasses** — this doc tracks that contract.
+> Citations by symbol, not line. The (de)serialization contract lives on the **model dataclasses**; the **file I/O** (atomic write, schema gate, typed errors) lives in `game/save.py` (T.14).
 
 ## The model is the schema
 
@@ -31,11 +31,36 @@ route `Node`s, the champion roster, `amber` (economy), `battle_log`
 `schema_version` exists to gate breaking migrations; bump it when a change can't
 be handled by a `.get` default.
 
+## File I/O (`game/save.py`, T.14)
+
+The disk layer over the model contract. Imports only `json`/`os`/`pathlib` — no
+Flet (V.1).
+
+- **`CURRENT_SCHEMA_VERSION`** (`= 1`) — the single source for the version this
+  build writes/reads (was hardcoded per-Run before T.14).
+- **`save_run(run, path)`** — `run.to_dict()` → JSON, **atomic**: writes
+  `<path>.tmp`, `flush`+`fsync`, then `os.replace` onto `path`; auto-creates
+  parent dirs; removes the temp on any failure. Readers never see a partial file.
+- **`load_run(path)`** — reads + gates on `schema_version` (see errors below),
+  then `Run.from_dict`. The migration hook sits between the gate and `from_dict`.
+- **`default_save_dir()`** — platform app-data dir (`%APPDATA%` / macOS
+  `Application Support` / `$XDG_DATA_HOME`) `…/tempest-fauna-trail/saves`. Helper
+  only; core fns take an explicit path. Does **not** create the dir (save does).
+- **Errors:** `SaveError` (base) → `CorruptSaveError` (bad JSON, missing/mistyped
+  required keys incl. `schema_version`, or a payload that fails `Run`
+  validation — `from_dict`'s `ValueError`/`KeyError`/`TypeError` are wrapped),
+  `UnsupportedSchemaError` (`schema_version` > `CURRENT_SCHEMA_VERSION`).
+  `FileNotFoundError` is **not** wrapped — callers branch on "no save yet".
+
 ## Invariant
 
 - Round-trip identity: `from_dict(x.to_dict()) == x` for current data, and
-  old-shaped payloads load without error (back-compat). `/check` and
-  `tests/game/test_models.py` guard this.
+  old-shaped payloads load without error (back-compat). `/check`,
+  `tests/game/test_models.py`, and `tests/game/test_save.py` (through disk)
+  guard this.
+- File safety: `save_run` is atomic (temp + `os.replace`); `load_run` never
+  returns a `Run` from a future-schema or invalid file — it raises a typed
+  `SaveError`. (V.36)
 
 ## File map
 
@@ -45,4 +70,7 @@ be handled by a `.get` default.
 | Battle records | `models.py::BattleResult.to_dict` / `from_dict` (`piece_max_hp` optional) |
 | Per-entity | `Champion` / `Enemy` / `Node` / `BattleEvent` `.to_dict`/`.from_dict` |
 | Legacy key read | `Run.from_dict` `gold`→`amber` (B.4) |
-| Planned file I/O | game/save.py (T.14, not yet created) |
+| File read/write | `save.py::save_run` / `load_run` (atomic, schema-gated) |
+| Save version constant | `save.py::CURRENT_SCHEMA_VERSION` |
+| Default save location | `save.py::default_save_dir` |
+| Typed errors | `save.py::SaveError` / `CorruptSaveError` / `UnsupportedSchemaError` |

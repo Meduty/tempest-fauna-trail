@@ -266,6 +266,13 @@ substrate** the (planned) Prep UI will drive.
 - **`Run`** — the single object holding *all* game state (current node, roster, battle
   log, Amber, Tempest, augments). Per V: one `Run` is the whole game.
 
+`src/game/save.py` (T.14) — the **file-I/O layer** over that contract: `save_run`
+(atomic temp+`os.replace`), `load_run` (`schema_version` gate → `Run.from_dict`),
+`default_save_dir`, `CURRENT_SCHEMA_VERSION`, and typed errors (`SaveError` /
+`CorruptSaveError` / `UnsupportedSchemaError`). No Flet import (V.1); the
+(de)serialization contract itself stays on the dataclasses. See
+[docs/live/systems/save.md](docs/live/systems/save.md).
+
 ---
 
 ## 10. API layer (T.6 + T.7)
