@@ -54,9 +54,12 @@ and per-slot mana `+= mana_regen`. A meter fires at `ENERGY_THRESHOLD` (60 000)
 and **carries overflow** (it subtracts the threshold, not resets) so cadence is
 exact.
 
-- **Ordering** — within a tick, triggered meters resolve in a deterministic
-  total order via `_event_sort_key` (faster attack-speed first, then stable
-  tiebreaks; movement before action). No RNG ever (V.2/V.14).
+- **Ordering** — within a tick, triggered meters resolve in the canonical
+  side-independent total order `_event_sort_key = (-AS_int, -milli_AS,
+  champion_id, load_order, kind)` (V.34): faster attack-speed first, then
+  sub-integer speed (`milli_AS`), then identity, then the seeded `load_order`
+  (never team-then-enemy → no side-A bias, B.14), then movement before action.
+  No RNG in the loop; `load_order` is a one-time seeded permutation (V.2/V.14).
 - **Movement** — `_resolve_movement`: hold at threshold if in range or no
   enemies; else one BFS step toward the nearest in-range cell
   (`_next_step_toward`), carrying overflow; hold if no path. Gated by

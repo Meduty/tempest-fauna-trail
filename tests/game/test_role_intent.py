@@ -32,12 +32,12 @@ from src.game.content import (
 )
 from src.game.scaling import stat_multiplier
 
-# 6 axes — the full value sets (648 combinations).
+# 6 axes — the full value sets (1512 combinations after the 7-level speed axis, T.33b).
 STATS = ("str", "int", "hybrid")
 REACHES = ("melee", "ranged")
 DURABILITIES = ("squishy", "hybrid", "tanky_hp", "tanky_arm")
 PLAYSTYLES = ("auto", "hybrid", "ability")
-SPEEDS = ("speedy", "hybrid", "heavy")
+SPEEDS = ("leaden", "heavy", "steady", "hybrid", "brisk", "speedy", "blinding")
 INTENTS = ("damage", "hybrid", "utility")
 
 MATRIX_PATH = (
@@ -132,7 +132,7 @@ class TestRoleCode:
 
 
 class TestMatrixFixture:
-    """Full 648-combo enumeration validates against the generated matrix."""
+    """Full 1512-combo enumeration validates against the generated matrix."""
 
     def _parse(self):
         rows = []
@@ -146,8 +146,8 @@ class TestMatrixFixture:
             rows.append((axes, code, role))
         return rows
 
-    def test_matrix_has_all_648(self) -> None:
-        assert len(self._parse()) == 648
+    def test_matrix_has_all_1512(self) -> None:
+        assert len(self._parse()) == 1512
 
     def test_matrix_matches_functions(self) -> None:
         for axes, code, role in self._parse():

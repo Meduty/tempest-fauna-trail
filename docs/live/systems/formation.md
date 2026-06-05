@@ -11,42 +11,52 @@ only**.
 ## Entry
 
 `plan_enemy_formation(pieces, enemy_defs_by_id, *, boss_position=None,
-board_height=7) -> dict[order_key, (q, r)]`. Called by
-`combat/engine.py::assign_spawns`, which feeds it a lightweight shim per enemy
-(not a full `Piece`) and then writes the returned coordinates back onto the
-pieces.
+board_height=BOARD_HEIGHT) -> dict[int, tuple[int, int]]` — maps each enemy's
+`formation_index` → `(col, row)`. Called by `combat/engine.py::assign_spawns`,
+which builds a lightweight `_FormationEnemy` shim per enemy (not a full `Piece`),
+calls this, then writes `formation[enemy.formation_index]` back onto
+`piece.position_q/position_r`.
 
 ## The input contract — `FormationPiece`
 
-The planner needs only three attributes, declared as a structural `Protocol`
-`FormationPiece` in `formation.py`: `piece_id`, `tier`, and the
-side-independent ordering key it writes placements against. The engine's shim
-and the tests both satisfy it structurally — formation imports **no** piece
-model, keeping it pure. (The ordering-key field name is owned by combat; this
-module only reads it.)
+The planner reads exactly three attributes, declared as a structural `Protocol`
+`FormationPiece` in `formation.py`:
+
+- `piece_id: str` — identity (sorted by, for determinism).
+- `tier: int` — boss/role weighting (tier 10 = boss).
+- `formation_index: int` — the board-slot key the returned `placements` dict is
+  keyed by. **Not** the combat tiebreak: T.33a split the old `speed_tiebreaker`
+  into `formation_index` (this placement key) and `load_order` (the
+  `_event_sort_key` tiebreak, see [combat.md](combat.md#tick-model)). Formation
+  only touches `formation_index`.
+
+`combat/engine.py::_FormationEnemy` and the tests satisfy this structurally —
+formation imports **no** piece model, keeping it pure (V.1).
 
 ## Placement policy
 
-`classify_role(enemy_def) -> PlacementRole` buckets each enemy by its
-`EnemyDef.durability`/`reach`:
+`classify_role(enemy_def: EnemyDef) -> PlacementRole` buckets each enemy by
+`enemy_def.durability` and `enemy_def.reach`:
 
-| Role | Column | Who |
+| `PlacementRole` | Column | Rule (durability / reach) |
 |---|---|---|
-| `FRONTLINE` | 7 (closest to player) | tanky_hp / tanky_arm |
-| `MIDLINE` | 8 | melee, standard durability (warriors, bruisers) |
-| `FLANK` | 8–9 edge rows | melee + squishy (assassins) |
-| `BACKLINE` | 9 | ranged (mages, marksmen, supports) |
+| `FRONTLINE` | `COL_FRONT` (7) | `durability in ("tanky_hp", "tanky_arm")` |
+| `FLANK` | `COL_MID`/`COL_BACK` (8–9) edge rows | `reach == "melee" and durability == "squishy"` |
+| `MIDLINE` | `COL_MID` (8) | `reach == "melee"` (else) |
+| `BACKLINE` | `COL_BACK` (9) | ranged (fallthrough) |
 
-Rows fill **center-out** (`_center_out_rows`); overflow spills to adjacent
-columns; `_nearest_free` is the last-resort packer. Bosses get a per-boss
-authored `boss_position` (displacing whatever sat there).
+Rows fill center-out (`_center_out_rows`); overflow spills to adjacent columns;
+`_nearest_free` is the last-resort packer. Bosses (tier 10) take the per-boss
+authored `boss_position` via `_place_boss`.
 
 ## File map
 
 | Concern | Symbol |
 |---|---|
 | Plan a squad | `formation.plan_enemy_formation` |
-| Role classification | `formation.classify_role` → `PlacementRole` |
-| Input contract | `formation.FormationPiece` (Protocol) |
-| Row packing | `formation._center_out_rows`, `_nearest_free` |
-| Caller (writes coords onto pieces) | `combat/engine.py::assign_spawns` |
+| Role classification | `formation.classify_role` → `formation.PlacementRole` |
+| Input contract | `formation.FormationPiece` (Protocol: `piece_id`/`tier`/`formation_index`) |
+| Columns | `formation.COL_FRONT`/`COL_MID`/`COL_BACK` |
+| Row packing | `formation._center_out_rows`, `formation._nearest_free` |
+| Boss slot | `formation._place_boss` |
+| Caller (builds `_FormationEnemy`, writes coords) | `combat/engine.py::assign_spawns` |
