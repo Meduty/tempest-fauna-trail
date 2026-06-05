@@ -63,17 +63,17 @@ Status: ✅ written & `/check`-clean · 🔶 stub (header + scope + anchors, pro
 | [combat.md](systems/combat.md) | `game/combat/` (engine, context, recorder, resolve), `loadout.py`, `piece.py` | ✅ |
 | [weather.md](systems/weather.md) | `game/weather_effects.py` + `loadout._apply_weather_to_piece` | ✅ |
 | [formation.md](systems/formation.md) | `game/formation.py` | ✅ |
-| [effects.md](systems/effects.md) | `effects.py`, `events.py`, `status.py`, `registries.py`, `abilities/`, `piece.py` | 🔶 |
-| [encounter.md](systems/encounter.md) | `game/encounter.py`, `bosses/`, `map_effects.py`, `board.py` | 🔶 |
+| [effects.md](systems/effects.md) | `effects.py`, `events.py`, `status.py`, `registries.py`, `piece.py`, `combat/context.py` | ✅ |
+| [encounter.md](systems/encounter.md) | `game/encounter.py`, `bosses/data.py`, `map_effects.py`, `board.py` | ✅ |
 | [scaling.md](systems/scaling.md) | `game/scaling.py`, `content.py` stat curves | ✅ |
-| [weather_api.md](systems/weather_api.md) | `api/weather.py`, `api/cache.py`, `api/refresher.py` | 🔶 |
-| [save.md](systems/save.md) | `Run` serialization in `models.py` (+ planned save.py, T.14) | 🔶 |
+| [weather_api.md](systems/weather_api.md) | `api/weather.py`, `api/cache.py`, `api/refresher.py` | ✅ |
+| [save.md](systems/save.md) | `Run`/`BattleResult` serialization in `models.py` (+ planned save.py, T.14) | ✅ |
 
 ### Content — `docs/live/content/`
 | Doc | Source of truth (code) | Status |
 |---|---|---|
-| [rosters.md](content/rosters.md) | `content.py` (champion/enemy rosters), `bosses/data.py` | 🔶 |
-| [abilities.md](content/abilities.md) | `abilities/`, `registries.py` (id resolution) | 🔶 |
+| [rosters.md](content/rosters.md) | `content.py` (champion/enemy rosters), `bosses/data.py` | ✅ |
+| [abilities.md](content/abilities.md) | `abilities/`, `registries.py` (id resolution) | ✅ |
 | [traits.md](content/traits.md) | `traits/`, `content.py` trait vocab | 🔶 |
 | [augments.md](content/augments.md) | planned (T.31, augments.py) | 🔶 |
 | [items.md](content/items.md) | planned items (T.22) | 🔶 |

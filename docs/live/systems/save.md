@@ -3,7 +3,7 @@
 > **Status: LIVING** — must match `Run`/`BattleResult` (de)serialization in `src/game/models.py`. Audited by `/check`.
 > **Scope:** how game state round-trips to/from JSON, and the back-compat rules. **Reconciled:** 2026-06-05.
 >
-> Citations by symbol, not line. A dedicated `game/save.py` (file I/O) is planned (T.14); **today the (de)serialization contract lives on the model dataclasses** — this doc tracks that contract.
+> Citations by symbol, not line. A dedicated game/save.py (file I/O) is planned (T.14); **today the (de)serialization contract lives on the model dataclasses** — this doc tracks that contract.
 
 ## The model is the schema
 
