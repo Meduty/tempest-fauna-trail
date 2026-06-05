@@ -24,13 +24,15 @@ define_trait(
     (8, _TEAM, {"hp": 0.10, "strength": 0.10}, {}, [m.enrage()]),
 )
 
-# Spirit — pool 11, @2/3/5/8. Mana/casters; echo/untargetable = T.28b/c.
+# Spirit — pool 11, @2/3/5/8. Casters; @5 untargetable opener (T.28b) + echo
+# (every few casts the next ability fires twice). @8 echoes more often, team-wide
+# (caster-gated → no-op for non-casters). Echo potency-cut/pierce/haste = T.28d.
 define_trait(
     "Spirit",
     (2, _PER, {"mana_regen": 0.15}),
     (3, _PER, {"mana_regen": 0.20, "intelligence": 0.06}),
-    (5, _PER, {"mana_regen": 0.25, "intelligence": 0.12}, {}, [m.untargetable_opener()]),
-    (8, _TEAM, {"intelligence": 0.12, "mana_regen": 0.15}),
+    (5, _PER, {"mana_regen": 0.25, "intelligence": 0.12}, {}, [m.untargetable_opener(), m.echo_cadence(4)]),
+    (8, _TEAM, {"intelligence": 0.12, "mana_regen": 0.15}, {}, [m.echo_cadence(3)]),
 )
 
 # Skyborn — pool 9, @1/2/3/5/8. Kiters. @2 arms kiting + melee +1 range (the
@@ -63,12 +65,14 @@ define_trait(
     (8, _TEAM, {"hp": 0.10}, {}, [m.tidal_hot()]),
 )
 
-# Swarm — pool 8, @3/4/5/6/8. Go-wide; per-swarm scaling / spawns = T.28c.
+# Swarm — pool 8, @3/4/5/6/8. Go-wide; a dying Swarm leaves a chitin-spawn that
+# inherits a growing fraction of its stats (@6 the most). @8 is TEAM scope but the
+# spawn hook is `trait="Swarm"`-guarded, so only actual Swarm pieces spawn.
 define_trait(
     "Swarm",
-    (3, _PER, {"strength": 0.05, "hp": 0.05}),
-    (4, _PER, {"strength": 0.07, "hp": 0.07}),
-    (5, _PER, {"strength": 0.09, "hp": 0.09}),
-    (6, _PER, {"strength": 0.11, "hp": 0.11}),
-    (8, _TEAM, {"strength": 0.08, "hp": 0.08}),
+    (3, _PER, {"strength": 0.05, "hp": 0.05}, {}, [m.on_death_spawn(0.35)]),
+    (4, _PER, {"strength": 0.07, "hp": 0.07}, {}, [m.on_death_spawn(0.40)]),
+    (5, _PER, {"strength": 0.09, "hp": 0.09}, {}, [m.on_death_spawn(0.50)]),
+    (6, _PER, {"strength": 0.11, "hp": 0.11}, {}, [m.on_death_spawn(0.60)]),
+    (8, _TEAM, {"strength": 0.08, "hp": 0.08}, {}, [m.on_death_spawn(0.60)]),
 )

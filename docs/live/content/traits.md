@@ -1,19 +1,23 @@
 # Traits — kinships, callings, breakpoints
 
 > **Status: LIVING** — must match `src/game/traits/` + `content.py` trait vocab.
-> Audited by `/check`. **Reconciled:** 2026-06-05 (T.28a).
+> Audited by `/check`. **Reconciled:** 2026-06-06 (T.28c).
 >
-> 🔶 **PARTIAL** — T.28a built the **framework + declarative stat-pack** half;
-> **T.28b (done)** added the combat primitives — hook riders **second-wind
-> decaying-shield** (Primordial @2), **tidal HoT** (Tidekin @5/@8), **enrage**
-> (Beast @8), **time-ramp** (Skirmisher @2), **dodge** (Skirmisher @4),
-> **untargetable** opener (Spirit @5) — plus the engine-behaviour arms:
-> **kiting** (Skyborn @2 — movement retreat + melee +1 range), **backline
-> target-priority** (Stalker @2 — movement + target bias), **taunt** (status
-> honored in target/movement; Trickster casts apply it in T.28c), and the one
-> true **revive** (Mender @6 — `ctx.revive` death-path reversal). T.28c (pending):
-> echo/aura/splash/spawns/empowered-shot/weather-as-buff/apex effects. Design
-> (frozen): [`docs/design/content/trait_catalog.md`](../../design/content/trait_catalog.md) v2.1.
+> 🔶 **PARTIAL** — T.28a/b/c built the framework + stat packs + (almost) all
+> mechanic riders; **T.28d** is the only remaining slice. T.28b combat primitives
+> (second-wind, tidal HoT, enrage, time-ramp, dodge, untargetable opener; kiting,
+> backline, taunt, revive). **T.28c (done)** added the rider batch over existing
+> `ctx`: Hunter bonus-auto/empowered/cleave/team-aura, Mystic `ability_can_crit`+
+> splash, Guardian start+periodic shields, Bruiser lifesteal, Skirmisher @8 team
+> ramp, Stalker hi-HP-bonus/mana-on-kill/untargetable-after-kill, Channeler
+> free-cast/first-cast-twice, Warden cast-shield+team-opener, Trickster
+> slow+taunt-on-cast+mana-aura, Mender heal-splash/overheal-shield, Spirit echo,
+> Swarm on-death chitin spawn. **T.28d (pending):** 6 Primordial @1 kits
+> (dormant), 6 affinity @10 apex riders, Scaled @5 CC-immunity + @8 weather-as-buff,
+> Spirit @8 echo-potency/pierce/haste, Primordial @3. Deliberately **deferred
+> flavor** (not in any task): Beast @4/@6 ramp, Skyborn @3 kite-reward, Tidekin @3
+> ally-heal — those rungs ship stat-only. Design (frozen):
+> [`docs/design/content/trait_catalog.md`](../../design/content/trait_catalog.md) v2.1.
 
 ## Where it lives
 - `game/traits/types.py` — `TraitScope` (`PER_TRAIT_PIECE`/`TEAM_WIDE`),
@@ -61,6 +65,18 @@ the catalog for per-trait rungs. **T.28a implements the stat-pack portion of eve
 rung**; mechanic riders layer onto the same trait ids in b/c. Packmate's apex is a
 **dynamic `@full-board`** threshold (== fielded board size).
 
+### Cumulative rungs (load-bearing)
+Resolution applies **only the highest cleared rung's bundle** (one
+`TraitBreakpoint`, not a union). So each rung **re-includes every mechanic it
+should still grant** — e.g. Skirmisher carries `time_ramp` on @2/@3/@4/@5/@8 and
+`dodge` on @4/@5/@8. Forgetting to re-include silently drops a lower mechanic at
+the higher count. **Apex exception:** carrier-*movement* mechanics (kiting,
+backline) are NOT re-applied at a TEAM apex — applying them team-wide would make
+every ally kite/seek; apex trades the few-carrier identity for a team buff.
+Caster/role-gated riders (echo, splash, lifesteal, shields, on-death spawn) ARE
+team-safe (no-op for the wrong role) and stay; the Swarm on-death spawn is
+explicitly `trait="Swarm"`-guarded so a TEAM apply only spawns for Swarm pieces.
+
 ## Combat primitives (T.28b) — `game/traits/mechanics.py` + engine
 All deterministic (cadence counters / HP thresholds / geometry, never RNG —
 V.2/V.14/V.37). A rung's optional 5th tuple element is a list of builders
@@ -96,6 +112,33 @@ V.2/V.14/V.37). A rung's optional 5th tuple element is a list of builders
 
 `StatusGate.UNTARGETABLE` excludes a piece from `_opponents` (target selection);
 the piece still acts.
+
+## Mechanic + apex riders (T.28c) — `game/traits/mechanics.py`
+All hook idioms over the existing `ctx` mutators (no new engine subsystems).
+Secondary/proc damage uses `SourceTag.ITEM_PROC` — the existing "follow-up hit"
+tag that does NOT re-fire `on_attack_landed`/`on_ability_damage`, so no recursion.
+Recast/heal-splash guard re-entry with `ctx._in_recast` / `ctx._in_heal_splash`.
+- Hunter: `bonus_auto_damage` + `empowered_shot` (cadence) + `cleave`
+  (`on_attack_landed`); @8 TEAM aura.
+- Mystic: `ability_crit` (flips `Piece.ability_can_crit`) + `ability_splash`
+  (`on_ability_damage` → adjacent enemies).
+- Guardian/Warden: `start_shield` (`on_combat_start`), `periodic_shield`
+  (`on_tick` self + adjacent allies), `cast_shield_lowest` (`on_cast`).
+- Bruiser/Beast: `attack_lifesteal` (`on_damage_dealt`, basic only).
+- Stalker: `high_hp_bonus` (`on_damage_dealt` vs >60%-HP target), `mana_on_kill` +
+  `untargetable_after_kill` (`on_kill`).
+- Channeler/Spirit: `free_cast` (refund every Nth), `recast_first`, `echo_cadence`
+  (re-run via `ctx.cast_ability`, `_in_recast`-guarded).
+- Trickster: `slow_on_cast`, `taunt_on_cast` (reuses the T.28b taunt status),
+  `mana_denial_aura` (`on_tick` drains adjacent enemy slot mana).
+- Mender: `heal_splash` (`on_heal` → lowest-HP other ally), `overheal_shield`
+  (heal to a near-full ally banked as a barrier).
+- Swarm: `on_death_spawn` — a dying Swarm leaves a stat-fraction chitin via the
+  existing summon pattern (`Piece`+summon flags+`ctx.spawn`); `trait`-guarded.
+- Packmate `@full-board`: the flat stat pack IS the apex payoff (no rider).
+
+Cast-triggered riders only fire for **registered** abilities (the unregistered
+fast-path in `_resolve_action` deals damage without firing `on_cast`).
 
 ## Roster (post-T.28a rebalance, B.9)
 - Kinship pools (sum 60): Beast 14, Spirit 11, Skyborn 9, Scaled 9, Tidekin 9,
