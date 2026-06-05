@@ -65,7 +65,7 @@ Status: ✅ written & `/check`-clean · 🔶 stub (header + scope + anchors, pro
 | [formation.md](systems/formation.md) | `game/formation.py` | ✅ |
 | [effects.md](systems/effects.md) | `effects.py`, `events.py`, `status.py`, `registries.py`, `abilities/`, `piece.py` | 🔶 |
 | [encounter.md](systems/encounter.md) | `game/encounter.py`, `bosses/`, `map_effects.py`, `board.py` | 🔶 |
-| [scaling.md](systems/scaling.md) | `game/scaling.py`, `content.py` stat curves | 🔶 |
+| [scaling.md](systems/scaling.md) | `game/scaling.py`, `content.py` stat curves | ✅ |
 | [weather_api.md](systems/weather_api.md) | `api/weather.py`, `api/cache.py`, `api/refresher.py` | 🔶 |
 | [save.md](systems/save.md) | `Run` serialization in `models.py` (+ planned save.py, T.14) | 🔶 |
 
