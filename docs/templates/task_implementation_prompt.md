@@ -44,11 +44,16 @@ sometimes wrong.
 
 - Update SPEC.md (§T row → done, new §V invariants if surfaced, §B entries for
   bugs caught mid-build) via `/spec`
-- Update any other affected design documentation
-  ({{PLAN_PATH}}, content rosters, system designs) to reflect changes made
+- **Update the matching LIVING doc** (`docs/live/systems/<sys>.md` or
+  `docs/live/content/<x>.md`) in this same change — it must match the new code, using
+  the code's own taxonomy (real file/symbol names, not generic prose). A stub you just
+  made true → flip its 🔶 to ✅ in `docs/live/README.md`.
+- Leave FROZEN docs as records — do **not** retro-edit {{PLAN_PATH}} / `docs/design/`
+  to match new code; distil the durable "how it works" into the living doc instead.
 - Write a journal entry at `docs/journal/{{YYYY-MM-DD}}_{{topic}}.md` from
   [docs/templates/journal_entry.md](journal_entry.md) — capturing the why, key
   decisions, deviations from plan, follow-ups, and the **mandatory Process notes (AI
   collaboration) + prompting-strategy reflection** sections
 - Run `uv run pytest` — all green before declaring done
-- Run `/check` to confirm no SPEC drift introduced
+- Run `/check` to confirm no LIVING-doc drift (SPEC, ARCHITECTURE, `docs/live/` —
+  every cited path/symbol resolves; §V invariants + content counts hold)

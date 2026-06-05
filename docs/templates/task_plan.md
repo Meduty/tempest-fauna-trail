@@ -4,8 +4,9 @@ Fill `{{...}}`. Drop optional sections if unused. Mirrors the structure of
 `t28_trait_effects_plan.md` / `t30_ability_catalog_plan.md` / `t31_augment_system_plan.md`.
 
 **Before writing:** complete CLAUDE.md → "Required reading before any task work"
-(SPEC.md, [ARCHITECTURE.md](../../ARCHITECTURE.md), prior task plans, the touched
-design docs, the touched code). Then grep every primitive/stat/function you cite
+(SPEC.md, [ARCHITECTURE.md](../../ARCHITECTURE.md), the **LIVING doc** for the area
+[`docs/live/`](../live/README.md), prior task plans, the touched design docs, the
+touched code). Then grep every primitive/stat/function you cite
 (design-doc examples lie — see CLAUDE.md "Planning a §T task"). Run a content↔design
 drift check. Ask genuine open questions (`AskUserQuestion`) *first*. Investigate
 origins (git history) before asking the user to decide anything.
@@ -69,3 +70,8 @@ _Numbered, checkable. One per substep if split._
 _Enumerate exact deltas: §T row(s) + status + files + depends + est; new §V
 invariants; §B backprop entries for any drift caught; §D updates; Implementation
 Order. Applied only on user OK._
+
+## 11. LIVING docs to update
+_Which `docs/live/` doc(s) this task must update on landing (and whether it flips a
+🔶 stub → ✅). The doc must match the new code in the code's own taxonomy; `/check`
+must pass. FROZEN docs (`docs/design/`) are left as-is._
