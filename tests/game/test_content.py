@@ -268,11 +268,15 @@ class TestComposeStats:
         assert speedy["move_speed"] > neutral["move_speed"] > heavy["move_speed"]
 
     def test_speed_axis_changes_ability_style_stats(self) -> None:
+        # T.33b: casters express speed as cast tempo — faster ⇒ ↑attack_speed + ↑mana_regen
+        # (half the AS deviation, on both), ↓primary_stat. Speed no longer touches resistance.
         speedy = compose_stats("int", "ranged", "hybrid", "ability", "speedy", "hybrid", 1)
         neutral = compose_stats("int", "ranged", "hybrid", "ability", "hybrid", "hybrid", 1)
         heavy = compose_stats("int", "ranged", "hybrid", "ability", "heavy", "hybrid", 1)
-        assert speedy["resistance"] > neutral["resistance"] > heavy["resistance"]
+        assert speedy["attack_speed"] > neutral["attack_speed"] > heavy["attack_speed"]
+        assert speedy["mana_regen"] > neutral["mana_regen"] > heavy["mana_regen"]
         assert speedy["intelligence"] < neutral["intelligence"] < heavy["intelligence"]
+        assert speedy["resistance"] == neutral["resistance"] == heavy["resistance"]
 
     def test_invalid_speed_axis_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Unknown speed axis value"):
