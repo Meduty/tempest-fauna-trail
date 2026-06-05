@@ -7,6 +7,7 @@ same trait ids. Apex = `min(pool, cap)` (V.37); apex rungs are TEAM_WIDE.
 
 from __future__ import annotations
 
+from . import mechanics as m
 from ._packs import define_trait
 from .types import TraitScope
 
@@ -20,7 +21,7 @@ define_trait(
     (3, _PER, {"hp": 0.08, "strength": 0.06}),
     (4, _PER, {"hp": 0.10, "strength": 0.10}),
     (6, _PER, {"hp": 0.14, "strength": 0.14}),
-    (8, _TEAM, {"hp": 0.10, "strength": 0.10}),
+    (8, _TEAM, {"hp": 0.10, "strength": 0.10}, {}, [m.enrage()]),
 )
 
 # Spirit — pool 11, @2/3/5/8. Mana/casters; echo/untargetable = T.28b/c.
@@ -28,7 +29,7 @@ define_trait(
     "Spirit",
     (2, _PER, {"mana_regen": 0.15}),
     (3, _PER, {"mana_regen": 0.20, "intelligence": 0.06}),
-    (5, _PER, {"mana_regen": 0.25, "intelligence": 0.12}),
+    (5, _PER, {"mana_regen": 0.25, "intelligence": 0.12}, {}, [m.untargetable_opener()]),
     (8, _TEAM, {"intelligence": 0.12, "mana_regen": 0.15}),
 )
 
@@ -57,8 +58,8 @@ define_trait(
     "Tidekin",
     (2, _PER, {"hp": 0.06, "mana_regen": 0.08}),
     (3, _PER, {"hp": 0.08, "mana_regen": 0.12}),
-    (5, _PER, {"hp": 0.12, "intelligence": 0.08}),
-    (8, _TEAM, {"hp": 0.10}),
+    (5, _PER, {"hp": 0.12, "intelligence": 0.08}, {}, [m.tidal_hot()]),
+    (8, _TEAM, {"hp": 0.10}, {}, [m.tidal_hot()]),
 )
 
 # Swarm — pool 8, @3/4/5/6/8. Go-wide; per-swarm scaling / spawns = T.28c.

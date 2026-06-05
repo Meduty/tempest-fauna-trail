@@ -9,6 +9,7 @@ these same trait ids. Apex rungs TEAM_WIDE.
 
 from __future__ import annotations
 
+from . import mechanics as m
 from .types import TraitScope
 from ._packs import define_trait
 
@@ -55,9 +56,9 @@ define_trait(
 # Skirmisher — pool 8, @2/3/4/5/8. AS ramp/dodge = T.28b; stat = as/ms.
 define_trait(
     "Skirmisher",
-    (2, _PER, {"attack_speed": 0.08}),
+    (2, _PER, {"attack_speed": 0.08}, {}, [m.time_ramp()]),
     (3, _PER, {"attack_speed": 0.06}),
-    (4, _PER, {"attack_speed": 0.06, "move_speed": 0.10}),
+    (4, _PER, {"attack_speed": 0.06, "move_speed": 0.10}, {}, [m.dodge()]),
     (5, _PER, {"attack_speed": 0.08}),
     (8, _TEAM, {"attack_speed": 0.10}),
 )
@@ -123,6 +124,6 @@ define_trait(
 define_trait(
     "Primordial",
     (1, _PER, {"strength": 0.10, "intelligence": 0.10, "hp": 0.10}),
-    (2, _TEAM, {"strength": 0.10, "intelligence": 0.10, "hp": 0.10}),
+    (2, _TEAM, {"strength": 0.10, "intelligence": 0.10, "hp": 0.10}, {}, [m.second_wind()]),
     (3, _TEAM, {"strength": 0.14, "intelligence": 0.14, "hp": 0.14}),
 )

@@ -44,15 +44,18 @@ def stat_pack_bundle(
     return EffectBundle(modifiers=mods)
 
 
-# A rung spec: (count, scope, muls, adds). `adds` optional.
+# A rung spec: (count, scope, muls[, adds[, hook_builders]]).
+#   hook_builders: list[Callable[[Piece, str], list[Hook]]] — mechanic riders
+#   (T.28b/c) that add event hooks to the rung's bundle, given (owner, source_id).
 Rung = tuple
 
 
 def define_trait(trait_id: str, *rungs: Rung) -> None:
-    """Register a trait whose every rung is a declarative stat pack.
+    """Register a trait. Each rung is `(count, scope, muls[, adds[, hooks]])`.
 
-    Each rung is `(count, scope, muls[, adds])`; `count` is an int or a
-    `DynamicThreshold`. The bundle for a rung is built once per target piece.
+    `count` is an int or `DynamicThreshold`. `hooks` is an optional list of
+    builders `(owner, source_id) -> list[Hook]` for mechanic riders. The bundle
+    for a rung is built once per target piece.
     """
     breakpoints: list[TraitBreakpoint] = []
     for rung in rungs:
@@ -60,11 +63,16 @@ def define_trait(trait_id: str, *rungs: Rung) -> None:
         scope: TraitScope = rung[1]
         muls: dict[str, float] = rung[2]
         adds: dict[str, float] = rung[3] if len(rung) > 3 else {}
+        hook_builders = rung[4] if len(rung) > 4 else []
         label = count if isinstance(count, int) else "full"
         source_id = f"trait:{trait_id}@{label}"
+
         # Bind loop vars via defaults so each factory captures its own rung.
-        def _factory(piece: Piece, _sid=source_id, _m=muls, _a=adds) -> EffectBundle:
-            return stat_pack_bundle(_sid, _m, _a)
+        def _factory(piece: Piece, _sid=source_id, _m=muls, _a=adds, _hb=hook_builders) -> EffectBundle:
+            bundle = stat_pack_bundle(_sid, _m, _a)
+            for build in _hb:
+                bundle.hooks.extend(build(piece, _sid))
+            return bundle
 
         breakpoints.append(TraitBreakpoint(count=count, scope=scope, bundle_factory=_factory))
 

@@ -85,8 +85,19 @@ def _effective_stat(piece: Piece, stat: str) -> float:
 
 
 def _opponents(piece: Piece, pieces: list[Piece]) -> list[Piece]:
-    """All living enemies of the given piece."""
-    return [p for p in pieces if p.alive and p.is_enemy != piece.is_enemy]
+    """All living, targetable enemies of the given piece.
+
+    Untargetable pieces (T.28b, StatusGate.UNTARGETABLE) are excluded from target
+    selection — they can still act, but enemies won't pick them. If every enemy is
+    untargetable, the attacker has no target and idles until the window expires.
+    """
+    return [
+        p
+        for p in pieces
+        if p.alive
+        and p.is_enemy != piece.is_enemy
+        and not p.is_gated(StatusGate.UNTARGETABLE)
+    ]
 
 
 def _select_target(piece: Piece, candidates: list[Piece]) -> Piece | None:

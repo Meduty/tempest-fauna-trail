@@ -31,6 +31,7 @@ class StatusGate(str, Enum):
     BLOCKS_CAST = "blocks_cast"  # Block ability cast (silence)
     BLOCKS_ATTACK = "blocks_attack"  # Block auto-attack (disarm)
     BLOCKS_MOVEMENT = "blocks_movement"  # Block hex movement (root, frozen)
+    UNTARGETABLE = "untargetable"  # Excluded from enemy target selection (T.28b)
 
 
 @dataclass(frozen=True)
@@ -124,6 +125,15 @@ FOCUS_FIRE = _register(StatusDef(
     id="focus_fire",
     display_name="Focus Fire",
     stack_behaviour=StackBehaviour.REFRESH,
+))
+
+# Untargetable — excluded from enemy target selection; the piece can still act.
+# Used by Spirit/Stalker/Shrouded opener/after-takedown windows (T.28b).
+UNTARGETABLE = _register(StatusDef(
+    id="untargetable",
+    display_name="Untargetable",
+    stack_behaviour=StackBehaviour.REFRESH,
+    gates=(StatusGate.UNTARGETABLE,),
 ))
 
 SOAKED = _register(StatusDef(

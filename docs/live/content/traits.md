@@ -3,9 +3,14 @@
 > **Status: LIVING** — must match `src/game/traits/` + `content.py` trait vocab.
 > Audited by `/check`. **Reconciled:** 2026-06-05 (T.28a).
 >
-> 🔶 **PARTIAL** — T.28a built the **framework + declarative stat-pack** half.
-> Mechanic primitives (kiting, revive, second-wind, tidal-HoT, echo, spawns,
-> empowered-shot, …) are **T.28b/c** and not yet wired. Design (frozen):
+> 🔶 **PARTIAL** — T.28a built the **framework + declarative stat-pack** half;
+> **T.28b (in progress)** added the hook-based combat primitives —
+> **second-wind decaying-shield** (Primordial @2), **tidal HoT** (Tidekin @5/@8),
+> **enrage** (Beast @8), **time-ramp** (Skirmisher @2), **dodge** (Skirmisher @4),
+> **untargetable** opener (Spirit @5) + the `StatusGate.UNTARGETABLE` target
+> filter. Still pending in T.28b: **kiting** (movement), **taunt** + **backline
+> target-priority** (targeting), **revive** (death path). T.28c: echo/aura/splash/
+> spawns/empowered-shot/apex effects. Design (frozen):
 > [`docs/design/content/trait_catalog.md`](../../design/content/trait_catalog.md) v2.1.
 
 ## Where it lives
