@@ -5,196 +5,341 @@ for a tick-based turn engine. Traits are the player's draft-puzzle layer: every
 champion carries trait tags, and fielding enough tag-sharing champions unlocks
 **breakpoint bonuses** that reward committed team-building.
 
-**Status:** first-pass design. Names and breakpoint *concepts* only — no stat
-tuning, no engine wiring. The substrate that runs all of this is
+**Status:** design — **v2.1 pass** (2026-06-05). Names, breakpoint *concepts*, and
+**breakpoint counts** are set here; stat tuning + engine wiring happen in
+T.28a/b/c and are sim-validated (T.25). Substrate:
 `docs/design/systems/effect_systems_design.md` §7 (traits as `TraitBreakpoint`
-lists of `EffectBundle` factories). See also `champion_roster.md`, which assigns
-every champion its Kinship + Calling(s).
+lists of `EffectBundle` factories). `champion_roster.md` assigns each champion its
+Kinship + Calling(s).
+
+> **§0. v2.1 design decisions (this pass).**
+> 1. **Apex = `min(carrier-pool, board-cap)`** for most traits — the top rung
+>    means "own (nearly) all carriers and/or commit your whole board." No count
+>    can exceed the board cap (each counted champ = one slot, dupes count once,
+>    emblem = one substitute carrier), so the apex is a structural
+>    "once-in-many-runs, emblem/Amber-assisted" chase. Lower rungs carry the
+>    normal game.
+> 2. **Many rungs, single-step-leaning, @1 entries.** TFT runs 4–5 breakpoints on
+>    real traits and ~⅓ start at a single unit (Set 16: Longshot/Warden/Vanquisher
+>    `2/3/4/5`, Darkin `1/2/3`, Yordle `2/4/6/8/10`). We mirror that: single-step
+>    *runs* in the body + a jump to the apex chase. **Board cap == rank, starts at
+>    1**, so @1 entries are needed for early-game synergy at all.
+> 3. **Reachability fixed** — Packmate filled (go-wide, cheap T1–3 secondary);
+>    Hunter spread across tiers; Callings (no emblem) apex at native pool.
+> 4. **Tier-10 diversified** — one legendary per Kinship (§5). **T10 acquisition
+>    is augment-gated**: three **paired** RUN-augments unlock the Primordials in
+>    the late shop (T.31; T.28a ships the trait factories ready-but-dormant).
+> 5. **Skyborn → Kiters** — the tile-collision idea is gone; Skyborn *kite*
+>    (maintain attack-range distance from melee), with melee Skyborn gaining +1
+>    Range so they can kite at all. Smart-behaviour guardrails in §7.
+> 6. **Low-HP / sustain mechanics are diversified** — exactly **one** true revive
+>    (Mender); the others are distinct (threshold decaying-shield "second wind",
+>    tidal heal-over-time, low-HP enrage). They stack happily but aren't redundant
+>    revive-walls (§4.1).
+>
+> Cap math + the engine primitives this implies are in §7; scope split (a/b/c) in
+> §9; playstyles in §6.
 
 ---
 
 ## 1. Design rules
 
-- **Three trait families.** Every champion contributes exactly **one Affinity**
-  (its weather element), exactly **one Kinship** (what kind of creature/spirit
-  it is), and **one or two Callings** (how it fights). Tier-10 legendaries
-  carry the **Primordial** Calling on top of their normal Calling.
-- **Counting rule.** Breakpoints count **unique champion ids**, not copies —
-  two copies of the same champion count once (TFT convention,
-  `effect_systems_design.md` §7.1).
-- **Breakpoints.** Each trait lists 2–4 thresholds. The highest cleared
-  threshold is the only one that applies (it supersedes lower ones).
-- **Emblems.** The six Kinships are emblem-able: a **Spirit Gem** + an item
-  component crafts that Kinship's emblem, letting any champion count toward it
-  (`item_catalog.md` §4, `effect_systems_design.md` §7.3). Callings and
-  Affinities have no emblems.
-- **Affinity traits are derived, weather-independent counts.** A champion's
-  `affinity` (its `WeatherState`) is still the source of weather systems
-  (SPEC V.6, V.8), and affinity traits are computed from *how many fielded
-  champions share an affinity* (`@2/@4/@6`) rather than from live weather.
-  Affinity traits never read node weather or weather-state transitions.
-- **Enemies and traits.** Enemies are the same kind of piece as champions and
-  run on the same combat substrate, but traits are a **player-board mechanic** —
-  enemy squads do not light up breakpoints. Enemy pieces may still carry trait
-  *tags* as opaque labels so quest augments can match them (e.g. "kill 10
-  Beasts"); they grant no synergy bonus. See `enemy_roster.md`.
+- **Three trait families.** Each champion contributes exactly **one Affinity**
+  (weather element), exactly **one Kinship** (creature/spirit kind), and **one or
+  two Callings** (how it fights). Tier-10 legendaries add **Primordial**.
+- **Counting rule.** Breakpoints count **unique champion ids** (`effect_systems_
+  design.md` §7.1); counted **at loadout** (pre-combat) from the fielded board.
+  Mid-combat spawns/revives never raise a count.
+- **Breakpoints — variable shape.** Each trait lists **2–5** thresholds; highest
+  cleared applies. Lowest rung = cheap *splash* (often @1–@2); highest = *apex*
+  chase (`min(pool, cap)`). Bodies favour **single steps** so a churning player
+  always has a next payoff.
+- **Emblems — Kinship only, worth one carrier.** Spirit Gem + component → Kinship
+  emblem (`item_catalog.md` §4) = one substitute carrier, reaching a Kinship apex
+  one native short. **Callings/Affinities have no emblems.**
+- **Board cap is the ceiling.** Team size = Tempest rank (T.22), starts at **1**,
+  ~8 free / **10** Amber. `@8` ≈ whole free board; `@10` ≈ all-in Amber board.
+- **Determinism.** Every effect is RNG-free (cadence counters / geometry) per
+  SPEC V.2/V.14.
+- **Affinity traits are derived counts**, weather-independent.
+- **Enemies** carry trait *tags* as opaque labels (quest-augment matching) but
+  never light up breakpoints.
 
 ---
 
 ## 2. Kinships (origin traits)
 
-Six Kinships, one emblem each. A Kinship answers *"what rose up out of the
-land?"* — the six broad forms the awakened wild takes.
+Six Kinships, one emblem + one Tier-10 anchor each (§5). The **deep-commit axis**
+— emblem-able, apex at pool−1; rewards picking a creature-family and sticking.
 
-### Beast — *fur, blood, and stubborn endurance*
-Land mammals: the backbone of the uprising. Beast rewards the long fight.
-- **@2** — Beasts gain bonus HP and slowly regenerate while alive.
-- **@4** — Beasts also build stacking Strength every few hundred ticks they
-  stay alive (a slow-burn ramp; rewards surviving the opening rounds).
-- **@6** — the ramp doubles and Beasts heal for a share of the damage they deal.
+### Beast — *fur, blood, stubborn endurance* · pool 14 · **@2 / 3 / 4 / 6 / 8**
+The backbone vertical; rewards the long fight (front-load's opposite).
+- **@2** — HP + slow regen while alive.
+- **@3** — small Strength.
+- **@4** — Beasts build stacking Strength every few hundred ticks alive (slow-burn
+  ramp; rewards surviving the opening).
+- **@6** — the ramp doubles and Beasts heal for a share of damage dealt.
+- **@8** *(apex — full board, emblem→7)* — lifesteal+ramp becomes a team aura; a
+  Beast below 25% HP **enrages** once (burst of AS + Strength).
 
-### Skyborn — *wings, height, and the first move*
-Birds and winged creatures. Skyborn rewards tempo and reach.
-- **@2** — Skyborn gain Attack Speed and ignore piece collision while moving
-  (they fly over the board; movement still costs the same energy).
-- **@4** — Skyborn also gain Attack Range and act first in same-tick ties.
-- **@6** — the first round of combat, Skyborn attacks cannot be answered: they
-  gain a large burst of Attack Speed for the opening 600 ticks.
+### Spirit — *breath, mana, the half-real* · pool 11 · **@2 / 3 / 5 / 8**
+The caster vertical.
+- **@2** — start with partial mana + Mana Regen.
+- **@3** — abilities cost a little less.
+- **@5** — untargetable for the opening ~150 ticks; every few casts a Spirit's
+  next ability echoes (free, reduced potency).
+- **@8** *(apex)* — the echo fires every cast; Spirit abilities pierce
+  untargetable/blind gates; team gains an ability-haste pool.
 
-### Scaled — *cold blood, hard plates, weatherproof*
-Reptiles. Scaled rewards a defensive, weather-agnostic core.
-- **@2** — Scaled gain Armor and Resistance.
-- **@4** — Scaled are **immune to the Weather Favor debuff** — being the
-  weather's prey no longer lowers their stats (they still take Affinity Clash hit
-  multipliers).
-- **@6** — Scaled additionally treat *every* node weather as a self-buff,
-  gaining the strong-tier Weather Favor stat pack regardless of affinity.
+### Skyborn — *wings, height, the kite* · pool 9 · **@1 / 2 / 3 / 5 / 8**
+**Kiters** — the only pieces that out-maneuver melee (§7 logic).
+- **@1** — Move Speed (a single bird splash).
+- **@2** — **Kiting unlocks**: maintain attack-range distance from melee threats
+  (smart retreat), and **melee Skyborn gain +1 Attack Range** so they can kite. +
+  small Attack Speed.
+- **@3** — bonus damage to enemies that currently can't reach them (kite reward).
+- **@5** — +1 Attack Range (all Skyborn); melee chasers targeting a Skyborn are
+  slowed.
+- **@8** *(apex — emblem→7)* — Skyborn attack without losing tempo while
+  repositioning (true hit-and-run); team gains Move Speed.
 
-### Tidekin — *water, sustain, and the slow tide*
-Aquatic creatures and amphibians. Tidekin rewards a healing-anchored team.
-- **@2** — Tidekin heal a small amount every few hundred ticks.
-- **@3** — Tidekin healing and all healing they receive is amplified.
-- **@5** — once per combat, when a Tidekin would drop to 0 HP it instead surges
-  back to a fraction of max HP (a single "undertow" save).
+### Scaled — *cold blood, hard plates, weatherproof* · pool 9 · **@2 / 3 / 5 / 8**
+The defensive, weather-agnostic core.
+- **@2** — Armor + Resistance.
+- **@3** — more Armor + Resistance.
+- **@5** — immune to the Weather Favor debuff (still take Affinity Clash hits).
+- **@8** *(apex — emblem→7)* — Scaled treat *every* node weather as a self-buff
+  (strong-tier Weather Favor pack); shrug off the first hard CC each combat.
 
-### Swarm — *numbers, and what's left behind*
-Insects and small clustered creatures. Swarm rewards going wide and dying ugly.
-- **@3** — when a Swarm champion dies it leaves a hazard or a chitin-spawn on
-  its tile (an on-death effect; the substrate's `on_death` hook).
-- **@5** — Swarm champions gain stats for every *other* Swarm champion on the
-  board, and the on-death spawn grows stronger.
-- **@7** — the on-death spawns can themselves spawn once; a fielded Swarm board
-  never really thins out.
+### Tidekin — *water, sustain, the slow tide* · pool 9 · **@2 / 3 / 5 / 8**
+The heal anchor — **tidal regeneration, not death-cheating** (reworked off revive
+for variety, §4.1).
+- **@2** — Tidekin emit a small periodic heal to themselves.
+- **@3** — the heal reaches the lowest-HP ally too.
+- **@5** — Tidekin healing and healing they receive is amplified; the periodic
+  heal becomes a rolling **team heal-over-time** (the rising tide).
+- **@8** *(apex — emblem→7)* — the tide swells: a large scaling team HoT all
+  combat; healing also grants a small overheal shield.
 
-### Spirit — *breath, mana, and the half-real*
-Elemental and ethereal nature spirits — the non-corporeal half of the uprising.
-Spirit rewards an ability-driven team.
-- **@2** — Spirits start combat with partial mana and gain Mana Regen.
-- **@4** — Spirits are **untargetable for the opening ~150 ticks** of combat
-  (they fade in) and their abilities cost less.
-- **@6** — every few casts, a Spirit's next ability is empowered (a free
-  echo-cast at reduced potency).
+### Swarm — *numbers, and what's left behind* · pool 8 · **@3 / 4 / 5 / 6 / 8**
+Go-wide — high entry, single-step body (every body matters), apex demands the
+whole board.
+- **@3** — a dying Swarm leaves a chitin-spawn (weak body; not counted).
+- **@4** — Swarm gain small stats per *other* fielded Swarm.
+- **@5** — that per-Swarm bonus grows; spawns are stronger.
+- **@6** — spawns inherit a fraction of their parent's stats.
+- **@8** *(apex — full board, emblem→7)* — spawns can spawn once, and each Swarm
+  death briefly buffs the rest — the board never thins.
 
 ---
 
 ## 3. Affinities (element traits)
 
-Six affinity traits, one per weather state. These are **count-based** and
-always-on once a breakpoint is met; they never check live weather. Each mirrors
-that weather state's **Weather Favor** stat identity so mono-affinity comps can "double down"
-when the node weather also matches. **Shrouded** intentionally includes a small
-ethereal rider in addition to stat scaling.
+Six, one per weather, **10 carriers each**, no emblem, weather-independent counts.
+Shape **@2 / 4 / 6 / 8 / 10** — even-step ladder (it's the "background" axis every
+champion contributes to) with a **mono-affinity `@10` apex** (entire Amber board
+one weather: the prismatic flex).
 
-For naming consistency across docs:
-- **Weather Favor** = node-weather affinity buff/debuff layer.
-- **Affinity Clash** = affinity-vs-affinity damage multiplier layer.
+Naming: **Weather Favor** = node-weather buff/debuff; **Affinity Clash** =
+affinity-vs-affinity multiplier. Ids: `trait.affinity.<name>@<2|4|6|8|10>`,
+`bundle.affinity.<name>.<minor|moderate|major|greater|mono>`.
 
-For content/debug consistency, each affinity breakpoint should emit a named
-`EffectBundle` using a stable id pattern:
-- `trait.affinity.<name>@<2|4|6>` for trait-breakpoint ids
-- `bundle.affinity.<name>.<minor|moderate|major>` for the stat/effect bundle id
-
-| Affinity trait | Source affinity | Breakpoint shape (concept) |
-|---|---|---|
-| **Sunlit** | Clear | @2 minor flat all-around stats · @4 moderate flat all-around stats · @6 major flat all-around stat pack. |
-| **Overcast** | Cloudy | @2 minor HP + Resistance · @4 moderate HP + Resistance · @6 major HP + Resistance stat pack. |
-| **Shrouded** | Mist | @2 minor Move Speed + Threat · @4 moderate Move Speed + Threat plus a brief untargetable opener · @6 major Move Speed + Threat stat pack plus a longer untargetable opener. |
-| **Stormfed** | Rain | @2 minor Attack Speed + Mana Regen · @4 moderate Attack Speed + Mana Regen · @6 major Attack Speed + Mana Regen stat pack. |
-| **Frostbound** | Snow | @2 minor Armor + Resistance · @4 moderate Armor + Resistance · @6 major Armor + Resistance stat pack. |
-| **Galvanized** | Thunder | @2 minor Strength + Attack Speed · @4 moderate Strength + Attack Speed · @6 major Strength + Attack Speed stat pack. |
+| Affinity | Source | @2–@8 (scaling pack) | @10 mono apex |
+|---|---|---|---|
+| **Sunlit** | Clear | all-around stats | + team on-kill stat snowball |
+| **Overcast** | Cloudy | HP + Resistance | + team takes reduced burst damage |
+| **Shrouded** | Mist | Move Speed + Threat (+brief untargetable opener from @6) | + longer team untargetable opener |
+| **Stormfed** | Rain | Attack Speed + Mana Regen | + team ability-haste |
+| **Frostbound** | Snow | Armor + Resistance | + attackers that hit the team are slowed |
+| **Galvanized** | Thunder | Strength + Attack Speed | + crits chain a small arc to a neighbour |
 
 ---
 
 ## 4. Callings (class traits)
 
-Twelve Callings. A Calling answers *"what does it do in the fight?"* They cut
-across Kinships and across the archetype taxonomy in `champion_roster.md` —
-deliberately, so a synergy board never collapses into one archetype.
+Twelve. The **flex / playstyle axis** — **no emblem**, apexes at native pool. Rung
+counts/levels vary most here; @1 entries on supports/casters.
 
-| Calling | Fantasy | Breakpoint shape (concept) |
-|---|---|---|
-| **Hunter** | Ranged carries — talon, quill, and patient aim. | @2 bonus auto-attack damage · @4 every few autos fires an empowered shot · @6 Hunters gain Attack Range and their empowered shots pierce. |
-| **Guardian** | Frontline that shields the line behind it. | @2 Guardians shield themselves at combat start · @4 the shield extends to adjacent allies and refreshes each round · @6 while a Guardian's shield holds, adjacent allies take reduced damage. |
-| **Mystic** | Mages — ability damage and arcane scaling. | @2 bonus Intelligence · @4 more Intelligence and **abilities may critically strike** (sets the `ability_can_crit` flag) · @6 Mystic casts also splash reduced damage to a neighbour. |
-| **Warden** | Shield/buff supports who enable a team. | @2 a Warden's cast also grants a small shield to the lowest-HP ally · @4 Warden buffs and shields last longer · @6 at combat start the whole team gains a shield. |
-| **Stalker** | Assassins — reach the backline, end one piece. | @2 Stalkers begin combat repositioned next to the enemy backline · @4 bonus damage to targets above a high HP threshold and mana refunded on takedown · @6 Stalkers gain a brief untargetable window after a takedown. |
-| **Bruiser** | STR frontline that trades blows and lives. | @2 bonus HP · @4 bonus HP and Strength · @6 Bruisers heal for a share of the damage their attacks deal. |
-| **Skirmisher** | Mobile melee — strike, reposition, strike. | @2 Skirmishers gain Attack Speed as they keep attacking one target · @4 they gain Move Speed and dodge a share of incoming autos · @6 the Attack-Speed ramp no longer decays and applies to the whole team's melee. |
-| **Channeler** | Cast-spam engines — mana in, spells out. | @2 bonus Mana Regen · @4 every few casts the next ability is free · @6 a Channeler's first cast each combat triggers twice. |
-| **Mender** | Healers — keep the board standing. | @2 healing done is amplified · @4 overhealing converts to a shield · @6 the first time each ally would die, a Mender's presence revives it once at low HP. |
-| **Trickster** | Debuff and disruption — bend the enemy's tempo. | @2 Trickster casts apply a lingering debuff (slow / wither) · @4 Tricksters raise their own Threat and taunt their target briefly on cast · @6 enemies near a Trickster gain mana more slowly. |
-| **Packmate** | Wide-board synergy — the many over the few. | @2 small team-wide stats · @4 the bonus scales with the *number of champions* you field · @6 a full board grants every champion a large flat bonus. |
-| **Primordial** | The six Tier-10 legendaries — set-defining anchors. | @1 the Primordial's signature mechanic is active · @2 the team gains a large stat pack and Primordials gain a second wind once per combat · @3 (all-three, aspirational) the team's highest other trait counts as one tier higher. |
+| Calling | Pool | Breakpoints | Fantasy & concepts (apex = top rung) |
+|---|---|---|---|
+| **Hunter** | 8 | **@2 / 4 / 6 / 8** | Ranged carries; spread across tiers. @2 bonus auto dmg · @4 empowered shot every few autos · @6 +Range & shots pierce · **@8** team auto-damage aura + empowered shots cleave. |
+| **Mystic** | 8 | **@2 / 3 / 5 / 8** | Mages. @2 +INT · @3 more INT · @5 `ability_can_crit` + casts splash to a neighbour · **@8** casts splash twice + team ability power. |
+| **Guardian** | 9 | **@2 / 3 / 4 / 6 / 8** | Frontline shields. @2 self-shield at start · @3/@4 bigger · @6 shield adjacent allies + refresh each round · **@8** shielded Guardians' neighbours take reduced damage (team bastion). |
+| **Bruiser** | 8 | **@2 / 4 / 6 / 8** | STR frontline. @2 +HP · @4 +HP & +STR · @6 lifesteal on attacks · **@8** team-wide lifesteal + HP. |
+| **Skirmisher** | 8 | **@2 / 3 / 4 / 5 / 8** | Mobile melee ("every hit"). @2 stacking AS on one target · @3/@4/@5 ramp grows + dodge a share of autos + Move Speed · **@8** the AS ramp never decays + extends to the team's melee. |
+| **Stalker** | 7 | **@2 / 3 / 5 / 7** | Assassins. @2 **backline target-priority + Move Speed** (no teleport) · @3 more · @5 bonus dmg vs high-HP targets + mana on takedown · **@7** brief untargetable after a takedown. |
+| **Channeler** | 7 | **@1 / 2 / 4 / 7** | Cast-spam. @1 +Mana Regen splash · @2 more · @4 every few casts the next ability is free · **@7** first cast each combat triggers twice + team ability-haste. |
+| **Warden** | 6 | **@1 / 2 / 4 / 6** | Shield/buff supports. @1 cast shields the lowest-HP ally (splash) · @2/@4 bigger + buffs last longer · **@6** (own all 6) whole-team opening shield. |
+| **Trickster** | 6 | **@2 / 3 / 4 / 6** | Debuff/disruption. @2 casts apply slow/wither · @3/@4 +Threat & taunt target on cast · **@6** (own all 6) enemies near a Trickster gain mana slower. |
+| **Mender** | 6 | **@1 / 2 / 4 / 6** | Healers — owns the one true **revive** (§4.1). @1 healing amplified (splash) · @2 more · @4 overheal → shield · **@6** (own all 6) the first ally death each combat is **revived** once at low HP. |
+| **Packmate** | 8 | **@2 / 3 / 4 / 6 / full-board** | Wide-board; **secondary Calling on cheap T1–3 fillers**. @2/@3/@4 team-wide stats scaling with *number* fielded · @6 large flat pack · **@full-board** *(dynamic apex — count == current Tempest cap)* every champion gets a large flat bonus. The anti-churn payoff. |
+| **Primordial** | 6 | **@1 / 2 / 3** | The six Tier-10 legendaries (**augment-gated**, §5). @1 signature mechanic on · @2 big team pack + **second wind** (threshold decaying-shield, §4.1) · @3 *(aspirational)* the team's highest *other* trait counts one tier higher. |
+
+### 4.1 Low-HP / sustain mechanics — diversified (one revive only)
+Different traits do different things at the brink, so stacking is clever synergy
+rather than redundant revive-walls:
+- **Revive (death-save)** — **Mender @6** only. On an ally's first death each
+  combat, restore it at low HP. The dramatic one.
+- **Second wind (threshold decaying-shield)** — **Primordial @2**. On dropping
+  below ~60% HP, gain a ~40%-max-HP shield that decays over ~12 s, once per
+  combat. *Reusable primitive*; proactive, not a death-save — burst can still kill
+  through it.
+- **Tidal heal-over-time** — **Tidekin** (whole ladder). Rolling team regen; keeps
+  the board topped up, never cheats death.
+- **Enrage** — **Beast @8**. A low-HP Beast bursts AS+Strength once (offense, not a
+  save).
+- **Barriers** — **Guardian / Warden**. Proactive start/cast shields; unrelated to
+  death triggers.
 
 ---
 
 ## 5. Trait-to-roster map (intended carriers)
 
-Approximate carrier counts so breakpoints are reachable. Final assignment lives
-in `champion_roster.md`; this is the budget it is balanced against.
+Carrier counts **place** each apex (§7). Kinship sums to 60 (one per champion);
+Callings sum ~87 (≈27 champions carry a 2nd Calling — Packmate especially, as a
+secondary tag).
 
-| Trait | Family | Target carriers | Notes |
+### Kinships (1 per champion · sums 60)
+| Kinship | Pool | Tier-10 anchor | Notes |
 |---|---|---|---|
-| Sunlit | Affinity | 10 | All Clear-affinity champions. |
-| Overcast | Affinity | 10 | All Cloudy-affinity champions. |
-| Shrouded | Affinity | 10 | All Mist-affinity champions. |
-| Stormfed | Affinity | 10 | All Rain-affinity champions. |
-| Frostbound | Affinity | 10 | All Snow-affinity champions. |
-| Galvanized | Affinity | 10 | All Thunder-affinity champions. |
-| Beast | Kinship | ~15 | The default land animal; spread across all weathers. |
-| Spirit | Kinship | ~13 | Mist-heavy; every Tier-10 is a Spirit. |
-| Skyborn | Kinship | ~9 | Birds; tempo-leaning weathers. |
-| Tidekin | Kinship | ~8 | Rain-heavy; the heal anchor. |
-| Scaled | Kinship | ~8 | Reptiles; the defensive core. |
-| Swarm | Kinship | ~7 | Insects; cheap, wide, expendable. |
-| Hunter | Calling | ~9 | All Marksman subtypes. |
-| Mystic | Calling | ~9 | All Mage subtypes. |
-| Guardian | Calling | ~9 | All Tank subtypes. |
-| Bruiser | Calling | ~8 | STR frontline + Tank/DMG hybrids. |
-| Skirmisher | Calling | ~8 | Warrior subtypes. |
-| Stalker | Calling | ~7 | Assassin subtypes. |
-| Warden | Calling | ~7 | Shield/Buff supports. |
-| Channeler | Calling | ~7 | Cast-cycle hybrids + casters. |
-| Trickster | Calling | ~6 | Debuff supports. |
-| Mender | Calling | ~6 | Heal supports. |
-| Packmate | Calling | ~8 | Low-tier fillers (T1–3). |
-| Primordial | Calling | 6 | Exactly one per weather (the Tier-10s). |
+| Beast | 14 | **Mournhollow** (Mist) | Backbone; spread across all weathers. Trimmed from v1's 18. |
+| Spirit | 11 | **Aurion** (Clear) | Casters; no longer monopolises T10. |
+| Skyborn | 9 | **Aerion** (Thunder) | **Kiters — lean ranged** (kiting needs reach; melee Skyborn rely on the @2 +1 range). |
+| Scaled | 9 | **Umbra** (Cloudy) | Reptile/earthen defensive core. +2 from v1. |
+| Tidekin | 9 | **Nerei** (Rain) | Heal anchor. +3 from v1. |
+| Swarm | 8 | **Borealis** (Snow) | Insects + clustered light-motes. +3 from v1; ≥3 must be T1–3 for the @3 entry. |
+
+### Callings (1–2 per champion · sums ~87)
+| Calling | Pool | Notes |
+|---|---|---|
+| Guardian | 9 | Tank subtypes. |
+| Hunter | 8 | Marksmen — **spread T2–T9** (v1 was all T8+). Pairs with Skyborn (ranged birds). |
+| Mystic | 8 | Mage subtypes. |
+| Bruiser | 8 | STR frontline + hybrids. |
+| Skirmisher | 8 | Warrior subtypes. |
+| Packmate | 8 | **Cheap T1–3 fillers, secondary Calling.** Spread their *primary* callings. |
+| Stalker | 7 | Assassins. Trimmed from v1's 10. |
+| Channeler | 7 | Cast-cycle casters. |
+| Warden | 6 | Shield/buff supports. |
+| Trickster | 6 | Debuff supports. |
+| Mender | 6 | Heal supports. |
+| Primordial | 6 | The six Tier-10s (one per Kinship). |
+
+### Tier-10 acquisition (augment-gated)
+Primordials are **not** in the normal shop. Three **paired** RUN-augments
+(authored in T.31) each add **two** Primordials to the late-stage shop tier pool,
+paired by Kinship theme. Picking one opens its pair; fielding ≥1 lights
+Primordial @1 (@2/@3 stay aspirational — T10s cost 10 Amber + late shop-RNG).
+Suggested pairs (overridable):
+- **Verdant** — Mournhollow (Beast) + Nerei (Tidekin)
+- **Tempest** — Aerion (Skyborn) + Aurion (Spirit)
+- **Stoneveil** — Umbra (Scaled) + Borealis (Swarm)
 
 ---
 
-## 6. Open questions
+## 6. Playstyle archetypes (what the diversity buys)
 
-- **Breakpoint values vs. set size.** With a ~3-champion starting board and a
-  board cap that climbs to 10 (T22 Tempest), @6 traits only matter very late.
-  Confirm whether some traits should breakpoint at 2/3/4 instead of 2/4/6, and
-  whether Affinity should stay at modest 2/4/6 to avoid over-punishing team
-  rotation.
-- **Two-Kinship hybrids.** Tier-10s and a few Tier-7 hybrids could carry two
-  Kinships (TFT does this). Currently every champion has exactly one; revisit if
-  draft flexibility feels thin.
-- **Emblem scarcity.** Six Kinship emblems exist; whether all six are equally
-  craftable or some are challenge/boss drops is an economy call (`D.12`).
-- **Primordial @3.** Fielding three Tier-10s is extremely rare — confirm the @3
-  bonus is worth authoring, or cap Primordial at @2.
-- **Enemy tags.** The exact tag vocabulary enemies carry for quest-augment
-  matching is unspecified — see `augment_catalog.md` §6 (quest augments).
+- **Flex / horizontal.** Splash cheap @1/@2 rungs of 3–4 traits. Reactive, strong
+  early and when the draft is unkind. Every trait's lowest rung serves it.
+- **Loyalist / one deep vertical.** Climb a 4–5-rung trait all run — a **Kinship**
+  (emblem-able, apex at pool−1, Tier-10 anchor as capstone) or a marquee
+  **Calling** (Hunter/Mystic) or **Packmate** or a **mono-Affinity** (@10).
+- **Churn two-three.** Pair a **go-tall elite** cluster (Primordial via augment,
+  the top of Hunter/Mystic) with a **go-wide cheap** cluster (Packmate
+  `@full-board` / Swarm `@8`). The wide apexes are the **anti-churn counter** —
+  they pay you for *not* selling your cheap board.
+
+Intent: flex = safe default, loyalist = highest ceiling, churn-mix = expressive
+middle. No path dominates — every apex presses against the same board cap.
+
+---
+
+## 7. Reachability model + new primitives (why the counts are what they are)
+
+**Board cap over a run** (T.22, free +2 Tempest/fight; **cap == rank, starts 1**):
+~1–2 at stage 1, ~3 by stage 1–2, ~4–5 by stage 3, ~6 by stage 4–5, ~7–8 by the
+end; **9–10 only with Amber.** So @1–@2 must be start-able (carriers at **T1–T3**),
+@4 ≈ stage 3, @6 = late board-dominating commit, **@7–@8 ≈ whole free board**, @10
+≈ all-in Amber mono.
+
+**Apex rule.** `apex = min(pool, cap)`; each counted champ = one slot, dupes count
+once, emblem = one substitute carrier. Pool ≤ 8 (most Callings, Swarm) → apex ==
+pool (no-emblem Callings are the hardest); pool > 8 (Beast, Spirit, Affinities) →
+apex == cap; **Packmate** → apex == live board cap (dynamic).
+
+**Kiting smart-behaviour logic (Skyborn).** Each movement phase a kiter checks the
+**nearest enemy**:
+- Nearest is **melee (range-1)** within trigger distance → step to restore
+  attack-range distance while keeping *some* target attackable (retreat-kite).
+- **Guardrails:** **plant when cornered** (no retreat tile increases distance);
+  **plant when ≥2 enemies adjacent** (kiting futile); **only kite melee** (not
+  ranged you can't out-range); **never kite with no attackable target**. Board-edge
+  aware (lateral over corner). Deterministic geometry in the movement phase.
+- **Melee Skyborn get +1 Range at @2** so they can kite at all (a range-1 kiter
+  would retreat out of its own range).
+
+**New combat primitives this design needs:**
+- **Kite movement** (Skyborn) — above. The one Skyborn engine touch (T.28b).
+- **Backline target-priority** (Stalker @2) — targeting hook, no teleport (T.28b).
+- **Revive-once** (Mender) — death-path intercept, once/combat/piece (T.28b).
+- **Threshold decaying-shield / "second wind"** (Primordial) — on HP crossing
+  below X%, grant a Y%-max decaying shield over Z s, once/combat. Distinct from
+  barrier (granted) and revive (death) (T.28b).
+- **Tidal HoT** (Tidekin) — periodic team heal cadence (T.28b).
+- **Barrier/shield, untargetable, taunt, deterministic dodge, time-ramp/enrage**
+  (T.28b); **echo/double-cast, mana-denial aura, ability-splash, on-death spawns,
+  empowered-shot/pierce/cleave, weather-as-buff** (T.28c).
+- **Dynamic breakpoint** (Packmate `@full-board`) — a `TraitBreakpoint` whose
+  threshold reads the live board cap at loadout (T.28a infra; effect in T.28c).
+
+**Cheat-death stacking** is allowed and intentional (§4.1) — the mechanics are
+varied (one revive + shield + HoT + enrage), so stacking is earned synergy, not an
+unkillable wall. **The T.25 sim must still check for degeneracy** (no hard cap).
+
+Magnitudes are first-pass; the `@7+`/`@10`/`@full-board` payoffs especially need a
+T.25 sim sweep over leveled boards.
+
+---
+
+## 8. Open questions
+
+- **Apex/second-wind magnitudes.** All `@7+` payoffs + the second-wind shield
+  numbers are concepts; sim-tune after T.28b/c.
+- **Cheat-death degeneracy.** Stacking is intentional — revisit only if the sim
+  shows unkillable boards.
+- **Kiting fidelity.** Retreat-step pathing is the one engine cost; if too invasive
+  in T.28b, fall back to a Move-Speed + bonus-damage-to-unreachable proxy (keeps
+  the kite *reward* without the retreat motion).
+- **Two-Kinship hybrids.** Every champion has one Kinship; a few T7/T10 hybrids
+  could carry two — deferred until single-Kinship draft proves thin.
+- **Primordial @3.** Author as a flavour capstone, not balanced content.
+- **Swarm legendary flavour.** Borealis-as-Swarm ("frozen light") is a deliberate
+  stretch so every Kinship has a T10 anchor; overridable.
+- **Emblem economy.** Six Kinship emblems; equal craftability vs boss-drop is a
+  `D.12` / T.29 call.
+- **Enemy tags.** Quest-augment matching vocabulary still unspecified
+  (`augment_catalog.md` §6).
+
+---
+
+## 9. Build scope — T.28 splits into a / b / c
+
+The system is large (~100 breakpoints + several engine primitives), so it ships in
+three sequential substeps (each independently testable; b depends on a, c on b):
+
+- **T.28a — framework + declarative content.** `TraitScope`/`TraitBreakpoint`
+  types + `@register_trait`; `_resolve_traits` roll-up in `compile_loadout`
+  (unique-id count, scope, §10.1 order, **apex/dynamic-threshold infra**);
+  affinity-trait synthesis; **all stat-pack breakpoints** (Affinities + the stat
+  portions of Kinships/Callings); Calling-vocabulary reconciliation (drop 4 dead
+  tags, add Packmate + carriers); **roster rebalance** (kinship pools, T10 kinship
+  anchors, Hunter spread); `BattleResult.trait_activations`. No engine-primitive
+  changes.
+- **T.28b — combat primitives, batch 1 + their breakpoints.** barrier/shield,
+  untargetable, taunt, deterministic dodge, **revive-once**, **threshold
+  decaying-shield (second wind)**, **tidal HoT**, time-ramp/enrage, **kiting
+  movement**, backline target-priority.
+- **T.28c — combat primitives, batch 2 + the rest.** echo/double-cast, mana-denial
+  aura, ability-splash, Swarm on-death spawns, Hunter empowered-shot/pierce/cleave,
+  Scaled weather-as-buff, Primordial kit hooks, the **apex effects**, and Packmate
+  `@full-board`.

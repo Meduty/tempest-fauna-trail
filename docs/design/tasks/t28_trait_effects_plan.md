@@ -1,292 +1,293 @@
-# T28 Plan — Synergy Trait Effects
+# T.28 Plan — Synergy Trait Effects (a / b / c)
 
-> **Status:** plan — ready for review. (T.28 is already a §T row at ❌ Not started; landing this doc flips it to 📋 Plan via `/spec`.)
-> **Depends:** T.5 (roster + trait tags — done), T.20 (effect substrate / registries — done), T.26 (loadout/combat unification — done). Independent of T.22 — buildable now, in parallel.
-> **Resolves:** SPEC §D.8 (trait breakpoints + bonuses) and the trait half of the content layer.
-> **Design source of truth:** [`trait_catalog.md`](../content/trait_catalog.md) (the 24 traits + breakpoint *concepts*), [`champion_roster.md`](../content/champion_roster.md) (authoritative per-champion Kinship + Calling assignment), [`enemy_roster.md`](../content/enemy_roster.md) (enemy tags — no synergy), and [`effect_systems_design.md` §7](../systems/effect_systems_design.md) (substrate — `TraitScope`, `TraitBreakpoint`, `_resolve_traits`, emblem `granted_traits` ordering) + §10.1 (application order).
-> **What this plan adds beyond those:** the **concrete breakpoint stat values** (catalog is concepts-only), the **new combat primitives** several breakpoints require, a **Calling-vocabulary reconciliation** (§6.1 — code drifted from the docs), and a **fidelity policy** for the deepest mechanics (§3.4 — MVP-simplifies the most engine-invasive breakpoints).
+> **Status:** plan — ready for review. (§T.28a/b exist at 📋 Plan; this rewrite
+> supersedes the v1 plan and **re-splits into a / b / c** per the v2.1 catalog.)
+> **Depends:** T.5 (roster + tags — done), T.20 (effect/registry substrate — done),
+> T.26 (loadout/combat unification — done). T.29 (emblems) and T.31 (Primordial
+> unlock augments) **consume** this, not the reverse.
+> **Resolves:** SPEC §D.8 (trait breakpoints) + the trait half of the content layer.
+> **Design source of truth:** [`trait_catalog.md` v2.1](../content/trait_catalog.md)
+> (the 24 traits, **breakpoint counts**, identities, reachability model, primitive
+> list, and the a/b/c scope in its §9), `champion_roster.md` (per-champion
+> assignment), `effect_systems_design.md` §7 (substrate) + §10.1 (application order).
+> **What this plan adds beyond the catalog:** concrete stat values, the code touch
+> points (verified against current code), the engine-primitive designs, and the
+> SPEC deltas.
+
+> **Verified against current code (2026-06-05, post T.32/T.33):**
+> - `register_trait` + empty `TRAIT_REGISTRY` exist (`registries.py:30,77`);
+>   factory signature is `() -> list[TraitBreakpoint]`.
+> - `compile_loadout` returns **`(pieces, bus)`** (`loadout.py:263`); step 2 =
+>   weather (`_apply_weather_to_piece`), then jumps to step 7 = passives — the
+>   trait step slots into the reserved 3–6 gap. T.33a's `load_order` block (~:255)
+>   is additive and unaffected.
+> - `apply_bundle` (`loadout.py:31`) already applies `granted_traits`, `modifiers`,
+>   `statuses`, `granted_abilities`, `hooks` — traits are just another bundle
+>   source. `granted_traits` are appended to `target.traits` → emblems (T.29) count
+>   if applied **before** `_resolve_traits`.
+> - `Piece.base_stats` keys (author modifiers against these): `hp` (**not**
+>   `max_hp`), `strength`, `intelligence`, `attack_speed`, `milli_AS`,
+>   `move_speed`, `mana_regen`, `threat`, `armor`, `resistance`, `attack_range`,
+>   `crit_chance`, `penetration`, `penetration_pct`. `Piece` also has `load_order`,
+>   `crit_counter`, `ability_can_crit`, `is_enemy`, `level`, **`barriers`**.
+> - **Barrier system already exists (V.28):** `Piece.barriers` + `ctx.grant_barrier
+>   (target, amount, duration_ticks)`, consumed before HP, expiry-pruned. → shields,
+>   Guardian/Warden barriers, and the second-wind **decaying shield** reuse it; no
+>   new absorb machinery needed.
+> - `CALLING_TAGS` (`content.py:198`) still carries the 4 dead tags
+>   (`Bulwark/Drifter/Harbinger/Emissary`) and omits `Packmate` — drift confirmed.
+> - `StatusGate` has 4 members (no `UNTARGETABLE`); `StatusInstance` =
+>   `status_id/remaining_ticks/stacks/source_id/potency`.
+> - All six Tier-10s are currently **Spirit** (`content.py:511-561`) and **not
+>   acquirable** by the player (shop/supply/challenge all exclude T10) — Primordial
+>   is dormant until T.31's unlock augments.
 
 ---
 
-## 0. Two-substep split (T.28a → T.28b)
+## 0. Substep split (T.28a → T.28b → T.28c)
 
-Per the §10 estimate flag, T.28 ships as two sequential substeps. The seam is **whether new combat-engine primitives are touched**: T.28a changes only `loadout.py` / `models.py` / `content.py` (low risk, no loop/status/targeting edits); T.28b adds the engine primitives and the hook-based breakpoints that use them. b depends on a.
+Seam = **what it touches.** a = declarative only (`loadout`/`models`/`content`/
+`traits`), no engine edits. b = combat-primitives batch 1. c = combat-primitives
+batch 2 + apex effects. Each ships and tests independently; b depends on a, c on b.
 
-### T.28a — Trait framework + declarative content (Est: M)
-The whole system wired end-to-end with every breakpoint that is a **pure stat `Modifier` bundle**.
-- §3.1 types (`TraitScope`/`TraitBreakpoint`), `@register_trait`, `game/traits/` package.
-- §3.2 `_resolve_traits` + bundle application in `compile_loadout` (unique-id count, scope, §10.1 order).
-- §3.3 affinity-trait synthesis.
-- §3.5 `BattleResult.trait_activations` record (compile-time surfacing).
-- §6.1 Calling-vocabulary reconciliation (drop 4 dead tags, add Packmate + carriers) + §6.2 roster audit.
-- §10 invariants V.20 / V.21 + V-guard test.
-- **Content:** all Affinity breakpoints (§5.1) + the stat-pack portions of Kinships/Callings (Mystic @2 INT, Bruiser @2/@4 HP/STR, Scaled @2 armor/res, Galvanized, Packmate stat packs, etc.).
-- **Files:** `game/traits/`, `game/loadout.py`, `game/models.py`, `game/content.py`. **No** `status.py` / `engine.py` / `context.py` / `targeting.py` changes.
-- **Done when:** counting/scope/determinism/vocab tests green; a stat-pack breakpoint measurably shifts a fixed-seed fight; no-trait regression intact.
+### T.28a — Framework + declarative content + roster rebalance (Est M–L)
+- §3.1 types (`TraitScope`/`TraitBreakpoint`) + `@register_trait`; `game/traits/`
+  package (`kinships/affinities/callings/_packs`), imported in `loadout.py`.
+- §3.2 `_resolve_traits` + bundle application in `compile_loadout` (unique-id
+  count, scope, §10.1 order), **player team only**.
+- §3.2a **apex + dynamic-threshold infra**: a `TraitBreakpoint.count` may be an int
+  *or* a `DynamicThreshold` (callable of the team/board cap) for Packmate
+  `@full-board`; resolved at loadout.
+- §3.3 affinity-trait synthesis (derived from `affinity`, weather-independent).
+- §3.5 `BattleResult.trait_activations` (surfaced from `compile_loadout`).
+- §6 **vocabulary + roster rebalance**: drop 4 dead Callings, add Packmate;
+  reassign the 6 Tier-10 kinships (one per kinship); spread Hunter T2–9; rebalance
+  kinship pools (Beast 18→14, etc.); assign Packmate to ~8 T1–3 fillers (secondary).
+- **Content:** every **stat-pack** breakpoint rung — all Affinity rungs + the stat
+  portions of Kinship/Calling ladders (the non-mechanic rungs).
+- **Files:** `game/traits/`, `game/loadout.py`, `game/models.py`, `game/content.py`.
+  **No** `status.py`/`engine.py`/`context.py`/`targeting.py` changes.
+- **Done when:** counting/scope/dynamic-threshold/affinity-synthesis/vocab/roster
+  tests green; a stat-pack breakpoint measurably shifts a fixed-seed fight;
+  no-trait regression intact; V-guard (every tag resolves; ≥1 Kinship + ≥1 Calling
+  per champion) green.
 
-### T.28b — Combat primitives + mechanic breakpoints (Est: M–L, depends T.28a)
-- §3.4 Tier-A primitives: `Piece.shield_hp` absorb, `StatusGate.UNTARGETABLE`, `taunt`, deterministic `dodge`, `revive`-once, time-ramp, echo/double-cast, mana-denial aura — all deterministic (no RNG).
-- §3.4 Tier-B proxies (Skyborn collision/tie, Stalker reposition).
-- **Content:** every hook-based breakpoint (Beast ramp/lifesteal, Skyborn opener, Spirit untargetable/echo, Tidekin/Mender revive, Swarm spawn, Guardian/Warden shields, Stalker, Skirmisher dodge/ramp, Channeler free/double-cast, Trickster taunt/aura, Hunter empowered shot, Primordial second-wind).
-- **Files:** `game/status.py`, `game/piece.py`, `game/combat/engine.py`, `game/combat/context.py`, `game/targeting.py`, `game/traits/` (hook factories).
-- **Done when:** each primitive has a unit test; a breakpoint using each fires deterministically; `workers=1`/fixed-seed byte-identical.
+### T.28b — Combat primitives batch 1 + their breakpoints (Est M)
+- Primitives: **untargetable** (`StatusGate.UNTARGETABLE` + target filters),
+  **taunt**, **deterministic dodge**, **revive-once** (Mender), **threshold
+  decaying-shield / second-wind** (Primordial; reuses `grant_barrier`),
+  **tidal HoT** (Tidekin; heal cadence), **time-ramp/enrage** (Beast/Skirmisher),
+  **kiting movement** (Skyborn, §3.4), **backline target-priority** (Stalker @2).
+  (Plain barriers already exist — Guardian/Warden reuse `grant_barrier`.)
+- **Content:** the breakpoints that use the above.
+- **Files:** `game/status.py`, `game/piece.py`, `game/combat/engine.py`,
+  `game/combat/context.py`, `game/targeting.py`, `game/traits/`.
+- **Done when:** each primitive has a unit test; a breakpoint using each fires
+  deterministically; `workers=1`/fixed-seed byte-identical; kiting guardrails
+  (plant-when-cornered/swarmed) tested.
 
-(Sections §1–§9 below are shared design context; each is tagged where a substep boundary matters.)
+### T.28c — Combat primitives batch 2 + apex effects (Est M)
+- Primitives: **echo/double-cast**, **mana-denial aura**, **ability-splash**,
+  **on-death spawns** (Swarm), **empowered-shot/pierce/cleave** (Hunter), **Scaled
+  weather-as-buff**, **Primordial kit hooks**, **Packmate `@full-board`** effect.
+- **Content:** every remaining (mechanic + apex) breakpoint.
+- **Files:** `game/combat/engine.py`, `game/combat/context.py`, `game/abilities/`
+  (hook idioms), `game/traits/`.
+- **Done when:** all 24 traits fully wired; apex effects fire; full sim regression;
+  a T.25 sweep flags no obvious degeneracy (cheat-death stack, caster stack).
 
 ---
 
 ## 1. Scope
 
-Implement the **synergy trait layer**: the draft-puzzle payoff where fielding enough tag-sharing champions unlocks breakpoint bonuses. Backend-only (no UI — fired later by Prep/Trail views). Three trait families, 24 traits total: **6 Kinships, 6 Affinities, 12 Callings**.
+**In scope (all substeps):** the synergy trait layer — 24 traits (6 Kinship, 6
+Affinity, 12 Calling), breakpoint factories with authored values, resolution in
+`compile_loadout`, the engine primitives the catalog lists, the activation record,
+and the vocab/roster reconciliation. Backend only (UI fires later).
 
-**In scope**
-- `src/game/traits/` — `TraitScope`, `TraitBreakpoint` types; `@register_trait` factories for all 24 traits; authored breakpoint values (§5).
-- `src/game/loadout.py` — trait roll-up step in `compile_loadout` (count unique champion ids → resolve highest cleared breakpoint → apply bundles), slotted per §10.1.
-- Affinity-trait synthesis — derive the affinity trait tag from each piece's `affinity` field (catalog §3 / §1).
-- `src/game/status.py` + loop/targeting — new primitives: `shield`, `untargetable`, `taunt`.
-- `BattleResult` trait-activation events (recorder).
-- Roster audit — confirm all 60 champions carry a complete Kinship + Calling(s) (+ Primordial on T10).
-- Tests: `tests/game/test_traits.py`, additions to `tests/game/test_loadout.py`.
-
-**Out of scope**
-- Emblem **items** (Spirit Gem + component → Kinship) — T.29. This task only guarantees the `granted_traits`-before-resolution ordering so emblems slot in cleanly later.
-- UI surfacing of active traits — T.10/T.15.
-- Trait-scope augments (Crest/Crown/Built Different) — T.31 consumes trait counts.
+**Out of scope:** emblem **items** (T.29 — a only guarantees the
+`granted_traits`-before-resolution order); **Primordial unlock augments** (T.31 —
+the 3 paired RUN-augments); UI surfacing of traits (T.10/T.15); trait-scope
+augments (T.31).
 
 ---
 
 ## 2. The gap today
-
 | Piece | Where | State |
 |---|---|---|
-| `@register_trait` + `TRAIT_REGISTRY` | [registries.py:30,77](../../../src/game/registries.py#L77) | 🔶 decorator + empty dict, never populated |
-| `TraitScope` / `TraitBreakpoint` types | — | ❌ sketched in §7, not coded |
-| Champion trait tags (Kinship + Calling) | [content.py](../../../src/game/content.py) | ✅ assigned (e.g. `["Beast", "Skirmisher"]`); needs completeness audit |
-| Trait roll-up in `compile_loadout` | [loadout.py:222](../../../src/game/loadout.py#L222) | ❌ jumps from weather (step 2) straight to passives (step 7) — no trait step |
-| `shield` / `untargetable` / `taunt` + deeper primitives | [status.py](../../../src/game/status.py), [piece.py](../../../src/game/piece.py) | ❌ none exist; `StatusGate` has only 4 members (`BLOCKS_ACTION/CAST/ATTACK/MOVEMENT`); `StatusInstance` has no value field (`status_id, remaining_ticks, stacks, source_id` only) |
-| Trait activation record on `BattleResult` | [recorder.py:44](../../../src/game/combat/recorder.py#L44), [models.py:512](../../../src/game/models.py#L512) | ❌ `BattleResult` has no trait field; recorder is built from `pieces` + bus hooks (see §3.5 wrinkle) |
-| Calling-tag vocabulary | [content.py:101-118](../../../src/game/content.py#L101-L118) | 🔴 **drifted** — `CALLING_TAGS` carries 4 dead tags + omits `Packmate` (see §6.1) |
-
-`apply_bundle` ([loadout.py:40](../../../src/game/loadout.py#L40)) already handles `granted_traits`, `modifiers`, `statuses`, `granted_abilities`, `hooks` — traits are just another bundle source, no new effect machinery. `ALL_TRAIT_TAGS` ([content.py:120](../../../src/game/content.py#L120)) already exists for the §10 V-guard (it excludes affinity-derived tags by design — good).
+| `register_trait` + `TRAIT_REGISTRY` | `registries.py:30,77` | 🔶 decorator + empty dict |
+| `TraitScope`/`TraitBreakpoint` + `DynamicThreshold` | — | ❌ |
+| Trait roll-up in `compile_loadout` | `loadout.py` (gap between step 2 and 7) | ❌ |
+| Affinity synthesis | — | ❌ |
+| `BattleResult.trait_activations` | `models.py`, `recorder.py` | ❌ |
+| Barrier/shield | `piece.py`/`context.py` (V.28) | ✅ reuse `grant_barrier` |
+| untargetable / taunt / dodge / revive / second-wind / tidal-HoT / kiting / backline-target | `status.py`/`engine.py`/`context.py`/`targeting.py` | ❌ (T.28b) |
+| echo / mana-aura / splash / spawns / empowered-shot / weather-as-buff / full-board | engine/abilities | ❌ (T.28c) |
+| Calling vocabulary | `content.py:198` | 🔴 drifted (4 dead, Packmate missing) |
+| Tier-10 kinship spread + Hunter spread + Packmate carriers | `content.py:511-561` + roster | 🔴 (all T10 Spirit; Hunter all T8+; Packmate 0) |
 
 ---
 
-## 3. Architecture
+## 3. Architecture (key points; full per-trait content in the catalog)
 
-### 3.1 Types (`src/game/traits/__init__.py` + per-family modules)
-
-Port [§7.1](../systems/effect_systems_design.md) verbatim:
-
+### 3.1 Types — `game/traits/__init__.py`
 ```python
 class TraitScope(Enum):
-    PER_TRAIT_PIECE = "per_trait_piece"   # bundle → only pieces carrying the trait
+    PER_TRAIT_PIECE = "per_trait_piece"   # bundle → carriers only
     TEAM_WIDE       = "team_wide"         # bundle → all team pieces
 
 @dataclass
 class TraitBreakpoint:
-    count: int                                       # min unique champions carrying the trait
+    count: int | DynamicThreshold          # int, or callable(team, board_cap)->int
     scope: TraitScope
-    bundle_factory: Callable[[Piece], EffectBundle]  # called per target piece
+    bundle_factory: Callable[[Piece], EffectBundle]
 ```
+`@register_trait("<id>")` → `() -> list[TraitBreakpoint]` (highest cleared wins).
+Author all modifiers against the **real** `base_stats` keys (§verified note; `hp`
+not `max_hp`; ability scaling = `intelligence`).
 
-`@register_trait("<id>")` returns `list[TraitBreakpoint]` (highest cleared wins). Package layout: `traits/kinships.py`, `traits/affinities.py`, `traits/callings.py`, plus `traits/_packs.py` for shared stat-pack `EffectBundle` factories. Import the package in `loadout.py` (like `import abilities`) so decorators register.
-
-> **Stat-key note:** the §7 example uses an illustrative `"ability_power"` stat that does **not** exist in the engine. Author all modifiers against the real `Piece.base_stats` keys: `hp, strength, intelligence, attack_speed, move_speed, mana_regen, threat, armor, resistance, attack_range, crit_chance, penetration, penetration_pct`. Ability scaling lives on `intelligence`.
-
-### 3.2 Resolution in `compile_loadout`
-
-Insert a trait step after pieces are built (and after weather, current step 2) and **before** passives (current step 7), matching §10.1 steps 3-4:
-
+### 3.2 Resolution in `compile_loadout` (player team only)
+Insert after weather (step 2), before passives (step 7), per §10.1:
 ```python
-# 3. Resolve trait breakpoints (player team only — enemies never light up, catalog §1)
-cleared = _resolve_traits([p for p in pieces if not p.is_enemy])
-# 4. Apply trait bundles
-for trait, bp in cleared.items():
-    targets = team_pieces if bp.scope == TEAM_WIDE else [p for p in team_pieces if trait in p.traits]
+team = [p for p in pieces if not p.is_enemy]
+cleared = _resolve_traits(team, board_cap)   # {trait_id: TraitBreakpoint}
+for trait_id, bp in cleared.items():
+    targets = team if bp.scope is TEAM_WIDE else [p for p in team if trait_id in p.traits]
     for piece in targets:
         apply_bundle(piece, bp.bundle_factory(piece), bus)
 ```
+- Count = **unique champion ids**; affinity tags injected synthetically in the
+  count (not stamped on `Champion.traits`, so the V-guard ignores synthetic tags).
+- Dynamic thresholds (Packmate `@full-board`) resolve `count(team, board_cap)`.
+- `granted_traits` (emblems, T.29) are applied **before** this step → counted.
+- Pure, RNG-free → replay-stable (new V).
+- **Return change:** `compile_loadout` must also surface `cleared` (data-only) for
+  the recorder — extend the return or attach to `bus`; keep additive/back-compat.
 
-- **Counting = unique champion ids** ([§7.2](../systems/effect_systems_design.md)); two copies of one champion count once.
-- **Emblem / `granted_traits` ordering (for T.29):** §10.1 says item `granted_traits` apply at step 2, *before* trait counting at step 3. `apply_bundle` already appends `granted_traits` to `target.traits`, so when T.29 lands, applying item bundles before `_resolve_traits` is sufficient — document this ordering as a hard contract so emblems count.
-- Determinism: pure function of the team's `(id, traits)` — no RNG, replay-stable. → new invariant (§10).
+### 3.3 Affinity synthesis
+At count time, add a derived tag per piece from `piece.affinity`
+(`Clear→Sunlit`, …). Never reads node weather (V.6/V.8 clean).
 
-### 3.3 Affinity-trait synthesis
+### 3.4 Engine primitives (designs)
+Determinism mandatory (cadence counters / geometry, never RNG — V.2/V.14):
+- **Kiting (Skyborn, T.28b)** — in the movement phase, a kiter targets the tile
+  restoring `attack_range` distance from the **nearest melee threat**. Guardrails:
+  plant when cornered (no improving tile), plant when ≥2 adjacent, only kite
+  range-1 threats, never kite without an attackable target, prefer lateral over
+  corner. Melee Skyborn get **+1 `attack_range` at @2** so kiting is coherent.
+- **Backline target-priority (Stalker @2, T.28b)** — targeting hook biasing the
+  enemy backline; no spawn mutation.
+- **Untargetable (T.28b)** — new `StatusGate.UNTARGETABLE`; filter in
+  `_select_target`/`_opponents` + `targeting.py`.
+- **Taunt (T.28b)** — status on the enemy, `source_id` = taunter; force-target in
+  `_select_target`.
+- **Dodge (T.28b)** — cadence counter; every Nth incoming basic deals 0.
+- **Revive-once (Mender, T.28b)** — death-path intercept; restore at a fraction of
+  `max_hp`; one flag per piece/combat.
+- **Second-wind / threshold decaying-shield (Primordial, T.28b)** — on HP crossing
+  below X%, `grant_barrier(self, 0.4*max_hp, ~1200 ticks)`; one flag/combat. Reuses
+  V.28 barriers (decay = the barrier's tick expiry).
+- **Tidal HoT (Tidekin, T.28b)** — per-cadence team `ctx.heal` tick.
+- **Time-ramp / enrage (Beast/Skirmisher, T.28b)** — `on_tick` stacking `mul`
+  modifier to a cap; enrage = one-shot low-HP burst.
+- **Echo/double-cast, mana-aura, splash, spawns, empowered-shot, weather-as-buff,
+  full-board (T.28c)** — hook idioms reusing `abilities/` patterns +
+  `ctx.deal_damage`/`heal`/`spawn`.
 
-Affinity traits (Sunlit … Galvanized) are **derived from `piece.affinity`**, not stored tags (catalog §1, §3; keeps V.6/V.8 clean — affinity stays one field). At resolution, inject a synthetic trait tag per piece: `affinity_trait(piece.affinity)` → `"Sunlit"` etc., counted alongside native tags. Never reads live node weather. Implementation: extend the counting loop to add the affinity-derived tag, or stamp it onto `piece.traits` at piece-build time (prefer the counting-loop approach so `Champion.traits` stays authored-only and the V-guard in §10 doesn't trip on synthetic tags).
-
-### 3.4 New combat primitives + fidelity policy
-
-Several breakpoints need mechanics that don't exist yet. **Determinism is mandatory** (V.2 / V.14 — combat is replay-identical, sims byte-identical): every "chance"-flavoured effect uses a **deterministic cadence counter** like the existing `crit_counter` ([piece.py:57](../../../src/game/piece.py#L57)), **never RNG**. "Dodge 15% of autos" = dodge every Nth incoming auto (N = round(1/0.15)); "every few autos/casts" = a per-piece counter. Same idiom as crit in [combat/engine.py:214](../../../src/game/combat/engine.py#L214).
-
-**Per your steer, MVP-simplify the most engine-invasive breakpoints** (flag for a later fidelity pass) and build the rest at full fidelity:
-
-**Tier A — build full (generic primitives, content-agnostic, like T.30 summons):**
-
-| Primitive | Needed by | Mechanism |
-|---|---|---|
-| **`shield`** — absorb pool, depletes before HP | Guardian, Warden, Mender, Bruiser-adjacent | **`Piece.shield_hp: float` field** (+ optional `shield_expires_tick`), NOT a `StatusInstance` (it has no value field). Absorb in `deal_damage` ([context.py:244](../../../src/game/combat/context.py#L244)) before subtracting HP; apply via an `on_combat_start`/`on_cast` hook in the factory. |
-| **`untargetable`** — excluded from target selection | Spirit @4, Shrouded @4/@6, Stalker @6 | new `StatusGate.UNTARGETABLE`; filter in `_opponents`/`_select_target` ([engine.py:87,91](../../../src/game/combat/engine.py#L87)) + [targeting.py](../../../src/game/targeting.py). Piece can still act. |
-| **`taunt`** — forces an enemy to target the taunter | Trickster @4 | `taunt` status on the *enemy*, `source_id` = taunter; in `_select_target`, if the acting piece has an active taunt, force-target its `source_id` (if alive + in range). |
-| **deterministic `dodge`** | Skirmisher @4 | cadence counter on `Piece`; in `deal_damage`/`_apply_hit`, every Nth incoming `BASIC_ATTACK` deals 0. |
-| **`revive`-once** | Tidekin @5, Mender @6 | guard flag in `augment_state`-style per-combat dict on the piece; intercept in the kill path ([context.py:262](../../../src/game/combat/context.py#L262)) — restore to a fraction of `max_hp`, fire once. Reuse for T.31 Sanctuary augment later. |
-| **time-ramp stats** | Beast @4/@6, Skirmisher @2 | `on_tick` hook adds a stacking `mul` `Modifier` every K ticks up to a cap. |
-| **echo / double-cast** | Spirit @6, Channeler @6 | `on_cast`/cast-counter hook that re-invokes the handler at reduced potency / for free. |
-| **mana-denial aura** | Trickster @6 | `on_tick` hook reducing nearby enemies' mana gain (radius check via `hex_distance`). |
-
-**Tier B — MVP-simplify now, full-fidelity later (flagged):**
-
-| Breakpoint | Designed | MVP proxy |
-|---|---|---|
-| Skyborn @2 "ignore piece collision while moving" | skip `occupied` cells in `_next_step_toward` ([engine.py:112](../../../src/game/combat/engine.py#L112)) | grant Move Speed instead (same "closes faster" intent); leave collision untouched |
-| Skyborn @4 "act first in same-tick ties" | inject into `_event_sort_key` ([engine.py:379](../../../src/game/combat/engine.py#L379)) — `speed_tiebreaker` isn't a stat | fold into the @4 Attack-Speed bonus (higher AS already sorts earlier) |
-| Stalker @2 "start repositioned to enemy backline" | mutate spawn position pre-loop (interacts with `assign_spawns` [engine.py:548](../../../src/game/combat/engine.py#L548)) | grant a large opening Move-Speed burst so Stalkers reach the backline fast |
-
-> `ability_can_crit` (Mystic @4) already exists as a `Piece` flag. `EffectBundle` has no "set bool" channel, so set it via a tiny `on_combat_start` hook in the breakpoint factory (`lambda ctx, ev: setattr(owner, "ability_can_crit", True)`).
-
-### 3.5 BattleResult activation record
-
-Record which traits were active at which breakpoint, for the run summary / debugging. Add `trait_activations: list[tuple[str, int, int]]` (trait id, count, breakpoint) to `BattleResult` ([models.py:512](../../../src/game/models.py#L512), + `to_dict`/`from_dict`).
-
-**Wrinkle:** trait activations are known at **compile time** (`_resolve_traits`), not via combat events — but the recorder ([recorder.py:44](../../../src/game/combat/recorder.py#L44)) is built from `pieces` and only listens to bus hooks. So the cleared-traits dict must be **surfaced out of `compile_loadout`** (cleanest: change its return to also yield `cleared`, or stash it on the returned `bus`/a small loadout-result object) and threaded into `recorder.build_result`. This touches the `compile_loadout` → `resolve_combat` → recorder wiring ([combat/resolve.py](../../../src/game/combat/resolve.py)) — keep the change additive and back-compat. Data-only; no combat behaviour.
-
----
-
-## 4. Threshold decision (catalog §6 open q)
-
-The catalog flags that with a 3-champion start climbing to a 10-cap (T.22 Tempest), `@6` breakpoints only matter very late. **Proposed:**
-
-- **Kinships:** keep `@2 / @4 / @6` (reachable mid-late; emblems help).
-- **Affinities:** keep `@2 / @4 / @6` (10 carriers each — mono-affinity is a deliberate late commitment).
-- **Callings:** keep authored thresholds as in catalog §4 (most `@2/@4/@6`; Tidekin/Swarm/Primordial use their listed odd thresholds `@3/@5/@7`, `@1/@2/@3`).
-- Leave the "compress some to 2/3/4" idea as a **post-sim tuning lever** — validate with a `sim_run` / matchup sweep over leveled boards once values exist, then retune. Don't pre-optimize.
+### 3.5 Activation record
+`BattleResult.trait_activations: list[tuple[str, int, int]]` (trait id, count,
+breakpoint), surfaced from `compile_loadout` → `recorder.build_result`; + `to_dict`
+/`from_dict` (save.py round-trips it for free). Optionally record the *next*
+breakpoint + gap for future UI legibility.
 
 ---
 
-## 5. Authored breakpoint values (first pass — tunable)
-
-Values are **first-pass tuning**, recorded here as the source until a sim pass retunes them. **Stat bonuses are percentages (`mul` modifiers)** so they scale across T1–T10 — flat adds would be trivial at high tier and oppressive at low. Convention: minor ≈ **+8%**, moderate ≈ **+15%**, major ≈ **+24%** per named stat. `source_id` pattern `trait:<id>@<n>`.
-
-### 5.1 Affinities (stat packs, `PER_TRAIT_PIECE`)
-
-| Trait | @2 minor | @4 moderate | @6 major | Extra |
-|---|---|---|---|---|
-| Sunlit | +8% all combat stats | +15% all | +24% all | — |
-| Overcast | +8% hp,resistance | +15% | +24% | — |
-| Shrouded | +8% move_speed,threat | +15% + `untargetable` 80t opener | +24% + `untargetable` 150t opener | ethereal rider |
-| Stormfed | +8% attack_speed,mana_regen | +15% | +24% | — |
-| Frostbound | +8% armor,resistance | +15% | +24% | — |
-| Galvanized | +8% strength,attack_speed | +15% | +24% | — |
-
-"all combat stats" = strength, intelligence, attack_speed, move_speed, armor, resistance, hp (not crit/pen).
-
-### 5.2 Kinships (`PER_TRAIT_PIECE` unless noted)
-
-| Trait | @2 | @4 | @6 |
-|---|---|---|---|
-| **Beast** | +12% hp + regen 0.5%/100t | + slow-burn: +2% strength/200t alive (cap +20%) | ramp doubles (+4%/200t) + 15% lifesteal on damage dealt |
-| **Skyborn** | +10% attack_speed + ignore-collision (movement flag) | + +1 attack_range + win same-tick ties (speed_tiebreaker boost) | + opening 600t: +40% attack_speed |
-| **Scaled** | +12% armor,resistance | + immune to Weather Favor debuff (skip negative `combat_modifier`) | + treat every node weather as strong-tier self-buff |
-| **Tidekin** | heal 0.4% max_hp/200t | (@3) +25% healing done & received | (@5, `TEAM_WIDE`) once/combat undertow: revive at 30% max_hp |
-| **Swarm** | (@3) on-death chitin spawn (summon primitive, T.30) | (@5) +4% all stats per other living Swarm + bigger spawn | (@7) spawns can themselves spawn once |
-| **Spirit** | start +30% mana + +20% mana_regen | + `untargetable` 150t opener + −20% ability cost | + every 3 casts: free echo-cast at 50% potency |
-
-### 5.3 Callings
-
-| Trait | @2 | @4 | @6 |
-|---|---|---|---|
-| **Hunter** | +12% auto damage (on_attack_landed bonus) | + every 4 autos an empowered shot (1.6×) | + +1 attack_range, empowered shots pierce |
-| **Guardian** | `shield` = 15% max_hp at start | + shield → adjacent allies, refresh/round (600t) | + while shielded, adjacent allies −12% damage taken |
-| **Mystic** | +12% intelligence | + +12% intelligence & set `ability_can_crit` | + ability hits splash 40% to one neighbour |
-| **Warden** | on-cast: shield lowest-HP ally 10% their max_hp | + Warden shields/buffs last +50% duration | + at start, whole team gains 8% max_hp shield (`TEAM_WIDE`) |
-| **Stalker** | start repositioned to enemy backline | + +25% damage vs targets >70% HP, mana refund on kill | + `untargetable` 120t after a takedown |
-| **Bruiser** | +12% hp | + +15% hp & +12% strength | + 15% lifesteal on auto damage |
-| **Skirmisher** | stacking +3% attack_speed per hit on same target (cap +24%) | + +12% move_speed & dodge 15% of autos | + (`TEAM_WIDE` melee) ramp no longer decays |
-| **Channeler** | +20% mana_regen | + every 4 casts the next ability is free | + first cast each combat triggers twice |
-| **Mender** | +25% healing done | + overheal → shield | + (`TEAM_WIDE`) first ally death/combat → revive at 25% max_hp |
-| **Trickster** | on-cast: apply slow/wither debuff | + +threat & `taunt` target 100t on cast | + enemies near a Trickster gain mana 30% slower |
-| **Packmate** | (`TEAM_WIDE`) +5% all stats | + bonus scales: +1.5% per champion fielded | + full board (== cap): +18% flat all stats |
-| **Primordial** | (@1) signature mechanic active (per-champ, T.30 kit) | (@2, `TEAM_WIDE`) large +18% stat pack + Primordial second-wind once/combat | (@3) highest other trait counts as one tier higher |
-
-(Mechanics tagged "hook" — Hunter empowered shot, Channeler double-cast, echo-casts, lifesteal, on-death spawns — reuse existing ability-handler idioms in [champions.py](../../../src/game/abilities/champions.py): `on_attack_landed`/`on_cast`/`on_death`/`on_damage_dealt` hooks + `ctx.deal_damage`/`ctx.heal`/`ctx.spawn`.)
+## 4. Authored values — see catalog §2–§4 for the ladders
+Stat bonuses are **percentages** (`mul` modifiers, scale across tiers); convention
+minor ≈ +8% / moderate ≈ +15% / major ≈ +24% per named stat; `source_id` pattern
+`trait:<id>@<n>`. Single-step body rungs are smaller increments of the same stat.
+All numbers first-pass → **T.25 sim retune** (esp. apex / second-wind / dynamic).
 
 ---
 
-## 6. Roster audit + vocabulary reconciliation
-
-### 6.1 Calling-vocabulary drift (must fix first)
-
-Git-confirmed: `CALLING_TAGS` ([content.py:101-118](../../../src/game/content.py#L101-L118)) carries **4 dead tags** — `Bulwark, Drifter, Harbinger, Emissary` — introduced in the original T.5 commit (6936634), assigned to **no champion**, referenced nowhere else, and **never present in any design doc in any commit**. `Packmate` (catalog's 12th Calling, ~8 intended T1–3 carriers) is **absent** from `CALLING_TAGS` and has 0 carriers. The two design docs agree on 12; the code is vestigial T.5 scaffolding.
-
-**Resolution — catalog canonical (the 12):**
-- Remove `Bulwark, Drifter, Harbinger, Emissary` from `CALLING_TAGS` (and `ALL_TRAIT_TAGS`).
-- Add `Packmate`; **assign ~8 T1–3 filler champions** to it per catalog §5 (small, reversible roster edit, part of T.28). *(Overridable: cut Packmate instead for an 11-Calling set — but that drops the wide-board archetype; default is assign.)*
-- End state: 12 Callings, each with carriers **and** a `@register_trait` factory — satisfies the §10 V-guard (no tag without breakpoints, no breakpoint set without carriers).
-
-### 6.2 Roster completeness
-
-- Affinity traits: **auto-derived** (§3.3) — no content edits; all 60 covered by construction (10 per affinity).
-- Kinship + Calling: already assigned in [content.py](../../../src/game/content.py) (authoritative design: [champion_roster.md](../content/champion_roster.md)). Audit all 60 `_champion_def` rows carry exactly one Kinship + one or two Callings; T10s additionally carry `Primordial`. Fill gaps (incl. the new Packmate carriers); add a test asserting every champion has ≥1 Kinship + ≥1 Calling and every tag resolves in `TRAIT_REGISTRY`.
-- Enemies carry no synergy (catalog §1) — `piece_from_enemy` already sets `traits=[]`; leave as-is. (Enemy quest-match tags are T.31's concern.)
+## 5. Roster rebalance (T.28a content) — targets in catalog §5
+- **Kinship pools** Beast 14 / Spirit 11 / Skyborn 9 / Scaled 9 / Tidekin 9 /
+  Swarm 8 (=60). One **T10 anchor per kinship**: Mournhollow→Beast, Aurion→Spirit,
+  Aerion→Skyborn, Umbra→Scaled, Nerei→Tidekin, Borealis→Swarm. (Kit unchanged —
+  only the kinship tag moves; kinship ≠ playstyle.)
+- **Callings:** add Packmate (8, T1–3 **secondary**), spread Hunter T2–9, trim
+  Stalker 10→7; sums ~87. Constraints: Skyborn lean ranged; Swarm ≥3 in T1–3;
+  kinships spread across affinities; Packmate primaries spread.
+- **Drop** the 4 dead Calling tags from `CALLING_TAGS` + `ALL_TRAIT_TAGS`.
 
 ---
 
-## 7. Open questions
-
-**Resolved here (proposals, overridable):**
-- Threshold scheme → keep catalog thresholds; compression is a post-sim lever (§4).
-- Affinity-trait counting → synthetic derived tag in the resolution loop (§3.3).
-- `ability_can_crit` / shields / untargetable / taunt → `on_combat_start` hook + new status primitives (§3.4).
-
-**Resolved by investigation:**
-- **Calling-vocab drift** → catalog canonical; drop 4 dead T.5 tags, add Packmate + carriers (§6.1).
-- **Fidelity** → Tier-A breakpoints full, Tier-B (Skyborn collision/tie, Stalker reposition) MVP-simplified to proxies, flagged (§3.4).
-
-**Still open / deferred:**
-- **Packmate carriers** — which ~8 T1–3 champions get the tag (§6.1). Default: pick from existing low-tier fillers; trivial to adjust.
-- **Tier-B fidelity pass** — restore Skyborn collision-ignore / same-tick-tie + Stalker start-reposition to full fidelity post-MVP (needs movement/spawn/sort-key engine touches).
-- **Breakpoint values** (§5) — first pass; retune after a leveled-board sim sweep.
-- **Two-Kinship hybrids** (catalog §6) — every champion has one Kinship for now; revisit if draft feels thin.
-- **Primordial @3** (catalog §6) — author it but gate behind the "3 Tier-10s" rarity; cheap to cut if unused.
-- **Emblem scarcity / drop economy** — T.29 + D.12.
+## 6. Open questions
+**Resolved (overridable):** apex=`min(pool,cap)`; single-step ladders; @1 entries
+on supports/casters/kiters; cheat-death stacks but diversified (one revive); T10
+via 3 paired augments (T.31); Skyborn=kiting; Stalker @2 no-teleport.
+**Still open / deferred:** apex+second-wind magnitudes (sim); kiting fidelity
+fallback (proxy if pathing too invasive); two-Kinship hybrids; Primordial @3 as
+flavour; Borealis-as-Swarm flavour; emblem economy (T.29/D.12); enemy quest tags.
 
 ---
 
-## 8. Test plan
-
-- **Counting:** unique champion ids; two copies of one champion count once; highest cleared breakpoint wins, lower suppressed.
-- **Scope:** `PER_TRAIT_PIECE` bundle hits only carriers; `TEAM_WIDE` hits all team pieces; enemies never gain trait bundles.
-- **Affinity synthesis:** N same-affinity champions light the affinity trait at the right breakpoint without touching node weather.
-- **`granted_traits` ordering:** a piece given a trait via `granted_traits` is counted by `_resolve_traits` (simulate an emblem bundle pre-resolution).
-- **Primitives:** `shield` absorbs then HP and depletes; `untargetable` excluded from `_select_target`/`_opponents`; `taunt` forces target; `revive` fires once; each expires correctly.
-- **Determinism of cadence mechanics:** dodge / "every Nth auto" / "every few casts" fire on the fixed Nth occurrence with **no RNG** — same seed and `workers=1` byte-identical (V.2/V.14).
-- **Vocabulary guard:** `CALLING_TAGS` == the 12 catalog Callings (4 dead tags gone, Packmate present); every champion tag resolves in `TRAIT_REGISTRY`; Packmate has ≥ its intended carriers.
-- **Determinism:** trait resolution byte-identical across runs for a fixed team; full-suite combat regression (no-trait teams unchanged).
-- **Effect:** a fixed-seed fight where a met breakpoint measurably shifts the outcome vs the same team below the breakpoint.
-- **V-guard:** every tag in every `Champion.traits` resolves in `TRAIT_REGISTRY`; every champion has ≥1 Kinship + ≥1 Calling.
-
----
-
-## 9. Acceptance criteria
-
-1. `TraitScope`/`TraitBreakpoint` types + `@register_trait` factories for all 24 traits with authored values (§5), populating `TRAIT_REGISTRY`.
-2. `compile_loadout` resolves + applies trait bundles (unique-id count, highest breakpoint, correct scope), player-team only, slotted per §10.1.
-3. Affinity traits derived from `affinity`, weather-independent.
-4. Tier-A primitives (shield, untargetable, taunt, deterministic dodge, revive, time-ramp, echo, mana-aura) implemented and honored in loop/targeting/`deal_damage`; Tier-B breakpoints shipped as the §3.4 proxies, flagged for a later fidelity pass.
-5. `BattleResult` carries the trait-activation record (surfaced from `compile_loadout`).
-6. Calling vocabulary reconciled (§6.1 — 4 dead tags removed, Packmate added + carriers); roster audit complete; V-guard test green.
-7. All cadence mechanics deterministic (no RNG); `workers=1` / fixed-seed byte-identical.
-8. `tests/game/test_traits.py` + loadout/combat tests pass; full suite green; no-trait regression intact.
+## 7. Test plan
+- **Counting/scope:** unique ids; copies count once; highest breakpoint wins;
+  PER_TRAIT_PIECE hits carriers only; TEAM_WIDE hits all; enemies never light up.
+- **Dynamic threshold:** Packmate `@full-board` resolves to live board cap.
+- **Affinity synthesis:** N same-affinity champions light the affinity trait
+  without touching node weather.
+- **`granted_traits` ordering:** a piece given a tag pre-resolution is counted
+  (simulated emblem).
+- **Primitives (b/c):** untargetable excluded from selection; taunt forces target;
+  dodge every Nth; revive once; second-wind grants a decaying barrier at the HP
+  threshold once; tidal HoT ticks on cadence; **kiting** retreats vs melee, **plants
+  when cornered/swarmed**, no-ops for melee w/o the @2 range; backline-priority
+  picks the back row.
+- **Determinism:** all cadence/geometry RNG-free; `workers=1`/fixed-seed
+  byte-identical; trait resolution byte-identical for a fixed team.
+- **Regression:** no-trait teams unchanged.
+- **Effect:** a met breakpoint measurably shifts a fixed-seed fight.
+- **V-guard:** `CALLING_TAGS` == the 12 catalog Callings; every tag resolves in
+  `TRAIT_REGISTRY`; every champion ≥1 Kinship + ≥1 Calling (+ Primordial at T10);
+  Packmate ≥ its carriers; one T10 per kinship.
 
 ---
 
-## 10. SPEC changes needed (for `/spec`)
+## 8. Acceptance criteria (per substep)
+**a:** types + `@register_trait` for all 24 traits' **declarative rungs**; resolution
+in `compile_loadout` (count/scope/dynamic, player-only, §10.1 order); affinity
+synthesis; `BattleResult.trait_activations`; vocab + roster rebalance done;
+V-guard + counting/scope/affinity/dynamic tests green; no-trait regression intact.
+**b:** batch-1 primitives implemented + honored in loop/targeting/`deal_damage`;
+their breakpoints fire deterministically; kiting guardrails tested; byte-identical.
+**c:** batch-2 primitives + all apex effects; 24 traits fully wired; full sim
+regression; T.25 sweep shows no obvious degeneracy.
 
-1. **§T:** replace the single T.28 row with **two rows — T.28a** (framework + declarative content, Est M) and **T.28b** (combat primitives + mechanic breakpoints, depends T.28a, Est M–L); both 📋 Plan; both cite `docs/design/tasks/t28_trait_effects_plan.md` (§0 defines the split). Update the Implementation-Order Phase 1b chain to `… → T.28a → T.28b → …`.
-2. **New invariant (≈V.20):** trait breakpoints count **unique champion ids**; trait effects enter combat **only** via `compile_loadout` (never alongside `resolve_combat`); resolution is a pure, RNG-free function of the team — replay-stable. (T.28)
-3. **New invariant (≈V.21):** every tag in `Champion.traits` **must** resolve in `TRAIT_REGISTRY`, and every champion carries ≥1 Kinship + ≥1 Calling (+ `Primordial` at T10) — CI-guarded, mirroring V.15. Enemies carry no synergy. (T.28)
-4. **§D.8:** mark trait effects as implemented in T.28; leave open only breakpoint-value tuning, the Tier-B fidelity pass (§3.4), and the two-Kinship-hybrid question.
-5. **New §B entry:** calling-vocabulary drift — `CALLING_TAGS` carried 4 dead T.5 tags (`Bulwark/Drifter/Harbinger/Emissary`, 0 carriers, never in design docs) and omitted `Packmate`. Cause: T.5 ad-hoc calling set never reconciled with the later `trait_catalog.md`/`champion_roster.md` 12-Calling design. Fix in T.28 (§6.1); **V.21** prevents recurrence (every tag must resolve in `TRAIT_REGISTRY`).
-6. **T.28 planning note** (in the T.18-T.31 notes block): implements the synergy layer on the T.20 substrate; adds shield/untargetable/taunt/dodge/revive/ramp/echo primitives (deterministic cadence, no RNG — V.2); affinity traits derived from `affinity`; Tier-B mechanics (Skyborn collision/tie, Stalker reposition) MVP-simplified, flagged; values are a first pass pending a sim retune.
-7. **T.29 row note:** emblem items (T.29) rely on the `granted_traits`-before-resolution ordering this task establishes (§3.2).
-8. **Estimate:** split into T.28a (M) + T.28b (M–L) per §0 — supersedes the original single `L` row.
+---
+
+## 9. SPEC changes needed (for `/spec`)
+1. **§T:** replace T.28a/T.28b rows with **T.28a / T.28b / T.28c** (descriptions
+   per §0; a Est M–L, b M, c M; b dep a, c dep b); cite this plan. Update
+   Implementation-Order chain `… → T.28a → T.28b → T.28c → …`.
+2. **V.21/V.22** stand (unique-id count + RNG-free; tag-resolution + ≥1 Kinship/
+   Calling). Extend V.22 note: exactly one Tier-10 per kinship.
+3. **New invariant (apex/dynamic + determinism of new primitives):** trait apex =
+   `min(pool, board-cap)`; a `TraitBreakpoint.count` may be a dynamic threshold
+   resolved at loadout; kiting/dodge/second-wind/revive/tidal-HoT are deterministic
+   (geometry/cadence, never RNG); cheat-death effects stack (no hard cap) by design.
+4. **§B:** Calling-vocab drift (4 dead T.5 tags + missing Packmate) — cause +
+   fix in T.28a; V.22 prevents recurrence.
+5. **§D.8:** trait effects implemented in T.28a/b/c; leave open value-tuning,
+   kiting-fidelity fallback, two-Kinship hybrids.
+6. **T.29 note:** emblems rely on the `granted_traits`-before-resolution order
+   (§3.2). **T.31 note:** +3 paired RUN-augments unlock Primordials in shop.
+
+---
+
+## 10. LIVING docs to update
+- `docs/live/content/traits.md` — flip 🔶 toward ✅ as each substep lands (a: vocab
+  + counting + stat packs; b/c: primitives). Cite real `traits/` symbols.
+- `ARCHITECTURE.md` — add `game/traits/` to the system map on a.
+- FROZEN (`trait_catalog.md`, this plan) left as-is once landed.
