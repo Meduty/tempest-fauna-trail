@@ -41,7 +41,7 @@ qualitative, dev-facing surface** that runs before the Flet UI catches up.
 
 `resolve_combat(team, enemies, weather, *, node_id="") -> BattleResult` is the
 single public combat entry point. It composes `compile_loadout → CombatContext
-→ loop_new.run` internally and uses the `BattleResultRecorder` to produce a
+→ engine.run` internally and uses the `BattleResultRecorder` to produce a
 fully-populated `BattleResult.events`. See [engine_split.md](engine_split.md)
 for the history of the resolved engine split.
 
@@ -59,7 +59,7 @@ recorder = BattleResultRecorder(pieces, weather, node_id)
 recorder.register(bus)
 ctx = CombatContext(pieces, bus, weather, seed=run_seed)
 attach_map_effect(encounter.map_effect_id, ctx, seed=run_seed)
-winner = loop_new.run(ctx, recorder)
+winner = engine.run(ctx, recorder)
 result = recorder.build_result(winner)
 ```
 
@@ -70,11 +70,11 @@ sim_node and sim_run can call it without duplicating the wiring.
 
 | API | File | Signature |
 |---|---|---|
-| `resolve_combat` | `combat/legacy.py:447` | `(team, enemies, weather, *, node_id="") -> BattleResult` |
+| `resolve_combat` | `combat/resolve.py:17` | `(team, enemies, weather, *, node_id="") -> BattleResult` |
 | `compile_loadout` | `loadout.py:196` | `(team, enemies, weather, seed=42) -> (pieces, bus)` |
-| `assign_spawns` | `combat/loop_new.py:510` | `(pieces) -> None` (T.24 formation) |
+| `assign_spawns` | `combat/engine.py:548` | `(pieces) -> None` (T.24 formation) |
 | `CombatContext` | `combat/context.py:77` | `(pieces, bus, weather, seed=0, board_state=None)` |
-| `loop_new.run` | `combat/loop_new.py:563` | `(ctx, recorder=None) -> "team"\|"enemy"\|"draw"` |
+| `engine.run` | `combat/engine.py:601` | `(ctx, recorder=None) -> "team"\|"enemy"\|"draw"` |
 | `attach_map_effect` | `loadout.py:141` | `(effect_id, ctx, seed) -> MapEffect` |
 | `BattleResultRecorder` | `combat/recorder.py:41` | `(pieces, weather, node_id="")` |
 | `format_combat_log` | `combat_log.py:77` | `(result, *, team=None, enemies=None) -> list[str]` |

@@ -21,14 +21,14 @@ The whole system wired end-to-end with every breakpoint that is a **pure stat `M
 - §6.1 Calling-vocabulary reconciliation (drop 4 dead tags, add Packmate + carriers) + §6.2 roster audit.
 - §10 invariants V.20 / V.21 + V-guard test.
 - **Content:** all Affinity breakpoints (§5.1) + the stat-pack portions of Kinships/Callings (Mystic @2 INT, Bruiser @2/@4 HP/STR, Scaled @2 armor/res, Galvanized, Packmate stat packs, etc.).
-- **Files:** `game/traits/`, `game/loadout.py`, `game/models.py`, `game/content.py`. **No** `status.py` / `loop_new.py` / `context.py` / `targeting.py` changes.
+- **Files:** `game/traits/`, `game/loadout.py`, `game/models.py`, `game/content.py`. **No** `status.py` / `engine.py` / `context.py` / `targeting.py` changes.
 - **Done when:** counting/scope/determinism/vocab tests green; a stat-pack breakpoint measurably shifts a fixed-seed fight; no-trait regression intact.
 
 ### T.28b — Combat primitives + mechanic breakpoints (Est: M–L, depends T.28a)
 - §3.4 Tier-A primitives: `Piece.shield_hp` absorb, `StatusGate.UNTARGETABLE`, `taunt`, deterministic `dodge`, `revive`-once, time-ramp, echo/double-cast, mana-denial aura — all deterministic (no RNG).
 - §3.4 Tier-B proxies (Skyborn collision/tie, Stalker reposition).
 - **Content:** every hook-based breakpoint (Beast ramp/lifesteal, Skyborn opener, Spirit untargetable/echo, Tidekin/Mender revive, Swarm spawn, Guardian/Warden shields, Stalker, Skirmisher dodge/ramp, Channeler free/double-cast, Trickster taunt/aura, Hunter empowered shot, Primordial second-wind).
-- **Files:** `game/status.py`, `game/piece.py`, `game/combat/loop_new.py`, `game/combat/context.py`, `game/targeting.py`, `game/traits/` (hook factories).
+- **Files:** `game/status.py`, `game/piece.py`, `game/combat/engine.py`, `game/combat/context.py`, `game/targeting.py`, `game/traits/` (hook factories).
 - **Done when:** each primitive has a unit test; a breakpoint using each fires deterministically; `workers=1`/fixed-seed byte-identical.
 
 (Sections §1–§9 below are shared design context; each is tagged where a substep boundary matters.)
@@ -117,7 +117,7 @@ Affinity traits (Sunlit … Galvanized) are **derived from `piece.affinity`**, n
 
 ### 3.4 New combat primitives + fidelity policy
 
-Several breakpoints need mechanics that don't exist yet. **Determinism is mandatory** (V.2 / V.14 — combat is replay-identical, sims byte-identical): every "chance"-flavoured effect uses a **deterministic cadence counter** like the existing `crit_counter` ([piece.py:57](../../../src/game/piece.py#L57)), **never RNG**. "Dodge 15% of autos" = dodge every Nth incoming auto (N = round(1/0.15)); "every few autos/casts" = a per-piece counter. Same idiom as crit in [combat/loop_new.py:212](../../../src/game/combat/loop_new.py#L212).
+Several breakpoints need mechanics that don't exist yet. **Determinism is mandatory** (V.2 / V.14 — combat is replay-identical, sims byte-identical): every "chance"-flavoured effect uses a **deterministic cadence counter** like the existing `crit_counter` ([piece.py:57](../../../src/game/piece.py#L57)), **never RNG**. "Dodge 15% of autos" = dodge every Nth incoming auto (N = round(1/0.15)); "every few autos/casts" = a per-piece counter. Same idiom as crit in [combat/engine.py:214](../../../src/game/combat/engine.py#L214).
 
 **Per your steer, MVP-simplify the most engine-invasive breakpoints** (flag for a later fidelity pass) and build the rest at full fidelity:
 
@@ -126,7 +126,7 @@ Several breakpoints need mechanics that don't exist yet. **Determinism is mandat
 | Primitive | Needed by | Mechanism |
 |---|---|---|
 | **`shield`** — absorb pool, depletes before HP | Guardian, Warden, Mender, Bruiser-adjacent | **`Piece.shield_hp: float` field** (+ optional `shield_expires_tick`), NOT a `StatusInstance` (it has no value field). Absorb in `deal_damage` ([context.py:244](../../../src/game/combat/context.py#L244)) before subtracting HP; apply via an `on_combat_start`/`on_cast` hook in the factory. |
-| **`untargetable`** — excluded from target selection | Spirit @4, Shrouded @4/@6, Stalker @6 | new `StatusGate.UNTARGETABLE`; filter in `_opponents`/`_select_target` ([loop_new.py:86,91](../../../src/game/combat/loop_new.py#L86)) + [targeting.py](../../../src/game/targeting.py). Piece can still act. |
+| **`untargetable`** — excluded from target selection | Spirit @4, Shrouded @4/@6, Stalker @6 | new `StatusGate.UNTARGETABLE`; filter in `_opponents`/`_select_target` ([engine.py:87,91](../../../src/game/combat/engine.py#L87)) + [targeting.py](../../../src/game/targeting.py). Piece can still act. |
 | **`taunt`** — forces an enemy to target the taunter | Trickster @4 | `taunt` status on the *enemy*, `source_id` = taunter; in `_select_target`, if the acting piece has an active taunt, force-target its `source_id` (if alive + in range). |
 | **deterministic `dodge`** | Skirmisher @4 | cadence counter on `Piece`; in `deal_damage`/`_apply_hit`, every Nth incoming `BASIC_ATTACK` deals 0. |
 | **`revive`-once** | Tidekin @5, Mender @6 | guard flag in `augment_state`-style per-combat dict on the piece; intercept in the kill path ([context.py:262](../../../src/game/combat/context.py#L262)) — restore to a fraction of `max_hp`, fire once. Reuse for T.31 Sanctuary augment later. |
@@ -138,9 +138,9 @@ Several breakpoints need mechanics that don't exist yet. **Determinism is mandat
 
 | Breakpoint | Designed | MVP proxy |
 |---|---|---|
-| Skyborn @2 "ignore piece collision while moving" | skip `occupied` cells in `_next_step_toward` ([loop_new.py:111](../../../src/game/combat/loop_new.py#L111)) | grant Move Speed instead (same "closes faster" intent); leave collision untouched |
-| Skyborn @4 "act first in same-tick ties" | inject into `_event_sort_key` ([loop_new.py:378](../../../src/game/combat/loop_new.py#L378)) — `speed_tiebreaker` isn't a stat | fold into the @4 Attack-Speed bonus (higher AS already sorts earlier) |
-| Stalker @2 "start repositioned to enemy backline" | mutate spawn position pre-loop (interacts with `assign_spawns` [loop_new.py:517](../../../src/game/combat/loop_new.py#L517)) | grant a large opening Move-Speed burst so Stalkers reach the backline fast |
+| Skyborn @2 "ignore piece collision while moving" | skip `occupied` cells in `_next_step_toward` ([engine.py:112](../../../src/game/combat/engine.py#L112)) | grant Move Speed instead (same "closes faster" intent); leave collision untouched |
+| Skyborn @4 "act first in same-tick ties" | inject into `_event_sort_key` ([engine.py:379](../../../src/game/combat/engine.py#L379)) — `speed_tiebreaker` isn't a stat | fold into the @4 Attack-Speed bonus (higher AS already sorts earlier) |
+| Stalker @2 "start repositioned to enemy backline" | mutate spawn position pre-loop (interacts with `assign_spawns` [engine.py:548](../../../src/game/combat/engine.py#L548)) | grant a large opening Move-Speed burst so Stalkers reach the backline fast |
 
 > `ability_can_crit` (Mystic @4) already exists as a `Piece` flag. `EffectBundle` has no "set bool" channel, so set it via a tiny `on_combat_start` hook in the breakpoint factory (`lambda ctx, ev: setattr(owner, "ability_can_crit", True)`).
 
@@ -148,7 +148,7 @@ Several breakpoints need mechanics that don't exist yet. **Determinism is mandat
 
 Record which traits were active at which breakpoint, for the run summary / debugging. Add `trait_activations: list[tuple[str, int, int]]` (trait id, count, breakpoint) to `BattleResult` ([models.py:512](../../../src/game/models.py#L512), + `to_dict`/`from_dict`).
 
-**Wrinkle:** trait activations are known at **compile time** (`_resolve_traits`), not via combat events — but the recorder ([recorder.py:44](../../../src/game/combat/recorder.py#L44)) is built from `pieces` and only listens to bus hooks. So the cleared-traits dict must be **surfaced out of `compile_loadout`** (cleanest: change its return to also yield `cleared`, or stash it on the returned `bus`/a small loadout-result object) and threaded into `recorder.build_result`. This touches the `compile_loadout` → `resolve_combat` → recorder wiring ([combat/legacy.py](../../../src/game/combat/legacy.py)) — keep the change additive and back-compat. Data-only; no combat behaviour.
+**Wrinkle:** trait activations are known at **compile time** (`_resolve_traits`), not via combat events — but the recorder ([recorder.py:44](../../../src/game/combat/recorder.py#L44)) is built from `pieces` and only listens to bus hooks. So the cleared-traits dict must be **surfaced out of `compile_loadout`** (cleanest: change its return to also yield `cleared`, or stash it on the returned `bus`/a small loadout-result object) and threaded into `recorder.build_result`. This touches the `compile_loadout` → `resolve_combat` → recorder wiring ([combat/resolve.py](../../../src/game/combat/resolve.py)) — keep the change additive and back-compat. Data-only; no combat behaviour.
 
 ---
 

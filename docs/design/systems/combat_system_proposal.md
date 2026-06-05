@@ -90,7 +90,7 @@ weather affinity multiplier and *before* mitigation. Rules:
 - **Deterministic cadence**: crits are not random. A piece with `crit_chance = c` crits
   on every `round(1/c)`-th eligible hit and resets the counter. `c = 0.25` → crit on
   hits 4, 8, 12, … `c = 0.5` → hits 2, 4, 6, … `c = 1.0` → every hit crits.
-  Counter (`crit_counter`) lives on `CombatPieceState`; it is shared between autos
+  Counter (`crit_counter`) lives on the runtime `Piece`; it is shared between autos
   and casts (when `ability_can_crit = True`).
 - **Pipeline order**: `raw = base_formula → × weather_modifier → × 1.5 if crit → mitigate`.
 - No RNG is involved; `resolve_combat` remains fully deterministic with no seed.
