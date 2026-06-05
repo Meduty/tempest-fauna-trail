@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from src.game.combat import EVENT_ATTACK, EVENT_CAST, EVENT_DEATH, EVENT_MOVE
 from src.game.models import BattleEvent, BattleResult, Champion, Enemy
-from src.game.weather_effects import apply_weather
 
 
 def group_events_by_tick(result: BattleResult) -> list[tuple[int, list[BattleEvent]]]:
@@ -30,17 +29,6 @@ def group_events_by_tick(result: BattleResult) -> list[tuple[int, list[BattleEve
         else:
             grouped.append((event.tick, [event]))
     return grouped
-
-
-def _piece_max_hp(
-    team: list[Champion], enemies: list[Enemy], result: BattleResult
-) -> dict[str, int]:
-    """Reconstruct each piece's weather-modified max HP for the log's HP trace."""
-    max_hp: dict[str, int] = {}
-    for source in [*team, *enemies]:
-        state = apply_weather(source, result.weather)
-        max_hp[state.piece_id] = state.max_hp
-    return max_hp
 
 
 def _plural(count: int, word: str) -> str:
@@ -96,7 +84,9 @@ def format_combat_log(
 
     if track_hp:
         assert team is not None and enemies is not None
-        current_hp = _piece_max_hp(team, enemies, result)
+        # max HP comes from the engine's own pieces via the result — the single
+        # source of truth (weather + passives already applied). No recompute.
+        current_hp = dict(result.piece_max_hp)
         lines.append("Team:    " + (", ".join(c.id for c in team) or "-"))
         lines.append("Enemies: " + (", ".join(e.id for e in enemies) or "-"))
     lines.append("")

@@ -1,7 +1,8 @@
 """Weather effects (T2) — directional predator/prey ring, two decoupled systems.
 
-- **Weather Favor** (`combat_modifier` / `apply_weather`): the node weather buffs or
-  debuffs each piece by its affinity, on five tiers. Applied once at combat init.
+- **Weather Favor** (`combat_modifier`): the node weather buffs or debuffs each
+  piece by its affinity, on five tiers. Applied once at combat init by
+  `loadout._apply_weather_to_piece` (the single application path).
 - **Affinity Clash** (`damage_modifier`): a per-hit multiplier on every damage
   instance, by attacker affinity vs defender affinity. Resolved per hit in the
   combat engine — it depends on the defender, so it cannot be pre-snapshotted.
@@ -16,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from src.game.models import Champion, CombatPieceState, Enemy, WeatherState
+from src.game.models import WeatherState
 
 
 class RingRelation(str, Enum):
@@ -219,46 +220,3 @@ SHOP_WEIGHT: dict[RingRelation, float] = {
 def shop_weight(affinity: WeatherState, weather: WeatherState) -> float:
     """Prep-shop pull weight for `affinity` given the upcoming node weather."""
     return SHOP_WEIGHT[ring_relation(affinity, weather)]
-
-
-# --- Combat-init bridge ------------------------------------------------------
-
-
-def _scale_int(value: int, mult: float) -> int:
-    return max(0, round(value * mult))
-
-
-def apply_weather(piece: Champion | Enemy, weather: WeatherState) -> CombatPieceState:
-    """Snapshot a roster piece into a `CombatPieceState` with Weather Favor applied.
-
-    Copies `affinity` onto the snapshot so the combat engine can resolve
-    Affinity Clash (`damage_modifier`) per hit. Does not mutate `piece`.
-    """
-    modifier = combat_modifier(piece.affinity, weather)
-    is_enemy = isinstance(piece, Enemy)
-
-    max_hp = max(1, _scale_int(piece.max_hp, modifier.hp_mult))
-    attack_range = max(1, piece.attack_range + modifier.attack_range_delta)
-
-    return CombatPieceState(
-        piece_id=piece.id,
-        is_enemy=is_enemy,
-        affinity=piece.affinity,
-        tier=piece.tier,
-        level=piece.level,
-        max_hp=max_hp,
-        hp=max_hp,
-        strength=_scale_int(piece.strength, modifier.str_mult),
-        intelligence=_scale_int(piece.intelligence, modifier.int_mult),
-        attack_speed=_scale_int(piece.attack_speed, modifier.as_mult),
-        move_speed=_scale_int(piece.move_speed, modifier.ms_mult),
-        mana_regen=_scale_int(piece.mana_regen, modifier.mr_mult),
-        threat=_scale_int(piece.threat, modifier.thr_mult),
-        armor=_scale_int(piece.armor, modifier.armor_mult),
-        resistance=_scale_int(piece.resistance, modifier.res_mult),
-        attack_range=attack_range,
-        ability_cost=piece.ability_cost,
-        crit_chance=piece.crit_chance,
-        penetration=piece.penetration,
-        penetration_pct=piece.penetration_pct,
-    )

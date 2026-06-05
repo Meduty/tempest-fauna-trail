@@ -175,9 +175,9 @@ mutation architecture" — no effect-as-data reducer.
 
 `src/game/weather_effects.py` — **two decoupled systems**, never summed:
 
-1. **Weather Favor** (`combat_modifier` / `apply_weather`) — does the *node weather* suit
-   my affinity? A 5-tier stat buff/debuff applied **once at combat init** (in
-   `compile_loadout::_apply_weather_to_piece`).
+1. **Weather Favor** (`combat_modifier`) — does the *node weather* suit
+   my affinity? A 5-tier stat buff/debuff applied **once at combat init**, in the
+   single application path `compile_loadout::_apply_weather_to_piece`.
 2. **Affinity Clash** (`damage_modifier`) — do *I* beat *this enemy*? A per-hit damage
    multiplier by attacker-affinity vs defender-affinity, resolved **per hit** in the loop
    (it depends on the defender, so it can't be pre-snapshotted).
@@ -261,9 +261,8 @@ substrate** the (planned) Prep UI will drive.
 - `Champion`, `Enemy` — roster/source models (carry `affinity`, `traits`, stats, ability
   ids)
 - `Node` — one route stop
-- `CombatPieceState` — model-side combat snapshot (distinct from the runtime `Piece` in
-  `piece.py`, which the loadout compiler builds)
-- `BattleEvent`, `BattleResult` — combat output + event stream
+- `BattleEvent`, `BattleResult` — combat output + event stream (the runtime combat
+  entity is `Piece` in `piece.py`, built by the loadout compiler)
 - **`Run`** — the single object holding *all* game state (current node, roster, battle
   log, Amber, Tempest, augments). Per V: one `Run` is the whole game.
 

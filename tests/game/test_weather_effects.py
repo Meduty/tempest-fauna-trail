@@ -12,11 +12,15 @@ from src.game.weather_effects import (
     WEATHER_DEBUFF_BASE,
     CombatModifier,
     RingRelation,
-    apply_weather,
     combat_modifier,
     damage_modifier,
     ring_relation,
     shop_weight,
+)
+from src.game.loadout import (
+    _apply_weather_to_piece,
+    piece_from_champion,
+    piece_from_enemy,
 )
 
 ACTIVE_WEATHERS = tuple(w for w in WeatherState if w != WeatherState.CLEAR)
@@ -255,52 +259,59 @@ def test_shop_weight_neutral_when_clear_involved() -> None:
         assert shop_weight(weather, WeatherState.CLEAR) == 1.0
 
 
-# --- apply_weather -----------------------------------------------------------
+# --- Weather Favor applied to combat Pieces (live loadout path) --------------
+# These exercise the ONE weather-application path used in real combat:
+# loadout._apply_weather_to_piece mutating a compiled Piece's base_stats.
 
 
-def test_apply_weather_clear_returns_unscaled_stats_and_copies_affinity() -> None:
+def test_weather_clear_leaves_stats_unscaled_and_keeps_affinity() -> None:
     champion = _make_champion(WeatherState.RAIN)
-    piece = apply_weather(champion, WeatherState.CLEAR)
+    piece = piece_from_champion(champion)
+    _apply_weather_to_piece(piece, WeatherState.CLEAR)
 
-    assert piece.piece_id == champion.id
+    assert piece.id == champion.id
     assert piece.is_enemy is False
     assert piece.affinity == WeatherState.RAIN
     assert piece.max_hp == champion.max_hp
     assert piece.hp == champion.max_hp
-    assert piece.strength == champion.strength
-    assert piece.attack_range == champion.attack_range
+    assert piece.stat("strength") == champion.strength
+    assert piece.stat("attack_range") == champion.attack_range
 
 
-def test_apply_weather_self_buff_scales_strong_tier() -> None:
+def test_weather_self_buff_scales_strong_tier() -> None:
     champion = _make_champion(WeatherState.THUNDER)
-    piece = apply_weather(champion, WeatherState.THUNDER)
+    piece = piece_from_champion(champion)
+    _apply_weather_to_piece(piece, WeatherState.THUNDER)
 
     # SELF tier = full magnitude 0.3 -> x1.3.
-    assert piece.strength == round(champion.strength * 1.3)
-    assert piece.attack_speed == round(champion.attack_speed * 1.3)
-    assert piece.intelligence == champion.intelligence
+    assert piece.stat("strength") == round(champion.strength * 1.3)
+    assert piece.stat("attack_speed") == round(champion.attack_speed * 1.3)
+    assert piece.stat("intelligence") == champion.intelligence
     assert piece.affinity == WeatherState.THUNDER
 
 
-def test_apply_weather_mist_debuff_drops_attack_range_with_floor() -> None:
+def test_weather_mist_debuff_drops_attack_range_with_floor() -> None:
     # THUNDER is MIST's primary prey -> medium debuff -> range -1.
     champion = _make_champion(WeatherState.THUNDER)
-    piece = apply_weather(champion, WeatherState.MIST)
-    assert piece.attack_range == champion.attack_range - 1
+    piece = piece_from_champion(champion)
+    _apply_weather_to_piece(piece, WeatherState.MIST)
+    assert piece.stat("attack_range") == champion.attack_range - 1
 
     melee = replace(_make_champion(WeatherState.THUNDER), attack_range=1)
-    melee_piece = apply_weather(melee, WeatherState.MIST)
-    assert melee_piece.attack_range == 1
+    melee_piece = piece_from_champion(melee)
+    _apply_weather_to_piece(melee_piece, WeatherState.MIST)
+    assert melee_piece.stat("attack_range") == 1
 
 
-def test_apply_weather_works_with_enemy_and_flags_is_enemy() -> None:
+def test_weather_applies_to_enemy_and_flags_is_enemy() -> None:
     enemy = _make_enemy(WeatherState.MIST)
-    piece = apply_weather(enemy, WeatherState.MIST)
+    piece = piece_from_enemy(enemy)
+    _apply_weather_to_piece(piece, WeatherState.MIST)
 
     assert piece.is_enemy is True
     assert piece.affinity == WeatherState.MIST
-    assert piece.move_speed == round(enemy.move_speed * 1.3)
-    assert piece.threat == round(enemy.threat * 1.3)
+    assert piece.stat("move_speed") == round(enemy.move_speed * 1.3)
+    assert piece.stat("threat") == round(enemy.threat * 1.3)
 
 
 # --- OpenWeather id mapping --------------------------------------------------

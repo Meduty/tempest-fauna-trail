@@ -198,4 +198,5 @@ class BattleResultRecorder:
             surviving_enemy_ids=[p.id for p in self._pieces if p.alive and p.is_enemy],
             timed_out=self._timed_out,
             events=self._events,
+            piece_max_hp={p.id: int(p.max_hp) for p in self._pieces},
         )

@@ -170,8 +170,9 @@ def attach_map_effect(effect_id: str, ctx: Any, seed: int) -> Any:
 def _apply_weather_to_piece(piece: Piece, weather: WeatherState) -> None:
     """Apply Weather Favor to a piece's base_stats (mutates in place).
 
-    Uses integer-scaled values matching the legacy apply_weather behavior
-    so that combat results are deterministic and consistent.
+    Uses integer-scaled values off weather_effects.combat_modifier so that
+    combat results are deterministic and consistent. This is the *only* place
+    Weather Favor is applied to a combat piece.
     """
     modifier = combat_modifier(piece.affinity, weather)
 

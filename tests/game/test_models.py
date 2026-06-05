@@ -5,7 +5,6 @@ from src.game.models import (
     BattleResult,
     Champion,
     CombatOutcome,
-    CombatPieceState,
     Node,
     NodeState,
     NodeType,
@@ -211,32 +210,6 @@ def test_run_validation_requires_single_current_node() -> None:
             route=bad_route,
             current_node_index=1,
         )
-
-
-def test_combat_piece_state_clamps_hp_to_max() -> None:
-    piece = CombatPieceState(
-        piece_id="champ_blaze_fox",
-        is_enemy=False,
-        affinity=WeatherState.CLEAR,
-        tier=3,
-        level=1,
-        max_hp=100,
-        hp=120,
-        strength=20,
-        intelligence=10,
-        attack_speed=100,
-        move_speed=100,
-        mana_regen=5,
-        threat=20,
-        armor=5,
-        resistance=4,
-        attack_range=1,
-        ability_cost=100,
-        mana=120,
-    )
-
-    assert piece.hp == 100
-    assert piece.mana == 100
 
 
 def test_penetration_fields_roundtrip_and_validate() -> None:

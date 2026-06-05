@@ -17,11 +17,23 @@ Pure function — no RNG, no Flet imports, no I/O (V.1, V.2).
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from src.game.content import EnemyDef
-    from src.game.models import CombatPieceState
+
+
+class FormationPiece(Protocol):
+    """Structural contract for a piece fed to the formation planner.
+
+    The planner only needs an id, a tier (boss/role weighting), and the
+    side-independent ordering key it writes placements against. The combat
+    engine satisfies this with a lightweight shim — formation never imports a
+    piece model, keeping it pure (V.1).
+    """
+    piece_id: str
+    tier: int
+    speed_tiebreaker: int
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -134,7 +146,7 @@ def _nearest_free(
 
 
 def _place_band(
-    pieces: list["CombatPieceState"],
+    pieces: list["FormationPiece"],
     col: int,
     occupied: set[tuple[int, int]],
     placements: dict[int, tuple[int, int]],
@@ -176,7 +188,7 @@ def _place_band(
 
 
 def _place_flankers(
-    flankers: list["CombatPieceState"],
+    flankers: list["FormationPiece"],
     occupied: set[tuple[int, int]],
     placements: dict[int, tuple[int, int]],
     board_height: int = BOARD_HEIGHT,
@@ -223,7 +235,7 @@ def _place_flankers(
 
 
 def _place_boss(
-    boss: "CombatPieceState",
+    boss: "FormationPiece",
     boss_position: tuple[int, int],
     occupied: set[tuple[int, int]],
     placements: dict[int, tuple[int, int]],
@@ -257,7 +269,7 @@ def _place_boss(
 
 
 def plan_enemy_formation(
-    enemies: list["CombatPieceState"],
+    enemies: list["FormationPiece"],
     enemy_defs_by_id: dict[str, "EnemyDef"],
     *,
     boss_position: tuple[int, int] | None = None,
@@ -281,8 +293,8 @@ def plan_enemy_formation(
         return {}
 
     # 1. Identify boss (tier 10) and classify roles
-    boss_piece: "CombatPieceState | None" = None
-    buckets: dict[PlacementRole, list["CombatPieceState"]] = {
+    boss_piece: "FormationPiece | None" = None
+    buckets: dict[PlacementRole, list["FormationPiece"]] = {
         role: [] for role in PlacementRole
     }
 

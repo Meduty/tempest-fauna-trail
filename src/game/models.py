@@ -358,139 +358,6 @@ class Node:
 
 
 @dataclass(slots=True)
-class CombatPieceState:
-    piece_id: str
-    is_enemy: bool
-    affinity: WeatherState
-    tier: int
-    level: int
-    max_hp: int
-    hp: int
-    strength: int
-    intelligence: int
-    attack_speed: int
-    move_speed: int
-    mana_regen: int
-    threat: int
-    armor: int
-    resistance: int
-    attack_range: int
-    ability_cost: int
-    mana: int = 0
-    action_energy: int = 0
-    movement_energy: int = 0
-    position_q: int = 0
-    position_r: int = 0
-    target_piece_id: str | None = None
-    speed_tiebreaker: int = 0
-    crit_chance: float = 0.0
-    ability_can_crit: bool = False
-    crit_counter: int = 0
-    penetration: int = 0
-    penetration_pct: float = 0.0
-    alive: bool = True
-
-    def __post_init__(self) -> None:
-        _require_range(self.tier, "CombatPieceState tier", 1, 10)
-        _require_range(self.level, "CombatPieceState level", 1, 3)
-        _require_positive_int(self.max_hp, "CombatPieceState max_hp")
-        _require_non_negative_int(self.hp, "CombatPieceState hp")
-        _require_non_negative_int(self.strength, "CombatPieceState strength")
-        _require_non_negative_int(self.intelligence, "CombatPieceState intelligence")
-        _require_non_negative_int(self.attack_speed, "CombatPieceState attack_speed")
-        _require_non_negative_int(self.move_speed, "CombatPieceState move_speed")
-        _require_non_negative_int(self.mana_regen, "CombatPieceState mana_regen")
-        _require_non_negative_int(self.threat, "CombatPieceState threat")
-        _require_non_negative_int(self.armor, "CombatPieceState armor")
-        _require_non_negative_int(self.resistance, "CombatPieceState resistance")
-        _require_positive_int(self.attack_range, "CombatPieceState attack_range")
-        _require_positive_int(self.ability_cost, "CombatPieceState ability_cost")
-        _require_non_negative_int(self.mana, "CombatPieceState mana")
-        _require_non_negative_int(self.action_energy, "CombatPieceState action_energy")
-        _require_non_negative_int(self.movement_energy, "CombatPieceState movement_energy")
-        _require_non_negative_int(self.speed_tiebreaker, "CombatPieceState speed_tiebreaker")
-        _require_unit_float(self.crit_chance, "CombatPieceState crit_chance")
-        _require_non_negative_int(self.penetration, "CombatPieceState penetration")
-        _require_unit_float(self.penetration_pct, "CombatPieceState penetration_pct")
-
-        if self.hp > self.max_hp:
-            self.hp = self.max_hp
-        if self.mana > self.ability_cost:
-            self.mana = self.ability_cost
-        if self.hp == 0:
-            self.alive = False
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "piece_id": self.piece_id,
-            "is_enemy": self.is_enemy,
-            "affinity": self.affinity.value,
-            "tier": self.tier,
-            "level": self.level,
-            "max_hp": self.max_hp,
-            "hp": self.hp,
-            "strength": self.strength,
-            "intelligence": self.intelligence,
-            "attack_speed": self.attack_speed,
-            "move_speed": self.move_speed,
-            "mana_regen": self.mana_regen,
-            "threat": self.threat,
-            "armor": self.armor,
-            "resistance": self.resistance,
-            "attack_range": self.attack_range,
-            "ability_cost": self.ability_cost,
-            "mana": self.mana,
-            "action_energy": self.action_energy,
-            "movement_energy": self.movement_energy,
-            "position_q": self.position_q,
-            "position_r": self.position_r,
-            "target_piece_id": self.target_piece_id,
-            "speed_tiebreaker": self.speed_tiebreaker,
-            "crit_chance": self.crit_chance,
-            "ability_can_crit": self.ability_can_crit,
-            "crit_counter": self.crit_counter,
-            "penetration": self.penetration,
-            "penetration_pct": self.penetration_pct,
-            "alive": self.alive,
-        }
-
-    @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> CombatPieceState:
-        return cls(
-            piece_id=payload["piece_id"],
-            is_enemy=payload["is_enemy"],
-            affinity=_parse_enum(WeatherState, payload["affinity"], "affinity"),
-            tier=payload["tier"],
-            level=payload["level"],
-            max_hp=payload["max_hp"],
-            hp=payload["hp"],
-            strength=payload["strength"],
-            intelligence=payload["intelligence"],
-            attack_speed=payload["attack_speed"],
-            move_speed=payload["move_speed"],
-            mana_regen=payload["mana_regen"],
-            threat=payload["threat"],
-            armor=payload["armor"],
-            resistance=payload["resistance"],
-            attack_range=payload["attack_range"],
-            ability_cost=payload["ability_cost"],
-            mana=payload.get("mana", 0),
-            action_energy=payload.get("action_energy", 0),
-            movement_energy=payload.get("movement_energy", 0),
-            position_q=payload.get("position_q", 0),
-            position_r=payload.get("position_r", 0),
-            target_piece_id=payload.get("target_piece_id"),
-            speed_tiebreaker=payload.get("speed_tiebreaker", 0),
-            crit_chance=payload.get("crit_chance", 0.0),
-            ability_can_crit=payload.get("ability_can_crit", False),
-            crit_counter=payload.get("crit_counter", 0),
-            penetration=payload.get("penetration", 0),
-            penetration_pct=payload.get("penetration_pct", 0.0),
-            alive=payload.get("alive", True),
-        )
-
-
-@dataclass(slots=True)
 class BattleEvent:
     tick: int
     actor_id: str
@@ -542,6 +409,10 @@ class BattleResult:
     surviving_enemy_ids: list[str]
     timed_out: bool = False
     events: list[BattleEvent] = field(default_factory=list)
+    # Weather- and passive-applied max HP per piece id, captured from the
+    # engine's own pieces (the single source of truth). Consumed by the combat
+    # log's HP trace; empty for results deserialized from pre-field saves.
+    piece_max_hp: dict[str, int] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.rounds < 0 or self.turns < 0 or self.duration_ticks < 0:
@@ -563,6 +434,7 @@ class BattleResult:
             "surviving_enemy_ids": self.surviving_enemy_ids,
             "timed_out": self.timed_out,
             "events": [event.to_dict() for event in self.events],
+            "piece_max_hp": dict(self.piece_max_hp),
         }
 
     @classmethod
@@ -583,6 +455,7 @@ class BattleResult:
                 BattleEvent.from_dict(raw_event)
                 for raw_event in payload.get("events", [])
             ],
+            piece_max_hp=dict(payload.get("piece_max_hp", {})),
         )
 
 

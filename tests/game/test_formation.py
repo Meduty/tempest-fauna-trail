@@ -26,7 +26,9 @@ from src.game.formation import (
     plan_enemy_formation,
     _center_out_rows,
 )
-from src.game.models import CombatPieceState, WeatherState
+from dataclasses import dataclass
+
+from src.game.models import WeatherState
 
 
 # ---------------------------------------------------------------------------
@@ -34,27 +36,21 @@ from src.game.models import CombatPieceState, WeatherState
 # ---------------------------------------------------------------------------
 
 
-def _make_piece(piece_id: str, tier: int = 3) -> CombatPieceState:
-    """Create a minimal CombatPieceState for testing."""
-    return CombatPieceState(
-        piece_id=piece_id,
-        is_enemy=True,
-        affinity=WeatherState.CLEAR,
-        tier=tier,
-        level=1,
-        max_hp=100,
-        hp=100,
-        strength=50,
-        intelligence=50,
-        attack_speed=100,
-        move_speed=90,
-        mana_regen=10,
-        threat=60,
-        armor=25,
-        resistance=25,
-        attack_range=2,
-        ability_cost=36_000,
-    )
+@dataclass
+class _FormationTestPiece:
+    """Minimal object satisfying formation.FormationPiece (id, tier, order key).
+
+    Mirrors the lightweight shim the combat engine feeds plan_enemy_formation —
+    the planner only reads these three attributes.
+    """
+    piece_id: str
+    tier: int = 3
+    speed_tiebreaker: int = 0
+
+
+def _make_piece(piece_id: str, tier: int = 3) -> _FormationTestPiece:
+    """Create a minimal formation-input piece for testing."""
+    return _FormationTestPiece(piece_id=piece_id, tier=tier)
 
 
 def _make_enemy_def(
@@ -82,7 +78,7 @@ def _make_enemy_def(
 
 
 def _plan_by_index(
-    pieces: list[CombatPieceState],
+    pieces: list[_FormationTestPiece],
     enemy_defs_by_id: dict[str, EnemyDef],
     *,
     boss_position: tuple[int, int] | None = None,
@@ -99,7 +95,7 @@ def _plan_by_index(
 
 
 def _plan_by_unique_piece_id(
-    pieces: list[CombatPieceState],
+    pieces: list[_FormationTestPiece],
     enemy_defs_by_id: dict[str, EnemyDef],
     *,
     boss_position: tuple[int, int] | None = None,
