@@ -40,10 +40,17 @@ DMG_PHYSICAL = "physical"
 class BattleResultRecorder:
     """Records combat events and builds a BattleResult."""
 
-    def __init__(self, pieces: list[Piece], weather: WeatherState, node_id: str = "") -> None:
+    def __init__(
+        self,
+        pieces: list[Piece],
+        weather: WeatherState,
+        node_id: str = "",
+        trait_activations: list[tuple[str, int, int]] | None = None,
+    ) -> None:
         self._pieces = pieces
         self._weather = weather
         self._node_id = node_id
+        self._trait_activations = list(trait_activations or [])
         self._events: list[BattleEvent] = []
         self._damage_dealt: dict[str, int] = {p.id: 0 for p in pieces}
         self._damage_taken: dict[str, int] = {p.id: 0 for p in pieces}
@@ -199,4 +206,5 @@ class BattleResultRecorder:
             timed_out=self._timed_out,
             events=self._events,
             piece_max_hp={p.id: int(p.max_hp) for p in self._pieces},
+            trait_activations=list(self._trait_activations),
         )

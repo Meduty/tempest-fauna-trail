@@ -121,10 +121,10 @@ def resolve_boss_combat(
     """
     enemies = encounter.all_enemies
     # compile_loadout assigns formation_index + load_order (V.34).
-    pieces, bus = compile_loadout(team, enemies, weather, seed=run_seed)
+    pieces, bus, trait_activations = compile_loadout(team, enemies, weather, seed=run_seed)
     assign_spawns(pieces)
 
-    recorder = BattleResultRecorder(pieces, weather, node_id)
+    recorder = BattleResultRecorder(pieces, weather, node_id, trait_activations)
     recorder.register(bus)
 
     ctx = CombatContext(pieces, bus, weather, seed=run_seed)

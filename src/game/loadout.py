@@ -207,10 +207,12 @@ def compile_loadout(
     enemies: list[Enemy],
     weather: WeatherState,
     seed: int = 42,
-) -> tuple[list[Piece], EventBus]:
+) -> tuple[list[Piece], EventBus, list[tuple[str, int, int]]]:
     """Compile team and enemies into combat-ready Pieces with an EventBus.
 
-    Returns (pieces, bus) ready for CombatContext.
+    Returns (pieces, bus, trait_activations) ready for CombatContext.
+    trait_activations is the cleared player-team trait breakpoints (T.28a),
+    surfaced for the BattleResult record.
     """
     from src.game.bosses.data import BOSS_DEFS
     _boss_defs_by_id = {boss.id: boss for boss in BOSS_DEFS.values()}
@@ -227,6 +229,12 @@ def compile_loadout(
     # 2. Apply Weather Favor to base stats
     for piece in pieces:
         _apply_weather_to_piece(piece, weather)
+
+    # 3. Resolve + apply synergy trait breakpoints (player team only — V.22).
+    # Slots between weather (step 2) and passives (step 7); §10.1 order. Item
+    # `granted_traits` (T.29) will apply just before this so emblems are counted.
+    from src.game.traits import resolve_and_apply_traits
+    trait_activations = resolve_and_apply_traits(pieces, bus)
 
     # 7. Apply champion/enemy passive bundles
     for piece in pieces:
@@ -260,4 +268,4 @@ def compile_loadout(
         piece.formation_index = index
         piece.load_order = order[index]
 
-    return pieces, bus
+    return pieces, bus, trait_activations

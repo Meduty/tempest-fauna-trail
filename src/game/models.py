@@ -428,6 +428,10 @@ class BattleResult:
     # engine's own pieces (the single source of truth). Consumed by the combat
     # log's HP trace; empty for results deserialized from pre-field saves.
     piece_max_hp: dict[str, int] = field(default_factory=dict)
+    # Cleared player-team trait breakpoints (T.28a): (trait_id, unique-carrier
+    # count, cleared threshold). Surfaced from compile_loadout; empty for
+    # enemy-only or pre-field results.
+    trait_activations: list[tuple[str, int, int]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if self.rounds < 0 or self.turns < 0 or self.duration_ticks < 0:
@@ -450,6 +454,7 @@ class BattleResult:
             "timed_out": self.timed_out,
             "events": [event.to_dict() for event in self.events],
             "piece_max_hp": dict(self.piece_max_hp),
+            "trait_activations": [list(t) for t in self.trait_activations],
         }
 
     @classmethod
@@ -471,6 +476,10 @@ class BattleResult:
                 for raw_event in payload.get("events", [])
             ],
             piece_max_hp=dict(payload.get("piece_max_hp", {})),
+            trait_activations=[
+                (str(t[0]), int(t[1]), int(t[2]))
+                for t in payload.get("trait_activations", [])
+            ],
         )
 
 

@@ -517,7 +517,7 @@ class TestLoadout:
             threat=50, armor=20, resistance=20, attack_range=1,
             active_ability="smash", passive_ability="", ability_cost=36000,
         )
-        pieces, bus = compile_loadout([champ], [enemy], WeatherState.CLEAR)
+        pieces, bus, _ = compile_loadout([champ], [enemy], WeatherState.CLEAR)
         assert len(pieces) == 2
         assert pieces[0].is_enemy is False
         assert pieces[1].is_enemy is True

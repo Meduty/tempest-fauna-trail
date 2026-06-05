@@ -31,13 +31,13 @@ def resolve_combat(
 
     # Build pieces with weather favor applied. compile_loadout assigns
     # formation_index (input order) + load_order (seeded, side-independent) — V.34.
-    pieces, bus = compile_loadout(team, enemies, weather, seed=42)
+    pieces, bus, trait_activations = compile_loadout(team, enemies, weather, seed=42)
 
     # Assign spawn positions.
     assign_spawns(pieces)
 
     # Wire the recorder to the event bus and run the loop.
-    recorder = BattleResultRecorder(pieces, weather, node_id)
+    recorder = BattleResultRecorder(pieces, weather, node_id, trait_activations)
     recorder.register(bus)
 
     ctx = CombatContext(pieces, bus, weather, seed=42)

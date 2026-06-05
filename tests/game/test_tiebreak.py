@@ -55,7 +55,7 @@ class TestLoadOrderAssignment:
 
     def test_compile_loadout_assigns_formation_index_and_load_order(self):
         team, enemies = self._mirror()
-        pieces, _ = compile_loadout(team, enemies, WeatherState.CLEAR, seed=42)
+        pieces, _, _ = compile_loadout(team, enemies, WeatherState.CLEAR, seed=42)
         n = len(pieces)
         assert [p.formation_index for p in pieces] == list(range(n)), "formation_index = input order"
         assert sorted(p.load_order for p in pieces) == list(range(n)), "load_order is a permutation"
@@ -64,7 +64,7 @@ class TestLoadOrderAssignment:
         # The seeded permutation must NOT be team-block-then-enemy: at least one
         # enemy outranks (lower load_order than) at least one team piece.
         team, enemies = self._mirror()
-        pieces, _ = compile_loadout(team, enemies, WeatherState.CLEAR, seed=42)
+        pieces, _, _ = compile_loadout(team, enemies, WeatherState.CLEAR, seed=42)
         team_lo = [p.load_order for p in pieces if not p.is_enemy]
         enemy_lo = [p.load_order for p in pieces if p.is_enemy]
         assert min(enemy_lo) < max(team_lo), "load_order must mix sides (not team-first)"
