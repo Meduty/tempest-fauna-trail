@@ -376,14 +376,20 @@ def _resolve_action(
 # ---------------------------------------------------------------------------
 
 
-def _event_sort_key(entry: tuple[Piece, str]) -> tuple[float, float, int, int]:
-    """Deterministic same-tick total ordering (plan section 3.5)."""
+def _event_sort_key(entry: tuple[Piece, str]) -> tuple[int, int, str, int, int]:
+    """Canonical side-independent same-tick total order (V.34, fixes B.14).
+
+    `(-AS_int, -milli_AS, champion_id, load_order, kind)`: coarse speed, then
+    sub-integer speed (breaks same-int-AS cross-power ties by true speed), then
+    side-independent identity, then the seeded `load_order` for same-champion
+    copies / true mirrors, then a piece's own movement-before-action.
+    """
     piece, kind = entry
-    as_val = piece.stat("attack_speed")
     return (
-        -as_val,
-        -as_val,
-        piece.speed_tiebreaker,
+        -int(piece.stat("attack_speed")),
+        -int(piece.stat("milli_AS")),
+        piece.id,
+        piece.load_order,
         0 if kind == _KIND_MOVEMENT else 1,
     )
 
@@ -542,7 +548,7 @@ class _FormationEnemy:
     """Shim for feeding Piece enemies into plan_enemy_formation."""
     piece_id: str
     tier: int
-    speed_tiebreaker: int
+    formation_index: int
 
 
 def assign_spawns(pieces: list[Piece]) -> None:
@@ -576,7 +582,7 @@ def assign_spawns(pieces: list[Piece]) -> None:
             _FormationEnemy(
                 piece_id=enemy.id,
                 tier=tier,
-                speed_tiebreaker=enemy.speed_tiebreaker,
+                formation_index=enemy.formation_index,
             )
         )
 
@@ -586,8 +592,8 @@ def assign_spawns(pieces: list[Piece]) -> None:
         boss_position=boss_position,
     )
     for enemy_index, enemy in enumerate(enemies):
-        if enemy.speed_tiebreaker in formation:
-            enemy.position_q, enemy.position_r = formation[enemy.speed_tiebreaker]
+        if enemy.formation_index in formation:
+            enemy.position_q, enemy.position_r = formation[enemy.formation_index]
         else:
             enemy.position_q = BOARD_WIDTH - 1 - (enemy_index // BOARD_HEIGHT)
             enemy.position_r = enemy_index % BOARD_HEIGHT

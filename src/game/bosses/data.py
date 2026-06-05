@@ -61,7 +61,7 @@ class BossDef:
     move_speed: int = 80
     threat: int = 90
     attack_range: int = 2
-    ability_cost: int = 48_000      # mana units (mana_regen ticks to fill)
+    ability_cost: int = 480_000      # mana units (mana_regen ticks to fill)
     # Combat-purpose axis (T.32, V.31). Bosses are authored set-pieces (role stays
     # "boss", outside the 8-role classifier), but still carry a valid `intent`;
     # multi-threat 2-phase commanders default to `hybrid`.
@@ -157,7 +157,7 @@ _HOLLOWAY = BossDef(
     move_speed=75,
     threat=100,
     attack_range=1,
-    ability_cost=42_000,
+    ability_cost=420_000,
     # Abilities (implemented downstream in T20 content)
     phase1_active="holloway.pressure_vent",
     phase1_passive="holloway.stoke_the_fires",
@@ -202,7 +202,7 @@ _VANCE = BossDef(
     move_speed=85,
     threat=70,
     attack_range=4,
-    ability_cost=44_000,
+    ability_cost=440_000,
     phase1_active="vance.focusing_lens",
     phase1_passive="vance.glare",
     phase1_phase_hook="vance.phase_hook",
@@ -244,7 +244,7 @@ _STRAND = BossDef(
     move_speed=90,
     threat=75,
     attack_range=3,
-    ability_cost=38_000,
+    ability_cost=380_000,
     phase1_active="strand.arc_cascade",
     phase1_passive="strand.overcharged",
     phase1_phase_hook="strand.phase_hook",
@@ -286,7 +286,7 @@ _VOSSBERG = BossDef(
     move_speed=95,
     threat=110,
     attack_range=1,
-    ability_cost=40_000,
+    ability_cost=400_000,
     phase1_active="vossberg.scorched_advance",
     phase1_passive="vossberg.no_quarter",
     phase1_phase_hook="vossberg.phase_hook",
@@ -328,7 +328,7 @@ _CREGE = BossDef(
     move_speed=80,
     threat=90,
     attack_range=3,
-    ability_cost=46_000,
+    ability_cost=460_000,
     phase1_active="crege.harpoon_winch",
     phase1_passive="crege.dredged_depths",
     phase1_phase_hook="crege.phase_hook",
@@ -383,7 +383,7 @@ _IRON_EMPEROR = BossDef(
     move_speed=80,
     threat=120,
     attack_range=2,
-    ability_cost=52_000,
+    ability_cost=520_000,
     # Phase 1: commanding, deliberate, relies on his army
     phase1_active="iron_emperor.decree_of_iron",
     phase1_passive="iron_emperor.tribute",

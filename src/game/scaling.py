@@ -20,7 +20,6 @@ L2→L3 stat gain:    2^1.0   = 2.000
 L1→L3 stat gain:    2^1.5   ≈ 2.828
 Total T1L1→T10L3:   2^3.0   = 8.0× in stats
 """
-import math
 
 # Base multiplier per "tripling" of copies (mirrors TFT's 3-to-1 combine).
 LEVEL_UP_MOD: float = 2.0
@@ -36,15 +35,37 @@ TRIPLINGS: dict[int, int] = {1: 0, 2: 1, 3: 3}
 LEVEL_STEP: float = LEVEL_UP_MOD
 TIER_STEP: float = TIER_UP_MOD
 
-# Stats scaled by stat_multiplier.  Flat stats (attack_speed, mana_regen,
-# move_speed, attack_range, threat, ability_cost) are NOT in this tuple.
-SCALABLE_STATS: tuple[str, ...] = (
+# Three stat-scaling classes (T.33, V.34). Every base stat falls in exactly one.
+#   PRIMARY   — combat heavyweights, full sqrt(power) curve (+12.2%/tier).
+#   SECONDARY — speeds + threat, a gentle curve (+2%/tier) so a higher-power
+#               piece is fractionally faster → breaks equal-AS ties by power
+#               (fixes B.14). Carried as FLOAT (never round()) so the nudge
+#               survives into _event_sort_key.
+#   FLAT      — fixed thresholds, never scaled.
+PRIMARY_SCALABLE_STATS: tuple[str, ...] = (
     "max_hp",
     "strength",
     "intelligence",
     "armor",
     "resistance",
 )
+SECONDARY_SCALABLE_STATS: tuple[str, ...] = (
+    "attack_speed",
+    "move_speed",
+    "mana_regen",
+    "threat",
+)
+FLAT_STATS: tuple[str, ...] = (
+    "attack_range",
+    "ability_cost",
+)
+
+# sqrt(power) for PRIMARY; a dampened exponent for SECONDARY (≈ +2%/tier).
+PRIMARY_EXPONENT: float = 0.5
+SECONDARY_EXPONENT: float = 0.0857
+
+# Deprecated alias — retained for back-compat; equals the primary tuple.
+SCALABLE_STATS: tuple[str, ...] = PRIMARY_SCALABLE_STATS
 
 
 def power(tier: int, level: int) -> float:
@@ -71,20 +92,46 @@ def power(tier: int, level: int) -> float:
     return LEVEL_UP_MOD**exponent
 
 
-def stat_multiplier(tier: int, level: int) -> float:
-    """Stat multiplier = sqrt(power(T, L)).
+def stat_multiplier(tier: int, level: int, exponent: float = PRIMARY_EXPONENT) -> float:
+    """Stat multiplier = power(T, L) ** exponent.
 
-    Each scaled stat grows with sqrt(P) so that HP*DPS ∝ P, keeping
-    encounter budgets linear.
+    At the default ``PRIMARY_EXPONENT=0.5`` this is ``sqrt(power(T, L))`` — each
+    PRIMARY stat grows with sqrt(P) so that HP*DPS ∝ P, keeping encounter budgets
+    linear.  At ``SECONDARY_EXPONENT`` it yields the gentle ≈+2%/tier speed curve.
 
     Args:
-        tier:  Piece tier, integer in [1, 10].
-        level: Piece level, integer in [1, 3].
+        tier:     Piece tier, integer in [1, 10].
+        level:    Piece level, integer in [1, 3].
+        exponent: Curve steepness; PRIMARY_EXPONENT (default) or SECONDARY_EXPONENT.
 
     Returns:
         Multiplier ≥ 1.0 to apply to base stats.
     """
-    return math.sqrt(power(tier, level))
+    return power(tier, level) ** exponent
+
+
+def level_scale_stats(stats: dict, tier: int, level: int) -> None:
+    """In-place level-scale a composed stat dict (T.33).
+
+    PRIMARY stats scale on `sqrt(power)`; SECONDARY stats (+ the derived `milli_AS`
+    ordering field) scale on the gentle `SECONDARY_EXPONENT` curve. FLAT stats and
+    non-scalable keys (crit/penetration/range/cost) are untouched. No-op at L1.
+    """
+    if level <= 1:
+        return
+    pscale = stat_multiplier(tier, level) / stat_multiplier(tier, 1)
+    sscale = (
+        stat_multiplier(tier, level, SECONDARY_EXPONENT)
+        / stat_multiplier(tier, 1, SECONDARY_EXPONENT)
+    )
+    for k in PRIMARY_SCALABLE_STATS:
+        if k in stats:
+            stats[k] = round(stats[k] * pscale)
+    for k in SECONDARY_SCALABLE_STATS:
+        if k in stats:
+            stats[k] = round(stats[k] * sscale)
+    if "milli_AS" in stats:
+        stats["milli_AS"] = round(stats["milli_AS"] * sscale)
 
 
 def scale_stat(base: int, tier: int, level: int) -> int:

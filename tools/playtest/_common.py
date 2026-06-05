@@ -120,9 +120,8 @@ def resolve_boss_combat(
     This composes the same primitives manually.
     """
     enemies = encounter.all_enemies
+    # compile_loadout assigns formation_index + load_order (V.34).
     pieces, bus = compile_loadout(team, enemies, weather, seed=run_seed)
-    for index, piece in enumerate(pieces):
-        piece.speed_tiebreaker = index
     assign_spawns(pieces)
 
     recorder = BattleResultRecorder(pieces, weather, node_id)

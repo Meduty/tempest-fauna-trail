@@ -33,7 +33,7 @@ class FormationPiece(Protocol):
     """
     piece_id: str
     tier: int
-    speed_tiebreaker: int
+    formation_index: int
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -161,7 +161,7 @@ def _place_band(
         # Try primary column first
         for row in rows:
             if (col, row) not in occupied:
-                placements[piece.speed_tiebreaker] = (col, row)
+                placements[piece.formation_index] = (col, row)
                 occupied.add((col, row))
                 placed = True
                 break
@@ -171,7 +171,7 @@ def _place_band(
             for ov_col in overflow_cols:
                 for row in rows:
                     if (ov_col, row) not in occupied:
-                        placements[piece.speed_tiebreaker] = (ov_col, row)
+                        placements[piece.formation_index] = (ov_col, row)
                         occupied.add((ov_col, row))
                         placed = True
                         break
@@ -183,7 +183,7 @@ def _place_band(
             center_row = board_height // 2
             pos = _nearest_free(col, center_row, occupied, board_height)
             if pos is not None:
-                placements[piece.speed_tiebreaker] = pos
+                placements[piece.formation_index] = pos
                 occupied.add(pos)
 
 
@@ -213,7 +213,7 @@ def _place_flankers(
         if i < len(flank_positions):
             col, row = flank_positions[i]
             if (col, row) not in occupied:
-                placements[piece.speed_tiebreaker] = (col, row)
+                placements[piece.formation_index] = (col, row)
                 occupied.add((col, row))
                 placed = True
 
@@ -221,7 +221,7 @@ def _place_flankers(
             # Find nearest free edge-adjacent cell
             for col, row in flank_positions:
                 if (col, row) not in occupied:
-                    placements[piece.speed_tiebreaker] = (col, row)
+                    placements[piece.formation_index] = (col, row)
                     occupied.add((col, row))
                     placed = True
                     break
@@ -230,7 +230,7 @@ def _place_flankers(
             # Fallback: any free cell near edges
             pos = _nearest_free(COL_MID, flank_rows[i % 2], occupied, board_height)
             if pos is not None:
-                placements[piece.speed_tiebreaker] = pos
+                placements[piece.formation_index] = pos
                 occupied.add(pos)
 
 
@@ -252,7 +252,7 @@ def _place_boss(
             break
 
     # Place boss
-    placements[boss.speed_tiebreaker] = boss_position
+    placements[boss.formation_index] = boss_position
     occupied.add(boss_position)
 
     # Relocate displaced piece
@@ -287,7 +287,7 @@ def plan_enemy_formation(
         board_height: Board height (default 7).
 
     Returns:
-        Dict mapping piece speed_tiebreaker → (col, row) for each enemy.
+        Dict mapping piece formation_index → (col, row) for each enemy.
     """
     if not enemies:
         return {}

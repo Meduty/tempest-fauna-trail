@@ -61,7 +61,8 @@ class Piece:
     position_r: int = 0
     alive: bool = True
     target_id: str | None = None
-    speed_tiebreaker: int = 0
+    formation_index: int = 0  # input-order index → enemy formation-position key (T.24)
+    load_order: int = 0  # seeded side-independent permutation → final tie-break (V.34)
     action_energy: int = 0
     movement_energy: int = 0
 

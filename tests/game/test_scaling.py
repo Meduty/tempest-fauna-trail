@@ -4,12 +4,18 @@ import math
 import pytest
 
 from src.game.scaling import (
+    FLAT_STATS,
     LEVEL_STEP,
     LEVEL_UP_MOD,
+    PRIMARY_EXPONENT,
+    PRIMARY_SCALABLE_STATS,
     SCALABLE_STATS,
+    SECONDARY_EXPONENT,
+    SECONDARY_SCALABLE_STATS,
     TIER_STEP,
     TIER_UP_MOD,
     TRIPLINGS,
+    level_scale_stats,
     power,
     scale_stat,
     stat_multiplier,
@@ -136,14 +142,45 @@ class TestScaleStat:
 # ---------------------------------------------------------------------------
 
 class TestScalableStats:
-    def test_scalable_contains_required_fields(self):
+    def test_primary_contains_required_fields(self):
         required = {"max_hp", "strength", "intelligence", "armor", "resistance"}
-        assert required.issubset(set(SCALABLE_STATS))
+        assert required == set(PRIMARY_SCALABLE_STATS)
 
-    def test_flat_stats_not_in_scalable(self):
-        flat = {"attack_speed", "mana_regen", "move_speed", "attack_range",
-                "threat", "ability_cost"}
-        for stat in flat:
-            assert stat not in SCALABLE_STATS, (
-                f"Flat stat '{stat}' must not be in SCALABLE_STATS"
-            )
+    def test_scalable_stats_is_primary_alias(self):
+        # SCALABLE_STATS retained as a deprecated alias of the primary tuple (V.34).
+        assert SCALABLE_STATS == PRIMARY_SCALABLE_STATS
+
+    def test_secondary_is_speeds_plus_threat(self):
+        assert set(SECONDARY_SCALABLE_STATS) == {
+            "attack_speed", "move_speed", "mana_regen", "threat"
+        }
+
+    def test_three_classes_disjoint(self):
+        p, s, f = (set(PRIMARY_SCALABLE_STATS), set(SECONDARY_SCALABLE_STATS),
+                   set(FLAT_STATS))
+        assert p & s == set() and p & f == set() and s & f == set()
+
+    def test_classes_cover_base_stats(self):
+        # Every _BASE_STATS key is classified exactly once, except the premium
+        # ratios crit_chance/penetration/penetration_pct (off the scaling model).
+        from src.game.content import _BASE_STATS
+        classified = (set(PRIMARY_SCALABLE_STATS) | set(SECONDARY_SCALABLE_STATS)
+                      | set(FLAT_STATS))
+        premium = {"crit_chance", "penetration", "penetration_pct"}
+        assert set(_BASE_STATS) - premium == classified
+
+    def test_secondary_exponent_gentle(self):
+        # ≈ +2%/tier, ×1.428 over T1L1→T10L3.
+        assert round(stat_multiplier(2, 1, SECONDARY_EXPONENT), 3) == 1.02
+        assert round(stat_multiplier(10, 3, SECONDARY_EXPONENT), 2) == 1.43
+        # PRIMARY default unchanged (sqrt(power)).
+        assert stat_multiplier(5, 2) == stat_multiplier(5, 2, PRIMARY_EXPONENT)
+
+    def test_level_scale_secondary_and_milli_monotone(self):
+        s1 = {**{k: 100 for k in SECONDARY_SCALABLE_STATS}, "milli_AS": 100_000,
+              "max_hp": 600}
+        s3 = dict(s1)
+        level_scale_stats(s3, tier=5, level=3)
+        assert s3["attack_speed"] > s1["attack_speed"]
+        assert s3["milli_AS"] > s1["milli_AS"]
+        assert s3["max_hp"] > s1["max_hp"]

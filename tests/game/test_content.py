@@ -159,7 +159,8 @@ class TestStatMonotonicity:
                 ), f"{hi.id} primary < {lo.id}"
 
     def test_flat_stats_same_across_tiers(self) -> None:
-        """attack_speed and attack_range are identical for same-archetype champions."""
+        """Only FLAT_STATS (attack_range, ability_cost) are tier-invariant for a
+        shared archetype; speeds now scale with tier (SECONDARY, V.34)."""
         from src.game.content import _CHAMPION_DEFS
 
         by_archetype: dict[tuple, list] = {}
@@ -170,14 +171,19 @@ class TestStatMonotonicity:
         for key, defs in by_archetype.items():
             if len(defs) < 2:
                 continue
-            first = CHAMPION_ROSTER[defs[0].id]
-            for d in defs[1:]:
-                c = CHAMPION_ROSTER[d.id]
-                assert c.attack_speed == first.attack_speed, (
-                    f"{c.id} AS != {first.id} AS"
+            champs = sorted(
+                (CHAMPION_ROSTER[d.id] for d in defs), key=lambda c: c.tier
+            )
+            for prev, cur in zip(champs, champs[1:]):
+                assert cur.attack_range == prev.attack_range, (
+                    f"{cur.id} range != {prev.id} range"
                 )
-                assert c.attack_range == first.attack_range, (
-                    f"{c.id} range != {first.id} range"
+                assert cur.ability_cost == prev.ability_cost, (
+                    f"{cur.id} cost != {prev.id} cost"
+                )
+                # attack_speed scales with tier (V.34): higher tier ⇒ ≥ AS.
+                assert cur.attack_speed >= prev.attack_speed, (
+                    f"{cur.id}(T{cur.tier}) AS < {prev.id}(T{prev.tier})"
                 )
 
 

@@ -29,7 +29,7 @@ from .content import (
 )
 from .models import Enemy, WeatherState
 from .route import StageDef
-from .scaling import power
+from .scaling import level_scale_stats, power
 
 # ---------------------------------------------------------------------------
 # Seed channels
@@ -274,17 +274,11 @@ def _weighted_pick(
 
 def _instantiate_enemy(d: EnemyDef, level: int) -> Enemy:
     """Build an Enemy instance at the given level."""
-    from .scaling import stat_multiplier as sm
-
     base = compose_stats(
         d.stat, d.reach, d.durability, d.playstyle, d.speed, d.intent, d.tier
     )
     base = _apply_stat_overrides(base, d.stat_overrides)
-    # Recompute stat scaling for the target level
-    if level > 1:
-        s = sm(d.tier, level) / sm(d.tier, 1)
-        for k in ("max_hp", "strength", "intelligence", "armor", "resistance"):
-            base[k] = round(base[k] * s)
+    level_scale_stats(base, d.tier, level)
 
     return Enemy(
         id=d.id,
@@ -301,6 +295,7 @@ def _instantiate_enemy(d: EnemyDef, level: int) -> Enemy:
         armor=max(0, base["armor"]),
         resistance=max(0, base["resistance"]),
         attack_speed=round(base["attack_speed"]),
+        milli_AS=round(base["milli_AS"]),
         mana_regen=round(base["mana_regen"]),
         move_speed=round(base["move_speed"]),
         threat=round(base["threat"]),
@@ -602,16 +597,11 @@ def _champion_def_to_enemy(d: ChampionDef, level: int = 1) -> "Enemy":
     presented as Enemy objects (opponent-side pieces). Traits are dropped
     (trait synergies are a player-board mechanic only).
     """
-    from .scaling import stat_multiplier as sm
-
     base = compose_stats(
         d.stat, d.reach, d.durability, d.playstyle, d.speed, d.intent, d.tier
     )
     base = _apply_stat_overrides(base, d.stat_overrides)
-    if level > 1:
-        scale = sm(d.tier, level) / sm(d.tier, 1)
-        for k in ("max_hp", "strength", "intelligence", "armor", "resistance"):
-            base[k] = round(base[k] * scale)
+    level_scale_stats(base, d.tier, level)
 
     return Enemy(
         id=d.id,
@@ -628,6 +618,7 @@ def _champion_def_to_enemy(d: ChampionDef, level: int = 1) -> "Enemy":
         armor=max(0, base["armor"]),
         resistance=max(0, base["resistance"]),
         attack_speed=round(base["attack_speed"]),
+        milli_AS=round(base["milli_AS"]),
         mana_regen=round(base["mana_regen"]),
         move_speed=round(base["move_speed"]),
         threat=round(base["threat"]),

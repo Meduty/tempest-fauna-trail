@@ -5,7 +5,13 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from src.game.models import Champion, Enemy, WeatherState
-from src.game.scaling import stat_multiplier
+from src.game.scaling import (
+    PRIMARY_SCALABLE_STATS,
+    SECONDARY_EXPONENT,
+    SECONDARY_SCALABLE_STATS,
+    level_scale_stats,
+    stat_multiplier,
+)
 
 _BASE_STATS: dict[str, Any] = {
     "max_hp": 600,
@@ -14,8 +20,8 @@ _BASE_STATS: dict[str, Any] = {
     "armor": 25,
     "resistance": 25,
     "attack_speed": 100,
-    "mana_regen": 10,
-    "move_speed": 90,
+    "mana_regen": 100,
+    "move_speed": 100,
     "threat": 60,
     "attack_range": 2,
     "ability_cost": 36_000,
@@ -124,7 +130,9 @@ _INTENT: dict[str, dict[str, float]] = {
 }
 
 # Ability cost is uniform — demoted from a per-unit Def field to a constant (T.32).
-_ABILITY_COST = 36_000
+# T.33: lifted 36_000→300_000 alongside mana_regen 10→100 (V.35 baseline parity).
+# 300_000 (vs cadence-neutral 360_000) bakes a ~20% mage buff. FLAT (never scaled).
+_ABILITY_COST = 300_000
 # Valid override targets — every base stat key, incl. premium crit/penetration (V.33).
 ALL_STAT_KEYS = frozenset(_BASE_STATS)
 INTENT_VALUES = frozenset(_INTENT)
@@ -297,15 +305,24 @@ def compose_stats(
 
     stats["ability_cost"] = _ABILITY_COST
 
-    s = stat_multiplier(tier, 1)
-    for k in ("max_hp", "strength", "intelligence", "armor", "resistance"):
-        stats[k] = round(stats[k] * s)
+    # PRIMARY: sqrt(power) tier-scale, rounded to int.
+    sp = stat_multiplier(tier, 1)
+    for k in PRIMARY_SCALABLE_STATS:
+        stats[k] = round(stats[k] * sp)
+    # SECONDARY: gentle tier-scale. milli_AS captures sub-integer attack_speed for
+    # the canonical sort order (V.34) BEFORE rounding; all speeds then stored int.
+    ss = stat_multiplier(tier, 1, SECONDARY_EXPONENT)
+    for k in SECONDARY_SCALABLE_STATS:
+        stats[k] = stats[k] * ss
+    stats["milli_AS"] = round(stats["attack_speed"] * 1000)
+    for k in SECONDARY_SCALABLE_STATS:
+        stats[k] = round(stats[k])
 
     return stats
 
 
 def _assert_budget(d: Any, base: dict[str, Any]) -> None:
-    scalable = ("max_hp", "strength", "intelligence", "armor", "resistance")
+    scalable = PRIMARY_SCALABLE_STATS
     budget = sum(base[k] for k in scalable)
     drift = sum(d.stat_overrides.get(k, 0) for k in scalable)
     if budget > 0:
@@ -330,11 +347,7 @@ def _build_champion(d: ChampionDef, level: int = 1) -> Champion:
     # Overrides applied after tier-scale, before level-scale (V.33): scalable
     # overrides level-scale; non-scaled/premium ones stay flat.
     base = _apply_stat_overrides(base, d.stat_overrides)
-    if level > 1:
-        from .scaling import stat_multiplier as sm
-        scale = sm(d.tier, level) / sm(d.tier, 1)
-        for k in ("max_hp", "strength", "intelligence", "armor", "resistance"):
-            base[k] = round(base[k] * scale)
+    level_scale_stats(base, d.tier, level)
     return Champion(
         id=d.id,
         name=d.name,
@@ -350,6 +363,7 @@ def _build_champion(d: ChampionDef, level: int = 1) -> Champion:
         armor=max(0, base["armor"]),
         resistance=max(0, base["resistance"]),
         attack_speed=round(base["attack_speed"]),
+        milli_AS=round(base["milli_AS"]),
         mana_regen=round(base["mana_regen"]),
         move_speed=round(base["move_speed"]),
         threat=round(base["threat"]),
@@ -370,11 +384,7 @@ def _build_enemy(d: EnemyDef, level: int = 1) -> Enemy:
     )
     _assert_budget(d, base)
     base = _apply_stat_overrides(base, d.stat_overrides)
-    if level > 1:
-        from .scaling import stat_multiplier as sm
-        scale = sm(d.tier, level) / sm(d.tier, 1)
-        for k in ("max_hp", "strength", "intelligence", "armor", "resistance"):
-            base[k] = round(base[k] * scale)
+    level_scale_stats(base, d.tier, level)
     return Enemy(
         id=d.id,
         name=d.name,
@@ -390,6 +400,7 @@ def _build_enemy(d: EnemyDef, level: int = 1) -> Enemy:
         armor=max(0, base["armor"]),
         resistance=max(0, base["resistance"]),
         attack_speed=round(base["attack_speed"]),
+        milli_AS=round(base["milli_AS"]),
         mana_regen=round(base["mana_regen"]),
         move_speed=round(base["move_speed"]),
         threat=round(base["threat"]),

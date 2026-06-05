@@ -19,11 +19,13 @@ from src.game.effects import EffectBundle, EventBus, Hook, Modifier, Lifetime
 from src.game.models import Champion, Enemy, WeatherState
 from src.game.piece import ActiveSlot, Piece
 from src.game.registries import ABILITY_REGISTRY, PASSIVE_REGISTRY
+from src.game.rng import SeededRng
 from src.game.status import StatusInstance
 from src.game.weather_effects import combat_modifier
 from src.game import abilities as _abilities  # noqa: F401 — triggers @register decorators
 
-DEFAULT_ABILITY_COST = 36_000
+# Matches content._ABILITY_COST (T.33: 36_000→300_000 alongside mana_regen 10→100).
+DEFAULT_ABILITY_COST = 300_000
 
 
 def apply_bundle(
@@ -73,6 +75,7 @@ def piece_from_champion(champion: Champion) -> Piece:
             "strength": float(champion.strength),
             "intelligence": float(champion.intelligence),
             "attack_speed": float(champion.attack_speed),
+            "milli_AS": float(champion.milli_AS),
             "move_speed": float(champion.move_speed),
             "mana_regen": float(champion.mana_regen),
             "threat": float(champion.threat),
@@ -111,6 +114,7 @@ def piece_from_enemy(enemy: Enemy) -> Piece:
             "strength": float(enemy.strength),
             "intelligence": float(enemy.intelligence),
             "attack_speed": float(enemy.attack_speed),
+            "milli_AS": float(enemy.milli_AS),
             "move_speed": float(enemy.move_speed),
             "mana_regen": float(enemy.mana_regen),
             "threat": float(enemy.threat),
@@ -183,6 +187,8 @@ def _apply_weather_to_piece(piece: Piece, weather: WeatherState) -> None:
     piece.base_stats["strength"] = _scale_stat(piece.base_stats["strength"], modifier.str_mult)
     piece.base_stats["intelligence"] = _scale_stat(piece.base_stats["intelligence"], modifier.int_mult)
     piece.base_stats["attack_speed"] = _scale_stat(piece.base_stats["attack_speed"], modifier.as_mult)
+    # milli_AS rides the same as_mult so sub-integer order stays exact post-weather (V.34).
+    piece.base_stats["milli_AS"] = _scale_stat(piece.base_stats["milli_AS"], modifier.as_mult)
     piece.base_stats["move_speed"] = _scale_stat(piece.base_stats["move_speed"], modifier.ms_mult)
     piece.base_stats["mana_regen"] = _scale_stat(piece.base_stats["mana_regen"], modifier.mr_mult)
     piece.base_stats["threat"] = _scale_stat(piece.base_stats["threat"], modifier.thr_mult)
@@ -244,5 +250,14 @@ def compile_loadout(
                     bundle = factory(piece)
                     if bundle:
                         apply_bundle(piece, bundle, bus)
+
+    # Tie-break setup (V.34): formation_index = input order (enemy formation key);
+    # load_order = a seeded, side-independent permutation (NOT team-block-then-enemy)
+    # so same-tick AS ties resolve fairly — never systematically toward the team.
+    order = list(range(len(pieces)))
+    SeededRng(seed).shuffle(order)
+    for index, piece in enumerate(pieces):
+        piece.formation_index = index
+        piece.load_order = order[index]
 
     return pieces, bus

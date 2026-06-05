@@ -29,12 +29,9 @@ def resolve_combat(
     from src.game.combat.recorder import BattleResultRecorder
     from src.game.loadout import compile_loadout
 
-    # Build pieces with weather favor applied.
+    # Build pieces with weather favor applied. compile_loadout assigns
+    # formation_index (input order) + load_order (seeded, side-independent) — V.34.
     pieces, bus = compile_loadout(team, enemies, weather, seed=42)
-
-    # Assign speed tiebreakers (stable input ordering).
-    for index, piece in enumerate(pieces):
-        piece.speed_tiebreaker = index
 
     # Assign spawn positions.
     assign_spawns(pieces)

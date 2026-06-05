@@ -45,7 +45,7 @@ class _FormationTestPiece:
     """
     piece_id: str
     tier: int = 3
-    speed_tiebreaker: int = 0
+    formation_index: int = 0
 
 
 def _make_piece(piece_id: str, tier: int = 3) -> _FormationTestPiece:
@@ -85,7 +85,7 @@ def _plan_by_index(
     board_height: int = BOARD_HEIGHT,
 ) -> dict[int, tuple[int, int]]:
     for index, piece in enumerate(pieces):
-        piece.speed_tiebreaker = index
+        piece.formation_index = index
     return plan_enemy_formation(
         pieces,
         enemy_defs_by_id,
@@ -111,7 +111,7 @@ def _plan_by_unique_piece_id(
     )
     placement_by_piece_id: dict[str, tuple[int, int]] = {}
     for piece in pieces:
-        pos = placement_by_index.get(piece.speed_tiebreaker)
+        pos = placement_by_index.get(piece.formation_index)
         assert pos is not None
         placement_by_piece_id[piece.piece_id] = pos
     return placement_by_piece_id
@@ -388,7 +388,7 @@ class TestDuplicatePieceIds:
             _make_piece("enemy_heavy_knight"),
         ]
         formation = _plan_by_index(pieces, ENEMY_DEF_BY_ID)
-        positions = [formation[piece.speed_tiebreaker] for piece in pieces]
+        positions = [formation[piece.formation_index] for piece in pieces]
 
         assert len(positions) == len(pieces)
         assert len(set(positions)) == len(pieces)
