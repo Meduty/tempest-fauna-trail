@@ -93,25 +93,25 @@ def test_run_matchup_team():
 
 
 def test_configure_sim_max_ticks_mutates_loop_constants():
-    """configure_sim_max_ticks must update all three related loop constants."""
-    from src.game.combat import loop_new
-    original_max = loop_new.MAX_TICKS
-    original_sd = loop_new.SUDDEN_DEATH_TICK_START
-    original_hc = loop_new.HARD_CAP_TICKS
+    """configure_sim_max_ticks must update all three related engine constants."""
+    from src.game.combat import engine
+    original_max = engine.MAX_TICKS
+    original_sd = engine.SUDDEN_DEATH_TICK_START
+    original_hc = engine.HARD_CAP_TICKS
     try:
         configure_sim_max_ticks(500_000)
-        assert loop_new.MAX_TICKS == 500_000
-        assert loop_new.SUDDEN_DEATH_TICK_START == 500_000
-        assert loop_new.HARD_CAP_TICKS == 502_000
+        assert engine.MAX_TICKS == 500_000
+        assert engine.SUDDEN_DEATH_TICK_START == 500_000
+        assert engine.HARD_CAP_TICKS == 502_000
     finally:
-        loop_new.MAX_TICKS = original_max
-        loop_new.SUDDEN_DEATH_TICK_START = original_sd
-        loop_new.HARD_CAP_TICKS = original_hc
+        engine.MAX_TICKS = original_max
+        engine.SUDDEN_DEATH_TICK_START = original_sd
+        engine.HARD_CAP_TICKS = original_hc
 
 
 def test_configure_sim_max_ticks_zero_is_noop():
     """Passing 0 must leave engine constants untouched."""
-    from src.game.combat import loop_new
-    original_max = loop_new.MAX_TICKS
+    from src.game.combat import engine
+    original_max = engine.MAX_TICKS
     configure_sim_max_ticks(0)
-    assert loop_new.MAX_TICKS == original_max
+    assert engine.MAX_TICKS == original_max

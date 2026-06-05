@@ -1,7 +1,8 @@
-"""Combat tick loop (T20/T26 unified).
+"""Combat engine — unified tick loop (T20/T26).
 
-run() is the entry point — takes a compiled loadout and runs the full combat.
-resolve_combat() delegates to this via the recorder bridge.
+`run()` takes a compiled loadout (a `CombatContext`) and runs the full combat.
+The public `resolve_combat` entry point in `resolve.py` wires the loadout and
+recorder around this.
 
 The loop implements:
 - Action/movement energy meters with overflow carry
@@ -104,7 +105,7 @@ def _select_target(piece: Piece, candidates: list[Piece]) -> Piece | None:
 
 
 # ---------------------------------------------------------------------------
-# Pathing (BFS-based, matching legacy)
+# Pathing (BFS-based)
 # ---------------------------------------------------------------------------
 
 
@@ -161,7 +162,7 @@ def _next_step_toward(
 
 
 # ---------------------------------------------------------------------------
-# Damage pipeline (matching legacy integer behavior)
+# Damage pipeline (integer behavior)
 # ---------------------------------------------------------------------------
 
 
@@ -198,7 +199,7 @@ def _apply_hit(
 ) -> tuple[int, bool]:
     """Calculate and apply damage. Returns (damage_amount, is_crit).
 
-    Applies Affinity Clash and mitigation matching legacy behavior.
+    Applies Affinity Clash and mitigation.
     """
     strength = attacker.stat("strength")
     intelligence = attacker.stat("intelligence")
@@ -313,7 +314,7 @@ def _resolve_action(
                 current = enemy
                 break
 
-    # Rule 1: cast when mana is full and any valid target exists (legacy fallback).
+    # Rule 1: cast when mana is full and any valid target exists (unregistered-ability fallback).
     # Check if piece has ability slots with full mana AND the ability is NOT in the registry
     # (registered abilities are handled by the ability framework's process_casts)
     from src.game.registries import ABILITY_REGISTRY  # deferred: avoids circular import

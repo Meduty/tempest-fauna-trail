@@ -89,7 +89,7 @@ compile_loadout(team, enemies, weather)      # content ↔ combat boundary
 CombatContext(pieces, bus, weather, seed)    # the mutator API (board_state optional)
         │
         ▼
-combat/loop_new.run(ctx)                      # the ONE tick loop (V.29)
+combat/engine.run(ctx)                        # the ONE tick loop (V.29)
         │  events ──▶ EventBus
         ▼
 BattleResultRecorder.build_result()          # rebuilds BattleResult from events
@@ -103,14 +103,14 @@ wiring).
 
 | Concern | File |
 |---|---|
-| Public entry + legacy shim + tuning constants (coeffs, tick sizes) | `src/game/combat/legacy.py` |
+| Public entry (`resolve_combat`) — wires loadout → context → engine → recorder | `src/game/combat/resolve.py` |
 | Package re-exports (`resolve_combat`, `CombatContext`, `run`) | `src/game/combat/__init__.py` |
-| **The tick loop** (energy meters, pathing, attacks, casts, statuses, map effects, sudden death) | `src/game/combat/loop_new.py` |
+| **The tick loop** (energy meters, pathing, attacks, casts, statuses, map effects, sudden death) + tuning constants (coeffs, tick sizes) | `src/game/combat/engine.py` |
 | **Mutator API** — the *only* way content touches the world | `src/game/combat/context.py` |
 | Event → `BattleResult` reconstruction | `src/game/combat/recorder.py` |
 | Compile models → combat `Piece`s + wire passives/weather | `src/game/loadout.py` |
 
-> **V.29 — there is exactly one tick loop.** `loop_new.py` is it. The old `loop.py` was
+> **V.29 — there is exactly one tick loop.** `engine.py` is it. The old `loop.py` was
 > deleted after the T.26 unification; do not reintroduce a parallel engine (see the
 > [2026-06-04 journal](docs/journal/2026-06-04_barriers_engine_unification_weather_metric_fix.md)).
 
@@ -352,7 +352,7 @@ depend on it:
 
 | I want to… | Go to |
 |---|---|
-| Change how a fight resolves | `src/game/combat/loop_new.py` |
+| Change how a fight resolves | `src/game/combat/engine.py` |
 | Add/modify what content can do to the world | `src/game/combat/context.py` (mutator API) |
 | Add a champion/enemy ability | `src/game/abilities/{champions,enemies}.py` + register |
 | Add a boss | `src/game/bosses/data.py` + `src/game/abilities/bosses.py` + `src/game/map_effects.py` |
@@ -380,7 +380,7 @@ depend on it:
 3. `compile_loadout` builds runtime `Piece`s, applies **Weather Favor** to base stats,
    subscribes passive `Hook`s to a fresh `EventBus`, wires boss phase/death hooks.
 4. `CombatContext` wraps the pieces + bus + board; bosses `attach_map_effect`.
-5. `loop_new.run(ctx)` ticks: meters fill → pieces move (BFS pathing) / auto-attack /
+5. `engine.run(ctx)` ticks: meters fill → pieces move (BFS pathing) / auto-attack /
    cast abilities; every damage instance applies **Affinity Clash**; statuses tick on
    their cadence; barriers soak; map effects fire; sudden-death timeout guards stalls.
    Every action emits a typed event onto the bus.
@@ -396,7 +396,7 @@ depend on it:
 1. **This file** — the map.
 2. [SPEC.md](SPEC.md) §G (goal), §V (invariants) — the rules.
 3. `src/game/models.py` — the vocabulary.
-4. `src/game/combat/loop_new.py` + `context.py` — the engine.
+4. `src/game/combat/engine.py` + `context.py` — the engine.
 5. `src/game/abilities/champions.py` — see content plug into the framework.
 6. Run `tools/playtest/sim_fight` — watch a fight resolve.
 7. [docs/journal/](docs/journal/) — the "why" behind the non-obvious choices.

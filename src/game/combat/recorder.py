@@ -1,8 +1,7 @@
 """BattleResultRecorder — subscribes to EventBus and builds BattleResult (T26).
 
 Subscribes to combat events (attacks, damage, deaths, casts, heals, spawns,
-statuses, combat end) and reconstructs a BattleResult with a full event stream
-compatible with the legacy format.
+statuses, combat end) and reconstructs a BattleResult with a full event stream.
 """
 
 from __future__ import annotations
@@ -24,7 +23,7 @@ from src.game.models import BattleEvent, BattleResult, CombatOutcome, WeatherSta
 from src.game.piece import Piece
 
 
-# Event type constants matching legacy
+# Event type constants — the BattleEvent.event_type vocabulary
 EVENT_MOVE = "move"
 EVENT_ATTACK = "attack"
 EVENT_CAST = "cast"
@@ -97,7 +96,7 @@ class BattleResultRecorder:
         ))
 
     def record_cast(self, actor_id: str, target_id: str, tick: int, amount: int, damage_type: str, is_crit: bool = False) -> None:
-        """Record a cast event (called by loop for legacy-compatible cast recording).
+        """Record a cast event (called by the engine for cast recording).
 
         Note: damage stats are tracked via _on_damage_dealt from the bus.
         """
@@ -112,7 +111,7 @@ class BattleResultRecorder:
         ))
 
     def record_attack(self, actor_id: str, target_id: str, tick: int, amount: int, damage_type: str, is_crit: bool = False) -> None:
-        """Record an attack event (called by loop for legacy-compatible recording).
+        """Record an attack event (called by the engine for attack recording).
 
         Note: damage stats are tracked via _on_damage_dealt from the bus.
         """

@@ -6,7 +6,7 @@ import pytest
 
 from src.game.abilities import reference  # Trigger registrations
 from src.game.combat.context import CombatContext, hex_distance
-from src.game.combat.loop_new import run, process_statuses, process_casts, expire_modifiers
+from src.game.combat.engine import run, process_statuses, process_casts, expire_modifiers
 from src.game.effects import (
     EffectBundle,
     EventBus,
@@ -552,10 +552,10 @@ class TestDeterminism:
 # ---------------------------------------------------------------------------
 
 
-class TestBackwardCompatibility:
-    """Legacy resolve_combat still works unchanged."""
+class TestResolveCombatEntryPoint:
+    """The public resolve_combat entry point wires the full pipeline."""
 
-    def test_legacy_resolve_combat(self):
+    def test_resolve_combat_entry_point(self):
         from src.game.combat import resolve_combat
         from src.game.models import CombatOutcome
 

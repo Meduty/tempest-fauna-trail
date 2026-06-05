@@ -280,7 +280,7 @@ def test_umbra_spawns_clones():
 
 def test_summon_expires():
     """Summons expire via the real combat loop when their tick passes."""
-    from src.game.combat import loop_new
+    from src.game.combat import engine
 
     # Use large HP so neither piece dies before the summon expiry at tick 100.
     # At tick 100 no auto-attacks have fired yet (energy threshold requires 600 ticks
@@ -300,7 +300,7 @@ def test_summon_expires():
     assert piece.alive, "Summon should be alive before the loop runs"
 
     # Drive the real combat loop — the loop despawns expired summons at tick 100.
-    result = loop_new.run(ctx)
+    result = engine.run(ctx)
 
     assert not piece.alive, "Summon should be despawned by the combat loop"
     assert piece.hp == 0.0

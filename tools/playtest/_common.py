@@ -12,7 +12,7 @@ from typing import Iterable, Literal
 
 from src.game.bosses.data import BossEncounterResult
 from src.game.combat.context import CombatContext
-from src.game.combat.loop_new import assign_spawns, run as run_combat
+from src.game.combat.engine import assign_spawns, run as run_combat
 from src.game.combat.recorder import BattleResultRecorder
 from src.game.content import (
     CHAMPION_ROSTER,

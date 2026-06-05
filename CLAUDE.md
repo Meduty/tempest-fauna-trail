@@ -72,8 +72,8 @@ src/
 │   ├── models.py           # Champion, Enemy, Node, Run, BattleResult (T.1)
 │   ├── combat/             # Unified tick-based engine (T.3 + T.20 + T.26)
 │   │   ├── __init__.py     #   re-exports resolve_combat, CombatContext, run
-│   │   ├── legacy.py       #   resolve_combat shim → loop_new + recorder
-│   │   ├── loop_new.py     #   unified tick loop (meters, pathing, casts)
+│   │   ├── resolve.py      #   resolve_combat public entry → engine + recorder
+│   │   ├── engine.py       #   unified tick loop (meters, pathing, casts)
 │   │   ├── context.py      #   CombatContext mutator API (T.20)
 │   │   └── recorder.py     #   BattleResultRecorder (T.26)
 │   ├── combat_log.py       # Render BattleResult → text lines
@@ -133,7 +133,7 @@ docs/                       # Design + journal (see Documentation Map)
 
 - Single `Run` holds all game state (current node, roster, battle log)
 - `game/` has zero Flet imports — pure logic (V.1)
-- Combat is pure function: `resolve_combat(team, enemies, weather) -> BattleResult` (V.2). Single entry point — internally delegates to `compile_loadout → CombatContext → combat/loop_new.run → BattleResultRecorder.build_result` (T.26). Boss fights add `attach_map_effect` before the loop runs; see [tools/playtest/_common.py](tools/playtest/_common.py) `resolve_boss_combat` for the canonical wiring.
+- Combat is pure function: `resolve_combat(team, enemies, weather) -> BattleResult` (V.2). Single entry point — internally delegates to `compile_loadout → CombatContext → combat/engine.run → BattleResultRecorder.build_result` (T.26). Boss fights add `attach_map_effect` before the loop runs; see [tools/playtest/_common.py](tools/playtest/_common.py) `resolve_boss_combat` for the canonical wiring.
 - Weather effects = lookup dicts, no class hierarchies (V.5: 6 states; V.6: single `affinity` field per piece)
 - No I/O in game logic — API/file access stays in `api/` layer
 

@@ -4,21 +4,17 @@ from src.game.combat import (
     ENERGY_THRESHOLD,
     MAX_TICKS,
     ROUND_TICKS,
-    _next_step_toward,
-    _select_target,
-    effective_as,
-    effective_mr_tick,
-    effective_ms,
     hex_distance,
     resolve_combat,
 )
+from src.game.combat.engine import _next_step_toward, _select_target
 from src.game.models import (
     Champion,
     CombatOutcome,
-    CombatPieceState,
     Enemy,
     WeatherState,
 )
+from src.game.piece import Piece
 
 # --- Factories ---------------------------------------------------------------
 
@@ -59,32 +55,23 @@ def _enemy(**over) -> Enemy:
     return Enemy(**data)
 
 
-def _state(
+def _piece(
     piece_id: str,
-    is_enemy: bool,
     q: int,
     r: int,
+    *,
+    is_enemy: bool = False,
     attack_range: int = 1,
-    affinity: WeatherState = WeatherState.CLEAR,
-) -> CombatPieceState:
-    return CombatPieceState(
-        piece_id=piece_id,
+    threat: int = 10,
+    hp: int = 100,
+) -> Piece:
+    """A minimal runtime Piece for exercising engine helpers directly."""
+    return Piece(
+        id=piece_id,
+        base_stats={"attack_range": float(attack_range), "threat": float(threat)},
         is_enemy=is_enemy,
-        affinity=affinity,
-        tier=1,
-        level=1,
-        max_hp=100,
-        hp=100,
-        strength=10,
-        intelligence=0,
-        attack_speed=100,
-        move_speed=100,
-        mana_regen=0,
-        threat=10,
-        armor=0,
-        resistance=0,
-        attack_range=attack_range,
-        ability_cost=100,
+        hp=float(hp),
+        max_hp=float(hp),
         position_q=q,
         position_r=r,
     )
@@ -180,10 +167,10 @@ def test_threat_priority_beats_distance():
 
 
 def test_select_target_tie_chain_falls_to_piece_id():
-    piece = _state("hero", False, 0, 0)
-    # Identical threat, distance, hp%, hp — only piece_id differs.
-    a = _state("a_mob", True, 9, 0)
-    b = _state("z_mob", True, 9, 0)
+    piece = _piece("hero", 0, 0)
+    # Identical threat, distance, hp%, hp — only piece id differs.
+    a = _piece("a_mob", 9, 0, is_enemy=True)
+    b = _piece("z_mob", 9, 0, is_enemy=True)
     assert _select_target(piece, [b, a]) is a
 
 
@@ -206,16 +193,16 @@ def test_dead_target_triggers_retarget():
 
 
 def test_path_routes_around_blocker():
-    piece = _state("hero", False, 0, 0, attack_range=1)
-    enemy = _state("mob", True, 2, 0)
+    piece = _piece("hero", 0, 0, attack_range=1)
+    enemy = _piece("mob", 2, 0, is_enemy=True)
     occupied = {(1, 0), (2, 0)}  # direct route + enemy cell blocked
     step = _next_step_toward(piece, [enemy], occupied)
     assert step == (0, 1)
 
 
 def test_no_path_returns_none():
-    piece = _state("hero", False, 0, 0, attack_range=1)
-    enemy = _state("mob", True, 5, 5)
+    piece = _piece("hero", 0, 0, attack_range=1)
+    enemy = _piece("mob", 5, 5, is_enemy=True)
     occupied = {(1, 0), (0, 1), (5, 5)}  # both reachable neighbours blocked
     assert _next_step_toward(piece, [enemy], occupied) is None
 
@@ -375,16 +362,6 @@ def test_cast_path_consumes_mana_and_deals_magic_damage():
     # T.30 §4 fix: fallback scales on max(STR, INT) * (STR_COEFF + INT_COEFF)
     # = (0.2 + 4.2) * max(0, 20) = 4.4 * 20 = 88
     assert casts[0].amount == 88
-
-
-# --- Effective stat helpers --------------------------------------------------
-
-
-def test_effective_stat_helpers_are_integer_identities():
-    piece = _state("hero", False, 0, 0)
-    assert effective_as(piece) == piece.attack_speed
-    assert effective_ms(piece) == piece.move_speed
-    assert effective_mr_tick(piece) == piece.mana_regen
 
 
 def test_board_constants():

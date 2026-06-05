@@ -76,10 +76,10 @@ def configure_sim_max_ticks(max_ticks: int) -> None:
     """
     if max_ticks <= 0:
         return
-    from src.game.combat import loop_new
-    loop_new.MAX_TICKS = max_ticks
-    loop_new.SUDDEN_DEATH_TICK_START = max_ticks
-    loop_new.HARD_CAP_TICKS = max_ticks + 2_000
+    from src.game.combat import engine
+    engine.MAX_TICKS = max_ticks
+    engine.SUDDEN_DEATH_TICK_START = max_ticks
+    engine.HARD_CAP_TICKS = max_ticks + 2_000
 
 
 def _pool_initializer(max_ticks: int) -> None:
