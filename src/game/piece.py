@@ -66,6 +66,12 @@ class Piece:
     action_energy: int = 0
     movement_energy: int = 0
 
+    # Trait movement/targeting behaviour flags (T.28b) — set by trait hooks at
+    # on_combat_start; read by the engine. Pieces are rebuilt per combat so these
+    # reset to False unless a cleared trait re-arms them.
+    is_kiter: bool = False  # Skyborn: retreat-kite melee threats (engine §_kite_step)
+    seeks_backline: bool = False  # Stalker: path/target toward the enemy backline
+
     # Crit state
     crit_counter: int = 0
     ability_can_crit: bool = False

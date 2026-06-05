@@ -63,10 +63,11 @@ define_trait(
     (8, _TEAM, {"attack_speed": 0.10}),
 )
 
-# Stalker — pool 7, @2/3/5/7. Backline-target/untargetable = T.28b/c; stat = ms/str.
+# Stalker — pool 7, @2/3/5/7. @2 arms backline target-priority (no teleport);
+# untargetable-after-takedown = T.28c. Stat = ms/str.
 define_trait(
     "Stalker",
-    (2, _PER, {"move_speed": 0.10, "strength": 0.06}),
+    (2, _PER, {"move_speed": 0.10, "strength": 0.06}, {}, [m.backline_seeker()]),
     (3, _PER, {"strength": 0.08}),
     (5, _PER, {"strength": 0.12}),
     (7, _PER, {"strength": 0.14}),
@@ -99,13 +100,14 @@ define_trait(
     (6, _TEAM, {"intelligence": 0.06}),
 )
 
-# Mender — pool 6, @1/2/4/6. Heal amp/overheal-shield/revive = T.28b; stat proxy.
+# Mender — pool 6, @1/2/4/6. The one true revive (V.37): @6 reverses the first
+# ally death each combat. Heal-amp/overheal-shield = T.28c; stat proxy elsewhere.
 define_trait(
     "Mender",
     (1, _PER, {"mana_regen": 0.08}),
     (2, _PER, {"intelligence": 0.06, "mana_regen": 0.08}),
     (4, _PER, {"intelligence": 0.08}),
-    (6, _TEAM, {"hp": 0.06}),
+    (6, _TEAM, {"hp": 0.06}, {}, [m.revive_first_ally()]),
 )
 
 # Packmate — pool 8, @2/3/4/6/full-board. TEAM_WIDE; @full = dynamic == fielded

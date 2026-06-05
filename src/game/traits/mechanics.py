@@ -4,9 +4,12 @@ Each public function returns a *builder* `(owner, source_id) -> list[Hook]`,
 plugged into a trait rung as its 5th tuple element (see `_packs.define_trait`).
 All deterministic — cadence counters / HP thresholds, never RNG (V.2/V.14/V.37).
 
-Batch 1 (this file): second-wind decaying-shield, tidal HoT, enrage, time-ramp,
-deterministic dodge, untargetable opener. Movement/targeting/death primitives
-(kiting, taunt, backline, revive) are the remaining T.28b engine work.
+Hook riders: second-wind decaying-shield, tidal HoT, enrage, time-ramp,
+deterministic dodge, untargetable opener, plus the engine-behaviour arms —
+`kiting` (Skyborn), `backline_seeker` (Stalker), `revive_first_ally` (Mender).
+Taunt is a status honored by the engine (no T.28b trait wires it; Trickster
+casts apply it in T.28c). The movement/targeting/death logic these arm lives in
+`combat/engine.py` + `combat/context.revive`.
 """
 
 from __future__ import annotations
@@ -117,6 +120,54 @@ def dodge(every_n: int = 7) -> HookBuilder:
             return value
 
         return [Hook("on_damage_pre", hook, scope=HookScope.PER_HIT, priority=50)]
+
+    return build
+
+
+def kiting() -> HookBuilder:
+    """Arm the carrier as a kiter (Skyborn @2) — the engine's movement phase
+    retreat-kites lone melee threats (see `engine._kite_step`). Melee Skyborn
+    (base attack_range ≤ 1) also gain **+1 Attack Range** so kiting is coherent;
+    pieces already at range 2+ (e.g. via Skyborn @5) skip the bonus, no stacking."""
+    def build(owner: Piece, sid: str) -> list[Hook]:
+        def hook(ctx: Any, event: Any) -> None:
+            owner.is_kiter = True
+            if int(owner.stat("attack_range")) <= 1:
+                ctx.apply_modifier(owner, Modifier("attack_range", "add", 1.0, Lifetime.COMBAT, sid))
+
+        return [Hook("on_combat_start", hook, scope=HookScope.PER_HIT)]
+
+    return build
+
+
+def backline_seeker() -> HookBuilder:
+    """Arm the carrier to path/target the enemy backline (Stalker @2) — the engine
+    biases movement goals + target selection to the deepest enemy column. No
+    teleport (per design); purely a movement/targeting preference."""
+    def build(owner: Piece, sid: str) -> list[Hook]:
+        def hook(ctx: Any, event: Any) -> None:
+            owner.seeks_backline = True
+
+        return [Hook("on_combat_start", hook, scope=HookScope.PER_HIT)]
+
+    return build
+
+
+def revive_first_ally(hp_frac: float = 0.3) -> HookBuilder:
+    """The first ally death each combat is reversed once (Mender @6, V.37 — the
+    one true revive). The once-per-combat guard is shared across all carriers via
+    a flag on `ctx`, so the team-wide apply still triggers exactly once."""
+    def build(owner: Piece, sid: str) -> list[Hook]:
+        def hook(ctx: Any, event: Any) -> None:
+            victim = event.victim
+            if victim.is_enemy != owner.is_enemy:
+                return  # only allies of the carrier (the player team)
+            if getattr(ctx, "_mender_revive_used", False):
+                return
+            ctx._mender_revive_used = True
+            ctx.revive(victim, hp_frac)
+
+        return [Hook("on_death", hook, scope=HookScope.PER_HIT)]
 
     return build
 

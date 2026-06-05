@@ -100,10 +100,42 @@ def _opponents(piece: Piece, pieces: list[Piece]) -> list[Piece]:
     ]
 
 
+def _taunt_target(piece: Piece, candidates: list[Piece]) -> Piece | None:
+    """The taunter (T.28b) if `piece` is taunted and the taunter is a live, in-set
+    candidate; else None. A taunt forces target/approach over all other priority."""
+    taunt = piece.get_status("taunt")
+    if taunt is None or not taunt.source_id:
+        return None
+    for c in candidates:
+        if c.id == taunt.source_id:
+            return c
+    return None
+
+
 def _select_target(piece: Piece, candidates: list[Piece]) -> Piece | None:
-    """Deterministic target priority (plan section 3.4)."""
+    """Deterministic target priority (plan section 3.4).
+
+    Overrides, in order (T.28b): a **taunt** forces the taunter; a **backline
+    seeker** (Stalker) prioritises the deepest enemy column before the default
+    threat/distance key. All deterministic — no RNG (V.2/V.14).
+    """
     if not candidates:
         return None
+
+    forced = _taunt_target(piece, candidates)
+    if forced is not None:
+        return forced
+
+    if piece.seeks_backline:
+        def back_key(target: Piece) -> tuple[int, int, float, float, str]:
+            distance = hex_distance(
+                piece.position_q, piece.position_r, target.position_q, target.position_r
+            )
+            hp_pct = target.hp / target.max_hp if target.max_hp > 0 else 0.0
+            # Deepest enemy column first (enemies field on the high-q side).
+            return (-target.position_q, distance, hp_pct, target.hp, target.id)
+
+        return min(candidates, key=back_key)
 
     def key(target: Piece) -> tuple[float, int, float, float, str]:
         distance = hex_distance(
@@ -113,6 +145,74 @@ def _select_target(piece: Piece, candidates: list[Piece]) -> Piece | None:
         return (-target.stat("threat"), distance, hp_pct, target.hp, target.id)
 
     return min(candidates, key=key)
+
+
+def _backline_subset(enemies: list[Piece]) -> list[Piece]:
+    """The deepest-column enemies (max position_q) — a Stalker's movement goal."""
+    if not enemies:
+        return enemies
+    max_q = max(e.position_q for e in enemies)
+    return [e for e in enemies if e.position_q == max_q]
+
+
+def _kite_step(
+    piece: Piece,
+    enemy_living: list[Piece],
+    attack_range: int,
+    pieces: list[Piece],
+) -> tuple[int, int] | None:
+    """One retreat hex for a kiter (Skyborn, T.28b), or None to defer to normal
+    movement (advance / plant).
+
+    Geometry-only, deterministic. Guardrails: only kite **single** adjacent melee
+    (range-1) threats; never kite without an attackable enemy (otherwise advance);
+    only step to a tile that strictly increases distance from the nearest threat
+    while keeping ≥1 enemy attackable; plant when cornered (return None). Tie-break
+    prefers the tile that keeps the most enemies attackable (lateral over corner),
+    then hex-direction order.
+    """
+    threats = [
+        e
+        for e in enemy_living
+        if hex_distance(piece.position_q, piece.position_r, e.position_q, e.position_r) <= 1
+        and int(e.stat("attack_range")) <= 1
+    ]
+    if not threats:
+        return None  # nothing melee to kite
+    if len(threats) >= 2:
+        return None  # swarmed → plant and fight
+    if not any(
+        hex_distance(piece.position_q, piece.position_r, e.position_q, e.position_r) <= attack_range
+        for e in enemy_living
+    ):
+        return None  # no target to shoot while kiting → advance instead
+
+    occupied = {
+        (p.position_q, p.position_r) for p in pieces if p.alive and p is not piece
+    }
+    cur_min = min(
+        hex_distance(piece.position_q, piece.position_r, t.position_q, t.position_r)
+        for t in threats
+    )
+    best: tuple[int, int] | None = None
+    best_key: tuple[int, int, int] | None = None
+    for di, (dq, dr) in enumerate(HEX_DIRECTIONS):
+        nq, nr = piece.position_q + dq, piece.position_r + dr
+        if not _on_board(nq, nr) or (nq, nr) in occupied:
+            continue
+        new_min = min(hex_distance(nq, nr, t.position_q, t.position_r) for t in threats)
+        if new_min <= cur_min:
+            continue  # only step away
+        still = sum(
+            1 for e in enemy_living if hex_distance(nq, nr, e.position_q, e.position_r) <= attack_range
+        )
+        if still == 0:
+            continue  # keep a target attackable (the kite reward)
+        key = (new_min, still, -di)
+        if best_key is None or key > best_key:
+            best_key = key
+            best = (nq, nr)
+    return best  # None → cornered → plant
 
 
 # ---------------------------------------------------------------------------
@@ -268,15 +368,38 @@ def _resolve_movement(
         return
 
     enemy_living = _opponents(piece, pieces)
+    if not enemy_living:
+        piece.movement_energy = ENERGY_THRESHOLD
+        return
     attack_range = int(piece.stat("attack_range"))
 
-    # Rule 1: in range of any enemy -> hold meter at threshold.
+    # Trait movement goal (T.28b): a taunt forces approach to the taunter; a
+    # backline seeker (Stalker) paths toward the deepest enemy column; a kiter
+    # (Skyborn) retreats from a lone melee threat before the in-range hold.
+    forced = _taunt_target(piece, enemy_living)
+    if forced is None and piece.is_kiter:
+        step = _kite_step(piece, enemy_living, attack_range, pieces)
+        if step is not None:
+            piece.position_q, piece.position_r = step
+            piece.movement_energy -= ENERGY_THRESHOLD
+            if recorder:
+                recorder.record_move(piece.id, tick, step[0], step[1])
+            return
+
+    if forced is not None:
+        goal_enemies = [forced]
+    elif piece.seeks_backline:
+        goal_enemies = _backline_subset(enemy_living)
+    else:
+        goal_enemies = enemy_living
+
+    # Rule 1: in range of a goal enemy -> hold meter at threshold.
     in_range = any(
         hex_distance(piece.position_q, piece.position_r, e.position_q, e.position_r)
         <= attack_range
-        for e in enemy_living
+        for e in goal_enemies
     )
-    if in_range or not enemy_living:
+    if in_range:
         piece.movement_energy = ENERGY_THRESHOLD
         return
 
@@ -285,7 +408,10 @@ def _resolve_movement(
         for p in pieces
         if p.alive and p is not piece
     }
-    step = _next_step_toward(piece, enemy_living, occupied)
+    step = _next_step_toward(piece, goal_enemies, occupied)
+    # Fall back to the full enemy set if the biased goal is unreachable.
+    if step is None and goal_enemies is not enemy_living:
+        step = _next_step_toward(piece, enemy_living, occupied)
 
     # Rule 3: no path -> hold meter at threshold.
     if step is None:
@@ -337,7 +463,11 @@ def _resolve_action(
 
     if has_unregistered_cast:
         slot = piece.actives[0]
-        target = current if current is not None else _select_target(piece, living_enemies)
+        forced = _taunt_target(piece, living_enemies)
+        if forced is not None:
+            target = forced
+        else:
+            target = current if current is not None else _select_target(piece, living_enemies)
         if target is not None and ctx:
             piece.target_id = target.id
             # Use ctx pipeline so on_damage_pre/on_damage_dealt/on_damage_taken fire
@@ -367,7 +497,10 @@ def _resolve_action(
         <= attack_range
     ]
     if in_range_enemies and ctx:
-        if current is not None and any(e is current for e in in_range_enemies):
+        forced = _taunt_target(piece, in_range_enemies)
+        if forced is not None:
+            target = forced
+        elif current is not None and any(e is current for e in in_range_enemies):
             target = current
         else:
             target = _select_target(piece, in_range_enemies)

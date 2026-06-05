@@ -33,12 +33,13 @@ define_trait(
     (8, _TEAM, {"intelligence": 0.12, "mana_regen": 0.15}),
 )
 
-# Skyborn — pool 9, @1/2/3/5/8. Kiters; kiting + melee-range unlock = T.28b
-# (@5 +1 range is the stat part, kept here). @3 stat proxies the kite-reward dmg.
+# Skyborn — pool 9, @1/2/3/5/8. Kiters. @2 arms kiting + melee +1 range (the
+# range bump rides the kiting hook, conditional on base range ≤1). @5 flat +1
+# range to all (stat part). @3 stat proxies the kite-reward dmg.
 define_trait(
     "Skyborn",
     (1, _PER, {"move_speed": 0.10}),
-    (2, _PER, {"attack_speed": 0.08, "move_speed": 0.06}),
+    (2, _PER, {"attack_speed": 0.08, "move_speed": 0.06}, {}, [m.kiting()]),
     (3, _PER, {"attack_speed": 0.06}),
     (5, _PER, {"attack_speed": 0.08}, {"attack_range": 1.0}),
     (8, _TEAM, {"move_speed": 0.12}),

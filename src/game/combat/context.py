@@ -479,6 +479,25 @@ class CombatContext:
         death_event = DeathEvent(victim=target, killer=killer)
         self._bus.fire("on_death", death_event, ctx=self)
 
+    def revive(self, target: Piece, hp_frac: float = 0.3) -> bool:
+        """Bring a dead piece back at a fraction of max HP (Mender @6, T.28b).
+
+        Death-path reversal: callers fire this from an `on_death` hook (the victim
+        is already `alive=False`, count already decremented). Restores liveness +
+        the O(1) count, clears stale barriers, and starts the piece at
+        `max(1, hp_frac*max_hp)`. Returns False if the target was already alive.
+        Deterministic — caller owns the once-per-combat guard (V.37)."""
+        if target.alive:
+            return False
+        target.alive = True
+        target.hp = max(1.0, target.max_hp * hp_frac)
+        target.barriers = []
+        if target.is_enemy:
+            self._alive_enemy += 1
+        else:
+            self._alive_team += 1
+        return True
+
     def end_combat(self, winner: str) -> None:
         """End combat with the given winner."""
         self._combat_ended = True

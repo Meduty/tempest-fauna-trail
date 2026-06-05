@@ -4,14 +4,16 @@
 > Audited by `/check`. **Reconciled:** 2026-06-05 (T.28a).
 >
 > 🔶 **PARTIAL** — T.28a built the **framework + declarative stat-pack** half;
-> **T.28b (in progress)** added the hook-based combat primitives —
-> **second-wind decaying-shield** (Primordial @2), **tidal HoT** (Tidekin @5/@8),
-> **enrage** (Beast @8), **time-ramp** (Skirmisher @2), **dodge** (Skirmisher @4),
-> **untargetable** opener (Spirit @5) + the `StatusGate.UNTARGETABLE` target
-> filter. Still pending in T.28b: **kiting** (movement), **taunt** + **backline
-> target-priority** (targeting), **revive** (death path). T.28c: echo/aura/splash/
-> spawns/empowered-shot/apex effects. Design (frozen):
-> [`docs/design/content/trait_catalog.md`](../../design/content/trait_catalog.md) v2.1.
+> **T.28b (done)** added the combat primitives — hook riders **second-wind
+> decaying-shield** (Primordial @2), **tidal HoT** (Tidekin @5/@8), **enrage**
+> (Beast @8), **time-ramp** (Skirmisher @2), **dodge** (Skirmisher @4),
+> **untargetable** opener (Spirit @5) — plus the engine-behaviour arms:
+> **kiting** (Skyborn @2 — movement retreat + melee +1 range), **backline
+> target-priority** (Stalker @2 — movement + target bias), **taunt** (status
+> honored in target/movement; Trickster casts apply it in T.28c), and the one
+> true **revive** (Mender @6 — `ctx.revive` death-path reversal). T.28c (pending):
+> echo/aura/splash/spawns/empowered-shot/weather-as-buff/apex effects. Design
+> (frozen): [`docs/design/content/trait_catalog.md`](../../design/content/trait_catalog.md) v2.1.
 
 ## Where it lives
 - `game/traits/types.py` — `TraitScope` (`PER_TRAIT_PIECE`/`TEAM_WIDE`),
@@ -58,6 +60,42 @@ Ladders are single-step-leaning with `@1` entries on supports/casters/kiters; se
 the catalog for per-trait rungs. **T.28a implements the stat-pack portion of every
 rung**; mechanic riders layer onto the same trait ids in b/c. Packmate's apex is a
 **dynamic `@full-board`** threshold (== fielded board size).
+
+## Combat primitives (T.28b) — `game/traits/mechanics.py` + engine
+All deterministic (cadence counters / HP thresholds / geometry, never RNG —
+V.2/V.14/V.37). A rung's optional 5th tuple element is a list of builders
+`(owner, source_id) -> list[Hook]` appended to its bundle (`_packs.define_trait`).
+
+**Hook riders** (ride the event bus, no engine edits):
+- `second_wind` (Primordial @2) — `on_damage_taken`; first drop below 60% HP →
+  `grant_barrier(0.4·max_hp, 1200t)` once. Reuses V.28 barriers (decay = expiry).
+- `tidal_hot` (Tidekin @5/@8) — `on_tick` cadence `ctx.heal` of the carrier.
+- `enrage` (Beast @8) — `on_damage_taken`; one-shot AS+STR burst below 25% HP.
+- `time_ramp` (Skirmisher @2) — `on_tick` stacking AS `mul` to a cap.
+- `dodge` (Skirmisher @4) — `on_damage_pre` reducing; every Nth basic → 0
+  (engine floors final to 1, so a near-total mitigation).
+- `untargetable_opener` (Spirit @5) — `on_combat_start` applies `untargetable`.
+
+**Engine-behaviour arms** (set a flag/status the engine reads):
+- `kiting` (Skyborn @2) — `on_combat_start` sets `Piece.is_kiter`; melee (base
+  range ≤1) also get +1 `attack_range` (no double vs @5's flat +1). Engine
+  `_kite_step` (movement): retreat one hex from a **single** adjacent melee
+  threat that strictly increases distance while keeping ≥1 enemy attackable;
+  plant when swarmed (≥2 melee), cornered, or no target.
+- `backline_seeker` (Stalker @2) — sets `Piece.seeks_backline`; engine paths to
+  the deepest enemy column (`_backline_subset`) and `_select_target` prefers it.
+  No teleport.
+- `revive_first_ally` (Mender @6, TEAM_WIDE) — `on_death`; the first ally death
+  each combat → `ctx.revive(victim, 0.3)`. Once-per-combat shared across all
+  carriers via a flag on `ctx`. The one true revive (V.37); mid-combat revives
+  never raise a trait count.
+- **taunt** — `StatusGate`-free `taunt` StatusDef; `StatusInstance.source_id` =
+  taunter. Engine `_taunt_target` forces the taunter as target (overrides
+  current/backline) and as the movement goal. Capability only in T.28b — wired
+  to Trickster casts in T.28c.
+
+`StatusGate.UNTARGETABLE` excludes a piece from `_opponents` (target selection);
+the piece still acts.
 
 ## Roster (post-T.28a rebalance, B.9)
 - Kinship pools (sum 60): Beast 14, Spirit 11, Skyborn 9, Scaled 9, Tidekin 9,

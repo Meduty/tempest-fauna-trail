@@ -136,6 +136,15 @@ UNTARGETABLE = _register(StatusDef(
     gates=(StatusGate.UNTARGETABLE,),
 ))
 
+# Taunt — forces the afflicted piece to target/approach the taunter
+# (StatusInstance.source_id = taunter id). Pure marker; honored in engine
+# target selection + movement (T.28b). Applied by Trickster casts (T.28c).
+TAUNT = _register(StatusDef(
+    id="taunt",
+    display_name="Taunt",
+    stack_behaviour=StackBehaviour.REFRESH,
+))
+
 SOAKED = _register(StatusDef(
     id="soaked",
     display_name="Soaked",
