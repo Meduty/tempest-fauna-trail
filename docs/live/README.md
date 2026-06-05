@@ -66,8 +66,8 @@ Status: ✅ written & `/check`-clean · 🔶 stub (header + scope + anchors, pro
 | [effects.md](systems/effects.md) | `effects.py`, `events.py`, `status.py`, `registries.py`, `abilities/`, `piece.py` | 🔶 |
 | [encounter.md](systems/encounter.md) | `game/encounter.py`, `bosses/`, `map_effects.py`, `board.py` | 🔶 |
 | [scaling.md](systems/scaling.md) | `game/scaling.py`, `content.py` stat curves | 🔶 |
-| [weather_api.md](systems/weather_api.md) | `api/weather.py`, `cache.py`, `refresher.py` | 🔶 |
-| [save.md](systems/save.md) | `Run` serialization in `models.py` (+ planned `save.py`) | 🔶 |
+| [weather_api.md](systems/weather_api.md) | `api/weather.py`, `api/cache.py`, `api/refresher.py` | 🔶 |
+| [save.md](systems/save.md) | `Run` serialization in `models.py` (+ planned save.py, T.14) | 🔶 |
 
 ### Content — `docs/live/content/`
 | Doc | Source of truth (code) | Status |
@@ -75,7 +75,7 @@ Status: ✅ written & `/check`-clean · 🔶 stub (header + scope + anchors, pro
 | [rosters.md](content/rosters.md) | `content.py` (champion/enemy rosters), `bosses/data.py` | 🔶 |
 | [abilities.md](content/abilities.md) | `abilities/`, `registries.py` (id resolution) | 🔶 |
 | [traits.md](content/traits.md) | `traits/`, `content.py` trait vocab | 🔶 |
-| [augments.md](content/augments.md) | planned `augments.py` (T.31) | 🔶 |
+| [augments.md](content/augments.md) | planned (T.31, augments.py) | 🔶 |
 | [items.md](content/items.md) | planned items (T.22) | 🔶 |
 
 Content living docs are **thin source-of-truth pointers**: stats/IDs/counts

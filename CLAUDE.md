@@ -15,17 +15,25 @@ Flet (Python) roguelike — animal champions travel real-world cities, live Open
 
 ## Documentation Map
 
-| Path | Purpose |
-|---|---|
-| [SPEC.md](SPEC.md) | Canonical spec — §G goal, §C context, §I interfaces, §V invariants, §T tasks, §B bugs, §D deferred. All design decisions land here. |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System map — how all systems work + interact, and where each lives in the code. The "find your way around" guide. |
-| [docs/proposal.md](docs/proposal.md) | Pitch / problem framing / target users. |
-| [docs/design/tasks/](docs/design/tasks/) | Per-task plan docs (`tN_*_plan.md`). Detailed designs for §T rows. |
-| [docs/design/content/](docs/design/content/) | Champion / enemy / boss / augment / item / trait rosters. |
-| [docs/design/systems/](docs/design/systems/) | Combat, passive, effect, view system designs. |
-| [docs/design/playtesting/](docs/design/playtesting/) | Dev playtest CLI design (T.27) + historical engine-split note. |
-| [docs/journal/](docs/journal/) | Chronological dev log — context, decisions, "why". Append after milestones. |
-| [.claude/rules/](.claude/rules/) | Path-scoped guardrails for AI edits (`api.md`, `game-logic.md`, `flet-ui.md`). |
+**LIVING vs FROZEN** — the rule that prevents doc drift. **LIVING** docs (SPEC,
+ARCHITECTURE, `docs/live/`) describe how things work *now* and **must match
+code** — audited by `/check`. **FROZEN** docs (`docs/design/`, `docs/journal/`)
+are point-in-time records; they are *never* retro-edited to match new code. Read
+a frozen task plan as a dated snapshot, not current truth — verify against code.
+See [docs/live/README.md](docs/live/README.md).
+
+| Path | Purpose | Currency |
+|---|---|---|
+| [SPEC.md](SPEC.md) | Canonical spec — §G goal, §C context, §I interfaces, §V invariants, §T tasks, §B bugs, §D deferred. All design decisions land here. | LIVING (`/spec`) |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System map — how all systems work + interact, and where each lives. The "find your way around" guide. | LIVING |
+| [docs/live/](docs/live/README.md) | Per-system / per-content references — "how this subsystem works now". The mid-level layer between ARCHITECTURE and code. | LIVING (`/check`) |
+| [docs/proposal.md](docs/proposal.md) | Pitch / problem framing / target users. | FROZEN |
+| [docs/design/tasks/](docs/design/tasks/) | Per-task plan docs (`tN_*_plan.md`). How we *planned/built* a §T row. | FROZEN |
+| [docs/design/content/](docs/design/content/) | Champion / enemy / boss / augment / item / trait rosters (as-designed lore + intent). | FROZEN |
+| [docs/design/systems/](docs/design/systems/) | Combat, passive, effect, view system *proposals* (original design rationale). | FROZEN |
+| [docs/design/playtesting/](docs/design/playtesting/) | Dev playtest CLI design (T.27) + historical engine-split note. | FROZEN |
+| [docs/journal/](docs/journal/) | Chronological dev log — context, decisions, "why". Append after milestones. | FROZEN |
+| [.claude/rules/](.claude/rules/) | Path-scoped guardrails for AI edits (`api.md`, `game-logic.md`, `flet-ui.md`). | LIVING |
 
 ## AI Workflow
 
@@ -35,15 +43,18 @@ Before writing or editing **any** code for a task, an agent **must** read, in or
 
 1. **[SPEC.md](SPEC.md)** — the relevant §T row(s), every §V invariant that could apply, and any §B bug history near the area. SPEC is the contract; it wins on conflict.
 2. **[ARCHITECTURE.md](ARCHITECTURE.md)** — the system map: how the touched system works, how it interacts with others, and where it lives. Start here to find your way around.
-3. **The task plan doc** — `docs/design/tasks/tN_*_plan.md` for the task (write one first if absent — see "Planning a §T task" below).
-4. **Every design doc the task touches** — the `docs/design/{systems,content}/*.md` files for the systems/rosters in scope (the plan doc lists them).
-5. **Every piece of code the change touches** — read the actual modules and their integration touch points before editing, not just their names. Cite touch points as `file.py:line`.
+3. **The LIVING system/content doc** — `docs/live/systems/<sys>.md` or `docs/live/content/<x>.md` for the touched area. This is the current truth; trust it over the frozen plan. (If it's a 🔶 stub, fall through to the design doc + code.)
+4. **The task plan doc** — `docs/design/tasks/tN_*_plan.md` for the task (write one first if absent — see "Planning a §T task" below). **FROZEN** — a dated snapshot, not current truth.
+5. **Every design doc the task touches** — the `docs/design/{systems,content}/*.md` files for the systems/rosters in scope (the plan doc lists them). **FROZEN** — verify against code.
+6. **Every piece of code the change touches** — read the actual modules and their integration touch points before editing, not just their names. Cite touch points as `file.py:line`.
+
+**When a change lands, update the matching `docs/live/` doc in the same commit** (like the mandatory journal entry) and run `/check` — a stale living doc is a bug.
 
 This is not optional context — it is the groundwork. Design docs contain illustrative-but-wrong examples (see the planning rules), so **verify every primitive/stat/function against the code** before relying on it. The same checklist is enforced in [docs/templates/task_implementation_prompt.md](docs/templates/task_implementation_prompt.md), [docs/templates/task_plan.md](docs/templates/task_plan.md), the `.claude/rules/*` path guardrails, and [.github/copilot-instructions.md](.github/copilot-instructions.md).
 
 - **Spec changes**: invoke `/spec` (sole mutator of SPEC.md). Bug report → `/spec bug: <desc>` triggers §B backprop with optional new §V invariant.
 - **Implementation**: invoke `/build` for plan-then-execute against §T tasks. Auto-runs `/backprop` on test failure.
-- **Drift audit**: invoke `/check` for read-only SPEC-vs-code report.
+- **Drift audit**: invoke `/check` (repo skill, [.claude/skills/check](.claude/skills/check/SKILL.md)) for a read-only report of LIVING docs (SPEC, ARCHITECTURE, `docs/live/`) vs code — every cited path/symbol must resolve; §V invariants and content counts must hold. Writes nothing.
 - **Journal**: append `docs/journal/<date>_<topic>.md` after non-trivial milestones — captures the "why" that SPEC.md compresses out. Use [docs/templates/journal_entry.md](docs/templates/journal_entry.md). **Every entry MUST carry a "Process notes (AI collaboration)" section** documenting conflicts/misalignments (CLAUDE.md vs SPEC vs design-docs vs code), agent errors and wrong turns, guardrails added, and drift caught — plus a **prompting-strategy reflection** on what prompt shapes worked and how your approach to driving the agent is evolving across the project. This repo is a vibe-coding case study; that signal is invisible in the diff and must be written down, not just the code's "why".
 
 ### Planning a §T task (before any `/build`)
