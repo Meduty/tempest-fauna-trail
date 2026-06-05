@@ -108,7 +108,8 @@ wiring).
 | **The tick loop** (energy meters, pathing, attacks, casts, statuses, map effects, sudden death) + tuning constants (coeffs, tick sizes) | `src/game/combat/engine.py` |
 | **Mutator API** — the *only* way content touches the world | `src/game/combat/context.py` |
 | Event → `BattleResult` reconstruction | `src/game/combat/recorder.py` |
-| Compile models → combat `Piece`s + wire passives/weather | `src/game/loadout.py` |
+| Compile models → combat `Piece`s + wire passives/weather/**traits** | `src/game/loadout.py` |
+| **Synergy traits** — `TraitScope`/`TraitBreakpoint`/`DynamicThreshold`, `@register_trait`, `_resolve_traits` (unique-id count, affinity synthesis, apex/dynamic threshold) applied in `compile_loadout` step 3 (T.28a; primitives T.28b/c) | `src/game/traits/` |
 
 > **V.29 — there is exactly one tick loop.** `engine.py` is it. The old `loop.py` was
 > deleted after the T.26 unification; do not reintroduce a parallel engine (see the
