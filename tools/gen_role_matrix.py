@@ -15,7 +15,7 @@ from src.game.content import (
     _INTENT,
     _PLAYSTYLE,
     _PRIMARY_STAT,
-    _RANGE,
+    _REACH,
     _SPEED,
     build_role_code,
     classify_role,
@@ -25,7 +25,7 @@ OUT = Path(__file__).resolve().parents[1] / "docs" / "design" / "tasks" / "t32_r
 
 # Axis values in canonical (content dict insertion) order.
 STATS = tuple(_PRIMARY_STAT)
-REACHES = tuple(_RANGE)
+REACHES = tuple(_REACH)
 DURABILITIES = tuple(_DURABILITY)
 PLAYSTYLES = tuple(_PLAYSTYLE)
 SPEEDS = tuple(_SPEED)

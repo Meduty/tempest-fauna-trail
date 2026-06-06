@@ -36,7 +36,7 @@ _PRIMARY_STAT: dict[str, dict[str, float]] = {
     "hybrid": {"strength": 1.0, "intelligence": 1.0},
 }
 
-_RANGE: dict[str, dict[str, Any]] = {
+_REACH: dict[str, dict[str, Any]] = {
     "melee": {
         "max_hp": 1.0,
         "armor": 1.3,
@@ -227,10 +227,10 @@ class ChampionDef:
     durability: str
     playstyle: str
     intent: str
+    speed: str
     traits: list[str]
     active_ability: str
     passive_ability: str
-    speed: str = "hybrid"
     stat_overrides: dict[str, int] = field(default_factory=dict)
 
 
@@ -245,10 +245,10 @@ class EnemyDef:
     durability: str
     playstyle: str
     intent: str
+    speed: str
     tags: frozenset[str]
     active_ability: str
     passive_ability: str
-    speed: str = "hybrid"
     stat_overrides: dict[str, int] = field(default_factory=dict)
 
 
@@ -269,7 +269,7 @@ def compose_stats(
     """
     if stat not in _PRIMARY_STAT:
         raise ValueError(f"Unknown stat axis value: {stat!r}")
-    if reach not in _RANGE:
+    if reach not in _REACH:
         raise ValueError(f"Unknown reach axis value: {reach!r}")
     if durability not in _DURABILITY:
         raise ValueError(f"Unknown durability axis value: {durability!r}")
@@ -283,7 +283,7 @@ def compose_stats(
     stats = dict(_BASE_STATS)
     for axis_weights in (
         _PRIMARY_STAT[stat],
-        _RANGE[reach],
+        _REACH[reach],
         _DURABILITY[durability],
         _PLAYSTYLE[playstyle],
     ):
@@ -291,8 +291,8 @@ def compose_stats(
             if k != "attack_range":
                 stats[k] = stats[k] * v
 
-    # Range sets a discrete board-space value instead of scaling a base range.
-    stats["attack_range"] = _RANGE[reach]["attack_range"]
+    # Reach sets a discrete board-space value instead of scaling a base range.
+    stats["attack_range"] = _REACH[reach]["attack_range"]
     speed_weights = _SPEED[speed]
     if playstyle == "ability":
         # Casters express speed as cast *tempo*: a dampened (half the AS deviation)
@@ -442,8 +442,10 @@ def _champion_def(
     speed: str = "hybrid",
     stat_overrides: dict[str, int] | None = None,
 ) -> ChampionDef:
-    # Every axis defaults to `hybrid` and is named only when it deviates (like
-    # `speed`); `reach` (melee/ranged — no hybrid value) is the one positional axis.
+    # Every identity axis defaults to `hybrid` here (the factory is the sole home
+    # for axis defaults — the dataclass fields are all required) and is named only
+    # when it deviates; `reach` (melee/ranged — no hybrid value) is the one
+    # required positional axis.
     return ChampionDef(
         id=id,
         name=name,

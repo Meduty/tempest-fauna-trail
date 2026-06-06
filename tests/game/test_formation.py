@@ -71,6 +71,7 @@ def _make_enemy_def(
         durability=durability,
         playstyle="auto",
         intent=intent,
+        speed="hybrid",
         tags=frozenset({"human"}),
         active_ability="",
         passive_ability="",
