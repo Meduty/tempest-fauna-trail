@@ -52,6 +52,7 @@ Before writing or editing **any** code for a task, an agent **must** read, in or
 
 This is not optional context — it is the groundwork. Design docs contain illustrative-but-wrong examples (see the planning rules), so **verify every primitive/stat/function against the code** before relying on it. The same checklist is enforced in [docs/templates/task_implementation_prompt.md](docs/templates/task_implementation_prompt.md), [docs/templates/task_plan.md](docs/templates/task_plan.md), the `.claude/rules/*` path guardrails, and [.github/copilot-instructions.md](.github/copilot-instructions.md).
 
+- **Planning**: invoke `/plan` (repo skill, [.claude/skills/plan](.claude/skills/plan/SKILL.md)) to write a `docs/design/tasks/tN_*_plan.md` before any build — runs the "Planning a §T task" loop below and ends in the exact `/spec` deltas. Writes only the plan doc; never touches SPEC.md or code.
 - **Spec changes**: invoke `/spec` (sole mutator of SPEC.md). Bug report → `/spec bug: <desc>` triggers §B backprop with optional new §V invariant.
 - **Implementation**: invoke `/build` for plan-then-execute against §T tasks. Auto-runs `/backprop` on test failure.
 - **Drift audit**: invoke `/check` (repo skill, [.claude/skills/check](.claude/skills/check/SKILL.md)) for a read-only report of LIVING docs (SPEC, ARCHITECTURE, `docs/live/`) vs code — every cited path/symbol must resolve; §V invariants and content counts must hold. Writes nothing.
@@ -59,7 +60,7 @@ This is not optional context — it is the groundwork. Design docs contain illus
 
 ### Planning a §T task (before any `/build`)
 
-Write `docs/design/tasks/tN_*_plan.md` from [docs/templates/task_plan.md](docs/templates/task_plan.md). Prompts for an *approved* plan use [docs/templates/task_implementation_prompt.md](docs/templates/task_implementation_prompt.md). Hard-won rules (a planning miss here costs a whole build):
+Invoke `/plan` ([.claude/skills/plan](.claude/skills/plan/SKILL.md)) — it writes `docs/design/tasks/tN_*_plan.md` from [docs/templates/task_plan.md](docs/templates/task_plan.md) and enforces the rules below. Prompts for an *approved* plan use [docs/templates/task_implementation_prompt.md](docs/templates/task_implementation_prompt.md). Hard-won rules (a planning miss here costs a whole build):
 
 - **Verify, don't trust the design docs.** `effect_systems_design.md` examples use **illustrative stat keys that don't exist** (`ability_power`→`intelligence`, `attack_damage`, `mana_max`; mana is per-`ActiveSlot`, not a `Piece` stat). Before citing a primitive/stat/function, grep it — confirm it exists and the real key/signature. Cite touch points as `file.py:line`.
 - **Run a content↔design drift check.** Code rosters drift from `*_catalog.md` / `*_roster.md` (e.g. `CALLING_TAGS` carried 4 dead T.5 tags + omitted `Packmate`). Diff the code's vocabulary against the design docs; reconcile in the task; add a V-guard so it can't recur.
