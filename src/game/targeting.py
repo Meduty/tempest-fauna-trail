@@ -9,8 +9,28 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from src.game.status import StatusGate
+
 if TYPE_CHECKING:
     from src.game.piece import Piece
+
+
+def _filter_hexproof(actor: Any, enemies: list) -> list:
+    """Drop hexproof enemies from single-target acquisition (V.40).
+
+    A hexproof piece (`StatusGate.HEXPROOF`) cannot be the *target* of a
+    single-target ability or auto-attack; AoE/untargeted effects still hit it
+    (they iterate `ctx.enemies_of` directly, not these helpers). An actor with
+    `pierces_hexproof` (Spirit @8) ignores the exclusion.
+    """
+    if getattr(actor, "pierces_hexproof", False):
+        return enemies
+    return [e for e in enemies if not e.is_gated(StatusGate.HEXPROOF)]
+
+
+def _candidates(actor: Any, ctx: Any) -> list:
+    """Living enemies eligible for single-target acquisition: fog- + hexproof-filtered."""
+    return _filter_hexproof(actor, _filter_fog(actor, list(ctx.enemies_of(actor)), ctx))
 
 
 def _filter_fog(actor: Any, enemies: list, ctx: Any) -> list:
@@ -34,10 +54,10 @@ def _filter_fog(actor: Any, enemies: list, ctx: Any) -> list:
 def primary_target(actor: Any, ctx: Any) -> Any | None:
     """The actor's current target (or closest enemy if no current target).
 
-    Respects fog_range from BoardState — targets beyond fog range are excluded.
+    Respects fog_range from BoardState — targets beyond fog range are excluded —
+    and hexproof (V.40) — hexproof enemies are not acquirable as a single target.
     """
-    enemies = list(ctx.enemies_of(actor))
-    enemies = _filter_fog(actor, enemies, ctx)
+    enemies = _candidates(actor, ctx)
     if not enemies:
         return None
     # Prefer current target if alive
@@ -50,24 +70,24 @@ def primary_target(actor: Any, ctx: Any) -> Any | None:
 
 
 def lowest_hp_enemy(actor: Any, ctx: Any) -> Any | None:
-    """Enemy with the lowest current HP. Respects fog_range."""
-    enemies = _filter_fog(actor, list(ctx.enemies_of(actor)), ctx)
+    """Enemy with the lowest current HP. Respects fog_range + hexproof (V.40)."""
+    enemies = _candidates(actor, ctx)
     if not enemies:
         return None
     return min(enemies, key=lambda e: (e.hp, e.id))
 
 
 def highest_ap_enemy(actor: Any, ctx: Any) -> Any | None:
-    """Enemy with the highest ability power (intelligence). Respects fog_range."""
-    enemies = _filter_fog(actor, list(ctx.enemies_of(actor)), ctx)
+    """Enemy with the highest ability power (intelligence). Respects fog_range + hexproof (V.40)."""
+    enemies = _candidates(actor, ctx)
     if not enemies:
         return None
     return max(enemies, key=lambda e: (e.stat("intelligence"), e.id))
 
 
 def random_enemy(actor: Any, ctx: Any) -> Any | None:
-    """Random enemy (using ctx.rng for determinism). Respects fog_range."""
-    enemies = _filter_fog(actor, list(ctx.enemies_of(actor)), ctx)
+    """Random enemy (using ctx.rng for determinism). Respects fog_range + hexproof (V.40)."""
+    enemies = _candidates(actor, ctx)
     if not enemies:
         return None
     idx = ctx.rng.randint(0, len(enemies) - 1)
@@ -115,9 +135,9 @@ def allies_in_radius(center_q: int, center_r: int, radius: int, of: Any, ctx: An
 
 
 def furthest_enemy(actor: Any, ctx: Any) -> Any | None:
-    """Enemy furthest from the actor."""
+    """Enemy furthest from the actor. Respects hexproof (V.40)."""
     from src.game.combat import hex_distance
-    enemies = list(ctx.enemies_of(actor))
+    enemies = _filter_hexproof(actor, list(ctx.enemies_of(actor)))
     if not enemies:
         return None
     return max(enemies, key=lambda e: (

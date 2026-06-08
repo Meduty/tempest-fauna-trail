@@ -71,6 +71,9 @@ class Piece:
     # reset to False unless a cleared trait re-arms them.
     is_kiter: bool = False  # Skyborn: retreat-kite melee threats (engine §_kite_step)
     seeks_backline: bool = False  # Stalker: path/target toward the enemy backline
+    cc_immune: bool = False  # Scaled @5+: hard-CC (gate-bearing statuses) skip this piece (T.28d)
+    pierces_hexproof: bool = False  # Spirit @8: single-target acquisition ignores HEXPROOF (T.28d, V.40)
+    weather_favored: bool = False  # Scaled @8: always gets the favorable weather pack (T.28d)
 
     # Crit state
     crit_counter: int = 0

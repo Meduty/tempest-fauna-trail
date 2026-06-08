@@ -31,7 +31,7 @@ class StatusGate(str, Enum):
     BLOCKS_CAST = "blocks_cast"  # Block ability cast (silence)
     BLOCKS_ATTACK = "blocks_attack"  # Block auto-attack (disarm)
     BLOCKS_MOVEMENT = "blocks_movement"  # Block hex movement (root, frozen)
-    UNTARGETABLE = "untargetable"  # Excluded from enemy target selection (T.28b)
+    HEXPROOF = "hexproof"  # Excluded from single-target acquisition; AoE still hits (T.28d, V.40)
 
 
 @dataclass(frozen=True)
@@ -127,13 +127,14 @@ FOCUS_FIRE = _register(StatusDef(
     stack_behaviour=StackBehaviour.REFRESH,
 ))
 
-# Untargetable — excluded from enemy target selection; the piece can still act.
-# Used by Spirit/Stalker/Shrouded opener/after-takedown windows (T.28b).
-UNTARGETABLE = _register(StatusDef(
-    id="untargetable",
-    display_name="Untargetable",
+# Hexproof — excluded from single-target acquisition (auto-attacks + targeted
+# abilities); AoE/untargeted effects still hit. The piece can still act. Used by
+# Spirit/Stalker/Shrouded opener/after-takedown windows (T.28b; renamed T.28d, V.40).
+HEXPROOF = _register(StatusDef(
+    id="hexproof",
+    display_name="Hexproof",
     stack_behaviour=StackBehaviour.REFRESH,
-    gates=(StatusGate.UNTARGETABLE,),
+    gates=(StatusGate.HEXPROOF,),
 ))
 
 # Taunt — forces the afflicted piece to target/approach the taunter

@@ -204,3 +204,79 @@ def test_trait_activations_on_battle_result_roundtrip():
     loaded = BattleResult.from_dict(br.to_dict())
     assert loaded.trait_activations == [("Beast", 4, 4), ("Sunlit", 3, 2)]
     assert loaded.to_dict() == br.to_dict()
+
+
+# --- V.41: cumulative rungs ------------------------------------------------
+
+# Owner flags a trait rider may arm at combat start; surfaced in the signature.
+_RIDER_FLAGS = ("is_kiter", "seeks_backline", "cc_immune", "pierces_hexproof",
+                "ability_can_crit")
+# Carrier-MOVEMENT may legitimately drop at a TEAM_WIDE apex (the documented
+# exception — applying kiting/backline team-wide would make every ally kite/seek).
+_MOVEMENT_FLAGS = {"flag:is_kiter", "flag:seeks_backline"}
+
+
+class _RecCtx:
+    """Records the observable effects an on_combat_start rider produces."""
+    def __init__(self):
+        self.current_tick = 0
+        self.statuses: list[str] = []
+        self.barriers: list[float] = []
+
+    def apply_status(self, target, status_id, duration, **kw):
+        self.statuses.append(status_id)
+
+    def grant_barrier(self, target, amount, duration_ticks=0):
+        self.barriers.append(amount)
+
+    def apply_modifier(self, target, modifier):
+        pass
+
+
+def _rung_signature(trait_id, bp):
+    """A set of mechanic 'fingerprints' a rung grants a CARRIER: non-combat-start
+    hook events (`hook:<event>`), plus on_combat_start effects (`flag:*`,
+    `status:*`, `barrier`). Probed as a carrier so trait-guarded signatures count."""
+    from src.game.events import CombatStartEvent
+    from src.game.loadout import piece_from_champion
+
+    owner = piece_from_champion(build_champion_at_level("champ_sunmane_lion", 1))
+    owner.traits = [trait_id]
+    owner.hp = owner.max_hp
+    bundle = bp.bundle_factory(owner)
+    rec = _RecCtx()
+    sig: set[str] = set()
+    for hook in bundle.hooks:
+        if hook.event == "on_combat_start":
+            hook.handler(rec, CombatStartEvent())
+        else:
+            sig.add(f"hook:{hook.event}")
+    for flag in _RIDER_FLAGS:
+        if getattr(owner, flag):
+            sig.add(f"flag:{flag}")
+    for sid in rec.statuses:
+        sig.add(f"status:{sid}")
+    if rec.barriers:
+        sig.add("barrier")
+    return sig
+
+
+def test_trait_rungs_are_cumulative_for_mechanics():
+    """V.41 — a higher rung re-includes every mechanic a lower cleared rung grants
+    (resolution applies only the single highest cleared rung, so re-inclusion is
+    manual). Sole exception: carrier-MOVEMENT (kiting/backline) may drop at a
+    TEAM_WIDE apex. Catches the silent-drop bug class (B.15-adjacent, B.16)."""
+    for trait_id, factory in TRAIT_REGISTRY.items():
+        rungs = sorted(
+            factory(),
+            key=lambda b: b.count if not callable(b.count) else 10_000,
+        )
+        for lo, hi in zip(rungs, rungs[1:]):
+            sig_lo = _rung_signature(trait_id, lo)
+            sig_hi = _rung_signature(trait_id, hi)
+            allowed = _MOVEMENT_FLAGS if hi.scope is TraitScope.TEAM_WIDE else set()
+            dropped = sig_lo - sig_hi - allowed
+            assert not dropped, (
+                f"{trait_id}: rung {hi.count} drops {sorted(dropped)} present at the "
+                f"lower rung {lo.count} (cumulative-rung violation, V.41)"
+            )

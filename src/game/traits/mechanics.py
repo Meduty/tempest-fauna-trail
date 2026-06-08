@@ -5,7 +5,7 @@ plugged into a trait rung as its 5th tuple element (see `_packs.define_trait`).
 All deterministic — cadence counters / HP thresholds, never RNG (V.2/V.14/V.37).
 
 Hook riders: second-wind decaying-shield, tidal HoT, enrage, time-ramp,
-deterministic dodge, untargetable opener, plus the engine-behaviour arms —
+deterministic dodge, hexproof opener, plus the engine-behaviour arms —
 `kiting` (Skyborn), `backline_seeker` (Stalker), `revive_first_ally` (Mender).
 Taunt is a status honored by the engine (no T.28b trait wires it; Trickster
 casts apply it in T.28c). The movement/targeting/death logic these arm lives in
@@ -186,12 +186,16 @@ def revive_first_ally(hp_frac: float = 0.3) -> HookBuilder:
     return build
 
 
-def untargetable_opener(duration: int = 150) -> HookBuilder:
-    """Untargetable for the opening `duration` ticks (Spirit). The piece still
-    acts; enemies skip it in target selection (StatusGate.UNTARGETABLE)."""
+def hexproof_opener(duration: int = 150, trait: str = "") -> HookBuilder:
+    """Hexproof for the opening `duration` ticks (Spirit/Shrouded). The piece still
+    acts; it can't be acquired as a single target (StatusGate.HEXPROOF, V.40) —
+    AoE still hits. `trait` guards a TEAM_WIDE apply to carriers only (a signature
+    opener stays a carrier perk); empty on a PER rung where every target is a carrier."""
     def build(owner: Piece, sid: str) -> list[Hook]:
         def hook(ctx: Any, event: Any) -> None:
-            ctx.apply_status(owner, "untargetable", duration, source_id=owner.id)
+            if trait and trait not in owner.traits:
+                return
+            ctx.apply_status(owner, "hexproof", duration, source_id=owner.id)
 
         return [Hook("on_combat_start", hook, scope=HookScope.PER_HIT)]
 
@@ -372,13 +376,13 @@ def mana_on_kill(frac_of_cost: float = 0.4) -> HookBuilder:
     return build
 
 
-def untargetable_after_kill(duration: int = 120) -> HookBuilder:
-    """Brief untargetable window after the carrier scores a takedown (Stalker @7)."""
+def hexproof_after_kill(duration: int = 120) -> HookBuilder:
+    """Brief hexproof window after the carrier scores a takedown (Stalker @7)."""
     def build(owner: Piece, sid: str) -> list[Hook]:
         def hook(ctx: Any, event: Any) -> None:
             if event.killer is not owner or not owner.alive:
                 return
-            ctx.apply_status(owner, "untargetable", duration, source_id=owner.id)
+            ctx.apply_status(owner, "hexproof", duration, source_id=owner.id)
 
         return [Hook("on_kill", hook, scope=HookScope.PER_HIT)]
 
@@ -405,20 +409,23 @@ def free_cast(every_n: int = 3) -> HookBuilder:
     return build
 
 
-def _recast(ctx: Any, owner: Piece, ability_id: str) -> None:
+def _recast(ctx: Any, owner: Piece, ability_id: str, potency: float = 1.0) -> None:
     """Re-run the carrier's just-finished ability once (Spirit/Channeler echo).
     Reuses `ctx.cast_ability`; a `ctx._in_recast` flag guards re-entry so an echo
-    never echoes itself."""
+    never echoes itself. `potency` (<1.0 for Spirit @8) scales the recast's damage
+    via `ctx._echo_potency`, read in `deal_damage` (heals/shields stay full)."""
     if getattr(ctx, "_in_recast", False) or not owner.alive:
         return
     slot_idx = next((i for i, s in enumerate(owner.actives) if s.ability_id == ability_id), None)
     if slot_idx is None:
         return
     ctx._in_recast = True
+    ctx._echo_potency = potency
     try:
         ctx.cast_ability(owner, slot_idx=slot_idx)
     finally:
         ctx._in_recast = False
+        ctx._echo_potency = 1.0
 
 
 def recast_first() -> HookBuilder:
@@ -437,9 +444,10 @@ def recast_first() -> HookBuilder:
     return build
 
 
-def echo_cadence(every_n: int = 4) -> HookBuilder:
+def echo_cadence(every_n: int = 4, potency: float = 1.0) -> HookBuilder:
     """Every Nth cast echoes — fires a second time (Spirit @5). Caster-gated, so
-    team-safe at an apex rung (no-op for pieces with no ability)."""
+    team-safe at an apex rung (no-op for pieces with no ability). `potency` < 1.0
+    (Spirit @8) makes the echo deal reduced damage."""
     def build(owner: Piece, sid: str) -> list[Hook]:
         state = {"n": 0}
 
@@ -448,7 +456,7 @@ def echo_cadence(every_n: int = 4) -> HookBuilder:
                 return
             state["n"] += 1
             if state["n"] % every_n == 0:
-                _recast(ctx, owner, event.ability_id)
+                _recast(ctx, owner, event.ability_id, potency=potency)
 
         return [Hook("on_cast_complete", hook, scope=HookScope.PER_HIT)]
 
@@ -601,5 +609,133 @@ def on_death_spawn(stat_frac: float = 0.4, trait: str = "Swarm",
             ctx.spawn(chitin, owner.position_q, owner.position_r)
 
         return [Hook("on_death", hook, scope=HookScope.PER_HIT)]
+
+    return build
+
+
+# ===========================================================================
+# T.28d — affinity @10 apex riders + Scaled/Spirit arms + deferred-flavor
+# fold-ins. All RNG-free hook idioms (cadence / geometry / event-state).
+# ===========================================================================
+
+
+def crit_arc(frac: float = 0.5) -> HookBuilder:
+    """On a crit, arc a fraction of the hit to one enemy adjacent to the struck
+    target (Galvanized @10). ITEM_PROC → no re-fire/recursion."""
+    def build(owner: Piece, sid: str) -> list[Hook]:
+        def hook(ctx: Any, event: Any) -> None:
+            if event.attacker is not owner or not owner.alive or not event.is_crit:
+                return
+            target = event.target
+            adj = [e for e in _enemies(ctx, owner)
+                   if e is not target and _dist(e, target) <= 1]
+            if adj:
+                ctx.deal_damage(owner, adj[0], frac * event.amount,
+                                SourceTag.ITEM_PROC, damage_type="magical")
+
+        return [Hook("on_damage_dealt", hook, scope=HookScope.PER_HIT)]
+
+    return build
+
+
+def chill_attackers(duration: int = 200, stacks: int = 1) -> HookBuilder:
+    """Whoever damages the carrier is slowed (Frostbound @10). Slow has no gate,
+    so it lands even on cc_immune attackers; applies to the attacker, not self."""
+    def build(owner: Piece, sid: str) -> list[Hook]:
+        def hook(ctx: Any, event: Any) -> None:
+            if event.target is not owner or not owner.alive:
+                return
+            attacker = event.attacker
+            if attacker is not None and attacker.alive and attacker.is_enemy != owner.is_enemy:
+                ctx.apply_status(attacker, "slow", duration, stacks=stacks, source_id=owner.id)
+
+        return [Hook("on_damage_taken", hook, scope=HookScope.PER_HIT)]
+
+    return build
+
+
+def burst_reduction(cap_frac: float = 0.25) -> HookBuilder:
+    """Cap any single incoming hit at `cap_frac` of the carrier's max HP
+    (Overcast @10 anti-burst). Reducing `on_damage_pre` hook, RNG-free."""
+    def build(owner: Piece, sid: str) -> list[Hook]:
+        def hook(ctx: Any, event: Any, value: float) -> float:
+            if event.target is not owner or owner.max_hp <= 0:
+                return value
+            return min(value, cap_frac * owner.max_hp)
+
+        return [Hook("on_damage_pre", hook, scope=HookScope.PER_HIT, priority=40)]
+
+    return build
+
+
+def kite_reward(frac: float = 0.15) -> HookBuilder:
+    """Bonus damage when the carrier strikes an enemy that can't reach back —
+    the target's attack_range is shorter than the current gap (Skyborn @3 kite
+    reward). Basic/ability hits only (ITEM_PROC skipped → no recursion)."""
+    def build(owner: Piece, sid: str) -> list[Hook]:
+        def hook(ctx: Any, event: Any) -> None:
+            if event.attacker is not owner or not owner.alive:
+                return
+            if event.tag not in (SourceTag.BASIC_ATTACK.value, SourceTag.ABILITY.value):
+                return
+            t = event.target
+            if t.stat("attack_range") < _dist(owner, t):
+                ctx.deal_damage(owner, t, frac * owner.stat("strength"),
+                                SourceTag.ITEM_PROC, damage_type="physical")
+
+        return [Hook("on_damage_dealt", hook, scope=HookScope.PER_HIT)]
+
+    return build
+
+
+def ally_tidal(interval: int = 200, heal_frac: float = 0.015) -> HookBuilder:
+    """Cadence-heal the carrier's lowest-HP ally a fraction of THAT ally's max HP
+    (Tidekin @3). Distinct from `tidal_hot` (which heals the carrier itself)."""
+    def build(owner: Piece, sid: str) -> list[Hook]:
+        state = {"t": 0}
+
+        def hook(ctx: Any, event: Any) -> None:
+            if not owner.alive:
+                return
+            state["t"] += 1
+            if state["t"] % interval == 0:
+                allies = _allies(ctx, owner)
+                if allies:
+                    target = min(allies, key=lambda a: (a.hp, a.id))
+                    ctx.heal(owner, target, target.max_hp * heal_frac)
+
+        return [Hook("on_tick", hook, scope=HookScope.PER_HIT)]
+
+    return build
+
+
+def cc_immunity(trait: str = "") -> HookBuilder:
+    """Arm the carrier as hard-CC immune (Scaled @5+). Sets `Piece.cc_immune`; the
+    `ctx.apply_status` guard then skips gate-bearing statuses (T.28d). `trait` guards
+    a TEAM_WIDE apply to carriers only — CC-immunity is a signature defensive perk,
+    not a team-wide grant; empty on a PER rung (every target is already a carrier)."""
+    def build(owner: Piece, sid: str) -> list[Hook]:
+        def hook(ctx: Any, event: Any) -> None:
+            if trait and trait not in owner.traits:
+                return
+            owner.cc_immune = True
+
+        return [Hook("on_combat_start", hook, scope=HookScope.PER_HIT)]
+
+    return build
+
+
+def pierce_hexproof(trait: str = "") -> HookBuilder:
+    """Arm the carrier to ignore HEXPROOF in single-target acquisition (Spirit @8,
+    V.40). Sets `Piece.pierces_hexproof`, read by `targeting.py` + `_opponents`.
+    `trait` guards a TEAM_WIDE apply to carriers only (a Spirit signature, not a
+    team grant); empty on a PER rung."""
+    def build(owner: Piece, sid: str) -> list[Hook]:
+        def hook(ctx: Any, event: Any) -> None:
+            if trait and trait not in owner.traits:
+                return
+            owner.pierces_hexproof = True
+
+        return [Hook("on_combat_start", hook, scope=HookScope.PER_HIT)]
 
     return build

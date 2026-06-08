@@ -21,7 +21,7 @@ from src.game.piece import ActiveSlot, Piece
 from src.game.registries import ABILITY_REGISTRY, PASSIVE_REGISTRY
 from src.game.rng import SeededRng
 from src.game.status import StatusInstance
-from src.game.weather_effects import combat_modifier
+from src.game.weather_effects import WEATHER_BUFF_BASE, combat_modifier
 from src.game import abilities as _abilities  # noqa: F401 — triggers @register decorators
 
 # Matches content._ABILITY_COST (T.33: 36_000→300_000 alongside mana_regen 10→100).
@@ -177,8 +177,15 @@ def _apply_weather_to_piece(piece: Piece, weather: WeatherState) -> None:
     Uses integer-scaled values off weather_effects.combat_modifier so that
     combat results are deterministic and consistent. This is the *only* place
     Weather Favor is applied to a combat piece.
+
+    Scaled @8 (T.28d): a `weather_favored` piece always gets the favorable buff
+    pack for the node weather regardless of affinity (`CLEAR` stays inert →
+    IDENTITY). The flag is set by `mark_weather_overrides` before this runs.
     """
-    modifier = combat_modifier(piece.affinity, weather)
+    if piece.weather_favored:
+        modifier = WEATHER_BUFF_BASE[weather]
+    else:
+        modifier = combat_modifier(piece.affinity, weather)
 
     def _scale_stat(value: float, mult: float) -> float:
         return float(max(0, round(value * mult)))
@@ -226,7 +233,11 @@ def compile_loadout(
     for enemy in enemies:
         pieces.append(piece_from_enemy(enemy))
 
-    # 2. Apply Weather Favor to base stats
+    # 2. Apply Weather Favor to base stats. First mark Scaled @8 carriers so their
+    # weather is overridden to the favorable pack (T.28d — resolved before step 2
+    # because weather folds into base_stats here, ahead of trait bundles in step 3).
+    from src.game.traits import mark_weather_overrides
+    mark_weather_overrides(pieces)
     for piece in pieces:
         _apply_weather_to_piece(piece, weather)
 

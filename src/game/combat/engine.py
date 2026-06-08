@@ -87,16 +87,18 @@ def _effective_stat(piece: Piece, stat: str) -> float:
 def _opponents(piece: Piece, pieces: list[Piece]) -> list[Piece]:
     """All living, targetable enemies of the given piece.
 
-    Untargetable pieces (T.28b, StatusGate.UNTARGETABLE) are excluded from target
-    selection — they can still act, but enemies won't pick them. If every enemy is
-    untargetable, the attacker has no target and idles until the window expires.
+    Hexproof pieces (StatusGate.HEXPROOF, V.40) are excluded from auto-attack
+    target selection — they can still act, but enemies won't pick them (AoE still
+    hits, via the unfiltered `enemies_of`). A piece with `pierces_hexproof`
+    (Spirit @8) ignores the exclusion. If every enemy is hexproof, the attacker has
+    no target and idles until the window expires.
     """
     return [
         p
         for p in pieces
         if p.alive
         and p.is_enemy != piece.is_enemy
-        and not p.is_gated(StatusGate.UNTARGETABLE)
+        and (piece.pierces_hexproof or not p.is_gated(StatusGate.HEXPROOF))
     ]
 
 

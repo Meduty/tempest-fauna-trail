@@ -136,12 +136,12 @@ def test_dodge_ignores_non_basic_attacks():
     assert hook.handler(ctx, _dmg_event(owner, tag="ability"), 50.0) == 50.0
 
 
-def test_untargetable_opener_applies_status_at_combat_start():
+def test_hexproof_opener_applies_status_at_combat_start():
     owner = _owner()
     ctx = FakeCtx()
-    [hook] = m.untargetable_opener(duration=150)(owner, "trait:Spirit@5")
+    [hook] = m.hexproof_opener(duration=150)(owner, "trait:Spirit@5")
     hook.handler(ctx, SimpleNamespace())
-    assert ctx.statuses == [(owner, "untargetable", 150)]
+    assert ctx.statuses == [(owner, "hexproof", 150)]
 
 
 # --------------------------------------------------------------------------
@@ -301,7 +301,7 @@ def test_kite_step_plants_when_cornered():
 
 
 # --------------------------------------------------------------------------
-def test_untargetable_excluded_from_target_selection():
+def test_hexproof_excluded_from_target_selection():
     attacker = piece_from_champion(build_champion_at_level("champ_sunmane_lion", 1))
     attacker.is_enemy = False
     a = piece_from_champion(build_champion_at_level("champ_reedbank_otter", 1))
@@ -310,7 +310,10 @@ def test_untargetable_excluded_from_target_selection():
         e.is_enemy = True
     pieces = [attacker, a, b]
     assert {p.id for p in _opponents(attacker, pieces)} == {a.id, b.id}
-    # Make `a` untargetable → only `b` remains a valid target.
+    # Make `a` hexproof → only `b` remains a valid auto-attack target.
     from src.game.status import StatusInstance
-    a.statuses.append(StatusInstance(status_id="untargetable", remaining_ticks=100))
+    a.statuses.append(StatusInstance(status_id="hexproof", remaining_ticks=100))
     assert [p.id for p in _opponents(attacker, pieces)] == [b.id]
+    # A pierces_hexproof attacker sees `a` again.
+    attacker.pierces_hexproof = True
+    assert {p.id for p in _opponents(attacker, pieces)} == {a.id, b.id}

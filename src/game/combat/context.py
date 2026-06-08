@@ -54,6 +54,15 @@ TICK_MS = 10
 MITIGATION_CONSTANT = 100
 CRIT_MULTIPLIER = 1.5
 
+# Action-impairing gates = "hard CC". Scaled cc_immune pieces ignore statuses
+# carrying any of these (slow has no gate → soft CC, still lands). (T.28d)
+_HARD_CC_GATES = (
+    StatusGate.BLOCKS_ACTION,
+    StatusGate.BLOCKS_CAST,
+    StatusGate.BLOCKS_ATTACK,
+    StatusGate.BLOCKS_MOVEMENT,
+)
+
 # Board dimensions
 BOARD_WIDTH = 10
 BOARD_HEIGHT = 7
@@ -203,6 +212,11 @@ class CombatContext:
 
         raw = amount
 
+        # Reduced-potency echo (Spirit @8, T.28d): a recast in flight scales its
+        # damage by ctx._echo_potency (default 1.0 outside a recast). Heals/shields
+        # are unaffected by design (damage-only). Deterministic call-stack flag.
+        raw *= getattr(self, "_echo_potency", 1.0)
+
         # Weather affinity clash modifier
         raw *= damage_modifier(attacker.affinity, target.affinity)
 
@@ -319,6 +333,15 @@ class CombatContext:
             raise ValueError(f"Unknown status_id {status_id!r} — not found in STATUS_DEFS")
 
         status_def = STATUS_DEFS.get(status_id)
+
+        # Scaled CC-immunity (T.28d): a cc_immune piece ignores hard-CC — any
+        # status carrying an action-impairing gate. Soft CC (slow), DoTs, and
+        # markers (hexproof/taunt/soaked) still land.
+        if target.cc_immune and status_def is not None and any(
+            g in status_def.gates for g in _HARD_CC_GATES
+        ):
+            return
+
         existing = target.get_status(status_id)
 
         if existing is not None:

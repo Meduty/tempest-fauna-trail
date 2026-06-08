@@ -73,13 +73,13 @@ define_trait(
 )
 
 # Stalker — pool 7, @2/3/5/7. Backline target-priority (@2); @5 hi-HP bonus dmg +
-# mana on takedown; @7 brief untargetable after a takedown. PER apex (no team).
+# mana on takedown; @7 brief hexproof after a takedown. PER apex (no team).
 define_trait(
     "Stalker",
     (2, _PER, {"move_speed": 0.10, "strength": 0.06}, {}, [m.backline_seeker()]),
     (3, _PER, {"strength": 0.08}, {}, [m.backline_seeker()]),
     (5, _PER, {"strength": 0.12}, {}, [m.backline_seeker(), m.high_hp_bonus(0.20, 0.6), m.mana_on_kill()]),
-    (7, _PER, {"strength": 0.14}, {}, [m.backline_seeker(), m.high_hp_bonus(0.25, 0.6), m.mana_on_kill(), m.untargetable_after_kill(120)]),
+    (7, _PER, {"strength": 0.14}, {}, [m.backline_seeker(), m.high_hp_bonus(0.25, 0.6), m.mana_on_kill(), m.hexproof_after_kill(120)]),
 )
 
 # Channeler — pool 7, @1/2/4/7. @4 free-cast cadence; @7 first cast triggers twice
@@ -134,10 +134,11 @@ define_trait(
 )
 
 # Primordial — pool 6, @1/2/3. Augment-gated (V.37), ships dormant. @2 second wind
-# (T.28b). @1 signature kits + @3 tier-up = T.28d.
+# (T.28b, team-wide per catalog); @3 re-includes it (cumulative, V.41). @1 signature
+# mechanics + @3 aspirational tier-up = T.31 (D.20).
 define_trait(
     "Primordial",
     (1, _PER, {"strength": 0.10, "intelligence": 0.10, "hp": 0.10}),
     (2, _TEAM, {"strength": 0.10, "intelligence": 0.10, "hp": 0.10}, {}, [m.second_wind()]),
-    (3, _TEAM, {"strength": 0.14, "intelligence": 0.14, "hp": 0.14}),
+    (3, _TEAM, {"strength": 0.14, "intelligence": 0.14, "hp": 0.14}, {}, [m.second_wind()]),
 )

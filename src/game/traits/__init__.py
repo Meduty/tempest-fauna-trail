@@ -30,7 +30,11 @@ __all__ = [
     "DynamicThreshold",
     "affinity_trait",
     "resolve_and_apply_traits",
+    "mark_weather_overrides",
 ]
+
+# Scaled @8 — the rung count whose apex grants the full favorable weather override.
+_SCALED_WEATHER_OVERRIDE_RUNG = 8
 
 # Affinity → derived affinity-trait tag (V.6 stays one field; no node weather).
 _AFFINITY_TRAIT: dict[WeatherState, str] = {
@@ -83,6 +87,24 @@ def _resolve_traits(
         if best is not None:
             cleared[tag] = (best, count, best_thr)
     return cleared
+
+
+def mark_weather_overrides(pieces: list[Piece]) -> None:
+    """Set `Piece.weather_favored` on Scaled @8 carriers BEFORE weather is applied.
+
+    Scaled @8 (T.28d) grants the favorable weather pack regardless of affinity.
+    Weather is folded into `base_stats` at loadout step 2, *before* trait bundles
+    apply (step 3) — so the flag must be resolved up front. This runs the same pure,
+    RNG-free `_resolve_traits` roll-up (V.21) and marks carriers; the loadout's
+    `_apply_weather_to_piece` reads the flag. Player team only (V.22)."""
+    team = [p for p in pieces if not p.is_enemy]
+    cleared = _resolve_traits(team, len(team))
+    scaled = cleared.get("Scaled")
+    if scaled is None or scaled[2] < _SCALED_WEATHER_OVERRIDE_RUNG:
+        return
+    for piece in team:
+        if "Scaled" in _piece_tags(piece):
+            piece.weather_favored = True
 
 
 def resolve_and_apply_traits(
