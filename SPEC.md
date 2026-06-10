@@ -569,6 +569,21 @@ in their T-task plan docs; what remains here is genuinely undecided.
 
 ## Implementation Order
 
+### Current Status & Next Steps
+
+LIVING snapshot — refresh via `/spec` whenever a §T status flips. Last: 2026-06-10, post-T.28d merge (`84a4829`).
+
+**Done (✅):** T.1-T.8, T.14, T.16, T.18-T.22, T.24-T.28d, T.30, T.32, T.33a/b — engine, weather, route+content, economy/shop, full trait chain, ability catalog, role/scaling revamps, save/load, playtest CLI. Backend headless-complete **except items + augments**. T.17 docs 🔶.
+
+**WIP:** none — T.28d merged, tree clean. (Update this line when a task starts.)
+
+**Next — backend chain, in order:**
+1. **T.29a** item engine core — components, 16-item cut, 3-slot equip, REWARD drops. Plan ready (`docs/design/tasks/t29_item_engine_plan.md`). ← **next action: `/build T.29a`**
+2. **T.29b** items rest — remaining 20 combined + 6 emblems + 6 special run-actions + interactive `sim_run` driver.
+3. **T.31** augments — ~50 catalog, `RunModifiers` seam, `sim_run` augment policies; carries 3 paired Primordial-unlock RUN-augments + Primordial @1 signatures + @3 tier-up (D.20).
+
+**Then — UI phase:** T.9 → T.10 → T.15 → T.23 → T.12; viz T.11/T.13; polish T.34a/b/c (ability tooltips) + T.17.
+
 ### Phase 1: Core Logic (Week 1-3)
 T.1 → T.2 → T.3 → T.4 → T.18 → T.5 → T.19 → T.20 → T.21 → T.24 → T.26 → T.16 (game tests) → T.27 (playtest CLI)
 
