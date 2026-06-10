@@ -250,10 +250,14 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   is gone); Stalker @2 to backline-targeting (no teleport). Affinity traits are
   derived from `affinity`. Plan: `docs/design/tasks/t28_trait_effects_plan.md`.
 - T.29 (split **T.29a/T.29b**) implements the item engine: components + combined
-  items + 3-slot equip + REWARD drops + 16-item core cut (T.29a), then the
+  items + 3-slot equip + REWARD/boss drops + 16-item core cut (T.29a), then the
   remaining 20 combined + emblems + special run-actions with an interactive
-  `sim_run` driver (T.29b). Components map to **real** engine stats (mana handled
-  per-`ActiveSlot`, not as a base stat — see B.10); emblems gate on T.28a.
+  `sim_run` driver (T.29b). Components map to **real** engine stats with
+  **flat-add magnitudes** (mana handled per-`ActiveSlot`, not as a base stat —
+  see B.10); emblems gate on T.28a. Loot rolls off the new `CH_LOOT = 8` channel:
+  REWARD table 45/20/15/15/5 (component/combined/Amber/champion/special) + boss
+  3-pair pick (D.12). **Shop sells champions only — items never enter the shop.**
+  Heartwood = generic stat-mult for MVP (D.21).
   Content `docs/design/content/item_catalog.md`; substrate
   `docs/design/systems/effect_systems_design.md` §8; plan
   `docs/design/tasks/t29_item_engine_plan.md`.
@@ -500,8 +504,13 @@ in their T-task plan docs; what remains here is genuinely undecided.
   8 base components, 36 combined items via `RECIPE_MAP` (16-item core cut in
   T.29a, rest in T.29b), 6 emblems (Spirit Gem + component → Kinship; counted via
   T.28a), 6 special `RUN_ACTION_REGISTRY` items. 3 item slots per champion piece.
-  Items acquired from REWARD-node drops, SUPPLY-node picks, and the prep shop.
-  Open: Heartwood/radiant tier + component magnitude (% vs flat) tuning.
+  **Magnitudes [resolved 2026-06-10]: flat add** (TFT-style — Fang +10 STR, Old Hide
+  +100 HP, Keen Claw +0.15 crit, Springtear ±30_000 mana per-slot; items favour
+  early/mid game by design). **Acquisition [resolved 2026-06-10]: REWARD/boss drops
+  only — the shop sells champions ONLY, never items** (T.22 contract, do not
+  extend); T.31 grant augments may award specials (emblems, Glimmerdust) as a bonus
+  channel. **Heartwood [resolved 2026-06-10]: generic ×1.5 stat-mult for MVP** —
+  authored per-item variants deferred (D.21). Open: flat-value tuning via sim.
 - D.10 Champion / enemy archetypes: the ~6-8 role archetypes and their `P = 1`
   base stats, enemy power tags, and the spirit roster (T.5 / T.18). **Role-taxonomy
   half RESOLVED [2026-06-04] (T.32):** 6 archetype axes (`stat`/`reach`/`durability`/
@@ -512,9 +521,15 @@ in their T-task plan docs; what remains here is genuinely undecided.
   effects **owned by T.31** (substrate `effect_systems_design.md` §9, content
   `augment_catalog.md`, plan `t31_augment_system_plan.md`). Open tuning only: the
   per-stage quality-weight curve and a degenerate-combo (interaction-cap) audit.
-- D.12 Drop tables: `REWARD`-node loot content (Amber / item / champion weights).
-  **REWARD item drops integrated in T.29a** (seed-deterministic roll); the
-  drop-table *weights* remain T.22/economy's to author.
+- D.12 Drop tables: **RESOLVED [2026-06-10] (T.29a plan)** — T.22 never authored
+  weights, so T.29a owns them. First-pass table (tunable): **45% component / 20%
+  combined item / 15% Amber (+2) / 15% champion recruit (SUPPLY tier-pool logic) /
+  5% special item** (falls back to component until T.29b ships). Seed-deterministic
+  via new `CH_LOOT = 8` channel (`generate_reward_loot`, pure — returns
+  `RewardLoot`, no `Run` mutation). **Boss defeat = 3-pair pick**: 3 pairs of 2
+  drops rolled off the boss node's `CH_LOOT` seed (`generate_boss_loot`, len-3,
+  deterministic); player picks one pair, headless sims take pair 0. Details:
+  `docs/design/tasks/t29_item_engine_plan.md` §3.7.
 - D.20 Primordial @1 signature mechanics + @3 tier-up **deferred to T.31**. The 6
   Tier-10 legendaries already carry full `.active`+`.passive` kits (T.30); the
   catalog's "@1 signature mechanic" (`trait_catalog.md:176`) is **un-authored**
@@ -526,6 +541,14 @@ in their T-task plan docs; what remains here is genuinely undecided.
   pack (`game/traits/callings.py`); T.31 authors the 6 signatures + @3 alongside the
   unlock augments. (Moved out of T.28d per the T.30-kit finding — see
   `docs/design/tasks/t28d_trait_apex_hexproof_plan.md` §1.)
+- D.21 Authored Heartwood (radiant) item variants — **post-MVP**. MVP (T.29b)
+  ships Glimmerdust as a **generic ×1.5 stat-mult** on the item's modifiers (proc
+  untouched, one code path). Per-item authored Heartwood versions (boosted procs,
+  bespoke stats) are future content; revisit after the base 36 prove out. (T.29)
+- D.22 Bosses wearing items — **post-MVP**. Standard enemies carry no items;
+  T.30 boss kits were authored + sim-tuned **without** items, so giving bosses
+  1-2 authored items changes boss difficulty and needs a sim retune pass first.
+  Boss *loot* (the D.12 3-pair pick) is separate and ships in T.29a. (T.29, T.30)
 
 ### Economy & Meta
 

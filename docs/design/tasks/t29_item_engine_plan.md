@@ -1,10 +1,10 @@
 # T29 Plan — Item Engine
 
-> **Status:** plan — ready for review. (T.29 is a §T row at ❌ Not started; this doc flips it to 📋 Plan and splits it T.29a/T.29b via `/spec`.)
-> **Depends:** T.1 (models — done), T.20 (effect substrate / `ITEM_REGISTRY` / `register_item` — done), **T.22** (Amber economy, `Run` shop/inventory, REWARD drop tables). **T.29b emblems additionally depend on T.28a** (trait counting consumes emblem `granted_traits`). **T.29b special-item CLI driver shares the `sim_run` interactive shell with T.31** — coordinate.
+> **Status:** approved — T.29a/T.29b already split in SPEC (📋 Plan). Ready for `/build T.29a`.
+> **Depends:** T.1 (models — done), T.20 (effect substrate / `ITEM_REGISTRY` / `register_item` — done), **T.22** (Amber economy, `Run` shop/inventory — done; drop-table weights **owned by T.29a** per §3.7 decision). **T.29b emblems additionally depend on T.28a** (trait counting consumes emblem `granted_traits`). **T.29b special-item CLI driver shares the `sim_run` interactive shell with T.31** — coordinate.
 > **Resolves:** SPEC §D.9 (item system — components, recipes, emblems, special items, 3 slots) and the REWARD-drop half of §D.12.
 > **Design source of truth:** [`item_catalog.md`](../content/item_catalog.md) (8 components, 36 combined, 6 emblems, 6 special, the §3 16-item core cut) + [`effect_systems_design.md` §8](../systems/effect_systems_design.md) (substrate: `BASE_COMPONENTS`, `RECIPE_MAP`, item factories, §8.4 run-actions, `combine()`) + §10.1 (application order).
-> **What this plan adds beyond those:** the **real component→stat mapping** (the §8 sketch uses fake keys), the **mana-per-slot handling** (mana is not a `Piece` stat), the **persistent equip model** (`Champion.items`), and a drift fix for the §8.1 "15 combined" / dangling "§14" references.
+> **What this plan adds beyond those:** the **real component→stat mapping** (the §8 sketch uses fake keys — **flat add chosen over mul**), the **mana-per-slot handling** (mana is not a `Piece` stat), the **persistent equip model** (`Champion.items`), and a drift fix for the §8.1 "15 combined" / dangling "§14" references. **Drop-table weights (§D.12)**: T.29a owns a first-pass weight table (components, combined, Amber, champion recruit bucket) — flagged tunable; §3.7.
 
 ---
 
@@ -17,7 +17,7 @@ The seam is **combat-facing vs meta/cross-task**. T.29a is self-contained (deps 
 - §3.2 `RECIPE_MAP` (full 8×8 = 36 keys) + `combine()` (recipes only; gem branch stubbed for b).
 - §3.3 equip model: `Champion.items` (≤3, persistent) → threaded into `piece_from_champion`; `Piece.items` already exists ([piece.py:43](../../../src/game/piece.py#L43)); apply item bundles in `compile_loadout` (§10.1 step 5).
 - §3.4 `@register_item` factories for the **16 core-cut items** (modifier + hook, closure-per-combat) + 8 raw components.
-- §3.7 REWARD-node item drops (deterministic, coordinate with T.22 drop tables / §D.12).
+- §3.7 REWARD-node item drops + boss 3-pair loot (deterministic via `CH_LOOT`; T.29a authors the §D.12 weight table).
 - **Files:** `game/items/` (`base.py`, `recipes.py`, `combined.py`), `game/loadout.py`, `game/models.py`, `game/encounter.py`. **Done when:** equip ≤3 enforced, recipes resolve, a hook item (e.g. Splitwind Talons) procs deterministically in a fixed-seed fight, REWARD drop is seed-deterministic.
 
 ### T.29b — Remaining items + emblems + special items (Est: M–L, depends T.29a + T.28a)
@@ -33,7 +33,7 @@ The seam is **combat-facing vs meta/cross-task**. T.29a is self-contained (deps 
 
 **In scope:** the full item system backend — 8 components, 36 combined items (16 in a, 20 in b), 6 emblems, 6 special run-actions, 3-slot equip, REWARD-drop integration, and the run-action CLI driver. Backend-first; UI fires it later (T.23 prep).
 
-**Out of scope:** the prep-view item UI (T.23/T.15); shop *purchasing* of items (T.22 owns the shop; T.29 provides the item objects it sells); drop-table *weights* tuning (T.22 / §D.12 — T.29 consumes the table); Heartwood/radiant tier (deferred, §7).
+**Out of scope:** the prep-view item UI (T.23/T.15); any shop item sales — **the shop sells champions only, never items** (T.22 contract, §3.7); authored per-item Heartwood variants (MVP ships a generic stat-mult, §7); bosses wearing items (post-MVP §D, §7).
 
 ---
 
@@ -62,16 +62,16 @@ The seam is **combat-facing vs meta/cross-task**. T.29a is self-contained (deps 
 
 | Component | Catalog stat | Real engine handling |
 |---|---|---|
-| Fang | Strength | `Modifier("strength", …)` |
-| Talon | Attack Speed | `Modifier("attack_speed", …)` |
-| Heartseed | Intelligence | `Modifier("intelligence", …)` |
-| Old Hide | Health | `Modifier("hp", …)` |
-| Stoneplate | Armor | `Modifier("armor", …)` |
-| Wardpelt | Resistance | `Modifier("resistance", …)` |
-| Keen Claw | Crit Chance | `Modifier("crit_chance", "add", …)` (0–1 float) |
-| **Springtear** | **Mana (start/cost)** | **NOT a `Piece` stat** — mana lives on `ActiveSlot.cost` / `current_mana` ([piece.py:22-23](../../../src/game/piece.py#L22)). Handle in a dedicated equip step: grant starting `current_mana` and/or reduce `slot.cost`. Do **not** emit a base-stats `Modifier`. |
+| Fang | Strength | `Modifier("strength", "add", 10, …)` |
+| Talon | Attack Speed | `Modifier("attack_speed", "add", 10, …)` |
+| Heartseed | Intelligence | `Modifier("intelligence", "add", 10, …)` |
+| Old Hide | Health | `Modifier("hp", "add", 100, …)` |
+| Stoneplate | Armor | `Modifier("armor", "add", 5, …)` |
+| Wardpelt | Resistance | `Modifier("resistance", "add", 5, …)` |
+| Keen Claw | Crit Chance | `Modifier("crit_chance", "add", 0.15, …)` (0–1 float) |
+| **Springtear** | **Mana (start/cost)** | **NOT a `Piece` stat** — mana lives on `ActiveSlot.cost` / `current_mana` ([piece.py:22-23](../../../src/game/piece.py#L22)). Handle in a dedicated equip step: grant `+30_000` starting `current_mana` and reduce `slot.cost` by `30_000`. Do **not** emit a base-stats `Modifier`. |
 
-**Magnitude (same tunable as T.28):** stats that scale with tier (strength/hp/armor/…) use **percentage (`mul`)** modifiers so a component isn't trivial at T10; flat only for `crit_chance` and mana. Flag as first-pass; a TFT-style flat model is the alternative if sims want cheap-unit-favouring items.
+**Magnitude: flat add** (TFT-style). A +10 Fang is meaningful at T1 (~+20% STR) and weaker at T10 (~+2.5% STR) — that's intentional; items favour early/mid. Flag all values as first-pass; retune via sim. `crit_chance` and mana already use flat by nature.
 
 ### 3.2 `RECIPE_MAP` + `combine()`
 
@@ -106,8 +106,8 @@ def splitwind_talons(owner):
         nearby = [e for e in ctx.enemies_of(owner) if hex_distance(...) <= 2 and e is not ev.target]
         if nearby: ctx.deal_damage(owner, nearby[0], ev.amount * 0.5, SourceTag.ITEM_PROC)
     return EffectBundle(
-        modifiers=[Modifier("attack_speed","mul",1.15,Lifetime.PERMANENT,"item:splitwind_talons"),
-                   Modifier("resistance","mul",1.15,Lifetime.PERMANENT,"item:splitwind_talons")],
+        modifiers=[Modifier("attack_speed","add",10,Lifetime.PERMANENT,"item:splitwind_talons"),
+                   Modifier("resistance","add",5,Lifetime.PERMANENT,"item:splitwind_talons")],
         hooks=[Hook("on_attack_landed", on_landed, scope=HookScope.PER_HIT)])
 ```
 
@@ -131,7 +131,7 @@ def register_run_action(item_id): …                # mirrors register_item
 @register_run_action("reforger")        def reforger(run, target_item_idx): …
 @register_run_action("unbinding_totem") def unbinding_totem(run, piece_id): …
 @register_run_action("echo_acorn")      def echo_acorn(run, piece_id): …          # bench copy → T.22 levelling
-@register_run_action("glimmerdust")     def glimmerdust(run, item_idx): …          # Heartwood upgrade (curated, §7)
+@register_run_action("glimmerdust")     def glimmerdust(run, item_idx): …          # Heartwood upgrade (generic stat-mult, §7)
 @register_run_action("reclaimers_cache")def reclaimers_cache(run, component_ids): …# components → Amber
 # Spirit Gem handled inline by combine() (§3.2)
 ```
@@ -140,7 +140,25 @@ def register_run_action(item_id): …                # mirrors register_item
 
 ### 3.7 REWARD drop integration
 
-`generate_reward` ([encounter.py](../../../src/game/encounter.py)) currently yields enemies (REWARD = easy fight + guaranteed loot, B.2). Add a deterministic loot roll keyed on a reward sub-seed (reuse a T.19 channel; add `CH_REWARD` if absent) drawing component/item/Amber per the drop table. **The drop-table weights are §D.12 / T.22's** — T.29 consumes the table and emits the item objects; coordinate so the two tasks don't double-define it.
+`generate_reward` ([encounter.py:473](../../../src/game/encounter.py#L473)) currently yields enemies only (REWARD = easy fight + guaranteed loot, B.2). Add a parallel `generate_reward_loot` function keyed on a new `CH_LOOT = 8` channel (channels 0–7 already taken; see top of `encounter.py`).
+
+**Drop table (first-pass, tunable):** T.29a owns these weights per §D.12 decision; T.22 never defined them.
+
+| Bucket | Weight | Result |
+|---|---|---|
+| Component | 45% | 1 random base component |
+| Combined item | 20% | 1 random item from the core-16 (or full 36 once T.29b ships) |
+| Amber bonus | 15% | +2 Amber credited to `Run.amber` |
+| Champion recruit | 15% | 1 champion id (same tier-pool logic as SUPPLY; re-uses `shop._roll_offers`); player must accept/skip via UI (T.23/T.15) |
+| Special item | 5% | 1 random special item (T.29b content; in T.29a this bucket falls back to a component so the weights stay stable across both substeps) |
+
+**Acquisition channels (resolved):** the **shop sells champions only** — never items (T.22 contract, do not extend). Drops are the primary special-item source (the 5% bucket above). T.31 **grant augments** may additionally award specific specials (emblems via Spirit Gem, Glimmerdust) — coordinate with the T.31 augment catalog; that channel is a bonus, not the baseline.
+
+Return type: a small dataclass `RewardLoot(type: str, item_id: str | None, champion_id: str | None, amber: int)`. The caller (UI/prep layer, T.23) acts on it; `generate_reward_loot` is pure — no `Run` mutation.
+
+Seed: `derive_seed(run_seed, node_index, CH_LOOT)`.
+
+**Boss loot (resolved):** on boss defeat, roll **three pairs of two drops each** from the same table (6 `RewardLoot` rolls off the boss node's `CH_LOOT` seed, consumed in order — fully deterministic); the player **picks one pair** (UI choice, T.23/T.15 surfaces it; headless sims take pair 0). New function `generate_boss_loot(run_seed, node_index) -> list[tuple[RewardLoot, RewardLoot]]` (len 3), pure like `generate_reward_loot`.
 
 ---
 
@@ -150,11 +168,17 @@ def register_run_action(item_id): …                # mirrors register_item
 - **Raw components are equippable** (catalog §1) — occupy a slot, apply their pure-modifier bundle.
 - **MVP = 16 core cut in T.29a** (catalog §3), remaining 20 in T.29b — your call.
 - **Mana via slot, not stat** (§3.1) — Springtear-class items handled in the equip step.
-- **% (mul) modifiers** for tier-scaling stats (§3.1) — tunable, like T.28.
+- **Flat-add modifiers** for all component stats (§3.1) — TFT-style, items favour early/mid game; tunable.
+- **Shop sells champions only** — items never enter the shop (T.22 contract; §3.7).
+- **Boss loot = 3-pair pick** via `generate_boss_loot` (§3.7) — deterministic, player picks one pair.
 
 ## 5. Authored values (first pass — tunable)
 
-Components (per §3.1 magnitude rule): Fang +12% strength · Talon +12% attack_speed · Heartseed +12% intelligence · Old Hide +12% hp · Stoneplate +14% armor · Wardpelt +14% resistance · Keen Claw +15% crit_chance (add) · Springtear +N starting mana + −10% slot cost. Combined items ≈ both components' stats + the showcase mechanic; per-item numbers authored in `game/items/combined.py`, recorded as first-pass. Retune after a sim pass over equipped boards.
+**Components** (flat add, §3.1 decision): Fang +10 strength · Talon +10 attack_speed · Heartseed +10 intelligence · Old Hide +100 hp · Stoneplate +5 armor · Wardpelt +5 resistance · Keen Claw +0.15 crit_chance · Springtear +30_000 current_mana (start) + −30_000 slot.cost.
+
+Values are TFT-style flat — meaningful at low tiers (~15-20%), modest at T10 (~2-5%). Retune via sim after T.29a ships.
+
+**Combined items:** each carries both parent component stats (flat add, same amounts) plus the showcase mechanic. Per-item bonus authored inline in `game/items/combined.py`, flagged first-pass. Example: Splitwind Talons (Talon+Wardpelt) = +10 AS + +5 RES + splash proc.
 
 ## 6. Drift / doc reconciliation
 
@@ -164,17 +188,20 @@ Components (per §3.1 magnitude rule): Fang +12% strength · Talon +12% attack_s
 
 ## 7. Open questions
 
-**Resolved here (your calls / proposals):**
+**Resolved here:**
 - Phasing → T.29a (engine + 16 core) / T.29b (rest + emblems + special).
 - Special items → backend run-actions **+ interactive CLI driver** (§3.6).
 - Mana handling → slot-level, not a stat (§3.1).
+- **Component modifier type → flat add** (TFT-style; §3.1, §5). `crit_chance` and mana already flat by nature.
+- **Drop-table weights → T.29a owns** (§3.7): 45% component / 20% combined / 15% Amber / 15% champion recruit / 5% special. Flagged tunable.
+- **Champion recruit drops** (§3.7): REWARD loot can yield a champion id; reuses SUPPLY tier-pool logic. Returns in `RewardLoot`; UI/prep layer acts on it.
+- **Heartwood tier → pure stat-mult for MVP** (generic ×1.5 on the item's stat modifiers, proc untouched; one code path in T.29b). Authored per-item Heartwood variants noted as **post-MVP future work** — add a §D row.
+- **Special-item acquisition → drops primary, shop never** (§3.7): shop sells champions only (T.22 contract — do not extend); specials come from the 5% REWARD bucket; T.31 grant augments may additionally award emblems/Glimmerdust as a bonus channel.
+- **Boss loot → 3-pair pick** (§3.7): boss defeat rolls three pairs of two drops, player picks one pair; deterministic off `CH_LOOT`; `generate_boss_loot` in T.29a.
 
-**Still open / deferred:**
-- **Heartwood/radiant tier** (Glimmerdust) — curated handful vs 36 upgraded variants; default = small curated set, deferred.
-- **Drop-table weights** — owned by T.22/§D.12; coordinate (§3.7).
-- **Special-item acquisition** (shop-only / drop / augment-granted) — economy call with T.22 + T.31.
-- **Boss items** — standard enemies carry none; whether bosses are an exception (enemy_roster §1) is open.
-- **Component magnitude** (% vs flat) — first pass %; retune via sim.
+**Still open / deferred (post-MVP §D rows):**
+- **Bosses wearing items** — deferred post-MVP; T.30 boss kits tuned without items, revisit with a sim retune pass once player items prove out.
+- **Authored Heartwood variants** — MVP uses the generic stat-mult (above); per-item Heartwood content is future work.
 
 ## 8. Test plan
 
@@ -184,12 +211,13 @@ Components (per §3.1 magnitude rule): Fang +12% strength · Talon +12% attack_s
 - **Mana items:** Springtear/Deepwell/Relentless Spear affect `current_mana`/`slot.cost`, not base_stats.
 - **Emblems (b):** an emblem makes a non-native piece count toward a Kinship breakpoint (integration with T.28a `_resolve_traits`); ordering before resolution verified.
 - **Special items (b):** each run-action mutates `Run` correctly (reforge swaps a component, unbind returns to bench decomposed, echo adds a copy, salvage credits Amber); `sim_run --interactive` invokes them.
-- **REWARD drops:** seed-deterministic loot roll; same seed → same drop.
+- **REWARD drops:** seed-deterministic loot roll; same seed → same drop; bucket weights sum to 100; special bucket falls back to component while T.29b unshipped.
+- **Boss loot:** `generate_boss_loot` returns exactly 3 pairs; same seed → same 3 pairs; pure (no `Run` mutation).
 - **Determinism + regression:** no-item teams byte-identical to today; `workers=1`/fixed-seed identical.
 
 ## 9. Acceptance criteria
 
-1. (a) Components + `RECIPE_MAP` (36) + `combine()` (recipe branch) + 3-slot equip + 16 core items applied via `compile_loadout`; REWARD drops seed-deterministic.
+1. (a) Components + `RECIPE_MAP` (36) + `combine()` (recipe branch) + 3-slot equip + 16 core items applied via `compile_loadout`; REWARD drops + boss 3-pair loot seed-deterministic.
 2. (a) `Champion.items` model + serialization + validator; `Piece.items` consumed in loadout.
 3. (b) Remaining 20 combined items + 6 emblems (counting via T.28a) + gem `combine()` branch.
 4. (b) `RUN_ACTION_REGISTRY` + 6 special-item functions + `sim_run --interactive` driver.
@@ -201,7 +229,8 @@ Components (per §3.1 magnitude rule): Fang +12% strength · Talon +12% attack_s
 1. **§T:** replace the T.29 row with **T.29a** (engine + 16 core items; depends T.1, T.20, T.22; Est M–L) and **T.29b** (remaining 20 + emblems + special items + CLI driver; depends T.29a, T.28a; Est M–L); both 📋 Plan; both cite `docs/design/tasks/t29_item_engine_plan.md`. Update Implementation-Order Phase 1b to `… → T.29a → T.29b → T.31`.
 2. **New §V invariant:** items apply only via `compile_loadout` (combat-facing) or `RUN_ACTION_REGISTRY` (run-facing, never imported by `combat/`); ≤3 equipped items per piece; item procs deterministic (cadence/flags, no RNG). (T.29)
 3. **New §V invariant:** special items (`RUN_ACTION_REGISTRY`) operate on `Run` only and are **never** referenced from `game/combat/` — combat sees only their result (§8.4). (T.29)
-4. **§D.9:** mark item system implemented in T.29a/b; leave open only Heartwood tier + magnitude tuning.
-5. **§D.12:** note REWARD item drops integrated in T.29; drop-table *weights* remain T.22's.
+4. **§D.9:** mark item system implemented in T.29a/b; leave open only magnitude tuning.
+5. **§D.12:** update to "REWARD loot drops fully integrated in T.29a — weights authored there (45% component / 20% combined / 15% Amber / 15% champion recruit / 5% special; first-pass, tunable); boss defeat = 3-pair pick via `generate_boss_loot`. T.22 never defined weights." Mark §D.12 resolved by T.29a. Shop stays champions-only (T.22 contract).
 6. **New §B entry:** doc drift — `effect_systems_design.md` §8.1 "15 combined" and the dangling "§14" 3-slot ref; reconciled to `item_catalog.md` (36, 8-component matrix) and §3.3 of this plan.
-7. **T.29 planning note** (T.18-T.31 block): item engine on the T.20 substrate; real-stat mapping (mana per-slot); emblems gate on T.28a; special items are run-actions with a `sim_run` interactive driver shared with T.31.
+7. **T.29 planning note** (T.18-T.31 block): item engine on the T.20 substrate; real-stat mapping (mana per-slot, flat-add magnitudes); emblems gate on T.28a; special items are run-actions with a `sim_run` interactive driver shared with T.31; Heartwood = generic stat-mult (MVP).
+8. **New §D rows (post-MVP):** (i) authored per-item Heartwood variants (MVP ships the generic ×1.5 stat-mult); (ii) bosses wearing items (T.30 kits tuned without — needs sim retune pass if revisited).
