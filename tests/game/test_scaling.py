@@ -176,11 +176,13 @@ class TestScalableStats:
         # PRIMARY default unchanged (sqrt(power)).
         assert stat_multiplier(5, 2) == stat_multiplier(5, 2, PRIMARY_EXPONENT)
 
-    def test_level_scale_secondary_and_milli_monotone(self):
-        s1 = {**{k: 100 for k in SECONDARY_SCALABLE_STATS}, "milli_AS": 100_000,
-              "max_hp": 600}
+    def test_level_scale_secondary_monotone(self):
+        # attack_speed stays a FLOAT through level-scale (T.29-pre, V.34); the other
+        # secondary speeds round to int. All scale up monotonically.
+        s1 = {**{k: 100 for k in SECONDARY_SCALABLE_STATS}, "max_hp": 600}
         s3 = dict(s1)
         level_scale_stats(s3, tier=5, level=3)
         assert s3["attack_speed"] > s1["attack_speed"]
-        assert s3["milli_AS"] > s1["milli_AS"]
+        assert isinstance(s3["attack_speed"], float), "attack_speed stays float"
+        assert isinstance(s3["move_speed"], int), "other speeds round to int"
         assert s3["max_hp"] > s1["max_hp"]

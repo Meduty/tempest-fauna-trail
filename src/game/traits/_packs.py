@@ -28,17 +28,16 @@ def stat_pack_bundle(
 ) -> EffectBundle:
     """Build an `EffectBundle` of percentage (`mul`) and flat (`add`) stat mods.
 
-    A `mul` of `0.08` means +8% (applied as `×1.08`). An `attack_speed` mul also
-    rides `milli_AS` (the sub-integer tie-order field, V.34) so ordering stays
-    exact after the buff — mirroring how weather scales both.
+    A `mul` of `0.08` means +8% (applied as `×1.08`). An `attack_speed` mul now
+    moves tie-order on its own (T.29-pre, V.34): `attack_speed` is a float and the
+    sort key derives from `round(attack_speed×1000)`, so cadence and order scale
+    together — no separate `milli_AS` rider needed.
     """
     mods: list[Modifier] = []
     muls = muls or {}
     adds = adds or {}
     for stat, pct in muls.items():
         mods.append(Modifier(stat, "mul", 1.0 + pct, Lifetime.COMBAT, source_id))
-        if stat == "attack_speed":
-            mods.append(Modifier("milli_AS", "mul", 1.0 + pct, Lifetime.COMBAT, source_id))
     for stat, amount in adds.items():
         mods.append(Modifier(stat, "add", amount, Lifetime.COMBAT, source_id))
     return EffectBundle(modifiers=mods)

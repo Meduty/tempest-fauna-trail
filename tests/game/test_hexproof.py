@@ -135,10 +135,11 @@ def test_weather_favored_uses_buff_pack_regardless_of_affinity():
     flagged = _piece("champ_snowpelt_cub", 0, 0, False)
     flagged.affinity = WeatherState.CLEAR
     flagged.weather_favored = True
-    _apply_weather_to_piece(base, WeatherState.SNOW)
-    _apply_weather_to_piece(flagged, WeatherState.SNOW)
-    assert flagged.base_stats["armor"] > base.base_stats["armor"]
-    assert flagged.base_stats["resistance"] > base.base_stats["resistance"]
+    _apply_weather_to_piece(base, WeatherState.SNOW, EventBus())
+    _apply_weather_to_piece(flagged, WeatherState.SNOW, EventBus())
+    # Weather is now source-tagged modifiers (T.29-pre), read via stat().
+    assert flagged.stat("armor") > base.stat("armor")
+    assert flagged.stat("resistance") > base.stat("resistance")
 
 
 # --- Spirit @8: reduced-potency echo ----------------------------------------

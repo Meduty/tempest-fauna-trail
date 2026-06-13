@@ -1,19 +1,21 @@
-"""Canonical same-tick total order — B.14 fix / V.34 (T.33a).
+"""Canonical same-tick total order — B.14 fix / V.34 (T.33a, amended T.29-pre).
 
 The combat tiebreak must be a side-independent total order
-`(-AS_int, -milli_AS, champion_id, load_order, kind)`, so equal-attack-speed
-ties never systematically favour the player team.
+`(-round(attack_speed×1000), champion_id, load_order, kind)`, so equal-attack-speed
+ties never systematically favour the player team. `attack_speed` is a float
+(T.29-pre); sub-integer order derives from it directly — there is no `milli_AS`.
 """
 from src.game.combat.engine import _KIND_ACTION, _event_sort_key
+from src.game.effects import EventBus, Lifetime, Modifier
 from src.game.loadout import compile_loadout
 from src.game.models import WeatherState
 from src.game.piece import Piece
 
 
-def _piece(id, as_, milli, *, is_enemy=False, formation_index=0, load_order=0):
+def _piece(id, as_, *, is_enemy=False, formation_index=0, load_order=0):
     return Piece(
         id=id,
-        base_stats={"attack_speed": float(as_), "milli_AS": float(milli)},
+        base_stats={"attack_speed": float(as_)},
         is_enemy=is_enemy,
         formation_index=formation_index,
         load_order=load_order,
@@ -22,24 +24,24 @@ def _piece(id, as_, milli, *, is_enemy=False, formation_index=0, load_order=0):
 
 class TestSortKeySideIndependent:
     def test_tie_broken_by_load_order_not_side(self):
-        # Identical AS+milli. Team has the LOWER formation_index (the old bias
-        # would make it act first); the enemy has the lower load_order.
-        team = _piece("champ_x", 100, 100_000, is_enemy=False, formation_index=0, load_order=5)
-        enemy = _piece("champ_x", 100, 100_000, is_enemy=True, formation_index=1, load_order=2)
+        # Identical AS. Team has the LOWER formation_index (the old bias would make
+        # it act first); the enemy has the lower load_order.
+        team = _piece("champ_x", 100.0, is_enemy=False, formation_index=0, load_order=5)
+        enemy = _piece("champ_x", 100.0, is_enemy=True, formation_index=1, load_order=2)
         order = sorted([(team, _KIND_ACTION), (enemy, _KIND_ACTION)], key=_event_sort_key)
         assert order[0][0].is_enemy, "tie must break by load_order, not by side"
 
-    def test_milli_breaks_same_int_as(self):
-        # 100.4 vs 100.6 both round to int AS 100 → the genuinely faster (higher
-        # milli) acts first, overriding champion_id and load_order.
-        slow = _piece("aaa", 100, 100_400, load_order=0)  # alphabetically first, lowest load_order
-        fast = _piece("zzz", 100, 100_600, load_order=9)
+    def test_fraction_breaks_same_int_as(self):
+        # 100.4 vs 100.6 both truncate to int AS 100 → the genuinely faster (higher
+        # float) acts first, overriding champion_id and load_order.
+        slow = _piece("aaa", 100.4, load_order=0)  # alphabetically first, lowest load_order
+        fast = _piece("zzz", 100.6, load_order=9)
         order = sorted([(slow, _KIND_ACTION), (fast, _KIND_ACTION)], key=_event_sort_key)
-        assert order[0][0].id == "zzz", "higher milli_AS must act first"
+        assert order[0][0].id == "zzz", "higher float attack_speed must act first"
 
     def test_movement_before_action_for_same_piece(self):
         from src.game.combat.engine import _KIND_MOVEMENT
-        p = _piece("p", 100, 100_000)
+        p = _piece("p", 100.0)
         order = sorted([(p, _KIND_ACTION), (p, _KIND_MOVEMENT)], key=_event_sort_key)
         assert order[0][1] == _KIND_MOVEMENT
 
@@ -91,21 +93,35 @@ class TestBaselineParity:
         assert get_champion("champ_dawnwisp").ability_cost == 300_000
 
 
-class TestMilliTracksAttackSpeed:
-    def test_milli_tracks_as_through_weather(self):
-        # Weather scales attack_speed via as_mult; milli_AS must ride the same
-        # mult or sub-integer ordering goes stale post-weather (V.34).
+class TestFloatAttackSpeedOrder:
+    """attack_speed is a float; an AS mul moves cadence AND tie-order together
+    (T.29-pre, B.18) — no separate milli_AS field to desync."""
+
+    def test_as_mul_moves_sort_key(self):
+        # Two identical pieces; buff one's attack_speed by ×1.05. The buffed piece
+        # must now sort first — the float drives the key directly.
+        base = _piece("dup", 100.0, load_order=0)
+        buffed = _piece("dup", 100.0, load_order=1)
+        buffed.modifiers.append(Modifier("attack_speed", "mul", 1.05, Lifetime.COMBAT, "trait:test"))
+        order = sorted([(base, _KIND_ACTION), (buffed, _KIND_ACTION)], key=_event_sort_key)
+        assert order[0][0] is buffed, "an attack_speed mul must move the tie-order"
+
+    def test_weather_buff_moves_sort_key(self):
+        # Weather Favor is now a source="weather:" modifier; a favorable AS buff
+        # must reorder the piece (RAIN buffs a THUNDER piece's attack_speed).
         from src.game.content import build_champion_at_level
         from src.game.loadout import _apply_weather_to_piece, piece_from_champion
+        bus = EventBus()
         p = piece_from_champion(build_champion_at_level("champ_sparkfly", 1))
-        _apply_weather_to_piece(p, WeatherState.RAIN)  # buffs THUNDER attack_speed
-        as_, milli = p.base_stats["attack_speed"], p.base_stats["milli_AS"]
-        # milli stays within one AS-unit of attack_speed×1000 (rounding aside).
-        assert abs(milli - as_ * 1000) < 1000, f"milli {milli} desynced from AS {as_}"
+        before = p.stat("attack_speed")
+        _apply_weather_to_piece(p, WeatherState.RAIN, bus)
+        after = p.stat("attack_speed")
+        assert after > before, "favorable weather must raise attack_speed"
+        assert -round(after * 1000) < -round(before * 1000), "sort key must reflect the buff"
 
-    def test_milli_scales_with_level(self):
+    def test_attack_speed_is_float_and_scales_with_level(self):
         from src.game.content import build_champion_at_level
         c1 = build_champion_at_level("champ_dawnwisp", 1)
         c3 = build_champion_at_level("champ_dawnwisp", 3)
-        assert c3.milli_AS > c1.milli_AS
-        assert abs(c1.milli_AS - c1.attack_speed * 1000) < 1000
+        assert isinstance(c1.attack_speed, float)
+        assert c3.attack_speed > c1.attack_speed

@@ -101,7 +101,10 @@ class Champion:
     max_hp: int
     strength: int
     intelligence: int
-    attack_speed: int
+    # attack_speed is a FLOAT (T.29-pre, amends V.34): cadence reads
+    # int(attack_speed); sub-integer sort order derives from round(attack_speed×1000).
+    # The old separate int `milli_AS` field is gone — the float is the single source.
+    attack_speed: float
     move_speed: int
     mana_regen: int
     threat: int
@@ -117,20 +120,14 @@ class Champion:
     crit_chance: float = 0.0
     penetration: int = 0
     penetration_pct: float = 0.0
-    # Sub-integer attack_speed (×1000), int, for the canonical sort order (V.34).
-    # Defaults to attack_speed×1000 when not supplied (hand-built pieces).
-    milli_AS: int = 0
 
     def __post_init__(self) -> None:
-        if self.milli_AS == 0:
-            self.milli_AS = self.attack_speed * 1000
         _require_range(self.tier, "Champion tier", 1, 10)
         _require_range(self.level, "Champion level", 1, 3)
         _require_positive_int(self.max_hp, "Champion max_hp")
         _require_non_negative_int(self.strength, "Champion strength")
         _require_non_negative_int(self.intelligence, "Champion intelligence")
         _require_non_negative_int(self.attack_speed, "Champion attack_speed")
-        _require_non_negative_int(self.milli_AS, "Champion milli_AS")
         _require_non_negative_int(self.move_speed, "Champion move_speed")
         _require_non_negative_int(self.mana_regen, "Champion mana_regen")
         _require_non_negative_int(self.threat, "Champion threat")
@@ -176,7 +173,6 @@ class Champion:
             "strength": self.strength,
             "intelligence": self.intelligence,
             "attack_speed": self.attack_speed,
-            "milli_AS": self.milli_AS,
             "move_speed": self.move_speed,
             "mana_regen": self.mana_regen,
             "threat": self.threat,
@@ -206,8 +202,7 @@ class Champion:
             max_hp=payload["max_hp"],
             strength=payload["strength"],
             intelligence=payload["intelligence"],
-            attack_speed=payload["attack_speed"],
-            milli_AS=payload.get("milli_AS", 0),
+            attack_speed=float(payload["attack_speed"]),
             move_speed=payload["move_speed"],
             mana_regen=payload["mana_regen"],
             threat=payload["threat"],
@@ -234,7 +229,8 @@ class Enemy:
     max_hp: int
     strength: int
     intelligence: int
-    attack_speed: int
+    # attack_speed is a FLOAT (T.29-pre, amends V.34) — see Champion.attack_speed.
+    attack_speed: float
     move_speed: int
     mana_regen: int
     threat: int
@@ -249,19 +245,14 @@ class Enemy:
     crit_chance: float = 0.0
     penetration: int = 0
     penetration_pct: float = 0.0
-    # Sub-integer attack_speed (×1000), int, for the canonical sort order (V.34).
-    milli_AS: int = 0
 
     def __post_init__(self) -> None:
-        if self.milli_AS == 0:
-            self.milli_AS = self.attack_speed * 1000
         _require_range(self.tier, "Enemy tier", 1, 10)
         _require_range(self.level, "Enemy level", 1, 3)
         _require_positive_int(self.max_hp, "Enemy max_hp")
         _require_non_negative_int(self.strength, "Enemy strength")
         _require_non_negative_int(self.intelligence, "Enemy intelligence")
         _require_non_negative_int(self.attack_speed, "Enemy attack_speed")
-        _require_non_negative_int(self.milli_AS, "Enemy milli_AS")
         _require_non_negative_int(self.move_speed, "Enemy move_speed")
         _require_non_negative_int(self.mana_regen, "Enemy mana_regen")
         _require_non_negative_int(self.threat, "Enemy threat")
@@ -300,7 +291,6 @@ class Enemy:
             "strength": self.strength,
             "intelligence": self.intelligence,
             "attack_speed": self.attack_speed,
-            "milli_AS": self.milli_AS,
             "move_speed": self.move_speed,
             "mana_regen": self.mana_regen,
             "threat": self.threat,
@@ -329,8 +319,7 @@ class Enemy:
             max_hp=payload["max_hp"],
             strength=payload["strength"],
             intelligence=payload["intelligence"],
-            attack_speed=payload["attack_speed"],
-            milli_AS=payload.get("milli_AS", 0),
+            attack_speed=float(payload["attack_speed"]),
             move_speed=payload["move_speed"],
             mana_regen=payload["mana_regen"],
             threat=payload["threat"],

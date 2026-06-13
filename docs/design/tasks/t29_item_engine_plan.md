@@ -1,16 +1,22 @@
 # T29 Plan — Item Engine
 
-> **Status:** approved — T.29a/T.29b already split in SPEC (📋 Plan). Ready for `/build T.29a`.
-> **Depends:** T.1 (models — done), T.20 (effect substrate / `ITEM_REGISTRY` / `register_item` — done), **T.22** (Amber economy, `Run` shop/inventory — done; drop-table weights **owned by T.29a** per §3.7 decision). **T.29b emblems additionally depend on T.28a** (trait counting consumes emblem `granted_traits`). **T.29b special-item CLI driver shares the `sim_run` interactive shell with T.31** — coordinate.
+> **Status:** approved — T.29a/T.29b already split in SPEC (📋 Plan). **NEW prerequisite substep `T.29-pre` added below ([Part B](#part-b--t29-pre--combat-stat-substrate-prerequisite-sequences-first)) — sequences FIRST in the T.29 block (`T.29-pre → T.29a → T.29b`).** Ready for `/build T.29a` once T.29-pre lands.
+> **Depends:** T.1 (models — done), T.20 (effect substrate / `ITEM_REGISTRY` / `register_item` — done), **T.22** (Amber economy, `Run` shop/inventory — done; drop-table weights **owned by T.29a** per §3.7 decision). **T.29b emblems additionally depend on T.28a** (trait counting consumes emblem `granted_traits`). **T.29b special-item CLI driver shares the `sim_run` interactive shell with T.31** — coordinate. **T.29-pre (substrate) depends only on already-built work (T.2 weather, T.20 effects, T.28d trait riders, T.33a sort-order) — it can build immediately and is a soft prerequisite to T.29a (fixes the `(base+adds)×muls` compose rule + `source:` prefix vocab that item factories author against).**
 > **Resolves:** SPEC §D.9 (item system — components, recipes, emblems, special items, 3 slots) and the REWARD-drop half of §D.12.
 > **Design source of truth:** [`item_catalog.md`](../content/item_catalog.md) (8 components, 36 combined, 6 emblems, 6 special, the §3 16-item core cut) + [`effect_systems_design.md` §8](../systems/effect_systems_design.md) (substrate: `BASE_COMPONENTS`, `RECIPE_MAP`, item factories, §8.4 run-actions, `combine()`) + §10.1 (application order).
 > **What this plan adds beyond those:** the **real component→stat mapping** (the §8 sketch uses fake keys — **flat add chosen over mul**), a small **mana-stat primitive** (rename `ActiveSlot.cost`→`mana_cost` + split into `mana_cost`/`max_mana`/`start_mana` so items express mana **without ever touching `mana_cost`** — §3.1a), the **persistent equip model** (`Champion.items`), and a drift fix for the §8.1 "15 combined" / dangling "§14" references. **Drop-table weights (§D.12)**: T.29a owns a first-pass weight table (components, combined, Amber, champion recruit bucket) — flagged tunable; §3.7.
 
 ---
 
-## 0. Two-substep split (T.29a → T.29b)
+## 0. Substep split (T.29-pre → T.29a → T.29b)
 
-The seam is **combat-facing vs meta/cross-task**. T.29a is self-contained (deps done after T.22); T.29b pulls in T.28 (emblems) and the prep-layer run-action driver.
+The seam is **combat-facing vs meta/cross-task**. T.29a is self-contained (deps done after T.22); T.29b pulls in T.28 (emblems) and the prep-layer run-action driver. **T.29-pre (substrate, [Part B](#part-b--t29-pre--combat-stat-substrate-prerequisite-sequences-first)) is a stat-engine prerequisite that lands first** — it makes weather a normal `source:`-tagged modifier and turns `attack_speed` into a float (dropping `milli_AS`), so every later system (items, augments) composes through **one** `compute_stat` contract and is uniformly attributable in the prep view.
+
+### T.29-pre — Combat stat substrate (Est: M–L, sequences FIRST) — see [Part B](#part-b--t29-pre--combat-stat-substrate-prerequisite-sequences-first)
+- **Commit 1** weather → `source="weather:<state>"` modifiers (delete the `base_stats` fold); HP re-sync via the trait template; `attack_range` floor; standardized `source:` prefix vocab; the `(base+Σadds)×Πmuls` compose rule becomes the universal contract (weather scales item/augment adds).
+- **Commit 2** `attack_speed` int→float; drop `milli_AS` everywhere; cadence `int(AS)`, tiebreak `round(AS*1000)`.
+- **Also** `stat_breakdown(piece)` pure helper (groups `piece.modifiers` by `source:` prefix) for the T.34/T.23 prep-view breakdown — pure `game/`, no Flet.
+- **One re-baseline, two separable commits** (commit 1 re-baselines weather numbers; commit 2 is ~byte-identical by exact migration).
 
 ### T.29a — Component + combined-item engine + 16 core items (Est: M–L)
 - §3.1 component model + **real-stat mapping** + §3.1a mana-stat primitive (rename `cost`→`mana_cost`; add `ActiveSlot.max_mana`/`start_mana`; 3 engine sites; regression-safe).
@@ -253,3 +259,168 @@ Values are TFT-style flat — meaningful at low tiers (~15-20%), modest at T10 (
 6. **New §B entry:** doc drift — `effect_systems_design.md` §8.1 "15 combined" and the dangling "§14" 3-slot ref; reconciled to `item_catalog.md` (36, 8-component matrix) and §3.3 of this plan.
 7. **T.29 planning note** (T.18-T.31 block): item engine on the T.20 substrate; real-stat mapping (mana per-slot, flat-add magnitudes); emblems gate on T.28a; special items are run-actions with a `sim_run` interactive driver shared with T.31; Heartwood = generic stat-mult (MVP).
 8. **New §D rows (post-MVP):** (i) authored per-item Heartwood variants (MVP ships the generic ×1.5 stat-mult); (ii) bosses wearing items (T.30 kits tuned without — needs sim retune pass if revisited).
+
+> **Note:** the `T.29-pre` substrate (Part B) has its own `/spec` delta list — see [§B.10](#b10-spec-changes-needed-for-spec--t29-pre). It is sequenced **before** these item rows.
+
+---
+
+# Part B — T.29-pre — Combat Stat Substrate (prerequisite, sequences first)
+
+> **Status:** NEW substep — needs a `/spec` row-add (`T.29-pre`, 📋 Plan) **before** T.29a in the T.29 block + Implementation Order.
+> **Depends (all built):** T.2 (weather favor / `weather_effects.py` / `_apply_weather_to_piece` — done), T.20 (`Modifier`/`compute_stat`/`apply_bundle`/`EffectBundle` — done), T.28d (trait `milli_AS` riders + `weather_favored` marker — done), T.33a (V.34 sort order, `milli_AS`, baseline parity — done). No unbuilt deps → can build immediately.
+> **Resolves:** the stat-attribution gap blocking the prep-view ability/stat breakdown (T.34/T.23): weather is currently a `base_stats` fold, unattributable like a modifier. Also kills the `milli_AS` desync (ability `attack_speed` muls don't ride `milli_AS`; only weather + traits manually keep the pair synced).
+> **Design source of truth:** code — `loadout._apply_weather_to_piece` ([loadout.py:174-209](../../../src/game/loadout.py#L174)), `effects.compute_stat`/`Modifier` ([effects.py:47,61](../../../src/game/effects.py#L47)), `engine._event_sort_key` ([engine.py:525-540](../../../src/game/combat/engine.py#L525)), V.34/V.35 (SPEC). Verified against code 2026-06-13; design docs not relied on.
+
+## B.1 Why (the driver)
+
+The prep view wants **stat = effective total + a hold-modifier breakdown** (`100 base + 20 item:springtear + 12 weather:Rain + 10 augment:…`), with weather/items/augments/passives **all attributed uniformly**. T.34's `render(meta, source)` already renders any object exposing `.stat()`. The only blocker: **weather is baked into `base_stats`** (`_apply_weather_to_piece` mutates the dict in place, integer-rounded) so it cannot be attributed like a `Modifier` — items/augments/traits already carry a `source_id`, weather does not. Fix the substrate → the breakdown is a pure `source:`-prefix scan with **zero** special-casing.
+
+Two architectural truths surfaced during design (both verified in code):
+1. The real axis is **flow stat vs resource**, not weather-vs-modifier. Flow stats (str/int/AS/armor/res/crit/MS/MR/pen/range) flow through `Modifier`+`compute_stat`. Resources (`hp`/`max_hp`, and mana per-`ActiveSlot`) are **never** `Modifier`'d — every system that changes max HP (weather loadout.py:206-209, traits [traits/__init__.py:139-142](../../../src/game/traits/__init__.py#L139), clones/turrets) **direct-sets + reconciles**. So weather's HP buff keeps using that path; only its flow-stat changes become modifiers.
+2. `milli_AS` exists only because `attack_speed` is conceptually int. With a float `attack_speed`, sub-integer order is **derived** (`round(AS*1000)`), the separate field disappears, and an `attack_speed` mul moves cadence **and** order together — no rider to keep in sync.
+
+## B.2 The gap today
+
+| Piece | Where | State |
+|---|---|---|
+| Weather folds into `base_stats` (rounded, in-place) | [loadout.py:174-209](../../../src/game/loadout.py#L174) | 🔴 unattributable — no `source_id`; blocks breakdown |
+| `compute_stat` `(base+Σadds)×Πmuls`, no floor | [effects.py:61-90](../../../src/game/effects.py#L61) | ✅ the single fold; needs an `attack_range` floor when weather leaves the clamped path |
+| `Modifier.source_id` | [effects.py:47](../../../src/game/effects.py#L47) | ✅ exists; **prefix vocab not standardized** (`item:`/`augment:`/`passive:`/`trait:`/`weather:`) |
+| HP re-sync from `stat("hp")` after modifiers | [traits/__init__.py:139-142](../../../src/game/traits/__init__.py#L139) | ✅ template to reuse for weather + resources |
+| `attack_speed: int` + `milli_AS: int` (×1000) | [models.py:104,122,237,253](../../../src/game/models.py#L104) | 🔴 to merge into one float `attack_speed` |
+| `milli_AS` capture in compose (pre-round) | [content.py:328-332](../../../src/game/content.py#L325) | 🔴 `milli_AS = round(AS_float*1000)` then AS rounded — float AS makes this implicit |
+| `milli_AS` scaled in level-scale | [scaling.py:130-134](../../../src/game/scaling.py#L130) | 🔴 remove (AS stays float through scaling) |
+| `milli_AS` in sort key | [engine.py:525-540](../../../src/game/combat/engine.py#L525) | 🔴 `-int(stat("milli_AS"))` → `-round(stat("attack_speed")*1000)` |
+| `milli_AS` trait rider modifiers | [traits/_packs.py:41](../../../src/game/traits/_packs.py#L41), [mechanics.py:93,114,583](../../../src/game/traits/mechanics.py#L93) | 🔴 delete — `attack_speed` mul alone now moves tie-order |
+| `milli_AS` seeds / args | [loadout.py:78,117](../../../src/game/loadout.py#L78), [encounter.py:298,621](../../../src/game/encounter.py#L298) | 🔴 drop |
+| `stat_breakdown(piece)` helper | — | ❌ new pure `game/` fn for the prep-view breakdown |
+
+## B.3 Architecture
+
+### B.3.1 Commit 1 — weather → modifiers
+
+Replace `_apply_weather_to_piece`'s in-place `base_stats` mutation with a `CombatModifier → list[Modifier]` translation, applied via `apply_bundle` (reusing the existing path), then an HP re-sync. The `CombatModifier` ([weather_effects.py:87-103](../../../src/game/weather_effects.py#L87)) is a frozen pack of `*_mult` fields + `attack_range_delta`:
+
+```python
+# loadout.py — replaces the base_stats fold (lines 190-209)
+def _weather_modifiers(mod: CombatModifier, state: WeatherState) -> list[Modifier]:
+    src = f"weather:{state.value}"
+    out: list[Modifier] = []
+    for stat, mult in (("strength", mod.str_mult), ("intelligence", mod.int_mult),
+                       ("attack_speed", mod.as_mult), ("move_speed", mod.ms_mult),
+                       ("mana_regen", mod.mr_mult), ("hp", mod.hp_mult),
+                       ("armor", mod.armor_mult), ("resistance", mod.res_mult),
+                       ("threat", mod.thr_mult)):
+        if mult != 1.0:
+            out.append(Modifier(stat, "mul", mult, Lifetime.COMBAT, src))
+    if mod.attack_range_delta:
+        out.append(Modifier("attack_range", "add", float(mod.attack_range_delta), Lifetime.COMBAT, src))
+    return out
+```
+- **Application point:** the existing `_apply_weather_to_piece` call site in `compile_loadout` (pre-trait-resolution, so the single trait HP re-sync at [traits/__init__.py:139](../../../src/game/traits/__init__.py#L139) folds weather+trait HP together). Keep an **own** HP re-sync in the weather step too (`piece.max_hp = piece.hp = piece.stat("hp")`) so weather-only / no-trait pieces still seed correctly — idempotent with the trait pass (both set full HP).
+- **`weather_favored` (T.28d):** unchanged branch — favored pieces build from `WEATHER_BUFF_BASE[weather]` regardless of affinity ([loadout.py:185-188](../../../src/game/loadout.py#L185)); just feed it through `_weather_modifiers`.
+- **`milli_AS` rider:** the old fold scaled `milli_AS` by `as_mult` (loadout.py:198) to keep order exact. With Commit 2's float AS the `attack_speed` mul **is** the order — no separate weather rider needed. (If Commit 1 lands before Commit 2, keep a transitional `Modifier("milli_AS","mul",as_mult,…)`; Commit 2 deletes it. Simpler: land both before re-baselining, see B.6.)
+
+### B.3.2 `attack_range` floor (Commit 1)
+
+`compute_stat` has no clamp; the old fold floored at 1 ([loadout.py:204](../../../src/game/loadout.py#L204) `max(1, …)`). With range as an `add` modifier (Mist `-1`), stacked debuffs could underflow. **Add a stat-floor map at the tail of `compute_stat`:**
+```python
+_STAT_FLOORS = {"attack_range": 1.0}
+# return max(_STAT_FLOORS.get(stat, ...), (base + adds) * mul)  — floor only where defined
+```
+Minimal, generic, and correct: `attack_range` must never be < 1 regardless of source.
+
+### B.3.3 Compose rule — the universal contract (RESOLVED)
+
+`compute_stat` is `(base + Σadds) × Πmuls` ([effects.py:90](../../../src/game/effects.py#L90)). Once weather is a `mul` modifier and items are `add` modifiers, **weather scales the item/augment flat-adds too**: `(base + item_add) × weather_mul`. Worked: base STR 100 + Fang +10, Rain ×0.7 → `(110)×0.7 = 77` (vs the old fold's `round(70)+10 = 80`). **Intended** — items feel better in good weather, worse in bad; it is exactly how every existing ability/trait `mul` already composes (precedent: [champions.py:207](../../../src/game/abilities/champions.py#L207) `Modifier("attack_speed","mul",1.2)`). Op decides order (all adds before all muls), not acquisition order — the existing contract.
+
+### B.3.4 Source-prefix vocab (Commit 1)
+
+Standardize `Modifier.source_id` prefixes: **`item:` / `augment:` / `passive:` / `trait:` / `weather:`** (`<prefix>:<id>`). Weather adopts `weather:<state>`; item/augment factories (T.29a/T.31) author against it; the `stat_breakdown` helper groups on the prefix. Existing trait/ability `source_id`s are additive to standardize (low-risk; breakdown-only, not read by the engine).
+
+### B.3.5 Commit 2 — `attack_speed` float, drop `milli_AS`
+
+- **Models** ([models.py:104,120-133,237,252-264](../../../src/game/models.py#L104)): `attack_speed: int → float`; delete the `milli_AS` field + its `__post_init__` default + `_require_non_negative_int` validator + `to_dict`/`from_dict` keys. **Save migration** in `from_dict`: `attack_speed = payload.get("attack_speed_f") or (payload["milli_AS"] / 1000 if "milli_AS" in payload else float(payload["attack_speed"]))` — old saves carry int `attack_speed` + `milli_AS`; `milli_AS/1000` is the **exact** float (B.6).
+- **Compose** ([content.py:328-332](../../../src/game/content.py#L328)): drop the `round` on `attack_speed` (keep float); delete the `milli_AS` line.
+- **Scaling** ([scaling.py:130-134](../../../src/game/scaling.py#L130)): `attack_speed` stays float through the SECONDARY loop (don't round it); delete the `milli_AS` scale.
+- **Sort key** ([engine.py:525-540](../../../src/game/combat/engine.py#L525)): replace `(-int(AS), -int(milli_AS), id, load_order, kind)` with **`(-round(stat("attack_speed")*1000), id, load_order, kind)`** — the quantized AS key is monotonic in AS, so it **subsumes** the old coarse `-int(AS)` (the two-level key was redundant). `round(...*1000)` kills float-noise tie flips + the cross-machine V.2 risk. Cadence unchanged: `int(stat("attack_speed"))` ([engine.py:820](../../../src/game/combat/engine.py#L820)).
+- **Trait riders** ([_packs.py:41](../../../src/game/traits/_packs.py#L41), [mechanics.py:93,114,583](../../../src/game/traits/mechanics.py#L93)): delete every `Modifier("milli_AS",…)` and the `milli_AS` entry in the stat whitelist — the `attack_speed` mul now moves tie-order on its own.
+- **Seeds / args** ([loadout.py:78,117](../../../src/game/loadout.py#L78), [encounter.py:298,621](../../../src/game/encounter.py#L298)): drop `milli_AS`.
+- **Fractional AS is tiebreak-only** (not frequency) — `int(AS)` cadence means AS 50.9 and 50.1 attack identically; the fraction only orders same-tick collisions. Identical role to `milli_AS` today. **Float-energy frequency accumulation is OUT OF SCOPE** (a separate, bigger change).
+
+### B.3.6 `stat_breakdown` helper (pure `game/`)
+
+```python
+# game/effects.py (or a new game/stat_breakdown.py) — pure, no Flet (V.1)
+def stat_breakdown(piece) -> list[tuple[str, dict[str, float]]]:
+    """Group piece.modifiers by source: prefix → per-stat delta, for the prep-view
+    breakdown. 'base' row from piece.base_stats. Weather is a normal source now."""
+```
+Consumed later by T.34/T.23 (UI hold-modifier reveal); ships here as pure logic with its own unit test. `_apply_items` / `roster_source` / `projected_source` stay in **T.29a**; the UI stays in **T.23**.
+
+## B.4 Decisions
+
+- **`attack_speed` float; cadence `int(AS)`; tiebreak `round(AS*1000)`; `milli_AS` removed (derived, not stored).** Migration `AS_float = milli_AS/1000` is **exact** (B.6).
+- **Sort key simplified to the single quantized AS key** — provably order-equivalent to the old two-level key, minus float noise.
+- **`attack_range` floor via a `_STAT_FLOORS` map in `compute_stat`** — generic, replaces the lost `max(1,…)` clamp.
+- **Weather = `mul`/`add` `Modifier`s tagged `weather:<state>`**, applied via `apply_bundle`; HP re-synced from `stat("hp")` (resources never modifier'd).
+- **`(base+adds)×muls` is the universal compose contract** — weather scales item/augment adds (intended).
+- **Resources (hp/mana) are direct-set + reconcile, never `Modifier` targets** — codified as a §V invariant.
+
+## B.5 Authored values
+
+None new — this is a substrate refactor. Weather magnitudes (`WEATHER_FAVOR_MAGNITUDE=0.3`, tier scalars) and AS baselines (V.35 `attack_speed=100`) are **unchanged**; only their representation changes (mul-modifier vs fold; float vs int+milli).
+
+## B.6 Re-baseline (the determinism work)
+
+- **Commit 2 (AS float) is ~byte-identical** by construction: cadence `int(142.43)=142` == old `int(round(142.43))=142`; tiebreak `round(142.43*1000)=142430` == old `milli_AS`. Verify with a snapshot diff — expect **zero or only rare tiebreak-rounding** deltas (from collapsing the trait `milli_AS` rider into the `attack_speed` mul). If a sim moves, it is one of those rare ties.
+- **Commit 1 (weather) genuinely re-baselines:** `(base+adds)×mul` float compose replaces `round(base×mult)` fold → weather numbers shift (and now scale future item adds). Re-snapshot all sims; re-run `tools/simulation` + playtest baselines; re-verify **V.2** byte-identical *within the new baseline*, **V.14**, **V.34** (amended).
+- **Keep the two commits separate** so any sim delta is attributable to the right change. Commit order: **2 first** (prove ~no-op), then **1** (own the weather re-baseline). This avoids the transitional `milli_AS` weather rider in B.3.1 — with Commit 2 already in, Commit 1 never touches `milli_AS`.
+
+## B.7 Open questions
+
+**Resolved here (overridable):**
+- Weather→modifier vs delta-capture hybrid → **modifier** (uniform attribution, removes the special case; HP via the existing resync path makes it cheap).
+- AS representation → **float field, drop `milli_AS`**; cadence int, tiebreak `round(×1000)`.
+- Compose order / weather-scales-items → **yes**, the `(base+adds)×muls` contract.
+- MS treatment → **leave as-is** (movement events still ordered by AS; `move_speed` keeps no sub-integer field). Deferred (B.9).
+
+**Still open / deferred:**
+- **MS phase-split** (B.9) — symmetric move-phase/act-phase ordering. Combat-semantics change; own task + sim validation.
+
+## B.8 Test plan
+
+- **Weather-as-modifier:** a piece in favorable weather has `piece.stat(s)` matching the old fold **within the new compose baseline**; the contributing `Modifier`s carry `source_id="weather:<state>"`; `CLEAR` adds none (inert).
+- **HP resync:** weather HP buff reflects in `piece.max_hp`/`hp` (full at start); a no-trait, weather-buffed piece seeds correctly.
+- **`attack_range` floor:** Mist `-1` on a range-1 piece clamps to 1; never < 1 under stacking.
+- **Compose rule:** `(base+add)×mul` worked example pinned (STR 100 + Fang 10, Rain → 77).
+- **AS float / migration:** `attack_speed=milli_AS/1000` round-trips an old save; cadence `int(AS)` and tiebreak `round(AS*1000)` reproduce pre-refactor values on a fixed fixture (the ~byte-identical claim).
+- **Tiebreak:** rewrite [test_tiebreak.py](../../../tests/game/test_tiebreak.py) to float `attack_speed`, no `milli_AS`; assert the simplified key preserves V.34 side-independence (B.14) incl. true mirrors.
+- **Trait riders removed:** [test_trait_mechanics.py](../../../tests/game/test_trait_mechanics.py) modifier counts drop the `milli_AS` entries (e.g. 3→2 stats per stack); an `attack_speed`-mul trait still reorders ties.
+- **Determinism / regression (V.2/V.14):** `workers=1` + fixed seed byte-identical within the new baseline; Commit 2 alone diffed against pre-refactor snapshots (expect ~none).
+- **`stat_breakdown`:** groups by `source:` prefix; base + per-source deltas sum to `piece.stat(...)`; weather appears as a normal source row.
+- **Q6 anti-runaway guard:** a test that no engine hook re-applies a stat-scaling modifier reading a stat it also feeds (or a documented convention test on the item/augment factories).
+
+## B.9 Deferred — MS phase-split (new §D)
+
+Movement events are currently ordered by the mover's **attack_speed** (the `_event_sort_key` sorts *all* triggered entries — both kinds — on AS; `kind` is the last tiebreak, separating only a single piece's own move-before-act). `move_speed` controls movement **frequency** (meter fill), never **order**, and has no sub-integer field. A symmetric design — float `move_speed`, split resolution into a move-phase (ordered by `round(MS*1000)`) then an action-phase (ordered by `round(AS*1000)`), dropping the `kind` tiebreak — is **cleaner** but changes combat semantics (global reposition-then-act each tick → who's in range for same-tick actions shifts). **Deferred:** its own task + win-rate validation; not bundled into this representational refactor.
+
+## B.10 SPEC changes needed (for `/spec` — T.29-pre)
+
+1. **§T:** add row **`T.29-pre` — Combat stat substrate** (goal: weather→`source:`-tagged modifiers (delete `base_stats` fold) + HP/resource resync + `attack_range` floor + `(base+adds)×muls` universal compose + `source:` prefix vocab; `attack_speed` int→float, drop `milli_AS` (cadence `int(AS)`, tiebreak `round(AS*1000)`); `stat_breakdown` helper; one re-baseline). **Files:** `game/loadout.py`, `game/weather_effects.py`, `game/effects.py`, `game/models.py`, `game/content.py`, `game/scaling.py`, `game/encounter.py`, `game/combat/engine.py`, `game/traits/_packs.py`, `game/traits/mechanics.py`, `tests/game/test_tiebreak.py`, `tests/game/test_scaling.py`, `tests/game/test_trait_mechanics.py`, `docs/design/tasks/t29_item_engine_plan.md`. **Depends:** T.2, T.20, T.28d, T.33a. **Est:** M–L. **Status:** 📋 Plan.
+2. **Amend §V.34:** `attack_speed` is now **float** (cadence via `int(attack_speed)`, sub-integer order via `round(attack_speed*1000)`); **`milli_AS` removed** (derived, not a stored field); sort key is **`(-round(AS*1000), champion_id, load_order, kind)`**. `move_speed`/`mana_regen`/`threat` stay int. B.14 side-independence + `load_order` unchanged. (T.29-pre)
+3. **New §V (weather):** Weather Favor is applied **only** as `source="weather:<state>"` `Modifier`s through `compile_loadout` (no `base_stats` fold); the engine never reads a weather base-snapshot. Extends/relocates the T.2 application note. (T.29-pre)
+4. **New §V (stat authority):** `compute_stat` is the single stat fold `(base+Σadds)×Πmuls` with a `_STAT_FLOORS` clamp (`attack_range ≥ 1`); **resources (`hp`/`max_hp`, per-`ActiveSlot` mana) are direct-set + reconciled from `stat()` after modifiers, never `Modifier` targets.** (T.29-pre)
+5. **New §V (anti-runaway, Q6):** stat-scaling modifiers snapshot their value at apply time off a defined base; **no per-tick/per-event hook may apply a modifier whose value reads a stat that modifier also feeds** (prevents unbounded HP↔AP feedback). Modifiers are static values, not live formulas. (T.29-pre)
+6. **New §V (source vocab):** `Modifier.source_id` uses the fixed prefix vocab `item:`/`augment:`/`passive:`/`trait:`/`weather:` (`<prefix>:<id>`); the prep-view `stat_breakdown` groups on it. (T.29-pre)
+7. **New §B entry:** ability `attack_speed` muls did **not** ride `milli_AS` ([champions.py:207](../../../src/game/abilities/champions.py#L207)), desyncing tie-order from cadence (only weather + traits manually kept the pair synced, loadout.py:198 / _packs.py:41 / mechanics.py:93,114). **Fixed structurally** by the float `attack_speed` (tiebreak derives from the same value cadence reads). Recurrence guard = amended V.34. (T.29-pre)
+8. **New §D row:** MS phase-split (B.9) — movement ordered by MS via a move-phase/act-phase split; combat-semantics change, deferred to its own task + sim validation.
+9. **Implementation Order:** insert **`T.29-pre`** immediately before `T.29a` in the Phase-1b chain: `… → T.28d → T.29-pre → T.29a → T.29b → T.31`.
+10. **LIVING docs to update on build (B.11):** `docs/live/systems/scaling.md`, `docs/live/systems/combat.md`, `docs/live/content/traits.md` (all reference `milli_AS` + the sort key) — flip their `milli_AS` prose to the float-AS model; add a weather-modifier note where the weather fold is described.
+
+## B.11 LIVING docs to update (build step)
+
+- [docs/live/systems/scaling.md](../../../docs/live/systems/scaling.md) — `milli_AS` storage + sort key (lines 22,32,37) → float `attack_speed`, derived order.
+- [docs/live/systems/combat.md](../../../docs/live/systems/combat.md) — `_event_sort_key` description (lines 58-60) → simplified quantized key.
+- [docs/live/content/traits.md](../../../docs/live/content/traits.md) — `milli_AS` rider note (line 32) → removed; `attack_speed` mul moves order directly.
+- Weather application note wherever the `_apply_weather_to_piece` fold is described → modifier emission.

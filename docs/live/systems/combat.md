@@ -55,11 +55,13 @@ and **carries overflow** (it subtracts the threshold, not resets) so cadence is
 exact.
 
 - **Ordering** — within a tick, triggered meters resolve in the canonical
-  side-independent total order `_event_sort_key = (-AS_int, -milli_AS,
-  champion_id, load_order, kind)` (V.34): faster attack-speed first, then
-  sub-integer speed (`milli_AS`), then identity, then the seeded `load_order`
-  (never team-then-enemy → no side-A bias, B.14), then movement before action.
-  No RNG in the loop; `load_order` is a one-time seeded permutation (V.2/V.14).
+  side-independent total order `_event_sort_key = (-round(attack_speed×1000),
+  champion_id, load_order, kind)` (V.34, T.29-pre): faster attack-speed first
+  (the quantized float key carries both whole + sub-integer speed in one term —
+  no separate `milli_AS`), then identity, then the seeded `load_order` (never
+  team-then-enemy → no side-A bias, B.14), then movement before action. Cadence
+  reads `int(attack_speed)`. No RNG in the loop; `load_order` is a one-time
+  seeded permutation (V.2/V.14).
 - **Movement** — `_resolve_movement`: hold at threshold if in range or no
   enemies; else one BFS step toward the nearest in-range cell
   (`_next_step_toward`), carrying overflow; hold if no path. Gated by

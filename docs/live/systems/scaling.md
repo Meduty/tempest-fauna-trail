@@ -18,8 +18,8 @@ Every base stat is in exactly one class; both curves ride the same `power` curve
 
 `crit_chance`/`penetration`/`penetration_pct` are ratios, off the scaling model. `SCALABLE_STATS` is a deprecated alias of the primary tuple. `level_scale_stats(stats, tier, level)` applies both curves in place — the single source of truth for the four builders (`content._build_champion`/`_build_enemy`, `encounter._instantiate_enemy`/`_champion_def_to_enemy`). `threat`/`move_speed` stay **off** the HP·DPS power budget (V.33, B.6).
 
-## All quantities are int
-Stored quantities (hp, damage, mana, speeds, costs, energy meters) are **int**; only the ratio stats are float. Speeds round to int; the sub-integer attack-speed precision needed for ordering lives in a dedicated int field `milli_AS = round(exact_scaled_AS × 1000)`, threaded through level + weather alongside `attack_speed`.
+## Quantities: int except attack_speed
+Stored quantities (hp, damage, mana, `move_speed`/`mana_regen`/`threat`, costs, energy meters) are **int**; the ratio stats **and `attack_speed`** are float. `attack_speed` is a float (T.29-pre, amends V.34): cadence reads `int(attack_speed)`, and the sub-integer precision for same-tick ordering derives from the **same** value via `round(attack_speed × 1000)` — there is no separate `milli_AS` field. Because weather now applies as `mul` modifiers (not a base fold), `attack_speed` stays float through level **and** combat.
 
 ## Speed-stat baseline parity (#39, V.35)
 `_BASE_STATS` `attack_speed == move_speed == mana_regen == 100` so the three speed stats compare directly as power investments. The per-meter capacitor is deliberately unequal and non-player-facing: mana `ability_cost` baseline `300_000` ≫ action/move `ENERGY_THRESHOLD = 60_000` (a cast ≈ 5 autos). `ability_cost` 300_000 (vs cadence-neutral 360_000) is a deliberate ~20% mage buff; `move_speed` 90→100 a ~11% movement buff. Boss costs ×10.
@@ -29,11 +29,11 @@ Stored quantities (hp, damage, mana, speeds, costs, energy meters) are **int**; 
 
 ## Combat tie-break (V.34, fixes B.14)
 Same-tick action order is the canonical side-independent total order in `_event_sort_key` (`combat/engine.py`):
-`(-AS_int, -milli_AS, champion_id, load_order, kind)`.
+`(-round(attack_speed × 1000), champion_id, load_order, kind)` — the quantized AS key (T.29-pre) is monotonic in the float `attack_speed`, so it subsumes the old coarse `-AS_int` level and the separate `milli_AS` field in one term.
 - `load_order` — a seeded, side-independent permutation assigned in `compile_loadout` (never team-block-then-enemy), so equal-AS ties never systematically favour the player team (the old B.14 bug). Renamed from the overloaded `speed_tiebreaker`; the formation-position key is now `formation_index`.
 
 ## Where it lives
 - `scaling.py` — power curve, the three class tuples + exponents, `stat_multiplier`, `level_scale_stats`.
-- `content.py` — base stat blocks, axis multipliers, `compose_stats` (incl. `milli_AS`), `_ABILITY_COST`.
+- `content.py` — base stat blocks, axis multipliers, `compose_stats` (`attack_speed` kept float), `_ABILITY_COST`.
 - `combat/engine.py` — `_event_sort_key`. `loadout.py` — `load_order`/`formation_index` assignment, weather application.
 - `tools/gen_role_matrix.py` — regenerates `docs/design/tasks/t32_role_matrix.txt`.

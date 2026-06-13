@@ -522,18 +522,19 @@ def _resolve_action(
 # ---------------------------------------------------------------------------
 
 
-def _event_sort_key(entry: tuple[Piece, str]) -> tuple[int, int, str, int, int]:
+def _event_sort_key(entry: tuple[Piece, str]) -> tuple[int, str, int, int]:
     """Canonical side-independent same-tick total order (V.34, fixes B.14).
 
-    `(-AS_int, -milli_AS, champion_id, load_order, kind)`: coarse speed, then
-    sub-integer speed (breaks same-int-AS cross-power ties by true speed), then
-    side-independent identity, then the seeded `load_order` for same-champion
-    copies / true mirrors, then a piece's own movement-before-action.
+    `(-round(AS×1000), champion_id, load_order, kind)`: the quantized attack-speed
+    key (T.29-pre) is monotonic in the float `attack_speed`, so it subsumes the old
+    coarse `-AS_int` level and the separate `milli_AS` field in one term — sub-integer
+    order now derives from the same float the cadence reads. Then side-independent
+    identity, the seeded `load_order` for same-champion copies / true mirrors, then a
+    piece's own movement-before-action.
     """
     piece, kind = entry
     return (
-        -int(piece.stat("attack_speed")),
-        -int(piece.stat("milli_AS")),
+        -round(piece.stat("attack_speed") * 1000),
         piece.id,
         piece.load_order,
         0 if kind == _KIND_MOVEMENT else 1,
