@@ -40,6 +40,39 @@ handler — enforced by a guard test (SPEC §V.15/§V.17). An unregistered id is
 build failure, not a silent generic-fallback. The loop's unregistered-ability
 path (`engine._resolve_action`) is only a defensive fallback, not the norm.
 
+## Ability descriptions (T.34)
+
+A parallel registry `ABILITY_META: dict[str, AbilityMeta]` (in `registries.py`)
+gives each roster ability id a tooltip. `AbilityMeta(name, kind, blurb, terms,
+clauses, tags)` is presentation metadata; `ability_text.render(meta, source) ->
+RenderedAbility(name, text, formula, tags)` is **pure** (no Flet/I-O, extends
+V.1) and reads live numbers via `source.stat(name)`. The same call serves both
+contexts — a base `Champion`/`Enemy` (roster sheet, via the `.stat()` field
+adapters) and a live `Piece` (combat, with modifiers; **bosses always via the
+compiled `Piece`**). `render_for(id, source)` is the dict-lookup convenience.
+
+**Source-of-truth B (V.38):** a handler's headline damage/heal constant lives
+**once** in a `ScalingTerm` the handler reads via `term.eval(source)` — the
+tooltip renders the same object, so tooltip and combat numbers cannot drift.
+`ScalingTerm.eval` delegates to the engine's `_eval_scaling`, keeping
+`resolve_combat` byte-identical (V.2/V.14). Secondary/structural constants
+(execute multipliers, splash %, %-max-HP heals, summon fractions) are **Tier-B**:
+hoisted to a named module constant and described in a `Clause`, not a term.
+Caveat: `max_hp`/`hp` are `Piece` attributes, **not** `base_stats` keys, so they
+can't be `ScalingTerm` scaling expressions (`stat("max_hp")` is 0) — %-of-max-HP
+outlets stay inline + clause. `max()`-of-two-stats outlets likewise stay inline.
+
+**Tick → seconds (V.39):** `TICKS_PER_SECOND = 100` in `ability_text.py` is the
+single source for the `100 ticks = 1 second` display convention. Mechanics stay
+ticks-only; only `ability_text.render` (and `ui/`, which imports the constant
+from here) converts. A coverage guard + golden formula snapshot
+(`tests/game/ability_formulas.snapshot.json`) pin every rendered id; regenerate
+with `UPDATE_ABILITY_SNAPSHOT=1 uv run pytest tests/game/test_ability_text.py`.
+
+Meta coverage spans **all 276 roster ability ids** (120 champion T.34a + 120
+enemy T.34b + 36 boss T.34c — all done). `tools/export_roster.py` serializes the
+champion/enemy (and optional boss) rosters with rendered descriptions to JSON.
+
 ## File map
 
 | Concern | Symbol |
@@ -49,4 +82,5 @@ path (`engine._resolve_action`) is only a defensive fallback, not the norm.
 | Boss kits (2-phase) | `abilities/bosses.py` |
 | Shared/declarative | `abilities/reference.py`, `registries.register_active_simple` |
 | Registries + decorators | `registries.py` (`ABILITY_REGISTRY`, `PASSIVE_REGISTRY`, `@register_active`/`@register_passive`) |
+| Ability descriptions (T.34) | `registries.py` (`ABILITY_META`, `ScalingTerm`, `Clause`, `AbilityMeta`), `ability_text.py` (`render`, `render_for`, `TICKS_PER_SECOND`) |
 | id source on the model | `content.py` (`active_ability`/`passive_ability`) |
