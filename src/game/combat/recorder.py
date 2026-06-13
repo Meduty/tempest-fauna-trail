@@ -153,7 +153,10 @@ class BattleResultRecorder:
     def _on_damage_dealt(self, ctx: Any, event: DamageEvent) -> None:
         """Track damage for ability-driven damage not recorded elsewhere."""
         amount = int(event.amount) if event.amount else 0
-        self._damage_dealt[event.attacker.id] = self._damage_dealt.get(event.attacker.id, 0) + amount
+        # Environmental damage (hazard tiles, map effects) has no attacker — it
+        # is not attributed to any dealer, but is still counted as taken.
+        if event.attacker is not None:
+            self._damage_dealt[event.attacker.id] = self._damage_dealt.get(event.attacker.id, 0) + amount
         self._damage_taken[event.target.id] = self._damage_taken.get(event.target.id, 0) + amount
 
     def _on_death(self, ctx: Any, event: DeathEvent) -> None:

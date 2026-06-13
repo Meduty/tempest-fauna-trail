@@ -152,6 +152,15 @@ class Champion:
                 f"Champion intent must be one of damage/hybrid/utility, got {self.intent!r}."
             )
 
+    def stat(self, stat_name: str) -> float:
+        """Base level-1 sheet value for ability-text rendering (T.34, V.38).
+
+        Structural ``.stat()`` parity with ``Piece`` so ``ability_text.render``
+        resolves scaling terms in roster context (no combat modifiers).
+        Unknown key -> ``0.0``, mirroring ``_eval_scaling``'s silent-zero.
+        """
+        return float(getattr(self, stat_name, 0.0))
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
@@ -267,6 +276,15 @@ class Enemy:
             raise ValueError(
                 f"Enemy intent must be one of damage/hybrid/utility, got {self.intent!r}."
             )
+
+    def stat(self, stat_name: str) -> float:
+        """Base sheet value for ability-text rendering (T.34, V.38).
+
+        Mirror of ``Champion.stat`` — structural ``.stat()`` parity with
+        ``Piece`` so enemy roster tooltips resolve scaling terms. Unknown key
+        -> ``0.0``.
+        """
+        return float(getattr(self, stat_name, 0.0))
 
     def to_dict(self) -> dict[str, Any]:
         return {

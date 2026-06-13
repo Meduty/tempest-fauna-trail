@@ -24,9 +24,12 @@ from src.game.effects import (
 )
 from src.game.events import PhaseEvent
 from src.game.registries import (
+    ABILITY_META,
+    AbilityMeta,
+    Clause,
+    ScalingTerm,
     register_active,
     register_passive,
-    _eval_scaling,
 )
 from src.game.targeting import (
     allies_in_radius,
@@ -45,13 +48,24 @@ from src.game.targeting import (
 
 
 # Phase 1 Active: Pressure Vent — STR cone damage + burn
+HOLLOWAY_PRESSURE_VENT = ScalingTerm("damage", 100.0, "strength*2.5")
+
+
 @register_active("holloway.pressure_vent")
 def holloway_pressure_vent(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(100.0, "strength*2.5", actor)
+    amount = HOLLOWAY_PRESSURE_VENT.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY, damage_type="physical")
         ctx.apply_status(t, "burn", duration_ticks=400, source_id=actor.id)
+
+
+ABILITY_META["holloway.pressure_vent"] = AbilityMeta(
+    name="Pressure Vent", kind="active",
+    blurb="Vent scalding steam for {damage} physical damage to all enemies within 2 hexes.",
+    terms=(HOLLOWAY_PRESSURE_VENT,),
+    clauses=(Clause("Burns struck enemies for 4s."),), tags=("physical", "aoe", "burn"),
+)
 
 
 # Phase 1 Passive: Stoke the Fires — gains STR per living ally every 600 ticks
@@ -73,6 +87,13 @@ def holloway_stoke_the_fires(owner: Any) -> EffectBundle:
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["holloway.stoke_the_fires"] = AbilityMeta(
+    name="Stoke the Fires", kind="passive",
+    blurb="Every 6s, gain +8 Strength per living ally for 6s.",
+    tags=("buff",),
+)
 
 
 # Phase Hook: triggers at 50% HP, grants phase 2 abilities
@@ -106,17 +127,40 @@ def holloway_phase_hook(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["holloway.phase_hook"] = AbilityMeta(
+    name="Overpressure", kind="passive",
+    blurb="At 50% HP, enter Phase 2: swap to Magma Heave, gain the Cinder Husk passive, and burn all enemies.",
+    tags=("phase",),
+)
+
+
 # Phase 2 Active: Magma Heave — massive STR AOE + ground burn
+HOLLOWAY_MAGMA_HEAVE = ScalingTerm("damage", 140.0, "strength*3.0")
+_HOLLOWAY_MAGMA_AOE = 0.7
+
+
 @register_active("holloway.magma_heave")
 def holloway_magma_heave(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(140.0, "strength*3.0", actor)
+    amount = HOLLOWAY_MAGMA_HEAVE.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
-        ctx.deal_damage(actor, t, amount * 0.7, SourceTag.ABILITY, damage_type="physical")
+        ctx.deal_damage(actor, t, amount * _HOLLOWAY_MAGMA_AOE, SourceTag.ABILITY,
+                        damage_type="physical")
         ctx.apply_status(t, "burn", duration_ticks=500, source_id=actor.id)
 
 
+ABILITY_META["holloway.magma_heave"] = AbilityMeta(
+    name="Magma Heave", kind="active",
+    blurb=f"Erupt for {int(_HOLLOWAY_MAGMA_AOE * 100)}% of {{damage}} physical damage to all enemies within 3 hexes.",
+    terms=(HOLLOWAY_MAGMA_HEAVE,),
+    clauses=(Clause("Burns struck enemies for 5s."),), tags=("physical", "aoe", "burn"),
+)
+
+
 # Phase 2 Passive: Cinder Husk — reflects damage + armor
+_HOLLOWAY_REFLECT_PCT = 0.1
+
+
 @register_passive("holloway.cinder_husk")
 def holloway_cinder_husk(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
@@ -127,7 +171,7 @@ def holloway_cinder_husk(owner: Any) -> EffectBundle:
         if not hasattr(event, "attacker") or event.attacker is None:
             return
         if event.attacker.alive:
-            reflect = event.amount * 0.1
+            reflect = event.amount * _HOLLOWAY_REFLECT_PCT
             ctx.deal_damage(owner, event.attacker, reflect, SourceTag.REFLECT,
                           damage_type="physical")
 
@@ -137,7 +181,17 @@ def holloway_cinder_husk(owner: Any) -> EffectBundle:
     )
 
 
+ABILITY_META["holloway.cinder_husk"] = AbilityMeta(
+    name="Cinder Husk", kind="passive",
+    blurb="Grants +30 Armor and reflects 10% of damage taken as physical damage.",
+    tags=("defense", "reflect"),
+)
+
+
 # On-death: Boiler Burst — AOE damage to all enemies
+HOLLOWAY_BOILER_BURST = ScalingTerm("damage", 80.0, "")
+
+
 @register_passive("holloway.boiler_burst")
 def holloway_boiler_burst(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
@@ -147,11 +201,18 @@ def holloway_boiler_burst(owner: Any) -> EffectBundle:
         enemies = list(ctx.enemies_of(owner))
         for e in enemies:
             if e.alive:
-                ctx.deal_damage(owner, e, 80.0, SourceTag.TRUE)
+                ctx.deal_damage(owner, e, HOLLOWAY_BOILER_BURST.eval(owner), SourceTag.TRUE)
 
     return EffectBundle(hooks=[
         Hook("on_death", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["holloway.boiler_burst"] = AbilityMeta(
+    name="Boiler Burst", kind="passive",
+    blurb="On death, explode for {damage} true damage to all enemies.",
+    terms=(HOLLOWAY_BOILER_BURST,), tags=("true", "aoe", "on-death"),
+)
 
 
 # ===========================================================================
@@ -160,13 +221,22 @@ def holloway_boiler_burst(owner: Any) -> EffectBundle:
 
 
 # Phase 1 Active: Focusing Lens — high INT single target nuke
+VANCE_FOCUSING_LENS = ScalingTerm("damage", 120.0, "intelligence*2.8")
+
+
 @register_active("vance.focusing_lens")
 def vance_focusing_lens(ctx: Any, actor: Any, targets: list) -> None:
     target = furthest_enemy(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(120.0, "intelligence*2.8", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    ctx.deal_damage(actor, target, VANCE_FOCUSING_LENS.eval(actor), SourceTag.ABILITY)
+
+
+ABILITY_META["vance.focusing_lens"] = AbilityMeta(
+    name="Focusing Lens", kind="active",
+    blurb="Focus a beam on the furthest enemy for {damage} magic damage.",
+    terms=(VANCE_FOCUSING_LENS,), tags=("magic",),
+)
 
 
 # Phase 1 Passive: Glare — enemies near Vance lose AS
@@ -188,6 +258,13 @@ def vance_glare(owner: Any) -> EffectBundle:
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["vance.glare"] = AbilityMeta(
+    name="Glare", kind="passive",
+    blurb="Every 3s, enemies within 3 hexes lose 15 Attack Speed for 3.5s.",
+    tags=("debuff", "aura"),
+)
 
 
 # Phase Hook
@@ -218,15 +295,32 @@ def vance_phase_hook(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["vance.phase_hook"] = AbilityMeta(
+    name="Solar Eclipse", kind="passive",
+    blurb="At 50% HP, enter Phase 2: swap to Sunflare Pounce, gain the Drought Aura passive, and silence all enemies.",
+    tags=("phase",),
+)
+
+
 # Phase 2 Active: Sunflare Pounce — INT burst + fear
+VANCE_SUNFLARE_POUNCE = ScalingTerm("damage", 150.0, "intelligence*3.0")
+
+
 @register_active("vance.sunflare_pounce")
 def vance_sunflare_pounce(ctx: Any, actor: Any, targets: list) -> None:
     target = lowest_hp_enemy(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(150.0, "intelligence*3.0", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    ctx.deal_damage(actor, target, VANCE_SUNFLARE_POUNCE.eval(actor), SourceTag.ABILITY)
     ctx.apply_status(target, "fear", duration_ticks=250, source_id=actor.id)
+
+
+ABILITY_META["vance.sunflare_pounce"] = AbilityMeta(
+    name="Sunflare Pounce", kind="active",
+    blurb="Pounce the lowest-HP enemy for {damage} magic damage.",
+    terms=(VANCE_SUNFLARE_POUNCE,),
+    clauses=(Clause("Fears for 2.5s."),), tags=("magic", "fear"),
+)
 
 
 # Phase 2 Passive: Drought Aura — periodic mana drain (reduce enemy mana regen)
@@ -250,7 +344,17 @@ def vance_drought_aura(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["vance.drought_aura"] = AbilityMeta(
+    name="Drought Aura", kind="passive",
+    blurb="Every 3s, enemies within 4 hexes lose 5 Mana Regen for 3.5s.",
+    tags=("debuff", "aura"),
+)
+
+
 # On-death: Sun Husk Collapse
+VANCE_SUN_HUSK_COLLAPSE = ScalingTerm("damage", 60.0, "")
+
+
 @register_passive("vance.sun_husk_collapse")
 def vance_sun_husk_collapse(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
@@ -259,12 +363,19 @@ def vance_sun_husk_collapse(owner: Any) -> EffectBundle:
         enemies = list(ctx.enemies_of(owner))
         for e in enemies:
             if e.alive:
-                ctx.deal_damage(owner, e, 60.0, SourceTag.TRUE)
+                ctx.deal_damage(owner, e, VANCE_SUN_HUSK_COLLAPSE.eval(owner), SourceTag.TRUE)
                 ctx.apply_status(e, "burn", duration_ticks=300, source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_death", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["vance.sun_husk_collapse"] = AbilityMeta(
+    name="Sun Husk Collapse", kind="passive",
+    blurb="On death, burst for {damage} true damage to all enemies and burn them for 3s.",
+    terms=(VANCE_SUN_HUSK_COLLAPSE,), tags=("true", "aoe", "burn", "on-death"),
+)
 
 
 # ===========================================================================
@@ -273,12 +384,15 @@ def vance_sun_husk_collapse(owner: Any) -> EffectBundle:
 
 
 # Phase 1 Active: Arc Cascade — chain lightning
+STRAND_ARC_CASCADE = ScalingTerm("damage", 110.0, "intelligence*2.5")
+
+
 @register_active("strand.arc_cascade")
 def strand_arc_cascade(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(110.0, "intelligence*2.5", actor)
+    amount = STRAND_ARC_CASCADE.eval(actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
     chain_targets = []
     for n in neighbors_of(target, ctx):
@@ -287,6 +401,15 @@ def strand_arc_cascade(ctx: Any, actor: Any, targets: list) -> None:
     for i, ct in enumerate(chain_targets):
         chain_dmg = amount * (0.6 - i * 0.1)
         ctx.deal_damage(actor, ct, max(0, chain_dmg), SourceTag.ABILITY)
+
+
+ABILITY_META["strand.arc_cascade"] = AbilityMeta(
+    name="Arc Cascade", kind="active",
+    blurb="Strike the primary target for {damage} magic damage.",
+    terms=(STRAND_ARC_CASCADE,),
+    clauses=(Clause("Chains to up to 3 nearby enemies at 60%, 50%, then 40% damage."),),
+    tags=("magic", "aoe"),
+)
 
 
 # Phase 1 Passive: Overcharged — stacking INT after each cast
@@ -303,6 +426,13 @@ def strand_overcharged(owner: Any) -> EffectBundle:
     return EffectBundle(hooks=[
         Hook("on_cast_complete", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["strand.overcharged"] = AbilityMeta(
+    name="Overcharged", kind="passive",
+    blurb="Each cast permanently grants +12 Intelligence.",
+    tags=("scaling", "buff"),
+)
 
 
 # Phase Hook
@@ -333,32 +463,63 @@ def strand_phase_hook(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["strand.phase_hook"] = AbilityMeta(
+    name="Grid Overload", kind="passive",
+    blurb="At 50% HP, enter Phase 2: swap to Thunderhead, gain the Stormform passive, and stun all enemies.",
+    tags=("phase",),
+)
+
+
 # Phase 2 Active: Thunderhead — massive AOE + charged status
+STRAND_THUNDERHEAD = ScalingTerm("damage", 130.0, "intelligence*3.0")
+_STRAND_THUNDERHEAD_AOE = 0.6
+
+
 @register_active("strand.thunderhead")
 def strand_thunderhead(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(130.0, "intelligence*3.0", actor)
+    amount = STRAND_THUNDERHEAD.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 4, actor, ctx)
     for t in hit_targets:
-        ctx.deal_damage(actor, t, amount * 0.6, SourceTag.ABILITY)
+        ctx.deal_damage(actor, t, amount * _STRAND_THUNDERHEAD_AOE, SourceTag.ABILITY)
         ctx.apply_status(t, "charged", duration_ticks=300, source_id=actor.id)
 
 
+ABILITY_META["strand.thunderhead"] = AbilityMeta(
+    name="Thunderhead", kind="active",
+    blurb=f"Call down a storm for {int(_STRAND_THUNDERHEAD_AOE * 100)}% of {{damage}} magic damage to all enemies within 4 hexes.",
+    terms=(STRAND_THUNDERHEAD,),
+    clauses=(Clause("Charges struck enemies for 3s."),), tags=("magic", "aoe"),
+)
+
+
 # Phase 2 Passive: Stormform — bonus damage to charged enemies
+STRAND_STORMFORM = ScalingTerm("bonus", 0.0, "intelligence*0.4")
+
+
 @register_passive("strand.stormform")
 def strand_stormform(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.attacker is not owner:
             return
         if event.target.has_status("charged"):
-            bonus = owner.stat("intelligence") * 0.4
-            ctx.deal_damage(owner, event.target, bonus, SourceTag.ABILITY)
+            ctx.deal_damage(owner, event.target, STRAND_STORMFORM.eval(owner), SourceTag.ABILITY)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
     ])
 
 
+ABILITY_META["strand.stormform"] = AbilityMeta(
+    name="Stormform", kind="passive",
+    blurb="Auto-attacks against charged enemies deal {bonus} bonus magic damage.",
+    terms=(STRAND_STORMFORM,), tags=("magic",),
+)
+
+
 # On-death: Lightning Strike
+STRAND_LIGHTNING_STRIKE = ScalingTerm("damage", 100.0, "")
+
+
 @register_passive("strand.lightning_strike")
 def strand_lightning_strike(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
@@ -367,12 +528,19 @@ def strand_lightning_strike(owner: Any) -> EffectBundle:
         enemies = list(ctx.enemies_of(owner))
         for e in enemies:
             if e.alive:
-                ctx.deal_damage(owner, e, 100.0, SourceTag.TRUE)
+                ctx.deal_damage(owner, e, STRAND_LIGHTNING_STRIKE.eval(owner), SourceTag.TRUE)
                 ctx.apply_status(e, "stun", duration_ticks=100, source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_death", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["strand.lightning_strike"] = AbilityMeta(
+    name="Lightning Strike", kind="passive",
+    blurb="On death, blast all enemies for {damage} true damage and stun them for 1s.",
+    terms=(STRAND_LIGHTNING_STRIKE,), tags=("true", "aoe", "stun", "on-death"),
+)
 
 
 # ===========================================================================
@@ -381,18 +549,32 @@ def strand_lightning_strike(owner: Any) -> EffectBundle:
 
 
 # Phase 1 Active: Scorched Advance — STR charge + burn
+VOSSBERG_SCORCHED_ADVANCE = ScalingTerm("damage", 130.0, "strength*2.8")
+_VOSSBERG_SCORCHED_SPLASH = 0.4
+
+
 @register_active("vossberg.scorched_advance")
 def vossberg_scorched_advance(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(130.0, "strength*2.8", actor)
+    amount = VOSSBERG_SCORCHED_ADVANCE.eval(actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
     ctx.apply_status(target, "burn", duration_ticks=300, source_id=actor.id)
     # Hit neighbors
     for n in neighbors_of(target, ctx):
         if ctx.is_enemy(n, actor):
-            ctx.deal_damage(actor, n, amount * 0.4, SourceTag.ABILITY, damage_type="physical")
+            ctx.deal_damage(actor, n, amount * _VOSSBERG_SCORCHED_SPLASH, SourceTag.ABILITY,
+                            damage_type="physical")
+
+
+ABILITY_META["vossberg.scorched_advance"] = AbilityMeta(
+    name="Scorched Advance", kind="active",
+    blurb="Charge the primary target for {damage} physical damage and burn for 3s.",
+    terms=(VOSSBERG_SCORCHED_ADVANCE,),
+    clauses=(Clause(f"Adjacent enemies take {int(_VOSSBERG_SCORCHED_SPLASH * 100)}% splash."),),
+    tags=("physical", "aoe", "burn"),
+)
 
 
 # Phase 1 Passive: No Quarter — gains STR when damaging enemies
@@ -413,6 +595,13 @@ def vossberg_no_quarter(owner: Any) -> EffectBundle:
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["vossberg.no_quarter"] = AbilityMeta(
+    name="No Quarter", kind="passive",
+    blurb="Every 3rd attack permanently grants +10 Strength.",
+    tags=("scaling", "buff"),
+)
 
 
 # Phase Hook
@@ -444,27 +633,57 @@ def vossberg_phase_hook(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["vossberg.phase_hook"] = AbilityMeta(
+    name="Total War", kind="passive",
+    blurb="At 50% HP, enter Phase 2: swap to Wildfire Leap, gain the Feeding Frenzy passive, and surge +40 Strength.",
+    tags=("phase",),
+)
+
+
 # Phase 2 Active: Wildfire Leap — massive STR AOE
+VOSSBERG_WILDFIRE_LEAP = ScalingTerm("damage", 160.0, "strength*3.2")
+_VOSSBERG_WILDFIRE_AOE = 0.8
+
+
 @register_active("vossberg.wildfire_leap")
 def vossberg_wildfire_leap(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(160.0, "strength*3.2", actor)
+    amount = VOSSBERG_WILDFIRE_LEAP.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
-        ctx.deal_damage(actor, t, amount * 0.8, SourceTag.ABILITY, damage_type="physical")
+        ctx.deal_damage(actor, t, amount * _VOSSBERG_WILDFIRE_AOE, SourceTag.ABILITY,
+                        damage_type="physical")
         ctx.apply_status(t, "burn", duration_ticks=400, source_id=actor.id)
 
 
-# Phase 2 Passive: Feeding Frenzy — heal on kill
+ABILITY_META["vossberg.wildfire_leap"] = AbilityMeta(
+    name="Wildfire Leap", kind="active",
+    blurb=f"Leap and erupt for {int(_VOSSBERG_WILDFIRE_AOE * 100)}% of {{damage}} physical damage to all enemies within 2 hexes.",
+    terms=(VOSSBERG_WILDFIRE_LEAP,),
+    clauses=(Clause("Burns struck enemies for 4s."),), tags=("physical", "aoe", "burn"),
+)
+
+
+# Phase 2 Passive: Feeding Frenzy — heal on kill (%-of-max-HP stays inline)
+_VOSSBERG_FRENZY_HEAL_PCT = 0.1
+
+
 @register_passive("vossberg.feeding_frenzy")
 def vossberg_feeding_frenzy(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.killer is not owner:
             return
-        ctx.heal(owner, owner, owner.max_hp * 0.1)
+        ctx.heal(owner, owner, owner.max_hp * _VOSSBERG_FRENZY_HEAL_PCT)
 
     return EffectBundle(hooks=[
         Hook("on_kill", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["vossberg.feeding_frenzy"] = AbilityMeta(
+    name="Feeding Frenzy", kind="passive",
+    blurb="Killing an enemy heals for 10% of max HP.",
+    tags=("heal",),
+)
 
 
 # On-death: Fire Gutters Out
@@ -486,24 +705,43 @@ def vossberg_fire_gutters_out(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["vossberg.fire_gutters_out"] = AbilityMeta(
+    name="Fire Gutters Out", kind="passive",
+    blurb="On death, the marshal's surviving allies lose 20 Strength.",
+    tags=("debuff", "on-death"),
+)
+
+
 # ===========================================================================
 # STAGE 5 — Dredge-Admiral Crège (Rain)
 # ===========================================================================
 
 
 # Phase 1 Active: Harpoon Winch — pull + damage + root
+CREGE_HARPOON_WINCH = ScalingTerm("damage", 100.0, "strength*2.0+intelligence*1.0")
+
+
 @register_active("crege.harpoon_winch")
 def crege_harpoon_winch(ctx: Any, actor: Any, targets: list) -> None:
     target = furthest_enemy(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(100.0, "strength*2.0+intelligence*1.0", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, CREGE_HARPOON_WINCH.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
     ctx.apply_status(target, "root", duration_ticks=250, source_id=actor.id)
     # Simulate pull via teleport toward boss
     if abs(target.position_q - actor.position_q) > 1:
         step_q = 1 if target.position_q < actor.position_q else -1
         ctx.teleport(target, target.position_q + step_q, target.position_r)
+
+
+ABILITY_META["crege.harpoon_winch"] = AbilityMeta(
+    name="Harpoon Winch", kind="active",
+    blurb="Harpoon the furthest enemy for {damage} physical damage.",
+    terms=(CREGE_HARPOON_WINCH,),
+    clauses=(Clause("Pulls the target toward Crège and roots it for 2.5s."),),
+    tags=("physical", "root"),
+)
 
 
 # Phase 1 Passive: Dredged Depths — slow aura periodic
@@ -521,6 +759,13 @@ def crege_dredged_depths(owner: Any) -> EffectBundle:
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["crege.dredged_depths"] = AbilityMeta(
+    name="Dredged Depths", kind="passive",
+    blurb="Every 3s, slows all enemies within 3 hexes for 3.5s.",
+    tags=("slow", "aura"),
+)
 
 
 # Phase Hook
@@ -551,17 +796,40 @@ def crege_phase_hook(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["crege.phase_hook"] = AbilityMeta(
+    name="Maelstrom Rising", kind="passive",
+    blurb="At 50% HP, enter Phase 2: swap to Maelstrom Jaws, gain the Drowning Tide passive, and root all enemies.",
+    tags=("phase",),
+)
+
+
 # Phase 2 Active: Maelstrom Jaws — massive AOE + slow
+CREGE_MAELSTROM_JAWS = ScalingTerm("damage", 120.0, "strength*2.5+intelligence*1.5")
+_CREGE_MAELSTROM_AOE = 0.7
+
+
 @register_active("crege.maelstrom_jaws")
 def crege_maelstrom_jaws(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(120.0, "strength*2.5+intelligence*1.5", actor)
+    amount = CREGE_MAELSTROM_JAWS.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
-        ctx.deal_damage(actor, t, amount * 0.7, SourceTag.ABILITY, damage_type="physical")
+        ctx.deal_damage(actor, t, amount * _CREGE_MAELSTROM_AOE, SourceTag.ABILITY,
+                        damage_type="physical")
         ctx.apply_status(t, "slow", duration_ticks=400, stacks=2, source_id=actor.id)
 
 
+ABILITY_META["crege.maelstrom_jaws"] = AbilityMeta(
+    name="Maelstrom Jaws", kind="active",
+    blurb=f"Engulf all enemies within 3 hexes for {int(_CREGE_MAELSTROM_AOE * 100)}% of {{damage}} physical damage.",
+    terms=(CREGE_MAELSTROM_JAWS,),
+    clauses=(Clause("Applies 2 stacks of slow for 4s."),), tags=("physical", "aoe", "slow"),
+)
+
+
 # Phase 2 Passive: Drowning Tide — periodic damage to all enemies
+CREGE_DROWNING_TIDE = ScalingTerm("damage", 5.0, "")
+
+
 @register_passive("crege.drowning_tide")
 def crege_drowning_tide(owner: Any) -> EffectBundle:
     state = {"last_tick": 0}
@@ -572,11 +840,18 @@ def crege_drowning_tide(owner: Any) -> EffectBundle:
             enemies = list(ctx.enemies_of(owner))
             for e in enemies:
                 if e.alive:
-                    ctx.deal_damage(owner, e, 5.0, SourceTag.DOT)
+                    ctx.deal_damage(owner, e, CREGE_DROWNING_TIDE.eval(owner), SourceTag.DOT)
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["crege.drowning_tide"] = AbilityMeta(
+    name="Drowning Tide", kind="passive",
+    blurb="Every 2s, deals {damage} damage to all enemies.",
+    terms=(CREGE_DROWNING_TIDE,), tags=("aoe", "dot"),
+)
 
 
 # On-death: Silt Drains
@@ -597,19 +872,28 @@ def crege_silt_drains(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["crege.silt_drains"] = AbilityMeta(
+    name="Silt Drains", kind="passive",
+    blurb="On death, the waters recede: removes slow from all enemies and heals each for 50.",
+    tags=("heal", "on-death"),
+)
+
+
 # ===========================================================================
 # STAGE 6 — The Iron Emperor (Snow)
 # ===========================================================================
 
 
 # Phase 1 Active: Decree of Iron — mark target for +damage taken
+IRON_EMPEROR_DECREE = ScalingTerm("damage", 100.0, "strength*1.5+intelligence*1.5")
+
+
 @register_active("iron_emperor.decree_of_iron")
 def iron_emperor_decree_of_iron(ctx: Any, actor: Any, targets: list) -> None:
     target = lowest_hp_enemy(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(100.0, "strength*1.5+intelligence*1.5", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    ctx.deal_damage(actor, target, IRON_EMPEROR_DECREE.eval(actor), SourceTag.ABILITY)
     # Mark: reduce defenses
     ctx.apply_modifier(target, Modifier(
         "armor", "add", -25.0, Lifetime.TIMED,
@@ -621,6 +905,14 @@ def iron_emperor_decree_of_iron(ctx: Any, actor: Any, targets: list) -> None:
         "ability:iron_emperor.decree",
         expires_at_tick=ctx.current_tick + 600,
     ))
+
+
+ABILITY_META["iron_emperor.decree_of_iron"] = AbilityMeta(
+    name="Decree of Iron", kind="active",
+    blurb="Mark the lowest-HP enemy for {damage} magic damage.",
+    terms=(IRON_EMPEROR_DECREE,),
+    clauses=(Clause("Shreds 25 Armor and 25 Resistance for 6s."),), tags=("magic", "debuff"),
+)
 
 
 # Phase 1 Passive: Tribute — gains STR/INT per living ally
@@ -647,6 +939,13 @@ def iron_emperor_tribute(owner: Any) -> EffectBundle:
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["iron_emperor.tribute"] = AbilityMeta(
+    name="Tribute", kind="passive",
+    blurb="Every 6s, gain +6 Strength and +6 Intelligence per living ally for 6s.",
+    tags=("buff",),
+)
 
 
 # Phase Hook
@@ -685,14 +984,33 @@ def iron_emperor_phase_hook(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["iron_emperor.phase_hook"] = AbilityMeta(
+    name="Iron Reclamation", kind="passive",
+    blurb="At 50% HP, enter Phase 2: swap to Reclamation, gain The Wound Spreads passive, surge +50 Strength and +50 Intelligence, and freeze all enemies.",
+    tags=("phase",),
+)
+
+
 # Phase 2 Active: Reclamation — channel finisher (massive damage)
+IRON_EMPEROR_RECLAMATION = ScalingTerm("damage", 150.0, "strength*2.0+intelligence*2.0")
+_IRON_EMPEROR_RECLAMATION_AOE = 0.5
+
+
 @register_active("iron_emperor.reclamation")
 def iron_emperor_reclamation(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(150.0, "strength*2.0+intelligence*2.0", actor)
+    amount = IRON_EMPEROR_RECLAMATION.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 4, actor, ctx)
     for t in hit_targets:
-        ctx.deal_damage(actor, t, amount * 0.5, SourceTag.ABILITY)
+        ctx.deal_damage(actor, t, amount * _IRON_EMPEROR_RECLAMATION_AOE, SourceTag.ABILITY)
         ctx.apply_status(t, "slow", duration_ticks=400, stacks=3, source_id=actor.id)
+
+
+ABILITY_META["iron_emperor.reclamation"] = AbilityMeta(
+    name="Reclamation", kind="active",
+    blurb=f"Channel a finisher for {int(_IRON_EMPEROR_RECLAMATION_AOE * 100)}% of {{damage}} magic damage to all enemies within 4 hexes.",
+    terms=(IRON_EMPEROR_RECLAMATION,),
+    clauses=(Clause("Applies 3 stacks of slow for 4s."),), tags=("magic", "aoe", "slow"),
+)
 
 
 # Phase 2 Passive: The Wound Spreads — periodic AOE damage + slow tile spread
@@ -716,6 +1034,13 @@ def iron_emperor_the_wound_spreads(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["iron_emperor.the_wound_spreads"] = AbilityMeta(
+    name="The Wound Spreads", kind="passive",
+    blurb="Every 3s, deals escalating damage (3 × growing intensity) to all enemies and slows them for 3.5s.",
+    tags=("aoe", "dot", "slow", "scaling"),
+)
+
+
 # On-death: World Engine Dark — removes all buffs from enemies (allies)
 @register_passive("iron_emperor.world_engine_dark")
 def iron_emperor_world_engine_dark(owner: Any) -> EffectBundle:
@@ -735,3 +1060,10 @@ def iron_emperor_world_engine_dark(owner: Any) -> EffectBundle:
     return EffectBundle(hooks=[
         Hook("on_death", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["iron_emperor.world_engine_dark"] = AbilityMeta(
+    name="World Engine Dark", kind="passive",
+    blurb="On death, strips all timed buffs from the Emperor's allies and heals each surviving enemy for 100.",
+    tags=("debuff", "heal", "on-death"),
+)

@@ -16,9 +16,12 @@ from src.game.effects import (
     SourceTag,
 )
 from src.game.registries import (
+    ABILITY_META,
+    AbilityMeta,
+    Clause,
+    ScalingTerm,
     register_active,
     register_passive,
-    _eval_scaling,
 )
 from src.game.targeting import (
     allies_in_radius,
@@ -37,6 +40,9 @@ from src.game.targeting import (
 
 
 # --- Conscript (T1) --- every 4th auto heavier
+CONSCRIPT_BONUS = ScalingTerm("bonus", 0.0, "strength*0.5")
+
+
 @register_passive("enemy_conscript.passive")
 def conscript_passive(owner: Any) -> EffectBundle:
     state = {"count": 0}
@@ -46,13 +52,22 @@ def conscript_passive(owner: Any) -> EffectBundle:
             return
         state["count"] += 1
         if state["count"] % 4 == 0:
-            bonus = owner.stat("strength") * 0.5
-            ctx.deal_damage(owner, event.target, bonus, SourceTag.BASIC_ATTACK,
-                          damage_type="physical")
+            ctx.deal_damage(owner, event.target, CONSCRIPT_BONUS.eval(owner),
+                          SourceTag.BASIC_ATTACK, damage_type="physical")
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["enemy_conscript.passive"] = AbilityMeta(
+    name="Heavy Swing", kind="passive",
+    blurb="Every 4th auto-attack deals {bonus} bonus physical damage.",
+    terms=(CONSCRIPT_BONUS,), tags=("physical",),
+)
+
+
+CONSCRIPT_DMG = ScalingTerm("damage", 30.0, "strength*1.5")
 
 
 @register_active("enemy_conscript.active")
@@ -60,8 +75,15 @@ def conscript_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(30.0, "strength*1.5", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, CONSCRIPT_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_conscript.active"] = AbilityMeta(
+    name="Thrust", kind="active",
+    blurb="Strike the primary target for {damage} physical damage.",
+    terms=(CONSCRIPT_DMG,), tags=("physical",),
+)
 
 
 # --- Levyman (T1) --- +HP every 600 ticks
@@ -80,13 +102,30 @@ def levyman_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_levyman.passive"] = AbilityMeta(
+    name="Hardened", kind="passive",
+    blurb="Every 6s, permanently gain +25 max HP.",
+    tags=("scaling",),
+)
+
+
+LEVYMAN_DMG = ScalingTerm("damage", 25.0, "strength*1.3")
+
+
 @register_active("enemy_levyman.active")
 def levyman_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(25.0, "strength*1.3", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, LEVYMAN_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_levyman.active"] = AbilityMeta(
+    name="Cudgel", kind="active",
+    blurb="Strike the primary target for {damage} physical damage.",
+    terms=(LEVYMAN_DMG,), tags=("physical",),
+)
 
 
 # --- Picket (T1) --- plain auto-attacker (no special ability)
@@ -95,29 +134,60 @@ def picket_passive(owner: Any) -> EffectBundle:
     return EffectBundle()
 
 
+ABILITY_META["enemy_picket.passive"] = AbilityMeta(
+    name="None", kind="passive",
+    blurb="No passive effect — a plain auto-attacker.",
+    tags=(),
+)
+
+
+PICKET_DMG = ScalingTerm("damage", 20.0, "strength*1.2")
+
+
 @register_active("enemy_picket.active")
 def picket_active(ctx: Any, actor: Any, targets: list) -> None:
     # No special ability — just a basic attack trigger
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(20.0, "strength*1.2", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, PICKET_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_picket.active"] = AbilityMeta(
+    name="Jab", kind="active",
+    blurb="Strike the primary target for {damage} physical damage.",
+    terms=(PICKET_DMG,), tags=("physical",),
+)
 
 
 # --- Stretcher-Hand (T1) --- small fixed heal lowest ally
+STRETCHER_HAND_HEAL = ScalingTerm("heal", 25.0, "intelligence*1.5")
+
+
 @register_active("enemy_stretcher_hand.active")
 def stretcher_hand_active(ctx: Any, actor: Any, targets: list) -> None:
     ally = lowest_hp_ally(actor, ctx)
     if not ally:
         return
-    amount = _eval_scaling(25.0, "intelligence*1.5", actor)
-    ctx.heal(actor, ally, amount)
+    ctx.heal(actor, ally, STRETCHER_HAND_HEAL.eval(actor))
+
+
+ABILITY_META["enemy_stretcher_hand.active"] = AbilityMeta(
+    name="Field Dressing", kind="active",
+    blurb="Heal the lowest-HP ally for {heal}.",
+    terms=(STRETCHER_HAND_HEAL,), tags=("heal",),
+)
 
 
 @register_passive("enemy_stretcher_hand.passive")
 def stretcher_hand_passive(owner: Any) -> EffectBundle:
     return EffectBundle()
+
+
+ABILITY_META["enemy_stretcher_hand.passive"] = AbilityMeta(
+    name="None", kind="passive", blurb="No passive effect.", tags=(),
+)
 
 
 # --- Signal Drummer (T1) --- aura: nearby allies +AS (periodic re-application)
@@ -142,6 +212,13 @@ def signal_drummer_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_signal_drummer.passive"] = AbilityMeta(
+    name="Marching Beat", kind="passive",
+    blurb="Every 3s, grants nearby allies +12 Attack Speed.",
+    tags=("buff", "aura"),
+)
+
+
 @register_active("enemy_signal_drummer.active")
 def signal_drummer_active(ctx: Any, actor: Any, targets: list) -> None:
     # Drum roll: buff all allies AS
@@ -152,6 +229,13 @@ def signal_drummer_active(ctx: Any, actor: Any, targets: list) -> None:
             "ability:enemy_signal_drummer",
             expires_at_tick=ctx.current_tick + 600,
         ))
+
+
+ABILITY_META["enemy_signal_drummer.active"] = AbilityMeta(
+    name="Drum Roll", kind="active",
+    blurb="Grant the whole team +15 Attack Speed for 6s.",
+    tags=("buff", "team"),
+)
 
 
 # --- Pikeman (T2) --- reduced damage from ≥2-hex attackers
@@ -174,29 +258,57 @@ def pikeman_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_pikeman.passive"] = AbilityMeta(
+    name="Brace", kind="passive",
+    blurb="Reduces damage from attackers 2+ hexes away by 25%.",
+    tags=("defense",),
+)
+
+
+PIKEMAN_DMG = ScalingTerm("damage", 35.0, "strength*1.5")
+
+
 @register_active("enemy_pikeman.active")
 def pikeman_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(35.0, "strength*1.5", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, PIKEMAN_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_pikeman.active"] = AbilityMeta(
+    name="Pike Thrust", kind="active",
+    blurb="Strike the primary target for {damage} physical damage.",
+    terms=(PIKEMAN_DMG,), tags=("physical",),
+)
 
 
 # --- Crossbow Levy (T2) --- armor-piercing bolt
+CROSSBOW_LEVY_DMG = ScalingTerm("damage", 40.0, "strength*1.8")
+
+
 @register_active("enemy_crossbow_levy.active")
 def crossbow_levy_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(40.0, "strength*1.8", actor)
     # Armor-piercing: apply penetration modifier temporarily
     ctx.apply_modifier(actor, Modifier(
         "penetration", "add", 15.0, Lifetime.TIMED,
         "ability:enemy_crossbow_levy.pen",
         expires_at_tick=ctx.current_tick + 50,
     ))
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, CROSSBOW_LEVY_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_crossbow_levy.active"] = AbilityMeta(
+    name="Piercing Bolt", kind="active",
+    blurb="Fire a bolt at the primary target for {damage} physical damage.",
+    terms=(CROSSBOW_LEVY_DMG,),
+    clauses=(Clause("Gains +15 Penetration for the hit."),), tags=("physical", "penetration"),
+)
 
 
 @register_passive("enemy_crossbow_levy.passive")
@@ -206,14 +318,33 @@ def crossbow_levy_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_crossbow_levy.passive"] = AbilityMeta(
+    name="Bodkin Tips", kind="passive",
+    blurb="Grants +5 Penetration for the whole battle.",
+    tags=("penetration",),
+)
+
+
 # --- Field Medic (T2) --- INT heal ally; self-regen
+FIELD_MEDIC_HEAL = ScalingTerm("heal", 30.0, "intelligence*2.0")
+
+
 @register_active("enemy_field_medic.active")
 def field_medic_active(ctx: Any, actor: Any, targets: list) -> None:
     ally = lowest_hp_ally(actor, ctx)
     if not ally:
         return
-    amount = _eval_scaling(30.0, "intelligence*2.0", actor)
-    ctx.heal(actor, ally, amount)
+    ctx.heal(actor, ally, FIELD_MEDIC_HEAL.eval(actor))
+
+
+ABILITY_META["enemy_field_medic.active"] = AbilityMeta(
+    name="Triage", kind="active",
+    blurb="Heal the lowest-HP ally for {heal}.",
+    terms=(FIELD_MEDIC_HEAL,), tags=("heal",),
+)
+
+
+_FIELD_MEDIC_REGEN_PCT = 0.02
 
 
 @register_passive("enemy_field_medic.passive")
@@ -223,29 +354,56 @@ def field_medic_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if ctx.current_tick - state["last_tick"] >= 300:
             state["last_tick"] = ctx.current_tick
-            ctx.heal(owner, owner, owner.max_hp * 0.02)
+            ctx.heal(owner, owner, owner.max_hp * _FIELD_MEDIC_REGEN_PCT)
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
     ])
 
 
+ABILITY_META["enemy_field_medic.passive"] = AbilityMeta(
+    name="Self-Care", kind="passive",
+    blurb="Regenerates health over time.",
+    clauses=(Clause(f"Heals {_FIELD_MEDIC_REGEN_PCT * 100:g}% of max HP every 3s."),),
+    tags=("heal",),
+)
+
+
 # --- Powder Sapper (T2) --- STR splash charge
+POWDER_SAPPER_DMG = ScalingTerm("damage", 50.0, "strength*1.8")
+_POWDER_SAPPER_SPLASH = 0.4
+
+
 @register_active("enemy_powder_sapper.active")
 def powder_sapper_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(50.0, "strength*1.8", actor)
+    amount = POWDER_SAPPER_DMG.eval(actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
     for n in neighbors_of(target, ctx):
         if ctx.is_enemy(n, actor):
-            ctx.deal_damage(actor, n, amount * 0.4, SourceTag.ABILITY, damage_type="physical")
+            ctx.deal_damage(actor, n, amount * _POWDER_SAPPER_SPLASH, SourceTag.ABILITY,
+                            damage_type="physical")
+
+
+ABILITY_META["enemy_powder_sapper.active"] = AbilityMeta(
+    name="Powder Charge", kind="active",
+    blurb="Detonate on the primary target for {damage} physical damage.",
+    terms=(POWDER_SAPPER_DMG,),
+    clauses=(Clause(f"Adjacent enemies take {int(_POWDER_SAPPER_SPLASH * 100)}% splash."),),
+    tags=("physical", "aoe"),
+)
 
 
 @register_passive("enemy_powder_sapper.passive")
 def powder_sapper_passive(owner: Any) -> EffectBundle:
     return EffectBundle()
+
+
+ABILITY_META["enemy_powder_sapper.passive"] = AbilityMeta(
+    name="None", kind="passive", blurb="No passive effect.", tags=(),
+)
 
 
 # --- Sergeant-at-Arms (T3) --- +STR per nearby ally; cleave
@@ -270,31 +428,67 @@ def sergeant_at_arms_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_sergeant_at_arms.passive"] = AbilityMeta(
+    name="Rally the Line", kind="passive",
+    blurb="Every 6s, gain +8 Strength per nearby ally for 6s.",
+    tags=("buff",),
+)
+
+
+SERGEANT_AT_ARMS_DMG = ScalingTerm("damage", 50.0, "strength*1.6")
+_SERGEANT_CLEAVE = 0.5
+
+
 @register_active("enemy_sergeant_at_arms.active")
 def sergeant_at_arms_active(ctx: Any, actor: Any, targets: list) -> None:
     # Cleave: STR damage to primary + adjacent enemies
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(50.0, "strength*1.6", actor)
+    amount = SERGEANT_AT_ARMS_DMG.eval(actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
     for n in neighbors_of(target, ctx):
         if ctx.is_enemy(n, actor):
-            ctx.deal_damage(actor, n, amount * 0.5, SourceTag.ABILITY, damage_type="physical")
+            ctx.deal_damage(actor, n, amount * _SERGEANT_CLEAVE, SourceTag.ABILITY,
+                            damage_type="physical")
+
+
+ABILITY_META["enemy_sergeant_at_arms.active"] = AbilityMeta(
+    name="Cleave", kind="active",
+    blurb="Cleave the primary target for {damage} physical damage.",
+    terms=(SERGEANT_AT_ARMS_DMG,),
+    clauses=(Clause(f"Adjacent enemies take {int(_SERGEANT_CLEAVE * 100)}% damage."),),
+    tags=("physical", "aoe"),
+)
 
 
 # --- Field Chaplain (T3) --- AOE heal around self
+FIELD_CHAPLAIN_HEAL = ScalingTerm("heal", 30.0, "intelligence*1.5")
+
+
 @register_active("enemy_field_chaplain.active")
 def field_chaplain_active(ctx: Any, actor: Any, targets: list) -> None:
     allies = allies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
-    amount = _eval_scaling(30.0, "intelligence*1.5", actor)
+    amount = FIELD_CHAPLAIN_HEAL.eval(actor)
     for ally in allies:
         ctx.heal(actor, ally, amount)
+
+
+ABILITY_META["enemy_field_chaplain.active"] = AbilityMeta(
+    name="Benediction", kind="active",
+    blurb="Heal all allies within 2 hexes for {heal} each.",
+    terms=(FIELD_CHAPLAIN_HEAL,), tags=("heal", "aoe"),
+)
 
 
 @register_passive("enemy_field_chaplain.passive")
 def field_chaplain_passive(owner: Any) -> EffectBundle:
     return EffectBundle()
+
+
+ABILITY_META["enemy_field_chaplain.passive"] = AbilityMeta(
+    name="None", kind="passive", blurb="No passive effect.", tags=(),
+)
 
 
 # --- Standard ****** --- aura: allies +STR/+INT (periodic re-application)
@@ -324,6 +518,13 @@ def standard_bearer_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_standard_bearer.passive"] = AbilityMeta(
+    name="Standard Aura", kind="passive",
+    blurb="Every 3s, grants nearby allies +8 Strength and +8 Intelligence.",
+    tags=("buff", "aura"),
+)
+
+
 @register_active("enemy_standard_bearer.active")
 def standard_bearer_active(ctx: Any, actor: Any, targets: list) -> None:
     # Rally: grant all allies STR/INT buff
@@ -334,6 +535,13 @@ def standard_bearer_active(ctx: Any, actor: Any, targets: list) -> None:
             "ability:enemy_standard_bearer",
             expires_at_tick=ctx.current_tick + 600,
         ))
+
+
+ABILITY_META["enemy_standard_bearer.active"] = AbilityMeta(
+    name="Rally", kind="active",
+    blurb="Grant the whole team +12 Strength for 6s.",
+    tags=("buff", "team"),
+)
 
 
 # --- Heavy Knight (T4) --- self-shield every 600 ticks
@@ -355,13 +563,30 @@ def heavy_knight_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_heavy_knight.passive"] = AbilityMeta(
+    name="Iron Vigil", kind="passive",
+    blurb="Every 6s, gain +40 Armor for 4s.",
+    tags=("defense",),
+)
+
+
+HEAVY_KNIGHT_DMG = ScalingTerm("damage", 50.0, "strength*1.6")
+
+
 @register_active("enemy_heavy_knight.active")
 def heavy_knight_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(50.0, "strength*1.6", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, HEAVY_KNIGHT_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_heavy_knight.active"] = AbilityMeta(
+    name="Greatsword", kind="active",
+    blurb="Strike the primary target for {damage} physical damage.",
+    terms=(HEAVY_KNIGHT_DMG,), tags=("physical",),
+)
 
 
 # --- Steam Engineer (T4) --- deploy turret (summon)
@@ -397,9 +622,22 @@ def steam_engineer_active(ctx: Any, actor: Any, targets: list) -> None:
     ctx.spawn(turret, actor.position_q + 1, actor.position_r)
 
 
+ABILITY_META["enemy_steam_engineer.active"] = AbilityMeta(
+    name="Deploy Turret", kind="active",
+    blurb="Deploy a turret that fights for 12s.",
+    clauses=(Clause("The turret has 25% of your max HP and attacks with 50% of your Intelligence."),),
+    tags=("summon",),
+)
+
+
 @register_passive("enemy_steam_engineer.passive")
 def steam_engineer_passive(owner: Any) -> EffectBundle:
     return EffectBundle()
+
+
+ABILITY_META["enemy_steam_engineer.passive"] = AbilityMeta(
+    name="None", kind="passive", blurb="No passive effect.", tags=(),
+)
 
 
 # --- Company Guard (T4) --- taunt (force attacker to target self via threat boost)
@@ -409,6 +647,13 @@ def company_guard_passive(owner: Any) -> EffectBundle:
     return EffectBundle(modifiers=[
         Modifier("threat", "add", 80.0, Lifetime.COMBAT, "passive:enemy_company_guard.taunt"),
     ])
+
+
+ABILITY_META["enemy_company_guard.passive"] = AbilityMeta(
+    name="Bodyguard", kind="passive",
+    blurb="High threat (+80) draws enemy attacks onto itself.",
+    tags=("taunt",),
+)
 
 
 @register_active("enemy_company_guard.active")
@@ -426,17 +671,37 @@ def company_guard_active(ctx: Any, actor: Any, targets: list) -> None:
     ))
 
 
+ABILITY_META["enemy_company_guard.active"] = AbilityMeta(
+    name="Shield Wall", kind="active",
+    blurb="Brace for 6s, gaining +40 Armor and +50 threat to draw fire.",
+    tags=("defense", "taunt"),
+)
+
+
 # --- Battlemage (T5) --- INT fireball splash
+BATTLEMAGE_DMG = ScalingTerm("damage", 70.0, "intelligence*2.0")
+_BATTLEMAGE_SPLASH = 0.5
+
+
 @register_active("enemy_battlemage.active")
 def battlemage_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(70.0, "intelligence*2.0", actor)
+    amount = BATTLEMAGE_DMG.eval(actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
     for n in neighbors_of(target, ctx):
         if ctx.is_enemy(n, actor):
-            ctx.deal_damage(actor, n, amount * 0.5, SourceTag.ABILITY)
+            ctx.deal_damage(actor, n, amount * _BATTLEMAGE_SPLASH, SourceTag.ABILITY)
+
+
+ABILITY_META["enemy_battlemage.active"] = AbilityMeta(
+    name="Fireball", kind="active",
+    blurb="Hurl a fireball at the primary target for {damage} magic damage.",
+    terms=(BATTLEMAGE_DMG,),
+    clauses=(Clause(f"Adjacent enemies take {int(_BATTLEMAGE_SPLASH * 100)}% splash."),),
+    tags=("magic", "aoe"),
+)
 
 
 @register_passive("enemy_battlemage.passive")
@@ -444,7 +709,15 @@ def battlemage_passive(owner: Any) -> EffectBundle:
     return EffectBundle()
 
 
+ABILITY_META["enemy_battlemage.passive"] = AbilityMeta(
+    name="None", kind="passive", blurb="No passive effect.", tags=(),
+)
+
+
 # --- Gunslinger (T5) --- autos ricochet to 2nd target
+GUNSLINGER_RICOCHET = ScalingTerm("bonus", 0.0, "strength*0.3")
+
+
 @register_passive("enemy_gunslinger.passive")
 def gunslinger_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
@@ -452,8 +725,8 @@ def gunslinger_passive(owner: Any) -> EffectBundle:
             return
         for n in neighbors_of(event.target, ctx):
             if ctx.is_enemy(n, owner) and n is not event.target:
-                bonus = owner.stat("strength") * 0.3
-                ctx.deal_damage(owner, n, bonus, SourceTag.BASIC_ATTACK, damage_type="physical")
+                ctx.deal_damage(owner, n, GUNSLINGER_RICOCHET.eval(owner),
+                                SourceTag.BASIC_ATTACK, damage_type="physical")
                 break
 
     return EffectBundle(hooks=[
@@ -461,13 +734,30 @@ def gunslinger_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_gunslinger.passive"] = AbilityMeta(
+    name="Ricochet", kind="passive",
+    blurb="Auto-attacks ricochet to a nearby enemy for {bonus} physical damage.",
+    terms=(GUNSLINGER_RICOCHET,), tags=("physical",),
+)
+
+
+GUNSLINGER_DMG = ScalingTerm("damage", 50.0, "strength*1.8")
+
+
 @register_active("enemy_gunslinger.active")
 def gunslinger_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(50.0, "strength*1.8", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, GUNSLINGER_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_gunslinger.active"] = AbilityMeta(
+    name="Deadeye Shot", kind="active",
+    blurb="Shoot the primary target for {damage} physical damage.",
+    terms=(GUNSLINGER_DMG,), tags=("physical",),
+)
 
 
 # --- Company Captain (T5) --- mark target → INT-scaled armor/resistance reduction
@@ -489,6 +779,14 @@ def company_captain_active(ctx: Any, actor: Any, targets: list) -> None:
         "ability:enemy_company_captain.mark",
         expires_at_tick=ctx.current_tick + 600,
     ))
+
+
+ABILITY_META["enemy_company_captain.active"] = AbilityMeta(
+    name="Mark Target", kind="active",
+    blurb="Mark the lowest-HP enemy, shredding its Armor and Resistance for 6s.",
+    clauses=(Clause("Reduces both by 8 + 15% of the Captain's Intelligence."),),
+    tags=("debuff",),
+)
 
 
 # --- Company Captain (T5) --- Focus Fire: mark hit targets; allies piling on
@@ -549,7 +847,18 @@ def company_captain_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_company_captain.passive"] = AbilityMeta(
+    name="Focus Fire", kind="passive",
+    blurb="The Captain's strikes mark enemies and raise their threat; allies hitting a marked target trigger bonus magic damage.",
+    clauses=(Clause("Bonus scales with the Captain's Intelligence and level."),),
+    tags=("magic", "debuff"),
+)
+
+
 # --- Steam Knight (T6) --- every 3rd hit reflect STR damage
+STEAM_KNIGHT_REFLECT = ScalingTerm("bonus", 0.0, "strength*0.4")
+
+
 @register_passive("enemy_steam_knight.passive")
 def steam_knight_passive(owner: Any) -> EffectBundle:
     state = {"count": 0}
@@ -561,13 +870,22 @@ def steam_knight_passive(owner: Any) -> EffectBundle:
             return  # never reflect a reflection — prevents mutual-reflect recursion
         state["count"] += 1
         if state["count"] % 3 == 0 and event.attacker.alive:
-            reflect = owner.stat("strength") * 0.4
-            ctx.deal_damage(owner, event.attacker, reflect, SourceTag.REFLECT,
-                          damage_type="physical")
+            ctx.deal_damage(owner, event.attacker, STEAM_KNIGHT_REFLECT.eval(owner),
+                          SourceTag.REFLECT, damage_type="physical")
 
     return EffectBundle(hooks=[
         Hook("on_damage_taken", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["enemy_steam_knight.passive"] = AbilityMeta(
+    name="Steam Vent", kind="passive",
+    blurb="Every 3rd hit taken reflects {bonus} physical damage to the attacker.",
+    terms=(STEAM_KNIGHT_REFLECT,), tags=("physical", "reflect"),
+)
+
+
+STEAM_KNIGHT_DMG = ScalingTerm("damage", 60.0, "strength*1.8")
 
 
 @register_active("enemy_steam_knight.active")
@@ -575,11 +893,21 @@ def steam_knight_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(60.0, "strength*1.8", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, STEAM_KNIGHT_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_steam_knight.active"] = AbilityMeta(
+    name="Piston Strike", kind="active",
+    blurb="Strike the primary target for {damage} physical damage.",
+    terms=(STEAM_KNIGHT_DMG,), tags=("physical",),
+)
 
 
 # --- Riflemaster (T6) --- +range; first auto huge
+RIFLEMASTER_FIRST = ScalingTerm("bonus", 0.0, "strength*1.2")
+
+
 @register_passive("enemy_riflemaster.passive")
 def riflemaster_passive(owner: Any) -> EffectBundle:
     state = {"first_hit": True}
@@ -589,9 +917,8 @@ def riflemaster_passive(owner: Any) -> EffectBundle:
             return
         if state["first_hit"]:
             state["first_hit"] = False
-            bonus = owner.stat("strength") * 1.2
-            ctx.deal_damage(owner, event.target, bonus, SourceTag.BASIC_ATTACK,
-                          damage_type="physical")
+            ctx.deal_damage(owner, event.target, RIFLEMASTER_FIRST.eval(owner),
+                          SourceTag.BASIC_ATTACK, damage_type="physical")
 
     return EffectBundle(
         modifiers=[Modifier("attack_range", "add", 1.0, Lifetime.COMBAT, "passive:enemy_riflemaster")],
@@ -599,23 +926,44 @@ def riflemaster_passive(owner: Any) -> EffectBundle:
     )
 
 
+ABILITY_META["enemy_riflemaster.passive"] = AbilityMeta(
+    name="Long Shot", kind="passive",
+    blurb="Grants +1 attack range; the first auto-attack deals {bonus} bonus physical damage.",
+    terms=(RIFLEMASTER_FIRST,), tags=("physical",),
+)
+
+
+RIFLEMASTER_DMG = ScalingTerm("damage", 70.0, "strength*2.0")
+
+
 @register_active("enemy_riflemaster.active")
 def riflemaster_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(70.0, "strength*2.0", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, RIFLEMASTER_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_riflemaster.active"] = AbilityMeta(
+    name="Aimed Shot", kind="active",
+    blurb="Take aim at the primary target for {damage} physical damage.",
+    terms=(RIFLEMASTER_DMG,), tags=("physical",),
+)
 
 
 # --- Inquisitor (T6) --- bonus damage vs casters (high INT targets)
+# Bonus uses max(STR, INT) — can't be a ScalingTerm expression, stays inline.
+_INQUISITOR_COEFF = 0.3
+
+
 @register_passive("enemy_inquisitor.passive")
 def inquisitor_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.attacker is not owner:
             return
         if event.target.stat("intelligence") > event.target.stat("strength"):
-            bonus = max(owner.stat("strength"), owner.stat("intelligence")) * 0.3
+            bonus = max(owner.stat("strength"), owner.stat("intelligence")) * _INQUISITOR_COEFF
             ctx.deal_damage(owner, event.target, bonus, SourceTag.BASIC_ATTACK)
 
     return EffectBundle(hooks=[
@@ -623,27 +971,57 @@ def inquisitor_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_inquisitor.passive"] = AbilityMeta(
+    name="Witch Hunter", kind="passive",
+    blurb="Auto-attacks against caster-type targets deal bonus magic damage.",
+    clauses=(Clause(f"Deals {_INQUISITOR_COEFF:g}× the higher of Strength or Intelligence."),),
+    tags=("magic",),
+)
+
+
+INQUISITOR_DMG = ScalingTerm("damage", 55.0, "strength*1.2+intelligence*1.2")
+
+
 @register_active("enemy_inquisitor.active")
 def inquisitor_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(55.0, "strength*1.2+intelligence*1.2", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    ctx.deal_damage(actor, target, INQUISITOR_DMG.eval(actor), SourceTag.ABILITY)
+
+
+ABILITY_META["enemy_inquisitor.active"] = AbilityMeta(
+    name="Smite", kind="active",
+    blurb="Smite the primary target for {damage} hybrid magic damage.",
+    terms=(INQUISITOR_DMG,), tags=("magic",),
+)
 
 
 # --- Hexblade Officer (T6) --- autos bonus INT; empower next autos after cast
+HEXBLADE_OFFICER_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.25")
+
+
 @register_passive("enemy_hexblade_officer.passive")
 def hexblade_officer_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.attacker is not owner:
             return
-        bonus = owner.stat("intelligence") * 0.25
-        ctx.deal_damage(owner, event.target, bonus, SourceTag.BASIC_ATTACK)
+        ctx.deal_damage(owner, event.target, HEXBLADE_OFFICER_BONUS.eval(owner),
+                        SourceTag.BASIC_ATTACK)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["enemy_hexblade_officer.passive"] = AbilityMeta(
+    name="Hexed Blade", kind="passive",
+    blurb="Auto-attacks deal {bonus} bonus magic damage.",
+    terms=(HEXBLADE_OFFICER_BONUS,), tags=("magic",),
+)
+
+
+HEXBLADE_OFFICER_DMG = ScalingTerm("damage", 60.0, "intelligence*1.8")
 
 
 @register_active("enemy_hexblade_officer.active")
@@ -651,8 +1029,7 @@ def hexblade_officer_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(60.0, "intelligence*1.8", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    ctx.deal_damage(actor, target, HEXBLADE_OFFICER_DMG.eval(actor), SourceTag.ABILITY)
     # Empower autos
     ctx.apply_modifier(actor, Modifier(
         "intelligence", "add", 20.0, Lifetime.TIMED,
@@ -661,14 +1038,33 @@ def hexblade_officer_active(ctx: Any, actor: Any, targets: list) -> None:
     ))
 
 
+ABILITY_META["enemy_hexblade_officer.active"] = AbilityMeta(
+    name="Hex Bolt", kind="active",
+    blurb="Blast the primary target for {damage} magic damage.",
+    terms=(HEXBLADE_OFFICER_DMG,),
+    clauses=(Clause("Gain +20 Intelligence for 6s, empowering autos."),), tags=("magic", "buff"),
+)
+
+
 # --- Lord Commander (T7) --- shockwave STR + stun
+LORD_COMMANDER_DMG = ScalingTerm("damage", 80.0, "strength*2.0")
+
+
 @register_active("enemy_lord_commander.active")
 def lord_commander_active(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(80.0, "strength*2.0", actor)
+    amount = LORD_COMMANDER_DMG.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY, damage_type="physical")
         ctx.apply_status(t, "stun", duration_ticks=150, source_id=actor.id)
+
+
+ABILITY_META["enemy_lord_commander.active"] = AbilityMeta(
+    name="Commanding Shockwave", kind="active",
+    blurb="Unleash a shockwave for {damage} physical damage to all enemies within 2 hexes.",
+    terms=(LORD_COMMANDER_DMG,),
+    clauses=(Clause("Stuns struck enemies for 1.5s."),), tags=("physical", "aoe", "stun"),
+)
 
 
 @register_passive("enemy_lord_commander.passive")
@@ -676,6 +1072,13 @@ def lord_commander_passive(owner: Any) -> EffectBundle:
     return EffectBundle(modifiers=[
         Modifier("strength", "add", 15.0, Lifetime.COMBAT, "passive:enemy_lord_commander"),
     ])
+
+
+ABILITY_META["enemy_lord_commander.passive"] = AbilityMeta(
+    name="Command Presence", kind="passive",
+    blurb="Grants +15 Strength for the whole battle.",
+    tags=("buff",),
+)
 
 
 # --- Iron Maiden (T7) --- +armor on hit; release AOE STR every 600 ticks
@@ -708,16 +1111,37 @@ def iron_maiden_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_iron_maiden.passive"] = AbilityMeta(
+    name="Spike Mantle", kind="passive",
+    blurb="Each hit taken grants +3 Armor for 6s and stores a spike.",
+    clauses=(Clause("Every 6s, releases stored spikes as AoE physical damage (50% of Strength + 5 per stack)."),),
+    tags=("defense", "physical", "aoe"),
+)
+
+
+IRON_MAIDEN_DMG = ScalingTerm("damage", 60.0, "strength*1.8")
+
+
 @register_active("enemy_iron_maiden.active")
 def iron_maiden_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(60.0, "strength*1.8", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, IRON_MAIDEN_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_iron_maiden.active"] = AbilityMeta(
+    name="Impale", kind="active",
+    blurb="Impale the primary target for {damage} physical damage.",
+    terms=(IRON_MAIDEN_DMG,), tags=("physical",),
+)
 
 
 # --- Cannoneer (T8) --- autos splash
+CANNONEER_SPLASH_BONUS = ScalingTerm("bonus", 0.0, "strength*0.2")
+
+
 @register_passive("enemy_cannoneer.passive")
 def cannoneer_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
@@ -725,12 +1149,23 @@ def cannoneer_passive(owner: Any) -> EffectBundle:
             return
         for n in neighbors_of(event.target, ctx):
             if ctx.is_enemy(n, owner) and n is not event.target:
-                bonus = owner.stat("strength") * 0.2
-                ctx.deal_damage(owner, n, bonus, SourceTag.BASIC_ATTACK, damage_type="physical")
+                ctx.deal_damage(owner, n, CANNONEER_SPLASH_BONUS.eval(owner),
+                                SourceTag.BASIC_ATTACK, damage_type="physical")
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["enemy_cannoneer.passive"] = AbilityMeta(
+    name="Scattershot", kind="passive",
+    blurb="Auto-attacks splash {bonus} physical damage to nearby enemies.",
+    terms=(CANNONEER_SPLASH_BONUS,), tags=("physical", "aoe"),
+)
+
+
+CANNONEER_DMG = ScalingTerm("damage", 80.0, "strength*2.2")
+_CANNONEER_SPLASH = 0.4
 
 
 @register_active("enemy_cannoneer.active")
@@ -738,23 +1173,49 @@ def cannoneer_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(80.0, "strength*2.2", actor)
+    amount = CANNONEER_DMG.eval(actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
     for n in neighbors_of(target, ctx):
         if ctx.is_enemy(n, actor):
-            ctx.deal_damage(actor, n, amount * 0.4, SourceTag.ABILITY, damage_type="physical")
+            ctx.deal_damage(actor, n, amount * _CANNONEER_SPLASH, SourceTag.ABILITY,
+                            damage_type="physical")
+
+
+ABILITY_META["enemy_cannoneer.active"] = AbilityMeta(
+    name="Cannon Blast", kind="active",
+    blurb="Fire a cannonball at the primary target for {damage} physical damage.",
+    terms=(CANNONEER_DMG,),
+    clauses=(Clause(f"Adjacent enemies take {int(_CANNONEER_SPLASH * 100)}% splash."),),
+    tags=("physical", "aoe"),
+)
 
 
 # --- Spymaster (T8) --- stealth → INT execute (simulated via massive first hit)
+SPYMASTER_DMG = ScalingTerm("damage", 100.0, "intelligence*2.5")
+_SPYMASTER_EXECUTE_MULT = 1.6
+
+
 @register_active("enemy_spymaster.active")
 def spymaster_active(ctx: Any, actor: Any, targets: list) -> None:
     target = lowest_hp_enemy(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(100.0, "intelligence*2.5", actor)
+    amount = SPYMASTER_DMG.eval(actor)
     if target.hp_pct < 0.3:
-        amount *= 1.6
+        amount *= _SPYMASTER_EXECUTE_MULT
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+
+
+ABILITY_META["enemy_spymaster.active"] = AbilityMeta(
+    name="Assassinate", kind="active",
+    blurb="Strike the lowest-HP enemy for {damage} magic damage.",
+    terms=(SPYMASTER_DMG,),
+    clauses=(Clause(f"Deals +{int((_SPYMASTER_EXECUTE_MULT - 1) * 100)}% to targets below 30% HP."),),
+    tags=("magic", "execute"),
+)
+
+
+SPYMASTER_FIRST = ScalingTerm("bonus", 0.0, "intelligence*1.0")
 
 
 @register_passive("enemy_spymaster.passive")
@@ -766,12 +1227,18 @@ def spymaster_passive(owner: Any) -> EffectBundle:
             return
         if state["first_hit"]:
             state["first_hit"] = False
-            bonus = owner.stat("intelligence") * 1.0
-            ctx.deal_damage(owner, event.target, bonus, SourceTag.ABILITY)
+            ctx.deal_damage(owner, event.target, SPYMASTER_FIRST.eval(owner), SourceTag.ABILITY)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["enemy_spymaster.passive"] = AbilityMeta(
+    name="Opening Strike", kind="passive",
+    blurb="The first auto-attack deals {bonus} bonus magic damage.",
+    terms=(SPYMASTER_FIRST,), tags=("magic",),
+)
 
 
 # --- Hierarch (T8) --- shield whole enemy line (allies get INT-scaled armor buff)
@@ -794,6 +1261,14 @@ def hierarch_active(ctx: Any, actor: Any, targets: list) -> None:
         ))
 
 
+ABILITY_META["enemy_hierarch.active"] = AbilityMeta(
+    name="Sanctuary", kind="active",
+    blurb="Shield the whole team for 5s.",
+    clauses=(Clause("Grants Armor (20 + 40% of Intelligence) and Resistance (10 + 20% of Intelligence)."),),
+    tags=("defense", "team"),
+)
+
+
 # On-death: Last Rites — grant all surviving allies an INT-scaled barrier
 # (temp absorb pool, not armor) lasting 600·level ticks. Rewards killing the
 # Hierarch last; killing it early denies the team-wide barrier.
@@ -814,14 +1289,25 @@ def hierarch_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_hierarch.passive"] = AbilityMeta(
+    name="Last Rites", kind="passive",
+    blurb="On death, grants all surviving allies a barrier.",
+    clauses=(Clause("Barrier = 50 + 2× Intelligence, lasting 6s per level."),),
+    tags=("defense", "team"),
+)
+
+
 # --- Arcanist (T9) --- multi-bounce chain lightning with improved scaling
+ARCANIST_DMG = ScalingTerm("damage", 100.0, "intelligence*2.8")
+
+
 @register_active("enemy_arcanist.active")
 def arcanist_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
     # Buffed scaling for T9 mage damage dealer
-    amount = _eval_scaling(100.0, "intelligence*2.8", actor)
+    amount = ARCANIST_DMG.eval(actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
     chain_targets = []
     for n in neighbors_of(target, ctx):
@@ -832,21 +1318,43 @@ def arcanist_active(ctx: Any, actor: Any, targets: list) -> None:
         ctx.deal_damage(actor, ct, max(0, chain_dmg), SourceTag.ABILITY)
 
 
+ABILITY_META["enemy_arcanist.active"] = AbilityMeta(
+    name="Chain Lightning", kind="active",
+    blurb="Strike the primary target for {damage} magic damage.",
+    terms=(ARCANIST_DMG,),
+    clauses=(Clause("Bounces to up to 3 nearby enemies at 60%, 45%, then 30% damage."),),
+    tags=("magic", "aoe"),
+)
+
+
+ARCANIST_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.35")
+
+
 @register_passive("enemy_arcanist.passive")
 def arcanist_passive(owner: Any) -> EffectBundle:
     # On-attack INT-scaling bonus magic damage — adds consistent DPS for damage-focused mage
     def hook(ctx: Any, event: Any) -> None:
         if event.attacker is not owner:
             return
-        bonus = owner.stat("intelligence") * 0.35
-        ctx.deal_damage(owner, event.target, bonus, SourceTag.ABILITY)
+        ctx.deal_damage(owner, event.target, ARCANIST_BONUS.eval(owner), SourceTag.ABILITY)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
     ])
 
 
+ABILITY_META["enemy_arcanist.passive"] = AbilityMeta(
+    name="Arcane Surge", kind="passive",
+    blurb="Auto-attacks deal {bonus} bonus magic damage.",
+    terms=(ARCANIST_BONUS,), tags=("magic",),
+)
+
+
 # --- Archmagus Imperator (T9) --- STR/INT autos; both-scaling nuke
+ARCHMAGUS_INT_BONUS = ScalingTerm("magic", 0.0, "intelligence*0.35")
+ARCHMAGUS_STR_BONUS = ScalingTerm("physical", 0.0, "strength*0.3")
+
+
 @register_passive("enemy_archmagus_imperator.passive")
 def archmagus_imperator_passive(owner: Any) -> EffectBundle:
     state = {"count": 0}
@@ -856,16 +1364,25 @@ def archmagus_imperator_passive(owner: Any) -> EffectBundle:
             return
         state["count"] += 1
         if state["count"] % 2 == 0:
-            bonus = owner.stat("intelligence") * 0.35
-            ctx.deal_damage(owner, event.target, bonus, SourceTag.BASIC_ATTACK)
+            ctx.deal_damage(owner, event.target, ARCHMAGUS_INT_BONUS.eval(owner),
+                            SourceTag.BASIC_ATTACK)
         else:
-            bonus = owner.stat("strength") * 0.3
-            ctx.deal_damage(owner, event.target, bonus, SourceTag.BASIC_ATTACK,
-                          damage_type="physical")
+            ctx.deal_damage(owner, event.target, ARCHMAGUS_STR_BONUS.eval(owner),
+                          SourceTag.BASIC_ATTACK, damage_type="physical")
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["enemy_archmagus_imperator.passive"] = AbilityMeta(
+    name="Spellblade", kind="passive",
+    blurb="Auto-attacks alternate {physical} physical (odd) and {magic} magic (even) bonus damage.",
+    terms=(ARCHMAGUS_STR_BONUS, ARCHMAGUS_INT_BONUS), tags=("physical", "magic"),
+)
+
+
+ARCHMAGUS_DMG = ScalingTerm("damage", 80.0, "strength*1.5+intelligence*1.5")
 
 
 @register_active("enemy_archmagus_imperator.active")
@@ -873,8 +1390,14 @@ def archmagus_imperator_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(80.0, "strength*1.5+intelligence*1.5", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    ctx.deal_damage(actor, target, ARCHMAGUS_DMG.eval(actor), SourceTag.ABILITY)
+
+
+ABILITY_META["enemy_archmagus_imperator.active"] = AbilityMeta(
+    name="Imperial Nuke", kind="active",
+    blurb="Blast the primary target for {damage} hybrid magic damage.",
+    terms=(ARCHMAGUS_DMG,), tags=("magic",),
+)
 
 
 # --- Grand Marshal (T10) --- auto-attacker with ramping STR
@@ -895,13 +1418,30 @@ def grand_marshal_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_grand_marshal.passive"] = AbilityMeta(
+    name="War Momentum", kind="passive",
+    blurb="Every 6s, permanently gain +20 Strength.",
+    tags=("scaling", "buff"),
+)
+
+
+GRAND_MARSHAL_DMG = ScalingTerm("damage", 90.0, "strength*2.5")
+
+
 @register_active("enemy_grand_marshal.active")
 def grand_marshal_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(90.0, "strength*2.5", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, GRAND_MARSHAL_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_grand_marshal.active"] = AbilityMeta(
+    name="Decapitate", kind="active",
+    blurb="Strike the primary target for {damage} physical damage.",
+    terms=(GRAND_MARSHAL_DMG,), tags=("physical",),
+)
 
 
 # ===========================================================================
@@ -910,6 +1450,9 @@ def grand_marshal_active(ctx: Any, actor: Any, targets: list) -> None:
 
 
 # --- Blight Lurker (T3, Rain) --- regen when un-attacked (periodic heal)
+_BLIGHT_LURKER_REGEN_PCT = 0.03
+
+
 @register_passive("enemy_blight_lurker.passive")
 def blight_lurker_passive(owner: Any) -> EffectBundle:
     state = {"last_hit_tick": 0, "last_heal_tick": 0}
@@ -923,7 +1466,7 @@ def blight_lurker_passive(owner: Any) -> EffectBundle:
         if ctx.current_tick - state["last_heal_tick"] >= 200:
             state["last_heal_tick"] = ctx.current_tick
             if ctx.current_tick - state["last_hit_tick"] >= 300:
-                ctx.heal(owner, owner, owner.max_hp * 0.03)
+                ctx.heal(owner, owner, owner.max_hp * _BLIGHT_LURKER_REGEN_PCT)
 
     return EffectBundle(hooks=[
         Hook("on_damage_taken", on_hit, scope=HookScope.PER_HIT),
@@ -931,28 +1474,62 @@ def blight_lurker_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_blight_lurker.passive"] = AbilityMeta(
+    name="Lurking Regen", kind="passive",
+    blurb="Regenerates while it avoids being hit.",
+    clauses=(Clause("After 3s without taking damage, heals 3% of max HP every 2s."),),
+    tags=("heal",),
+)
+
+
+BLIGHT_LURKER_DMG = ScalingTerm("damage", 40.0, "strength*1.5")
+
+
 @register_active("enemy_blight_lurker.active")
 def blight_lurker_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(40.0, "strength*1.5", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, BLIGHT_LURKER_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_blight_lurker.active"] = AbilityMeta(
+    name="Blighted Claw", kind="active",
+    blurb="Claw the primary target for {damage} physical damage.",
+    terms=(BLIGHT_LURKER_DMG,), tags=("physical",),
+)
 
 
 # --- Drowned Siren (T4, Rain) --- AOE water → silence
+DROWNED_SIREN_DMG = ScalingTerm("damage", 50.0, "intelligence*1.8")
+
+
 @register_active("enemy_drowned_siren.active")
 def drowned_siren_active(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(50.0, "intelligence*1.8", actor)
+    amount = DROWNED_SIREN_DMG.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY)
         ctx.apply_status(t, "silence", duration_ticks=200, source_id=actor.id)
 
 
+ABILITY_META["enemy_drowned_siren.active"] = AbilityMeta(
+    name="Drowning Song", kind="active",
+    blurb="Flood all enemies within 2 hexes for {damage} magic damage each.",
+    terms=(DROWNED_SIREN_DMG,),
+    clauses=(Clause("Silences struck enemies for 2s."),), tags=("magic", "aoe", "silence"),
+)
+
+
 @register_passive("enemy_drowned_siren.passive")
 def drowned_siren_passive(owner: Any) -> EffectBundle:
     return EffectBundle()
+
+
+ABILITY_META["enemy_drowned_siren.passive"] = AbilityMeta(
+    name="None", kind="passive", blurb="No passive effect.", tags=(),
+)
 
 
 # --- Brineblight Berserker (T5, Rain) --- +AS as HP falls
@@ -973,13 +1550,30 @@ def brineblight_berserker_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_brineblight_berserker.passive"] = AbilityMeta(
+    name="Bloodfrenzy", kind="passive",
+    blurb="Below 50% HP, each hit taken grants +15 Attack Speed for 3s.",
+    tags=("buff",),
+)
+
+
+BRINEBLIGHT_BERSERKER_DMG = ScalingTerm("damage", 60.0, "strength*2.0")
+
+
 @register_active("enemy_brineblight_berserker.active")
 def brineblight_berserker_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(60.0, "strength*2.0", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, BRINEBLIGHT_BERSERKER_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_brineblight_berserker.active"] = AbilityMeta(
+    name="Frenzied Blow", kind="active",
+    blurb="Strike the primary target for {damage} physical damage.",
+    terms=(BRINEBLIGHT_BERSERKER_DMG,), tags=("physical",),
+)
 
 
 # --- Dredge-Hulk (T7, Rain) --- trail slowing puddles (aura slow)
@@ -999,17 +1593,38 @@ def dredge_hulk_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_dredge_hulk.passive"] = AbilityMeta(
+    name="Slurry Trail", kind="passive",
+    blurb="Every 3s, slows all enemies within 2 hexes for 3.5s.",
+    tags=("slow", "aura"),
+)
+
+
+DREDGE_HULK_DMG = ScalingTerm("damage", 60.0, "strength*1.5+intelligence*1.0")
+
+
 @register_active("enemy_dredge_hulk.active")
 def dredge_hulk_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(60.0, "strength*1.5+intelligence*1.0", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, DREDGE_HULK_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
     ctx.apply_status(target, "slow", duration_ticks=400, stacks=2, source_id=actor.id)
 
 
+ABILITY_META["enemy_dredge_hulk.active"] = AbilityMeta(
+    name="Crushing Sweep", kind="active",
+    blurb="Sweep the primary target for {damage} physical damage.",
+    terms=(DREDGE_HULK_DMG,),
+    clauses=(Clause("Applies 2 stacks of slow for 4s."),), tags=("physical", "slow"),
+)
+
+
 # --- Maw of the Drowned (T9, Rain) --- empowered autos after cast; vortex pull
+MAW_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.5")
+
+
 @register_passive("enemy_maw_of_the_drowned.passive")
 def maw_of_the_drowned_passive(owner: Any) -> EffectBundle:
     state = {"empowered": 0}
@@ -1024,8 +1639,7 @@ def maw_of_the_drowned_passive(owner: Any) -> EffectBundle:
             return
         if state["empowered"] > 0:
             state["empowered"] -= 1
-            bonus = owner.stat("intelligence") * 0.5
-            ctx.deal_damage(owner, event.target, bonus, SourceTag.ABILITY)
+            ctx.deal_damage(owner, event.target, MAW_BONUS.eval(owner), SourceTag.ABILITY)
 
     return EffectBundle(hooks=[
         Hook("on_cast_complete", on_cast, scope=HookScope.PER_HIT),
@@ -1033,14 +1647,33 @@ def maw_of_the_drowned_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_maw_of_the_drowned.passive"] = AbilityMeta(
+    name="Devouring Tide", kind="passive",
+    blurb="After casting, the next 3 auto-attacks each deal {bonus} bonus magic damage.",
+    terms=(MAW_BONUS,), tags=("magic",),
+)
+
+
+MAW_DMG = ScalingTerm("damage", 80.0, "intelligence*2.0")
+_MAW_AOE = 0.6
+
+
 @register_active("enemy_maw_of_the_drowned.active")
 def maw_of_the_drowned_active(ctx: Any, actor: Any, targets: list) -> None:
     # Vortex: damage + root
-    amount = _eval_scaling(80.0, "intelligence*2.0", actor)
+    amount = MAW_DMG.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
-        ctx.deal_damage(actor, t, amount * 0.6, SourceTag.ABILITY)
+        ctx.deal_damage(actor, t, amount * _MAW_AOE, SourceTag.ABILITY)
         ctx.apply_status(t, "root", duration_ticks=200, source_id=actor.id)
+
+
+ABILITY_META["enemy_maw_of_the_drowned.active"] = AbilityMeta(
+    name="Vortex", kind="active",
+    blurb=f"Pull all enemies within 3 hexes, each taking {int(_MAW_AOE * 100)}% of {{damage}} magic damage.",
+    terms=(MAW_DMG,),
+    clauses=(Clause("Roots struck enemies for 2s."),), tags=("magic", "aoe", "root"),
+)
 
 
 # --- Flood Tyrant (T10, Rain) --- apex variant
@@ -1061,12 +1694,30 @@ def flood_tyrant_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_flood_tyrant.passive"] = AbilityMeta(
+    name="Rising Tide", kind="passive",
+    blurb="Every 6s, permanently gain +15 Intelligence.",
+    tags=("scaling", "buff"),
+)
+
+
+FLOOD_TYRANT_DMG = ScalingTerm("damage", 90.0, "intelligence*2.2")
+_FLOOD_TYRANT_AOE = 0.6
+
+
 @register_active("enemy_flood_tyrant.active")
 def flood_tyrant_active(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(90.0, "intelligence*2.2", actor)
+    amount = FLOOD_TYRANT_DMG.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
-        ctx.deal_damage(actor, t, amount * 0.6, SourceTag.ABILITY)
+        ctx.deal_damage(actor, t, amount * _FLOOD_TYRANT_AOE, SourceTag.ABILITY)
+
+
+ABILITY_META["enemy_flood_tyrant.active"] = AbilityMeta(
+    name="Deluge", kind="active",
+    blurb=f"Flood all enemies within 3 hexes for {int(_FLOOD_TYRANT_AOE * 100)}% of {{damage}} magic damage.",
+    terms=(FLOOD_TYRANT_DMG,), tags=("magic", "aoe"),
+)
 
 
 # ===========================================================================
@@ -1087,14 +1738,32 @@ def iron_collared_hound_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_iron_collared_hound.passive"] = AbilityMeta(
+    name="Hamstring", kind="passive",
+    blurb="Auto-attacks apply 1 stack of slow for 1.5s.",
+    tags=("slow",),
+)
+
+
+IRON_COLLARED_HOUND_DMG = ScalingTerm("damage", 40.0, "strength*1.6")
+
+
 @register_active("enemy_iron_collared_hound.active")
 def iron_collared_hound_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(40.0, "strength*1.6", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, IRON_COLLARED_HOUND_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
     ctx.apply_status(target, "slow", duration_ticks=250, stacks=2, source_id=actor.id)
+
+
+ABILITY_META["enemy_iron_collared_hound.active"] = AbilityMeta(
+    name="Savage Bite", kind="active",
+    blurb="Bite the primary target for {damage} physical damage.",
+    terms=(IRON_COLLARED_HOUND_DMG,),
+    clauses=(Clause("Applies 2 stacks of slow for 2.5s."),), tags=("physical", "slow"),
+)
 
 
 # --- Cold-Iron Yeti (T4, Snow) --- reduce auto dmg; knockback charge (stun)
@@ -1110,35 +1779,72 @@ def cold_iron_yeti_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_cold_iron_yeti.passive"] = AbilityMeta(
+    name="Frosthide", kind="passive",
+    blurb="Reduces all incoming damage by 15%.",
+    tags=("defense",),
+)
+
+
+COLD_IRON_YETI_DMG = ScalingTerm("damage", 60.0, "strength*1.8")
+
+
 @register_active("enemy_cold_iron_yeti.active")
 def cold_iron_yeti_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(60.0, "strength*1.8", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, COLD_IRON_YETI_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
     ctx.apply_status(target, "stun", duration_ticks=150, source_id=actor.id)
 
 
+ABILITY_META["enemy_cold_iron_yeti.active"] = AbilityMeta(
+    name="Knockback Charge", kind="active",
+    blurb="Charge the primary target for {damage} physical damage.",
+    terms=(COLD_IRON_YETI_DMG,),
+    clauses=(Clause("Stuns for 1.5s."),), tags=("physical", "stun"),
+)
+
+
 # --- Avalanche Engine (T5, Snow) --- ice-boulder line + slow
+AVALANCHE_ENGINE_DMG = ScalingTerm("damage", 65.0, "strength*1.8")
+_AVALANCHE_LINE = 0.5
+
+
 @register_active("enemy_avalanche_engine.active")
 def avalanche_engine_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(65.0, "strength*1.8", actor)
+    amount = AVALANCHE_ENGINE_DMG.eval(actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
     ctx.apply_status(target, "slow", duration_ticks=300, stacks=2, source_id=actor.id)
     for n in neighbors_of(target, ctx):
         if ctx.is_enemy(n, actor):
-            ctx.deal_damage(actor, n, amount * 0.5, SourceTag.ABILITY, damage_type="physical")
+            ctx.deal_damage(actor, n, amount * _AVALANCHE_LINE, SourceTag.ABILITY,
+                            damage_type="physical")
             ctx.apply_status(n, "slow", duration_ticks=200, stacks=1, source_id=actor.id)
             break
+
+
+ABILITY_META["enemy_avalanche_engine.active"] = AbilityMeta(
+    name="Ice Boulder", kind="active",
+    blurb="Roll a boulder into the primary target for {damage} physical damage.",
+    terms=(AVALANCHE_ENGINE_DMG,),
+    clauses=(Clause(f"Slows the target (2 stacks); one enemy in the line takes {int(_AVALANCHE_LINE * 100)}% and is slowed."),),
+    tags=("physical", "aoe", "slow"),
+)
 
 
 @register_passive("enemy_avalanche_engine.passive")
 def avalanche_engine_passive(owner: Any) -> EffectBundle:
     return EffectBundle()
+
+
+ABILITY_META["enemy_avalanche_engine.passive"] = AbilityMeta(
+    name="None", kind="passive", blurb="No passive effect.", tags=(),
+)
 
 
 # --- Glacier Goliath (T7, Snow) --- +ARM/+RES per 600 ticks; invuln via massive def
@@ -1163,6 +1869,13 @@ def glacier_goliath_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_glacier_goliath.passive"] = AbilityMeta(
+    name="Glacial Growth", kind="passive",
+    blurb="Every 6s, permanently gain +15 Armor and +15 Resistance.",
+    tags=("defense", "scaling"),
+)
+
+
 @register_active("enemy_glacier_goliath.active")
 def glacier_goliath_active(ctx: Any, actor: Any, targets: list) -> None:
     # Ice invuln: massive resistance buff + freeze enemies
@@ -1176,6 +1889,13 @@ def glacier_goliath_active(ctx: Any, actor: Any, targets: list) -> None:
         "ability:enemy_glacier_goliath.invuln",
         expires_at_tick=ctx.current_tick + 300,
     ))
+
+
+ABILITY_META["enemy_glacier_goliath.active"] = AbilityMeta(
+    name="Ice Carapace", kind="active",
+    blurb="Encase in ice for 3s, gaining +100 Armor and +100 Resistance.",
+    tags=("defense", "buff"),
+)
 
 
 # --- Riven Frost-Wyrm (T9, Snow) --- freeze on auto; INT+STR cone
@@ -1195,16 +1915,36 @@ def riven_frost_wyrm_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_riven_frost_wyrm.passive"] = AbilityMeta(
+    name="Rimebite", kind="passive",
+    blurb="Every 4th auto-attack freezes the target for 1.5s.",
+    tags=("freeze",),
+)
+
+
+RIVEN_FROST_WYRM_DMG = ScalingTerm("damage", 80.0, "strength*1.3+intelligence*1.3")
+_RIVEN_CONE = 0.5
+
+
 @register_active("enemy_riven_frost_wyrm.active")
 def riven_frost_wyrm_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(80.0, "strength*1.3+intelligence*1.3", actor)
+    amount = RIVEN_FROST_WYRM_DMG.eval(actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
     for n in neighbors_of(target, ctx):
         if ctx.is_enemy(n, actor):
-            ctx.deal_damage(actor, n, amount * 0.5, SourceTag.ABILITY)
+            ctx.deal_damage(actor, n, amount * _RIVEN_CONE, SourceTag.ABILITY)
+
+
+ABILITY_META["enemy_riven_frost_wyrm.active"] = AbilityMeta(
+    name="Frost Cone", kind="active",
+    blurb="Breathe frost on the primary target for {damage} hybrid magic damage.",
+    terms=(RIVEN_FROST_WYRM_DMG,),
+    clauses=(Clause(f"Adjacent enemies take {int(_RIVEN_CONE * 100)}% damage."),),
+    tags=("magic", "aoe"),
+)
 
 
 # --- Frost Sovereign (T10, Snow)
@@ -1225,13 +1965,32 @@ def frost_sovereign_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_frost_sovereign.passive"] = AbilityMeta(
+    name="Endless Winter", kind="passive",
+    blurb="Every 6s, permanently gain +15 Intelligence.",
+    tags=("scaling", "buff"),
+)
+
+
+FROST_SOVEREIGN_DMG = ScalingTerm("damage", 90.0, "strength*1.2+intelligence*1.5")
+_FROST_SOVEREIGN_AOE = 0.6
+
+
 @register_active("enemy_frost_sovereign.active")
 def frost_sovereign_active(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(90.0, "strength*1.2+intelligence*1.5", actor)
+    amount = FROST_SOVEREIGN_DMG.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
-        ctx.deal_damage(actor, t, amount * 0.6, SourceTag.ABILITY)
+        ctx.deal_damage(actor, t, amount * _FROST_SOVEREIGN_AOE, SourceTag.ABILITY)
         ctx.apply_status(t, "frozen", duration_ticks=150, source_id=actor.id)
+
+
+ABILITY_META["enemy_frost_sovereign.active"] = AbilityMeta(
+    name="Absolute Zero", kind="active",
+    blurb=f"Freeze all enemies within 3 hexes for {int(_FROST_SOVEREIGN_AOE * 100)}% of {{damage}} magic damage.",
+    terms=(FROST_SOVEREIGN_DMG,),
+    clauses=(Clause("Freezes struck enemies for 1.5s."),), tags=("magic", "aoe", "freeze"),
+)
 
 
 # ===========================================================================
@@ -1256,13 +2015,30 @@ def quarry_crawler_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_quarry_crawler.passive"] = AbilityMeta(
+    name="Hardening Shell", kind="passive",
+    blurb="Each hit taken grants +8 Armor for 4s.",
+    tags=("defense",),
+)
+
+
+QUARRY_CRAWLER_DMG = ScalingTerm("damage", 40.0, "strength*1.6")
+
+
 @register_active("enemy_quarry_crawler.active")
 def quarry_crawler_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(40.0, "strength*1.6", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, QUARRY_CRAWLER_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_quarry_crawler.active"] = AbilityMeta(
+    name="Pincer", kind="active",
+    blurb="Strike the primary target for {damage} physical damage.",
+    terms=(QUARRY_CRAWLER_DMG,), tags=("physical",),
+)
 
 
 # --- Slag Sentinel (T4, Cloudy) --- CC-immune (high resistance); root target
@@ -1274,24 +2050,51 @@ def slag_sentinel_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_slag_sentinel.passive"] = AbilityMeta(
+    name="Slag Plating", kind="passive",
+    blurb="Grants +30 Resistance and +20 Armor for the whole battle.",
+    tags=("defense",),
+)
+
+
+SLAG_SENTINEL_DMG = ScalingTerm("damage", 45.0, "strength*1.5")
+
+
 @register_active("enemy_slag_sentinel.active")
 def slag_sentinel_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(45.0, "strength*1.5", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, SLAG_SENTINEL_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
     ctx.apply_status(target, "root", duration_ticks=250, source_id=actor.id)
 
 
+ABILITY_META["enemy_slag_sentinel.active"] = AbilityMeta(
+    name="Molten Grasp", kind="active",
+    blurb="Strike the primary target for {damage} physical damage.",
+    terms=(SLAG_SENTINEL_DMG,),
+    clauses=(Clause("Roots for 2.5s."),), tags=("physical", "root"),
+)
+
+
 # --- Shaftmaw (T5, Cloudy) --- blink INT burst
+SHAFTMAW_DMG = ScalingTerm("damage", 70.0, "intelligence*2.0")
+
+
 @register_active("enemy_shaftmaw.active")
 def shaftmaw_active(ctx: Any, actor: Any, targets: list) -> None:
     target = lowest_hp_enemy(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(70.0, "intelligence*2.0", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    ctx.deal_damage(actor, target, SHAFTMAW_DMG.eval(actor), SourceTag.ABILITY)
+
+
+ABILITY_META["enemy_shaftmaw.active"] = AbilityMeta(
+    name="Blink Maul", kind="active",
+    blurb="Blink to the lowest-HP enemy for {damage} magic damage.",
+    terms=(SHAFTMAW_DMG,), tags=("magic",),
+)
 
 
 @register_passive("enemy_shaftmaw.passive")
@@ -1299,7 +2102,15 @@ def shaftmaw_passive(owner: Any) -> EffectBundle:
     return EffectBundle()
 
 
+ABILITY_META["enemy_shaftmaw.passive"] = AbilityMeta(
+    name="None", kind="passive", blurb="No passive effect.", tags=(),
+)
+
+
 # --- Reaver of the Reach (T7, Cloudy) --- every 4th auto free cast; cleave
+_REAVER_CLEAVE_COEFF = 0.6
+
+
 @register_passive("enemy_reaver_of_the_reach.passive")
 def reaver_of_the_reach_passive(owner: Any) -> EffectBundle:
     state = {"count": 0}
@@ -1309,8 +2120,8 @@ def reaver_of_the_reach_passive(owner: Any) -> EffectBundle:
             return
         state["count"] += 1
         if state["count"] % 4 == 0:
-            # Free cleave
-            amount = max(owner.stat("strength"), owner.stat("intelligence")) * 0.6
+            # Free cleave — scales on higher of STR/INT (max() can't be a term)
+            amount = max(owner.stat("strength"), owner.stat("intelligence")) * _REAVER_CLEAVE_COEFF
             for n in neighbors_of(event.target, ctx):
                 if ctx.is_enemy(n, owner):
                     ctx.deal_damage(owner, n, amount, SourceTag.ABILITY, damage_type="physical")
@@ -1321,13 +2132,31 @@ def reaver_of_the_reach_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_reaver_of_the_reach.passive"] = AbilityMeta(
+    name="Reaving Sweep", kind="passive",
+    blurb="Every 4th auto-attack cleaves a nearby enemy.",
+    clauses=(Clause(f"Deals {_REAVER_CLEAVE_COEFF:g}× the higher of Strength or Intelligence."),),
+    tags=("physical",),
+)
+
+
+REAVER_OF_THE_REACH_DMG = ScalingTerm("damage", 70.0, "strength*1.5+intelligence*1.0")
+
+
 @register_active("enemy_reaver_of_the_reach.active")
 def reaver_of_the_reach_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(70.0, "strength*1.5+intelligence*1.0", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, REAVER_OF_THE_REACH_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_reaver_of_the_reach.active"] = AbilityMeta(
+    name="Reaver Strike", kind="active",
+    blurb="Strike the primary target for {damage} hybrid physical damage.",
+    terms=(REAVER_OF_THE_REACH_DMG,), tags=("physical",),
+)
 
 
 # --- Quarried Behemoth (T9, Cloudy) --- +STR per auto absorbed; ground-slam
@@ -1346,13 +2175,31 @@ def quarried_behemoth_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_quarried_behemoth.passive"] = AbilityMeta(
+    name="Absorb Stone", kind="passive",
+    blurb="Each hit taken permanently grants +5 Strength.",
+    tags=("scaling", "buff"),
+)
+
+
+QUARRIED_BEHEMOTH_DMG = ScalingTerm("damage", 80.0, "strength*2.2")
+
+
 @register_active("enemy_quarried_behemoth.active")
 def quarried_behemoth_active(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(80.0, "strength*2.2", actor)
+    amount = QUARRIED_BEHEMOTH_DMG.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY, damage_type="physical")
         ctx.apply_status(t, "stun", duration_ticks=100, source_id=actor.id)
+
+
+ABILITY_META["enemy_quarried_behemoth.active"] = AbilityMeta(
+    name="Ground Slam", kind="active",
+    blurb="Slam for {damage} physical damage to all enemies within 2 hexes.",
+    terms=(QUARRIED_BEHEMOTH_DMG,),
+    clauses=(Clause("Stuns struck enemies for 1s."),), tags=("physical", "aoe", "stun"),
+)
 
 
 # --- Stone Warden (T10, Cloudy)
@@ -1373,12 +2220,29 @@ def stone_warden_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_stone_warden.passive"] = AbilityMeta(
+    name="Bulwark", kind="passive",
+    blurb="Every 6s, permanently gain +20 Armor.",
+    tags=("defense", "scaling"),
+)
+
+
+STONE_WARDEN_DMG = ScalingTerm("damage", 80.0, "strength*2.0")
+
+
 @register_active("enemy_stone_warden.active")
 def stone_warden_active(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(80.0, "strength*2.0", actor)
+    amount = STONE_WARDEN_DMG.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY, damage_type="physical")
+
+
+ABILITY_META["enemy_stone_warden.active"] = AbilityMeta(
+    name="Seismic Slam", kind="active",
+    blurb="Slam for {damage} physical damage to all enemies within 2 hexes.",
+    terms=(STONE_WARDEN_DMG,), tags=("physical", "aoe"),
+)
 
 
 # ===========================================================================
@@ -1387,6 +2251,9 @@ def stone_warden_active(ctx: Any, actor: Any, targets: list) -> None:
 
 
 # --- Hollowed Wisp (T3, Mist) --- start with bonus INT; phase hit
+HOLLOWED_WISP_FIRST = ScalingTerm("bonus", 0.0, "intelligence*0.8")
+
+
 @register_passive("enemy_hollowed_wisp.passive")
 def hollowed_wisp_passive(owner: Any) -> EffectBundle:
     state = {"first_hit": True}
@@ -1396,12 +2263,21 @@ def hollowed_wisp_passive(owner: Any) -> EffectBundle:
             return
         if state["first_hit"]:
             state["first_hit"] = False
-            bonus = owner.stat("intelligence") * 0.8
-            ctx.deal_damage(owner, event.target, bonus, SourceTag.ABILITY)
+            ctx.deal_damage(owner, event.target, HOLLOWED_WISP_FIRST.eval(owner), SourceTag.ABILITY)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
     ])
+
+
+ABILITY_META["enemy_hollowed_wisp.passive"] = AbilityMeta(
+    name="Phantom Strike", kind="passive",
+    blurb="The first auto-attack deals {bonus} bonus magic damage.",
+    terms=(HOLLOWED_WISP_FIRST,), tags=("magic",),
+)
+
+
+HOLLOWED_WISP_DMG = ScalingTerm("damage", 50.0, "intelligence*1.8")
 
 
 @register_active("enemy_hollowed_wisp.active")
@@ -1409,11 +2285,20 @@ def hollowed_wisp_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(50.0, "intelligence*1.8", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    ctx.deal_damage(actor, target, HOLLOWED_WISP_DMG.eval(actor), SourceTag.ABILITY)
+
+
+ABILITY_META["enemy_hollowed_wisp.active"] = AbilityMeta(
+    name="Spirit Bolt", kind="active",
+    blurb="Strike the primary target for {damage} magic damage.",
+    terms=(HOLLOWED_WISP_DMG,), tags=("magic",),
+)
 
 
 # --- Drained Stalker (T4, Mist) --- line-pierce autos
+DRAINED_STALKER_PIERCE = ScalingTerm("bonus", 0.0, "intelligence*0.25")
+
+
 @register_passive("enemy_drained_stalker.passive")
 def drained_stalker_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
@@ -1421,8 +2306,7 @@ def drained_stalker_passive(owner: Any) -> EffectBundle:
             return
         for n in neighbors_of(event.target, ctx):
             if ctx.is_enemy(n, owner) and n is not event.target:
-                bonus = owner.stat("intelligence") * 0.25
-                ctx.deal_damage(owner, n, bonus, SourceTag.BASIC_ATTACK)
+                ctx.deal_damage(owner, n, DRAINED_STALKER_PIERCE.eval(owner), SourceTag.BASIC_ATTACK)
                 break
 
     return EffectBundle(hooks=[
@@ -1430,23 +2314,49 @@ def drained_stalker_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_drained_stalker.passive"] = AbilityMeta(
+    name="Soul Pierce", kind="passive",
+    blurb="Auto-attacks pierce to one enemy behind the target for {bonus} magic damage.",
+    terms=(DRAINED_STALKER_PIERCE,), tags=("magic",),
+)
+
+
+DRAINED_STALKER_DMG = ScalingTerm("damage", 50.0, "intelligence*1.8")
+
+
 @register_active("enemy_drained_stalker.active")
 def drained_stalker_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(50.0, "intelligence*1.8", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    ctx.deal_damage(actor, target, DRAINED_STALKER_DMG.eval(actor), SourceTag.ABILITY)
+
+
+ABILITY_META["enemy_drained_stalker.active"] = AbilityMeta(
+    name="Drain Bolt", kind="active",
+    blurb="Strike the primary target for {damage} magic damage.",
+    terms=(DRAINED_STALKER_DMG,), tags=("magic",),
+)
 
 
 # --- Caged Banshee (T5, Mist) --- AOE fear
+CAGED_BANSHEE_DMG = ScalingTerm("damage", 30.0, "intelligence*1.0")
+
+
 @register_active("enemy_caged_banshee.active")
 def caged_banshee_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
         ctx.apply_status(t, "fear", duration_ticks=200, source_id=actor.id)
-        amount = _eval_scaling(30.0, "intelligence*1.0", actor)
-        ctx.deal_damage(actor, t, amount, SourceTag.ABILITY)
+        ctx.deal_damage(actor, t, CAGED_BANSHEE_DMG.eval(actor), SourceTag.ABILITY)
+
+
+ABILITY_META["enemy_caged_banshee.active"] = AbilityMeta(
+    name="Wailing Scream", kind="active",
+    blurb="Scream at all enemies within 3 hexes for {damage} magic damage each.",
+    terms=(CAGED_BANSHEE_DMG,),
+    clauses=(Clause("Fears struck enemies for 2s."),), tags=("magic", "aoe", "fear"),
+)
 
 
 @register_passive("enemy_caged_banshee.passive")
@@ -1454,16 +2364,34 @@ def caged_banshee_passive(owner: Any) -> EffectBundle:
     return EffectBundle()
 
 
+ABILITY_META["enemy_caged_banshee.passive"] = AbilityMeta(
+    name="None", kind="passive", blurb="No passive effect.", tags=(),
+)
+
+
 # --- Shroud-Killer (T7, Mist) --- backline dash execute; mana on kill
+SHROUD_KILLER_DMG = ScalingTerm("damage", 90.0, "strength*2.5")
+_SHROUD_KILLER_EXECUTE_MULT = 1.5
+
+
 @register_active("enemy_shroud_killer.active")
 def shroud_killer_active(ctx: Any, actor: Any, targets: list) -> None:
     target = lowest_hp_enemy(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(90.0, "strength*2.5", actor)
+    amount = SHROUD_KILLER_DMG.eval(actor)
     if target.hp_pct < 0.3:
-        amount *= 1.5
+        amount *= _SHROUD_KILLER_EXECUTE_MULT
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+
+
+ABILITY_META["enemy_shroud_killer.active"] = AbilityMeta(
+    name="Shadow Execute", kind="active",
+    blurb="Dash to the lowest-HP enemy for {damage} physical damage.",
+    terms=(SHROUD_KILLER_DMG,),
+    clauses=(Clause(f"Deals +{int((_SHROUD_KILLER_EXECUTE_MULT - 1) * 100)}% to targets below 30% HP."),),
+    tags=("physical", "execute"),
+)
 
 
 @register_passive("enemy_shroud_killer.passive")
@@ -1478,7 +2406,17 @@ def shroud_killer_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_shroud_killer.passive"] = AbilityMeta(
+    name="Bloodthirst", kind="passive",
+    blurb="Killing an enemy refunds 50% of the ability's mana cost.",
+    tags=("mana",),
+)
+
+
 # --- Sundered Lord (T9, Mist) --- STR/INT autos; AOE haunt
+SUNDERED_LORD_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.3")
+
+
 @register_passive("enemy_sundered_lord.passive")
 def sundered_lord_passive(owner: Any) -> EffectBundle:
     state = {"count": 0}
@@ -1488,21 +2426,40 @@ def sundered_lord_passive(owner: Any) -> EffectBundle:
             return
         state["count"] += 1
         if state["count"] % 2 == 0:
-            bonus = owner.stat("intelligence") * 0.3
-            ctx.deal_damage(owner, event.target, bonus, SourceTag.BASIC_ATTACK)
+            ctx.deal_damage(owner, event.target, SUNDERED_LORD_BONUS.eval(owner),
+                            SourceTag.BASIC_ATTACK)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
     ])
 
 
+ABILITY_META["enemy_sundered_lord.passive"] = AbilityMeta(
+    name="Haunting Blade", kind="passive",
+    blurb="Every 2nd auto-attack deals {bonus} bonus magic damage.",
+    terms=(SUNDERED_LORD_BONUS,), tags=("magic",),
+)
+
+
+SUNDERED_LORD_DMG = ScalingTerm("damage", 70.0, "strength*1.2+intelligence*1.2")
+_SUNDERED_LORD_AOE = 0.6
+
+
 @register_active("enemy_sundered_lord.active")
 def sundered_lord_active(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(70.0, "strength*1.2+intelligence*1.2", actor)
+    amount = SUNDERED_LORD_DMG.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
-        ctx.deal_damage(actor, t, amount * 0.6, SourceTag.ABILITY)
+        ctx.deal_damage(actor, t, amount * _SUNDERED_LORD_AOE, SourceTag.ABILITY)
         ctx.apply_status(t, "fear", duration_ticks=150, source_id=actor.id)
+
+
+ABILITY_META["enemy_sundered_lord.active"] = AbilityMeta(
+    name="Haunt", kind="active",
+    blurb=f"Haunt all enemies within 3 hexes for {int(_SUNDERED_LORD_AOE * 100)}% of {{damage}} magic damage.",
+    terms=(SUNDERED_LORD_DMG,),
+    clauses=(Clause("Fears struck enemies for 1.5s."),), tags=("magic", "aoe", "fear"),
+)
 
 
 # --- Veil Lord (T10, Mist)
@@ -1523,12 +2480,30 @@ def veil_lord_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_veil_lord.passive"] = AbilityMeta(
+    name="Veiled Ascendance", kind="passive",
+    blurb="Every 6s, permanently gain +15 Intelligence.",
+    tags=("scaling", "buff"),
+)
+
+
+VEIL_LORD_DMG = ScalingTerm("damage", 80.0, "intelligence*2.0")
+_VEIL_LORD_AOE = 0.6
+
+
 @register_active("enemy_veil_lord.active")
 def veil_lord_active(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(80.0, "intelligence*2.0", actor)
+    amount = VEIL_LORD_DMG.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
-        ctx.deal_damage(actor, t, amount * 0.6, SourceTag.ABILITY)
+        ctx.deal_damage(actor, t, amount * _VEIL_LORD_AOE, SourceTag.ABILITY)
+
+
+ABILITY_META["enemy_veil_lord.active"] = AbilityMeta(
+    name="Shroud Burst", kind="active",
+    blurb=f"Blast all enemies within 3 hexes for {int(_VEIL_LORD_AOE * 100)}% of {{damage}} magic damage.",
+    terms=(VEIL_LORD_DMG,), tags=("magic", "aoe"),
+)
 
 
 # ===========================================================================
@@ -1555,16 +2530,36 @@ def capture_rig_wolf_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_capture_rig_wolf.passive"] = AbilityMeta(
+    name="Static Burst", kind="passive",
+    blurb="Every 6s, gain +30 Attack Speed for 3s.",
+    tags=("buff",),
+)
+
+
+CAPTURE_RIG_WOLF_DMG = ScalingTerm("damage", 45.0, "strength*1.6")
+
+
 @register_active("enemy_capture_rig_wolf.active")
 def capture_rig_wolf_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(45.0, "strength*1.6", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, CAPTURE_RIG_WOLF_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
+
+
+ABILITY_META["enemy_capture_rig_wolf.active"] = AbilityMeta(
+    name="Shock Bite", kind="active",
+    blurb="Bite the primary target for {damage} physical damage.",
+    terms=(CAPTURE_RIG_WOLF_DMG,), tags=("physical",),
+)
 
 
 # --- Stormhawk (T4, Thunder) --- autos chain to 2nd
+STORMHAWK_CHAIN = ScalingTerm("bonus", 0.0, "intelligence*0.3")
+
+
 @register_passive("enemy_stormhawk.passive")
 def stormhawk_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
@@ -1572,8 +2567,7 @@ def stormhawk_passive(owner: Any) -> EffectBundle:
             return
         for n in neighbors_of(event.target, ctx):
             if ctx.is_enemy(n, owner) and n is not event.target:
-                bonus = owner.stat("intelligence") * 0.3
-                ctx.deal_damage(owner, n, bonus, SourceTag.BASIC_ATTACK)
+                ctx.deal_damage(owner, n, STORMHAWK_CHAIN.eval(owner), SourceTag.BASIC_ATTACK)
                 break
 
     return EffectBundle(hooks=[
@@ -1581,22 +2575,41 @@ def stormhawk_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_stormhawk.passive"] = AbilityMeta(
+    name="Arc Strike", kind="passive",
+    blurb="Auto-attacks arc to a nearby enemy for {bonus} magic damage.",
+    terms=(STORMHAWK_CHAIN,), tags=("magic",),
+)
+
+
+STORMHAWK_DMG = ScalingTerm("damage", 50.0, "intelligence*1.8")
+
+
 @register_active("enemy_stormhawk.active")
 def stormhawk_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(50.0, "intelligence*1.8", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    ctx.deal_damage(actor, target, STORMHAWK_DMG.eval(actor), SourceTag.ABILITY)
+
+
+ABILITY_META["enemy_stormhawk.active"] = AbilityMeta(
+    name="Lightning Dive", kind="active",
+    blurb="Dive the primary target for {damage} magic damage.",
+    terms=(STORMHAWK_DMG,), tags=("magic",),
+)
 
 
 # --- Voltaic Diviner (T5, Thunder) --- chain lightning
+VOLTAIC_DIVINER_DMG = ScalingTerm("damage", 65.0, "intelligence*2.0")
+
+
 @register_active("enemy_voltaic_diviner.active")
 def voltaic_diviner_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(65.0, "intelligence*2.0", actor)
+    amount = VOLTAIC_DIVINER_DMG.eval(actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
     chain_targets = []
     for n in neighbors_of(target, ctx):
@@ -1607,9 +2620,23 @@ def voltaic_diviner_active(ctx: Any, actor: Any, targets: list) -> None:
         ctx.deal_damage(actor, ct, max(0, chain_dmg), SourceTag.ABILITY)
 
 
+ABILITY_META["enemy_voltaic_diviner.active"] = AbilityMeta(
+    name="Chain Lightning", kind="active",
+    blurb="Strike the primary target for {damage} magic damage.",
+    terms=(VOLTAIC_DIVINER_DMG,),
+    clauses=(Clause("Bounces to up to 2 nearby enemies at 50% then 35% damage."),),
+    tags=("magic", "aoe"),
+)
+
+
 @register_passive("enemy_voltaic_diviner.passive")
 def voltaic_diviner_passive(owner: Any) -> EffectBundle:
     return EffectBundle()
+
+
+ABILITY_META["enemy_voltaic_diviner.passive"] = AbilityMeta(
+    name="None", kind="passive", blurb="No passive effect.", tags=(),
+)
 
 
 # --- Thunder Bull (T7, Thunder) --- build static; discharge stun
@@ -1627,18 +2654,39 @@ def thunder_bull_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_thunder_bull.passive"] = AbilityMeta(
+    name="Static Build", kind="passive",
+    blurb="Builds static charge with each auto-attack landed.",
+    tags=("tempo",),
+)
+
+
+THUNDER_BULL_DMG = ScalingTerm("damage", 70.0, "strength*2.0")
+
+
 @register_active("enemy_thunder_bull.active")
 def thunder_bull_active(ctx: Any, actor: Any, targets: list) -> None:
     # Discharge: STR damage + stun
     target = primary_target(actor, ctx)
     if not target:
         return
-    amount = _eval_scaling(70.0, "strength*2.0", actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
+    ctx.deal_damage(actor, target, THUNDER_BULL_DMG.eval(actor), SourceTag.ABILITY,
+                    damage_type="physical")
     ctx.apply_status(target, "stun", duration_ticks=180, source_id=actor.id)
 
 
+ABILITY_META["enemy_thunder_bull.active"] = AbilityMeta(
+    name="Discharge", kind="active",
+    blurb="Gore the primary target for {damage} physical damage.",
+    terms=(THUNDER_BULL_DMG,),
+    clauses=(Clause("Stuns for 1.8s."),), tags=("physical", "stun"),
+)
+
+
 # --- Caged Storm-Drake (T9, Thunder) --- mana-full autos chain; dive AOE
+CAGED_STORM_DRAKE_CHAIN = ScalingTerm("bonus", 0.0, "intelligence*0.4")
+
+
 @register_passive("enemy_caged_storm_drake.passive")
 def caged_storm_drake_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
@@ -1649,8 +2697,8 @@ def caged_storm_drake_passive(owner: Any) -> EffectBundle:
             if slot.current_mana >= slot.cost * 0.8:
                 for n in neighbors_of(event.target, ctx):
                     if ctx.is_enemy(n, owner) and n is not event.target:
-                        bonus = owner.stat("intelligence") * 0.4
-                        ctx.deal_damage(owner, n, bonus, SourceTag.BASIC_ATTACK)
+                        ctx.deal_damage(owner, n, CAGED_STORM_DRAKE_CHAIN.eval(owner),
+                                        SourceTag.BASIC_ATTACK)
                         break
 
     return EffectBundle(hooks=[
@@ -1658,13 +2706,31 @@ def caged_storm_drake_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_caged_storm_drake.passive"] = AbilityMeta(
+    name="Storm Conduit", kind="passive",
+    blurb="While mana is near-full, auto-attacks chain to a nearby enemy for {bonus} magic damage.",
+    terms=(CAGED_STORM_DRAKE_CHAIN,), tags=("magic",),
+)
+
+
+CAGED_STORM_DRAKE_DMG = ScalingTerm("damage", 80.0, "strength*1.3+intelligence*1.3")
+
+
 @register_active("enemy_caged_storm_drake.active")
 def caged_storm_drake_active(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(80.0, "strength*1.3+intelligence*1.3", actor)
+    amount = CAGED_STORM_DRAKE_DMG.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY)
         ctx.apply_status(t, "stun", duration_ticks=100, source_id=actor.id)
+
+
+ABILITY_META["enemy_caged_storm_drake.active"] = AbilityMeta(
+    name="Storm Dive", kind="active",
+    blurb="Dive for {damage} hybrid magic damage to all enemies within 2 hexes.",
+    terms=(CAGED_STORM_DRAKE_DMG,),
+    clauses=(Clause("Stuns struck enemies for 1s."),), tags=("magic", "aoe", "stun"),
+)
 
 
 # --- Storm Tyrant (T10, Thunder)
@@ -1689,9 +2755,27 @@ def storm_tyrant_passive(owner: Any) -> EffectBundle:
     ])
 
 
+ABILITY_META["enemy_storm_tyrant.passive"] = AbilityMeta(
+    name="Gathering Storm", kind="passive",
+    blurb="Every 6s, permanently gain +12 Strength and +12 Intelligence.",
+    tags=("scaling", "buff"),
+)
+
+
+STORM_TYRANT_DMG = ScalingTerm("damage", 90.0, "strength*1.3+intelligence*1.3")
+_STORM_TYRANT_AOE = 0.6
+
+
 @register_active("enemy_storm_tyrant.active")
 def storm_tyrant_active(ctx: Any, actor: Any, targets: list) -> None:
-    amount = _eval_scaling(90.0, "strength*1.3+intelligence*1.3", actor)
+    amount = STORM_TYRANT_DMG.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
-        ctx.deal_damage(actor, t, amount * 0.6, SourceTag.ABILITY)
+        ctx.deal_damage(actor, t, amount * _STORM_TYRANT_AOE, SourceTag.ABILITY)
+
+
+ABILITY_META["enemy_storm_tyrant.active"] = AbilityMeta(
+    name="Tempest", kind="active",
+    blurb=f"Unleash a tempest on all enemies within 3 hexes for {int(_STORM_TYRANT_AOE * 100)}% of {{damage}} magic damage.",
+    terms=(STORM_TYRANT_DMG,), tags=("magic", "aoe"),
+)

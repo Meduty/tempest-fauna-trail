@@ -169,3 +169,63 @@ def _eval_scaling(base: float, scaling: str, actor: Any) -> float:
                 pass
 
     return total
+
+
+# ---------------------------------------------------------------------------
+# Ability description metadata (T.34) — parallel registry to ABILITY/PASSIVE
+# ---------------------------------------------------------------------------
+#
+# These types are the *presentation* layer over the ability handlers. A
+# ``ScalingTerm`` is the single home of a handler's headline damage/heal number
+# (source-of-truth B, V.38): the handler reads it via ``term.eval(actor)`` and
+# the tooltip renders the same object, so the two can never drift. ``eval``
+# delegates to the same ``_eval_scaling`` the engine has always used, so moving
+# a literal into a term is byte-identical to the inline call (V.2/V.14).
+
+
+@dataclass(frozen=True)
+class ScalingTerm:
+    """A single damage/heal/shield outlet: ``base [+ stat*coeff ...]``.
+
+    ``label`` is the ``{token}`` it fills in an ``AbilityMeta.blurb``.
+    ``eval(source)`` reuses the engine's ``_eval_scaling`` so the rendered
+    number equals the number the handler computes.
+    """
+
+    label: str          # "damage" | "heal" | "shield" | "bonus" ...
+    base: float         # the literal the handler used (e.g. 40.0)
+    scaling: str = ""   # _eval_scaling expr, e.g. "intelligence*2.5"
+    note: str = ""      # optional ("per hit", "to each enemy in radius 2")
+
+    def eval(self, source: Any) -> float:
+        return _eval_scaling(self.base, self.scaling, source)
+
+
+@dataclass(frozen=True)
+class Clause:
+    """A static/conditional prose line — e.g. ``+50% vs targets below 30% HP``."""
+
+    text: str
+
+
+@dataclass(frozen=True)
+class AbilityMeta:
+    """Presentation metadata for one roster ability id.
+
+    ``blurb`` is prose with ``{label}`` slots filled by the matching
+    ``ScalingTerm`` rounded against a render source. ``clauses`` are extra
+    sentences (conditionals, cadences, status durations). ``tags`` are
+    UI-iconography labels owned by this layer (not the trait/role vocab).
+    """
+
+    name: str
+    kind: str                                   # "active" | "passive"
+    blurb: str
+    terms: tuple[ScalingTerm, ...] = ()
+    clauses: tuple[Clause, ...] = ()
+    tags: tuple[str, ...] = ()
+
+
+# id -> AbilityMeta, keyed by the same roster ability-id strings as the
+# ABILITY_REGISTRY / PASSIVE_REGISTRY dicts.
+ABILITY_META: dict[str, AbilityMeta] = {}

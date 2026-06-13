@@ -158,9 +158,9 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.32 | Role system revamp — add 6th axis `intent` (damage/hybrid/utility); composer full-rework (every stat generated incl. `threat`/`move_speed`, dead per-unit `threat`/`move_speed`/`ability_cost` Def fields removed, `ability_cost`→constant); axis renames (`primary_stat`→`stat`, `range_`→`reach`, durability/speed middles→`hybrid`); replace flat `_ROLE_FROM_AXES` with 8-role `classify_role` + deterministic `role_code` (hybrid-stripped tag-set); `stat_overrides` scope=all-stats + key-validated + ordering after-tier-before-level; intent stat-bias under ±10% HP·DPS drift guard | `game/content.py`, `game/models.py`, `game/encounter.py`, `game/formation.py`, `tools/simulation/matchup.py`, `tools/playtest/`, `ui/`, `docs/design/tasks/t32_role_intent_revamp_plan.md`, `docs/design/tasks/t32_role_matrix.txt` | T.5, T.18, T.19, T.24, T.25 | M | ✅ Done |
 | T.33a | Stat-scaling 3-class + #39 baseline parity + **fair total order** (fixes B.14, resolves #39, absorbs D.18): `PRIMARY`/`SECONDARY`/`FLAT` tuples + `PRIMARY_EXPONENT=0.5`/`SECONDARY_EXPONENT=0.0857`, `stat_multiplier(...,exponent)`; route the 4 scale loops + `_assert_budget` through tuples; **all speeds int**; new int `milli_AS=round(exact×1000)` (threaded level+weather); baseline parity (V.35): `mana_regen` 10→100, `move_speed` 90→100, `ability_cost` 36k→300k (~20% mage buff), boss costs ×10; new `Piece.load_order` (seeded side-independent permutation), rename `speed_tiebreaker→formation_index`, sort key `(-AS_int, -milli_AS, champion_id, load_order, kind)`; re-baseline snapshots/sims/mega7 | `game/scaling.py`, `game/content.py`, `game/encounter.py`, `game/piece.py`, `game/loadout.py`, `game/combat/engine.py`, `game/formation.py`, `game/bosses/data.py`, `game/abilities/bosses.py`, `tools/playtest/inspect.py`, `tests/game/test_scaling.py`, `docs/design/tasks/t33_speed_scaling_plan.md` | T.18, T.32 | L | ✅ Done |
 | T.33b | Speed-axis diversity 3→7 (rides T.33a): expand `_SPEED` to 7 levels (+4 token names, wider `attack_speed`/`move_speed`/`primary_stat`/`resistance` spread); reassign 120-piece roster across them; `classify_role` unaffected (ignores `speed`); regen `t32_role_matrix.txt` 648→**1512** combos + update `test_role_intent.py`; amend V.32 cardinality | `game/content.py`, `docs/design/tasks/t32_role_matrix.txt`, `tests/game/test_role_intent.py` | T.33a | M | ✅ Done |
-| T.34a | Ability description/tooltip metadata — champions — `AbilityMeta(name/blurb/terms[ScalingTerm]/clauses[Clause]/tags)` parallel registry; pure `render(meta, source)`→`RenderedAbility(name,text,formula,tags)` serving base-`Champion` (roster) + live-`Piece` (combat) via structural `.stat()`; `Champion.stat()` base-sheet adapter; source-of-truth B (champion handlers read headline numbers from terms, byte-identical sims); CI coverage guard + golden formula snapshot | `game/ability_text.py`, `game/registries.py`, `game/models.py`, `game/abilities/champions.py`, `tests/game/test_ability_text.py`, `docs/design/tasks/t34_ability_descriptions_plan.md` | T.20, T.30, T.32 | M | 📋 Plan |
-| T.34b | Ability description/tooltip metadata — enemies — 120 enemy `AbilityMeta`s + `Enemy.stat()` parity; enemy handlers read terms (byte-identical sims); V.38 guard + snapshot extended to all 240 champ+enemy ids | `game/abilities/enemies.py`, `game/models.py`, `tests/game/test_ability_text.py` | T.34a | M | 📋 Plan |
-| T.34c | Ability description/tooltip metadata — bosses — 36 boss `AbilityMeta`s (6 bosses × `phase1`/`phase2` active+passive + `phase1_phase_hook` + `on_death_hook`); boss handlers read terms (byte-identical sims); rendered against compiled boss `Piece`; V.38 guard + snapshot extended to all 276 roster ids | `game/abilities/bosses.py`, `tests/game/test_ability_text.py` | T.34a | M | 📋 Plan |
+| T.34a | Ability description/tooltip metadata — champions — `AbilityMeta(name/blurb/terms[ScalingTerm]/clauses[Clause]/tags)` parallel registry; pure `render(meta, source)`→`RenderedAbility(name,text,formula,tags)` serving base-`Champion` (roster) + live-`Piece` (combat) via structural `.stat()`; `Champion.stat()` base-sheet adapter; source-of-truth B (champion handlers read headline numbers from terms, byte-identical sims); CI coverage guard + golden formula snapshot | `game/ability_text.py`, `game/registries.py`, `game/models.py`, `game/abilities/champions.py`, `tests/game/test_ability_text.py`, `docs/design/tasks/t34_ability_descriptions_plan.md` | T.20, T.30, T.32 | M | ✅ Done |
+| T.34b | Ability description/tooltip metadata — enemies — 120 enemy `AbilityMeta`s + `Enemy.stat()` parity; enemy handlers read terms (byte-identical sims); V.38 guard + snapshot extended to all 240 champ+enemy ids | `game/abilities/enemies.py`, `game/models.py`, `tests/game/test_ability_text.py` | T.34a | M | ✅ Done |
+| T.34c | Ability description/tooltip metadata — bosses — 36 boss `AbilityMeta`s (6 bosses × `phase1`/`phase2` active+passive + `phase1_phase_hook` + `on_death_hook`); boss handlers read terms (byte-identical sims); rendered against compiled boss `Piece`; V.38 guard + snapshot extended to all 276 roster ids | `game/abilities/bosses.py`, `tests/game/test_ability_text.py` | T.34a | M | ✅ Done |
 
 **Size**: S = <1h, M = 1-3h, L = 3-6h
 
@@ -449,6 +449,21 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   dropped. **Guard:** V.41 +
   `tests/game/test_traits.py::test_trait_rungs_are_cumulative_for_mechanics`.
   Touches `game/traits/{kinships,callings,mechanics}.py`.
+- B.17 [2026-06-13] Boss map-effect (environmental) damage crashed `deal_damage`
+  ([#40](https://github.com/Meduty/tempest-fauna-trail/issues/40)). **Cause:**
+  hazard tiles / map effects deal attacker-less damage (`map_effects.py:258`
+  `deal_damage(None, piece, …)`), but `context.deal_damage` dereferenced
+  `attacker.affinity` (`:221`) and `attacker.ability_can_crit` (`:229`), and the
+  recorder dereferenced `event.attacker.id` (`recorder.py:156`) — all unguarded,
+  while sibling sites already handle `None` (`kill(killer=None)`,
+  `recorder.py:162`). Latent: no test drove a boss fight through
+  `resolve_boss_combat` with an active hazard map effect. Caught while adding a
+  boss determinism harness for T.34. **Fix (T.34):** treat attacker-less damage
+  as environmental — skip affinity clash + crit when `attacker is None`; count it
+  as *taken* but attributed to no dealer. Behavior-preserving for all
+  attacker-bearing paths (sims byte-identical). **Guard:**
+  `tests/game/test_environmental_damage.py`. Touches `game/combat/context.py`,
+  `game/combat/recorder.py`.
 
 ## D. Systems Yet To Be Determined
 
