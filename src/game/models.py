@@ -120,6 +120,8 @@ class Champion:
     crit_chance: float = 0.0
     penetration: int = 0
     penetration_pct: float = 0.0
+    # Persistent equipped items — up to 3 item IDs (V.23, T.29a).
+    items: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         _require_range(self.tier, "Champion tier", 1, 10)
@@ -148,6 +150,12 @@ class Champion:
             raise ValueError(
                 f"Champion intent must be one of damage/hybrid/utility, got {self.intent!r}."
             )
+
+        self.items = list(self.items)
+        if len(self.items) > 3:
+            raise ValueError(f"Champion may equip at most 3 items, got {len(self.items)}.")
+        if any(not isinstance(i, str) or not i for i in self.items):
+            raise ValueError("Champion item IDs must be non-empty strings.")
 
     def stat(self, stat_name: str) -> float:
         """Base level-1 sheet value for ability-text rendering (T.34, V.38).
@@ -185,6 +193,7 @@ class Champion:
             "crit_chance": self.crit_chance,
             "penetration": self.penetration,
             "penetration_pct": self.penetration_pct,
+            "items": list(self.items),
         }
 
     @classmethod
@@ -215,6 +224,7 @@ class Champion:
             crit_chance=payload.get("crit_chance", 0.0),
             penetration=payload.get("penetration", 0),
             penetration_pct=payload.get("penetration_pct", 0.0),
+            items=list(payload.get("items", [])),
         )
 
 
