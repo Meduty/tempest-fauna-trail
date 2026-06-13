@@ -217,14 +217,16 @@ class CombatContext:
         # are unaffected by design (damage-only). Deterministic call-stack flag.
         raw *= getattr(self, "_echo_potency", 1.0)
 
-        # Weather affinity clash modifier
-        raw *= damage_modifier(attacker.affinity, target.affinity)
+        # Weather affinity clash modifier. Environmental damage (hazard tiles,
+        # map effects) has no attacker — skip the clash (B.x: NoneType.affinity).
+        if attacker is not None:
+            raw *= damage_modifier(attacker.affinity, target.affinity)
 
-        # Critical strike
+        # Critical strike. Attacker-less (environmental) damage cannot crit.
         is_crit = False
         if crit is True:
             is_crit = True
-        elif crit is None:
+        elif crit is None and attacker is not None:
             crit_chance = attacker.stat("crit_chance") if hasattr(attacker, "stat") else 0.0
             can_crit = (tag == SourceTag.BASIC_ATTACK) or attacker.ability_can_crit
             if can_crit and crit_chance > 0.0:
