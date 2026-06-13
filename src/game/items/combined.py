@@ -39,10 +39,9 @@ def _str_mod(value: float, source: str) -> Modifier:
 
 
 def _as_mod(value: float, source: str) -> list[Modifier]:
-    """Attack-speed modifier: always pair AS + milli_AS (V.34)."""
+    """Attack-speed modifier (T.29-pre: attack_speed is float; sub-integer order derives from it)."""
     return [
         Modifier("attack_speed", "mul", value, Lifetime.COMBAT, source),
-        Modifier("milli_AS", "mul", value, Lifetime.COMBAT, source),
     ]
 
 
@@ -170,7 +169,6 @@ def tempest_talons(owner: Any) -> EffectBundle:
             return
         ramp = owner.stat("attack_speed") * 0.005
         ctx.apply_modifier(owner, Modifier("attack_speed", "add", ramp, Lifetime.COMBAT, "item:tempest_talons"))
-        ctx.apply_modifier(owner, Modifier("milli_AS", "add", ramp * 1000, Lifetime.COMBAT, "item:tempest_talons"))
 
     return EffectBundle(
         modifiers=_as_mod(1.24, "item:tempest_talons"),
@@ -342,7 +340,6 @@ def wildfury_lash(owner: Any) -> EffectBundle:
         # Stack AS ramp
         ramp = owner.stat("attack_speed") * 0.01
         ctx.apply_modifier(owner, Modifier("attack_speed", "add", ramp, Lifetime.COMBAT, "item:wildfury_lash"))
-        ctx.apply_modifier(owner, Modifier("milli_AS", "add", ramp * 1000, Lifetime.COMBAT, "item:wildfury_lash"))
         # Threshold cast
         counter[0] += 1
         if counter[0] >= THRESHOLD:

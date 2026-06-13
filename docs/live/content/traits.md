@@ -29,8 +29,9 @@
   `TraitBreakpoint(count, scope, bundle_factory)`, `DynamicThreshold`
   (`callable(team, board_cap) -> int`).
 - `game/traits/_packs.py` — `stat_pack_bundle` (mul/add `Modifier`s; an
-  `attack_speed` mul rides `milli_AS` for tie-order, V.34) + `define_trait`
-  shorthand (registers a trait from `(count, scope, muls, adds)` rungs).
+  `attack_speed` mul moves tie-order on its own now that AS is a float, V.34 /
+  T.29-pre — no `milli_AS` rider) + `define_trait` shorthand (registers a trait
+  from `(count, scope, muls, adds)` rungs).
 - `game/traits/{affinities,kinships,callings}.py` — the 24 trait factories
   (declarative stat-pack rungs). Imported by `traits/__init__`, which registers
   them into `TRAIT_REGISTRY` as a side effect.

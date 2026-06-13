@@ -283,3 +283,72 @@ class TestEnums:
         assert HookScope.ONCE_PER_COMBAT == "once_per_combat"
         assert HookScope.ONCE_PER_CAST == "once_per_cast"
         assert HookScope.ONCE_PER_TARGET == "once_per_target"
+
+
+# ---------------------------------------------------------------------------
+# _STAT_FLOORS clamp (V.43) + stat_breakdown (V.45) — T.29-pre
+# ---------------------------------------------------------------------------
+
+
+def _fake(base_stats, modifiers=None):
+    class FakePiece:
+        pass
+    p = FakePiece()
+    p.base_stats = base_stats
+    p.modifiers = modifiers or []
+    p.stat = lambda s: compute_stat(p, s)  # noqa: E731
+    return p
+
+
+class TestStatFloor:
+    def test_attack_range_floored_at_one(self):
+        # A -1 add on a range-1 piece would underflow to 0 without the clamp.
+        p = _fake({"attack_range": 1.0}, [Modifier("attack_range", "add", -1.0, Lifetime.COMBAT, "weather:mist")])
+        assert compute_stat(p, "attack_range") == 1.0
+
+    def test_attack_range_floor_with_no_mods(self):
+        p = _fake({"attack_range": 0.0})
+        assert compute_stat(p, "attack_range") == 1.0
+
+    def test_other_stats_not_floored(self):
+        p = _fake({"strength": 0.0}, [Modifier("strength", "add", -5.0, Lifetime.COMBAT, "x")])
+        assert compute_stat(p, "strength") == -5.0
+
+
+class TestStatBreakdown:
+    def test_groups_by_source_prefix(self):
+        from src.game.effects import stat_breakdown
+        p = _fake(
+            {"strength": 100.0, "attack_speed": 50.0},
+            [
+                Modifier("strength", "add", 10.0, Lifetime.COMBAT, "item:fang"),
+                Modifier("strength", "mul", 1.3, Lifetime.COMBAT, "weather:thunder"),
+                Modifier("attack_speed", "mul", 1.2, Lifetime.COMBAT, "trait:beast"),
+            ],
+        )
+        rows = dict(stat_breakdown(p))
+        assert rows["base"]["strength"] == 100.0
+        # marginal: weather mul on (100+10) = +33 over the item-only value of 110.
+        assert rows["weather"]["strength"] == pytest.approx(143.0 - 110.0)
+        assert rows["item"]["strength"] == pytest.approx(110.0 - 100.0)
+        assert rows["trait"]["attack_speed"] == pytest.approx(60.0 - 50.0)
+
+    def test_deltas_sum_to_effective_total(self):
+        from src.game.effects import stat_breakdown
+        p = _fake(
+            {"strength": 100.0},
+            [
+                Modifier("strength", "add", 10.0, Lifetime.COMBAT, "item:fang"),
+                Modifier("strength", "mul", 1.3, Lifetime.COMBAT, "weather:thunder"),
+            ],
+        )
+        rows = dict(stat_breakdown(p))
+        total = rows["base"]["strength"] + sum(
+            d.get("strength", 0.0) for k, d in rows.items() if k != "base"
+        )
+        assert total == pytest.approx(compute_stat(p, "strength"))
+
+    def test_no_modifiers_is_base_only(self):
+        from src.game.effects import stat_breakdown
+        p = _fake({"strength": 100.0})
+        assert stat_breakdown(p) == [("base", {"strength": 100.0})]

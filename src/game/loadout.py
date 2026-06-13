@@ -21,7 +21,7 @@ from src.game.piece import ActiveSlot, Piece
 from src.game.registries import ABILITY_REGISTRY, PASSIVE_REGISTRY
 from src.game.rng import SeededRng
 from src.game.status import StatusInstance
-from src.game.weather_effects import WEATHER_BUFF_BASE, combat_modifier
+from src.game.weather_effects import CombatModifier, WEATHER_BUFF_BASE, combat_modifier
 from src.game import abilities as _abilities  # noqa: F401 — triggers @register decorators
 
 # Matches content._ABILITY_COST (T.33: 36_000→300_000 alongside mana_regen 10→100).
@@ -75,7 +75,6 @@ def piece_from_champion(champion: Champion) -> Piece:
             "strength": float(champion.strength),
             "intelligence": float(champion.intelligence),
             "attack_speed": float(champion.attack_speed),
-            "milli_AS": float(champion.milli_AS),
             "move_speed": float(champion.move_speed),
             "mana_regen": float(champion.mana_regen),
             "threat": float(champion.threat),
@@ -115,7 +114,6 @@ def piece_from_enemy(enemy: Enemy) -> Piece:
             "strength": float(enemy.strength),
             "intelligence": float(enemy.intelligence),
             "attack_speed": float(enemy.attack_speed),
-            "milli_AS": float(enemy.milli_AS),
             "move_speed": float(enemy.move_speed),
             "mana_regen": float(enemy.mana_regen),
             "threat": float(enemy.threat),
@@ -172,40 +170,62 @@ def attach_map_effect(effect_id: str, ctx: Any, seed: int) -> Any:
     return effect
 
 
-def _apply_weather_to_piece(piece: Piece, weather: WeatherState) -> None:
-    """Apply Weather Favor to a piece's base_stats (mutates in place).
+def _weather_modifiers(modifier: CombatModifier, weather: WeatherState) -> list[Modifier]:
+    """Translate a Weather Favor `CombatModifier` into source-tagged `Modifier`s (V.42).
 
-    Uses integer-scaled values off weather_effects.combat_modifier so that
-    combat results are deterministic and consistent. This is the *only* place
-    Weather Favor is applied to a combat piece.
+    Each `*_mult ≠ 1.0` → a `("<stat>","mul",mult)`; `attack_range_delta ≠ 0` →
+    a `("attack_range","add",delta)`. All tagged `source_id="weather:<state>"` so
+    the contribution is attributable (V.45 `stat_breakdown`). `CLEAR`/IDENTITY →
+    no modifiers (inert).
+    """
+    src = f"weather:{weather.value}"
+    mods: list[Modifier] = []
+    for stat, mult in (
+        ("hp", modifier.hp_mult),
+        ("strength", modifier.str_mult),
+        ("intelligence", modifier.int_mult),
+        ("attack_speed", modifier.as_mult),
+        ("move_speed", modifier.ms_mult),
+        ("mana_regen", modifier.mr_mult),
+        ("threat", modifier.thr_mult),
+        ("armor", modifier.armor_mult),
+        ("resistance", modifier.res_mult),
+    ):
+        if mult != 1.0:
+            mods.append(Modifier(stat, "mul", mult, Lifetime.COMBAT, src))
+    if modifier.attack_range_delta:
+        mods.append(
+            Modifier("attack_range", "add", float(modifier.attack_range_delta), Lifetime.COMBAT, src)
+        )
+    return mods
+
+
+def _apply_weather_to_piece(piece: Piece, weather: WeatherState, bus: EventBus) -> None:
+    """Apply Weather Favor as `source="weather:<state>"` modifiers (V.42).
+
+    Weather is **no longer folded into `base_stats`** — it composes through
+    `compute_stat` `(base+Σadds)×Πmuls` like every other modifier source, so it is
+    uniformly attributable (`stat_breakdown`, V.45) and scales item/augment adds.
+    Resources are reconciled afterwards (`max_hp`/`hp` from `stat("hp")`), never
+    `Modifier`'d directly (V.43). `attack_range` underflow is caught by the
+    `_STAT_FLOORS` clamp in `compute_stat` (≥ 1), replacing the old inline `max(1,…)`.
 
     Scaled @8 (T.28d): a `weather_favored` piece always gets the favorable buff
-    pack for the node weather regardless of affinity (`CLEAR` stays inert →
-    IDENTITY). The flag is set by `mark_weather_overrides` before this runs.
+    pack regardless of affinity (`CLEAR` stays inert → IDENTITY → no modifiers).
+    The flag is set by `mark_weather_overrides` before this runs.
     """
     if piece.weather_favored:
         modifier = WEATHER_BUFF_BASE[weather]
     else:
         modifier = combat_modifier(piece.affinity, weather)
 
-    def _scale_stat(value: float, mult: float) -> float:
-        return float(max(0, round(value * mult)))
+    mods = _weather_modifiers(modifier, weather)
+    if mods:
+        apply_bundle(piece, EffectBundle(modifiers=mods), bus)
 
-    piece.base_stats["hp"] = _scale_stat(piece.base_stats["hp"], modifier.hp_mult)
-    piece.base_stats["strength"] = _scale_stat(piece.base_stats["strength"], modifier.str_mult)
-    piece.base_stats["intelligence"] = _scale_stat(piece.base_stats["intelligence"], modifier.int_mult)
-    piece.base_stats["attack_speed"] = _scale_stat(piece.base_stats["attack_speed"], modifier.as_mult)
-    # milli_AS rides the same as_mult so sub-integer order stays exact post-weather (V.34).
-    piece.base_stats["milli_AS"] = _scale_stat(piece.base_stats["milli_AS"], modifier.as_mult)
-    piece.base_stats["move_speed"] = _scale_stat(piece.base_stats["move_speed"], modifier.ms_mult)
-    piece.base_stats["mana_regen"] = _scale_stat(piece.base_stats["mana_regen"], modifier.mr_mult)
-    piece.base_stats["threat"] = _scale_stat(piece.base_stats["threat"], modifier.thr_mult)
-    piece.base_stats["armor"] = _scale_stat(piece.base_stats["armor"], modifier.armor_mult)
-    piece.base_stats["resistance"] = _scale_stat(piece.base_stats["resistance"], modifier.res_mult)
-    piece.base_stats["attack_range"] = float(max(1, int(piece.base_stats["attack_range"]) + modifier.attack_range_delta))
-
-    # Update HP to match new max_hp (piece starts at full HP)
-    new_max_hp = max(1.0, piece.base_stats["hp"])
+    # Resource reconcile (V.43): pieces start each combat at full HP; seed
+    # max_hp/hp from stat("hp") now that the weather hp mul (if any) is in place.
+    new_max_hp = max(1.0, piece.stat("hp"))
     piece.max_hp = new_max_hp
     piece.hp = new_max_hp
 
@@ -234,13 +254,14 @@ def compile_loadout(
     for enemy in enemies:
         pieces.append(piece_from_enemy(enemy))
 
-    # 2. Apply Weather Favor to base stats. First mark Scaled @8 carriers so their
-    # weather is overridden to the favorable pack (T.28d — resolved before step 2
-    # because weather folds into base_stats here, ahead of trait bundles in step 3).
+    # 2. Apply Weather Favor as source="weather:<state>" modifiers (V.42). First
+    # mark Scaled @8 carriers so their weather is overridden to the favorable pack
+    # (T.28d — resolved before step 2 so the weather modifiers land ahead of the
+    # trait bundles in step 3).
     from src.game.traits import mark_weather_overrides
     mark_weather_overrides(pieces)
     for piece in pieces:
-        _apply_weather_to_piece(piece, weather)
+        _apply_weather_to_piece(piece, weather, bus)
 
     # 2.5 Apply item bundles (T.29a, V.23). Item granted_traits (T.29b emblems)
     # must land here, before step 3, so emblem wearers count toward Kinship

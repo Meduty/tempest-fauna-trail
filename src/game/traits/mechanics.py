@@ -90,7 +90,6 @@ def enrage(threshold: float = 0.25, as_mul: float = 1.5, str_mul: float = 1.3, d
                 state["used"] = True
                 exp = ctx.current_tick + duration
                 ctx.apply_modifier(owner, Modifier("attack_speed", "mul", as_mul, Lifetime.TIMED, sid, expires_at_tick=exp))
-                ctx.apply_modifier(owner, Modifier("milli_AS", "mul", as_mul, Lifetime.TIMED, sid, expires_at_tick=exp))
                 ctx.apply_modifier(owner, Modifier("strength", "mul", str_mul, Lifetime.TIMED, sid, expires_at_tick=exp))
 
         return [Hook("on_damage_taken", hook, scope=HookScope.PER_HIT)]
@@ -110,8 +109,6 @@ def time_ramp(interval: int = 100, per: float = 0.03, cap: int = 8, stat: str = 
             if state["t"] % interval == 0 and state["stacks"] < cap:
                 state["stacks"] += 1
                 ctx.apply_modifier(owner, Modifier(stat, "mul", 1.0 + per, Lifetime.COMBAT, sid))
-                if stat == "attack_speed":
-                    ctx.apply_modifier(owner, Modifier("milli_AS", "mul", 1.0 + per, Lifetime.COMBAT, sid))
 
         return [Hook("on_tick", hook, scope=HookScope.PER_HIT)]
 
@@ -580,7 +577,7 @@ def on_death_spawn(stat_frac: float = 0.4, trait: str = "Swarm",
     flags + `ctx.spawn`). `trait`-guarded so a TEAM-rung apply only spawns for
     actual carriers, not the whole team. Spawns don't spawn (`owner.summon`)."""
     _COMBAT_STATS = (
-        "hp", "strength", "intelligence", "attack_speed", "milli_AS",
+        "hp", "strength", "intelligence", "attack_speed",
         "move_speed", "mana_regen", "threat", "armor", "resistance",
         "attack_range", "penetration", "penetration_pct", "crit_chance",
     )

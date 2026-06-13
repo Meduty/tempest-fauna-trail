@@ -322,14 +322,15 @@ def compose_stats(
     sp = stat_multiplier(tier, 1)
     for k in PRIMARY_SCALABLE_STATS:
         stats[k] = round(stats[k] * sp)
-    # SECONDARY: gentle tier-scale. milli_AS captures sub-integer attack_speed for
-    # the canonical sort order (V.34) BEFORE rounding; all speeds then stored int.
+    # SECONDARY: gentle tier-scale. attack_speed stays FLOAT (T.29-pre, V.34) —
+    # cadence reads int(attack_speed); sub-integer sort order derives from
+    # round(attack_speed×1000). The other speeds store int.
     ss = stat_multiplier(tier, 1, SECONDARY_EXPONENT)
     for k in SECONDARY_SCALABLE_STATS:
         stats[k] = stats[k] * ss
-    stats["milli_AS"] = round(stats["attack_speed"] * 1000)
     for k in SECONDARY_SCALABLE_STATS:
-        stats[k] = round(stats[k])
+        if k != "attack_speed":
+            stats[k] = round(stats[k])
 
     return stats
 
@@ -375,8 +376,7 @@ def _build_champion(d: ChampionDef, level: int = 1) -> Champion:
         intelligence=max(0, base["intelligence"]),
         armor=max(0, base["armor"]),
         resistance=max(0, base["resistance"]),
-        attack_speed=round(base["attack_speed"]),
-        milli_AS=round(base["milli_AS"]),
+        attack_speed=base["attack_speed"],
         mana_regen=round(base["mana_regen"]),
         move_speed=round(base["move_speed"]),
         threat=round(base["threat"]),
@@ -412,8 +412,7 @@ def _build_enemy(d: EnemyDef, level: int = 1) -> Enemy:
         intelligence=max(0, base["intelligence"]),
         armor=max(0, base["armor"]),
         resistance=max(0, base["resistance"]),
-        attack_speed=round(base["attack_speed"]),
-        milli_AS=round(base["milli_AS"]),
+        attack_speed=base["attack_speed"],
         mana_regen=round(base["mana_regen"]),
         move_speed=round(base["move_speed"]),
         threat=round(base["threat"]),
