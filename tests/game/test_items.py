@@ -312,7 +312,7 @@ class TestSpringtearMana:
 # Spellfang Crown — ability_can_crit flag
 # ---------------------------------------------------------------------------
 
-class TestSpelfangCrown:
+class TestSpellfangCrown:
     def test_ability_can_crit_false_before_combat_start(self) -> None:
         piece, bus = _make_piece_with_items(["spellfang_crown"])
         # Flag not yet set — on_combat_start hasn't fired

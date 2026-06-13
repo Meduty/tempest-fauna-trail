@@ -18,7 +18,7 @@ from src.game.items.base import BASE_COMPONENTS, SPIRIT_GEM
 # ---------------------------------------------------------------------------
 
 #: frozenset({component_a, component_b}) -> combined_item_id
-RECIPE_MAP: dict[frozenset, str] = {
+RECIPE_MAP: dict[frozenset[str], str] = {
     # --- Same-component recipes (8, single-element frozensets) ---
     frozenset({"fang"}):        "apex_fang",
     frozenset({"talon"}):       "tempest_talons",

@@ -43,8 +43,8 @@ recipes) of component IDs to the combined item ID.
 - 36 entries total (8×8 upper triangle + diagonal).
 - Same-component recipes use a **single-element frozenset** because
   `frozenset({"fang", "fang"}) == frozenset({"fang"})`.
-- `spirit_gem` sits in `BASE_COMPONENTS` but its outbound recipes are stubbed
-  `None` (T.29b).
+- `spirit_gem` is **not** in `BASE_COMPONENTS`; it is a separate special-item.
+  `combine()` short-circuits on `spirit_gem` and returns `None` (T.29b stub).
 
 ```python
 def combine(a: str, b: str) -> str | None:
@@ -80,7 +80,8 @@ Enemies carry **no items**; `piece_from_enemy` is unchanged.
 Each factory in `combined.py` is a `Callable[[Piece], EffectBundle]` registered
 via `@register_item(item_id)`. A factory returns an `EffectBundle` containing:
 - **`modifiers`**: flat stat deltas (`Modifier(stat, delta, Lifetime.COMBAT)`).
-- **`hooks`**: `{event_name: [hook_fn]}` — closures capturing `owner: Piece` for
+- **`hooks`**: `list[Hook]` — each `Hook(event_name, fn, scope)` is registered on
+  the EventBus; closures capturing `owner: Piece` for
   per-instance state (one-shot flags, cadence counters).
 
 ### Raw components (8)
@@ -107,22 +108,22 @@ factories represent the scale factor (e.g. `1.12` = ×1.12 the base stat).
 
 | ID | Components | Key effects |
 |---|---|---|
-| `apex_fang` | fang + fang | ×1.24 STR; on-hit +STR×0.25 bonus damage every 3 autos (cadence counter) |
-| `tempest_talons` | fang + talon | ×1.12 STR + ×1.12 AS; on-kill reset attack timer |
-| `deepwell` | keen_claw + springtear | ×1.12 INT; `slot.cost -= 20` + fill starting mana to 300 |
-| `mammoth_hide` | old_hide + stoneplate | ×1.24 HP, ×1.28 Armor; once/combat barrier at 50% HP |
-| `bramble_carapace` | wardpelt + stoneplate | ×1.28 Armor, ×1.14 MR; reflects 25% melee damage (ITEM_PROC) |
-| `mistward_shroud` | wardpelt + wardpelt | ×1.28 MR; sets `piece.hexproof = True` on `on_combat_start` |
-| `perfect_predator` | fang + wardpelt | +30% crit chance; on-kill temp STR buff (3-tick decay via Modifier) |
-| `bloodthorn_briar` | talon + old_hide | ×1.12 AS, ×1.12 HP; on-hit lifesteal (5% of max HP) |
-| `wildfury_lash` | talon + talon | ×1.12 AS, ×1.12 INT; every 4th auto deals +50% bonus damage |
-| `everbloom_staff` | heartseed + springtear | ×1.12 INT; +200 mana; `on_cast` AoE heals all allies (INT×0.4) |
-| `witherbloom_censer` | keen_claw + wardpelt | ×1.12 INT, ×1.14 MR; `on_cast` applies FRAIL to one target |
-| `stormglass_totem` | stoneplate + springtear | ×1.14 Armor; `on_combat_start` reduces all enemy MR by 10 (flat) |
-| `spellfang_crown` | heartseed + keen_claw | ×1.12 INT, +15% crit chance; `on_combat_start` sets `owner.ability_can_crit = True` |
-| `splitwind_talons` | talon + wardpelt | ×1.12 AS, ×1.14 MR; `on_attack_landed`: second-hit on nearest other enemy (50% damage) |
-| `worldroot_bloom` | heartseed + old_hide | ×1.30 INT; `on_tick` HoT (INT×0.1) + extra pulse every 5 ticks |
-| `living_bulwark` | old_hide + wardpelt | ×1.12 HP, ×1.14 MR; no hooks |
+| `apex_fang` | fang + fang | ×1.24 STR; on-kill grants +5% of current STR (compounding add) |
+| `tempest_talons` | talon + talon | ×1.24 AS; each auto-hit adds +0.5% of current AS (compounding ramp) |
+| `worldroot_bloom` | heartseed + heartseed | ×1.30 INT (pure stat stick) |
+| `deepwell` | springtear + springtear | +400 mana, −20% cast cost; after first cast, refunds 50% of slot cost on every subsequent cast |
+| `mammoth_hide` | old_hide + old_hide | ×1.24 HP; regenerates 2% max HP every 1.5 s while not recently damaged (2 s window) |
+| `bramble_carapace` | stoneplate + stoneplate | ×1.28 Armor; when struck by a melee attacker, retaliates INT×0.35 magic damage (ITEM_PROC) |
+| `mistward_shroud` | wardpelt + wardpelt | ×1.28 RES; regenerates 1.5% max HP every second |
+| `perfect_predator` | keen_claw + keen_claw | +30% crit chance; critical hits deal +25% bonus damage (ITEM_PROC) |
+| `bloodthorn_briar` | fang + heartseed | ×1.12 STR, ×1.12 INT; heals holder for 18% of all damage dealt |
+| `wildfury_lash` | talon + heartseed | ×1.12 AS, ×1.12 INT; each auto adds +1% current AS; every 5th auto triggers a free cast |
+| `everbloom_staff` | heartseed + springtear | ×1.12 INT, +200 mana/−10% cost; INT grows +1% per 2 s while alive |
+| `witherbloom_censer` | heartseed + old_hide | ×1.12 INT, ×1.12 HP; basic attacks apply burn (150 ticks) to the target |
+| `stormglass_totem` | heartseed + wardpelt | ×1.12 INT, ×1.14 RES; when a nearby enemy casts (radius 5), zaps them for INT×0.50 magic damage |
+| `spellfang_crown` | heartseed + keen_claw | ×1.12 INT, +15% crit chance; abilities can crit (`ability_can_crit` set on `on_combat_start`) |
+| `living_bulwark` | old_hide + stoneplate | ×1.12 HP, ×1.14 Armor; no hooks |
+| `splitwind_talons` | talon + wardpelt | ×1.12 AS, ×1.14 RES; each auto also strikes nearest second enemy within range 2 for 50% damage (ITEM_PROC) |
 
 **Hook guards:** `on_damage_dealt` hooks check `ev.tag == SourceTag.ITEM_PROC` to
 avoid triggering on bonus damage from the same item (preventing infinite loops).
@@ -140,7 +141,7 @@ CH_REWARD: Final[int] = 8   # seed channel for reward loot
 
 @dataclass
 class RewardLoot:
-    items: list[str]
+    item_ids: list[str]
 
 def generate_reward_loot(run_seed: int, node_index: int) -> RewardLoot:
 ```
