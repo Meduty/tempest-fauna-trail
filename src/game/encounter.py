@@ -43,6 +43,7 @@ CH_CHALLENGE: Final[int] = 4
 CH_BOSS: Final[int] = 5
 CH_SHOP: Final[int] = 6
 CH_ECONOMY: Final[int] = 7
+CH_REWARD: Final[int] = 8  # Seed channel for REWARD-node loot rolls (T.29a)
 
 # Per-visit reroll stride: folds reroll_count into the shop sub-seed node arg so
 # each reroll is deterministic and distinct without colliding across visits. Far
@@ -487,6 +488,60 @@ def generate_reward(
         stage_index=stage.index,
         stage_affinity=stage.affinity,
     )
+
+
+# ---------------------------------------------------------------------------
+# REWARD-node loot generation (T.29a)
+# ---------------------------------------------------------------------------
+
+# First-pass drop table weights (tunable; final weights in T.22 / §D.12).
+#   60% single component · 25% core-cut combined item · 15% two components
+_COMPONENT_IDS: list[str] = [
+    "fang", "talon", "heartseed", "springtear",
+    "old_hide", "stoneplate", "wardpelt", "keen_claw",
+]
+_CORE_ITEM_IDS: list[str] = [
+    "apex_fang", "tempest_talons", "worldroot_bloom", "deepwell",
+    "mammoth_hide", "bramble_carapace", "mistward_shroud", "perfect_predator",
+    "bloodthorn_briar", "wildfury_lash", "everbloom_staff", "witherbloom_censer",
+    "stormglass_totem", "spellfang_crown", "living_bulwark", "splitwind_talons",
+]
+
+
+@dataclass
+class RewardLoot:
+    """Item loot granted to the player after clearing a REWARD node.
+
+    ``item_ids`` is an ordered list of component and/or combined-item IDs.
+    Added to ``Run.inventory`` by the run-manager (T.22).
+    """
+
+    item_ids: list[str] = field(default_factory=list)
+
+
+def generate_reward_loot(
+    run_seed: int,
+    node_index: int,
+) -> RewardLoot:
+    """Return seed-deterministic item loot for a REWARD node (T.29a, V.23).
+
+    Drop table (first-pass weights; T.22 / §D.12 refines):
+      60% → 1 random base component
+      25% → 1 random core-cut combined item
+      15% → 2 random base components
+
+    Uses CH_REWARD channel so the roll is independent of the squad roll.
+    """
+    rng = Random(derive_seed(run_seed, node_index, CH_REWARD))
+    roll = rng.random()
+    if roll < 0.60:
+        return RewardLoot([rng.choice(_COMPONENT_IDS)])
+    elif roll < 0.85:
+        return RewardLoot([rng.choice(_CORE_ITEM_IDS)])
+    else:
+        a = rng.choice(_COMPONENT_IDS)
+        b = rng.choice(_COMPONENT_IDS)
+        return RewardLoot([a, b])
 
 # ---------------------------------------------------------------------------
 # Seed-only helpers for T22

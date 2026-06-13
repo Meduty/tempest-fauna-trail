@@ -91,6 +91,7 @@ def piece_from_champion(champion: Champion) -> Piece:
         is_enemy=False,
         level=champion.level,
         passives=[champion.passive_ability] if champion.passive_ability else [],
+        items=list(champion.items),
     )
     # Set up active ability slot (0 starting mana by default)
     if champion.active_ability:
@@ -240,6 +241,20 @@ def compile_loadout(
     mark_weather_overrides(pieces)
     for piece in pieces:
         _apply_weather_to_piece(piece, weather)
+
+    # 2.5 Apply item bundles (T.29a, V.23). Item granted_traits (T.29b emblems)
+    # must land here, before step 3, so emblem wearers count toward Kinship
+    # breakpoints during trait resolution.  Champions build their piece.items list
+    # in piece_from_champion above; enemies carry no items (plan §scope).
+    from src.game.registries import ITEM_REGISTRY
+    import src.game.items  # noqa: F401 — side-effect: populates ITEM_REGISTRY
+    for piece in pieces:
+        for item_id in piece.items:
+            factory = ITEM_REGISTRY.get(item_id)
+            if factory is not None:
+                bundle = factory(piece)
+                if bundle is not None:
+                    apply_bundle(piece, bundle, bus)
 
     # 3. Resolve + apply synergy trait breakpoints (player team only — V.22).
     # Slots between weather (step 2) and passives (step 7); §10.1 order. Item
