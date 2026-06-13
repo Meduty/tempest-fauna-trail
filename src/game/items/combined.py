@@ -355,8 +355,7 @@ def wildfury_lash(owner: Any) -> EffectBundle:
 
     return EffectBundle(
         modifiers=[
-            _as_mod(1.12, "item:wildfury_lash")[0],
-            _as_mod(1.12, "item:wildfury_lash")[1],
+            *_as_mod(1.12, "item:wildfury_lash"),
             _int_mod(1.12, "item:wildfury_lash"),
         ],
         hooks=[Hook("on_attack_landed", on_attack, scope=HookScope.PER_HIT)],
@@ -493,8 +492,7 @@ def splitwind_talons(owner: Any) -> EffectBundle:
 
     return EffectBundle(
         modifiers=[
-            _as_mod(1.12, "item:splitwind_talons")[0],
-            _as_mod(1.12, "item:splitwind_talons")[1],
+            *_as_mod(1.12, "item:splitwind_talons"),
             _res_mod(1.14, "item:splitwind_talons"),
         ],
         hooks=[Hook("on_attack_landed", on_attack, scope=HookScope.PER_HIT)],

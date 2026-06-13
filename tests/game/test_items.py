@@ -21,12 +21,10 @@ from typing import Any
 
 import pytest
 
-from src.game.content import _CHAMPION_DEFS  # noqa: F401 — available if needed
 from src.game.effects import EffectBundle, EventBus
 from src.game.encounter import generate_reward_loot, CH_REWARD, derive_seed
 from src.game.items import BASE_COMPONENTS, RECIPE_MAP, combine
 from src.game.items.base import SPIRIT_GEM
-from src.game.items.recipes import RECIPE_MAP as _RM  # same object, re-imported for clarity
 from src.game.loadout import apply_bundle, compile_loadout, piece_from_champion
 from src.game.models import Champion, WeatherState
 from src.game.piece import ActiveSlot, Piece

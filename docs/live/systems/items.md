@@ -87,38 +87,42 @@ via `@register_item(item_id)`. A factory returns an `EffectBundle` containing:
 
 | ID | Grants |
 |---|---|
-| `fang` | +20 STR |
-| `keen_claw` | +20 INT |
-| `talon` | +8% AS (`milli_AS` paired) |
-| `wardpelt` | +30 ARM |
-| `stoneplate` | +30 MR |
-| `old_hide` | +200 HP |
-| `heartseed` | +10 HP regen/tick (via `on_tick` hook) |
-| `springtear` | `on_combat_start` hook: `slot.cost -= 10` (mana efficiency) |
+| `fang` | +12% STR (multiply) |
+| `keen_claw` | +15% crit chance (additive) |
+| `talon` | +12% AS (`attack_speed` + `milli_AS` paired) |
+| `wardpelt` | +14% MR |
+| `stoneplate` | +14% Armor |
+| `old_hide` | +12% HP |
+| `heartseed` | +12% INT |
+| `springtear` | `on_combat_start` hook: +200 starting mana, −10% cast cost (`slot.cost *= 0.9`) |
 
 `springtear` uses `on_combat_start` (not a stat modifier) because mana lives on
 `ActiveSlot.cost`, not in `Piece.base_stats`.
+
+All modifiers use `"mul"` (multiplicative) or `"add"` (additive) operation via
+`Modifier(stat, op, delta, Lifetime.COMBAT, source)`. The multipliers in the
+factories represent the scale factor (e.g. `1.12` = ×1.12 the base stat).
 
 ### Combined items (16-core cut)
 
 | ID | Components | Key effects |
 |---|---|---|
-| `apex_fang` | fang + fang | +50 STR, on-hit bonus STR% damage (cadence every 3 autos) |
-| `tempest_talons` | fang + talon | +20 STR, +12% AS; on-kill reset attack timer |
-| `deepwell` | keen_claw + springtear | +20 INT; `slot.cost -= 20`, bonus current mana |
-| `mammoth_hide` | old_hide + stoneplate | +400 HP, +40 MR; once/combat barrier at 50% HP |
-| `bramble_carapace` | wardpelt + stoneplate | +60 ARM, +30 MR; reflects % melee damage |
-| `mistward_shroud` | wardpelt + wardpelt | +80 ARM; `hexproof` flag on `on_combat_start` |
-| `perfect_predator` | fang + wardpelt | +30 STR, +40 ARM; on-kill +temp STR (3-tick decay) |
-| `bloodthorn_briar` | talon + old_hide | +12% AS, +150 HP; on-hit leech (5% max HP) |
-| `wildfury_lash` | talon + talon | +24% AS; every 4th auto deals +50% bonus damage |
-| `everbloom_staff` | heartseed + keen_claw | +20 INT, +8 HP regen; `on_cast`: AoE heal allies (INT×0.4) |
-| `witherbloom_censer` | keen_claw + wardpelt | +30 INT, +30 ARM; `on_cast`: apply FRAIL to one target |
-| `stormglass_totem` | stoneplate + springtear | +40 MR; `on_combat_start`: reduce all enemy MR by 10 |
-| `spellfang_crown` | heartseed + keen_claw | +20 INT, +8 crit chance; `on_combat_start` sets `owner.ability_can_crit = True` |
-| `splitwind_talons` | talon + wardpelt | +10% AS, +20 ARM; `on_damage_dealt` if ITEM_PROC: noop (debuff hook) |
-| `worldroot_bloom` | heartseed + old_hide | +300 HP, +12 HP regen; `on_tick` HoT + extra pulse every 5 ticks |
-| `living_bulwark` | old_hide + wardpelt | +250 HP, +50 ARM; no hooks |
+| `apex_fang` | fang + fang | ×1.24 STR; on-hit +STR×0.25 bonus damage every 3 autos (cadence counter) |
+| `tempest_talons` | fang + talon | ×1.12 STR + ×1.12 AS; on-kill reset attack timer |
+| `deepwell` | keen_claw + springtear | ×1.12 INT; `slot.cost -= 20` + fill starting mana to 300 |
+| `mammoth_hide` | old_hide + stoneplate | ×1.24 HP, ×1.28 Armor; once/combat barrier at 50% HP |
+| `bramble_carapace` | wardpelt + stoneplate | ×1.28 Armor, ×1.14 MR; reflects 25% melee damage (ITEM_PROC) |
+| `mistward_shroud` | wardpelt + wardpelt | ×1.28 MR; sets `piece.hexproof = True` on `on_combat_start` |
+| `perfect_predator` | fang + wardpelt | +30% crit chance; on-kill temp STR buff (3-tick decay via Modifier) |
+| `bloodthorn_briar` | talon + old_hide | ×1.12 AS, ×1.12 HP; on-hit lifesteal (5% of max HP) |
+| `wildfury_lash` | talon + talon | ×1.12 AS, ×1.12 INT; every 4th auto deals +50% bonus damage |
+| `everbloom_staff` | heartseed + springtear | ×1.12 INT; +200 mana; `on_cast` AoE heals all allies (INT×0.4) |
+| `witherbloom_censer` | keen_claw + wardpelt | ×1.12 INT, ×1.14 MR; `on_cast` applies FRAIL to one target |
+| `stormglass_totem` | stoneplate + springtear | ×1.14 Armor; `on_combat_start` reduces all enemy MR by 10 (flat) |
+| `spellfang_crown` | heartseed + keen_claw | ×1.12 INT, +15% crit chance; `on_combat_start` sets `owner.ability_can_crit = True` |
+| `splitwind_talons` | talon + wardpelt | ×1.12 AS, ×1.14 MR; `on_attack_landed`: second-hit on nearest other enemy (50% damage) |
+| `worldroot_bloom` | heartseed + old_hide | ×1.30 INT; `on_tick` HoT (INT×0.1) + extra pulse every 5 ticks |
+| `living_bulwark` | old_hide + wardpelt | ×1.12 HP, ×1.14 MR; no hooks |
 
 **Hook guards:** `on_damage_dealt` hooks check `ev.tag == SourceTag.ITEM_PROC` to
 avoid triggering on bonus damage from the same item (preventing infinite loops).
