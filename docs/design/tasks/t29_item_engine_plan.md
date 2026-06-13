@@ -1,6 +1,6 @@
 # T29 Plan — Item Engine
 
-> **Status:** approved — T.29a/T.29b already split in SPEC (📋 Plan). **NEW prerequisite substep `T.29-pre` added below ([Part B](#part-b--t29-pre--combat-stat-substrate-prerequisite-sequences-first)) — sequences FIRST in the T.29 block (`T.29-pre → T.29a → T.29b`).** Ready for `/build T.29a` once T.29-pre lands.
+> **Status:** approved — T.29a/T.29b split in SPEC (📋 Plan). **`T.29-pre` ✅ Done (2026-06-13)** — combat stat substrate landed ([Part B](#part-b--t29-pre--combat-stat-substrate-prerequisite-sequences-first)); `T.29-pre → T.29a → T.29b`. ⚠️ **`T.29a` is NOT build-ready: §3.1a (mana primitive) was reworked 2026-06-13 and carries two unresolved tensions** (Tension 1 — `mana_cost` base home vs the V.35 `ability_cost` stat; Tension 2 — rename call-site sweep). Resolve §3.1a (decision or `/plan` refresh) before `/build T.29a`. The rest of T.29a (components, recipes, equip, drops) is build-ready.
 > **Depends:** T.1 (models — done), T.20 (effect substrate / `ITEM_REGISTRY` / `register_item` — done), **T.22** (Amber economy, `Run` shop/inventory — done; drop-table weights **owned by T.29a** per §3.7 decision). **T.29b emblems additionally depend on T.28a** (trait counting consumes emblem `granted_traits`). **T.29b special-item CLI driver shares the `sim_run` interactive shell with T.31** — coordinate. **T.29-pre (substrate) depends only on already-built work (T.2 weather, T.20 effects, T.28d trait riders, T.33a sort-order) — it can build immediately and is a soft prerequisite to T.29a (fixes the `(base+adds)×muls` compose rule + `source:` prefix vocab that item factories author against).**
 > **Resolves:** SPEC §D.9 (item system — components, recipes, emblems, special items, 3 slots) and the REWARD-drop half of §D.12.
 > **Design source of truth:** [`item_catalog.md`](../content/item_catalog.md) (8 components, 36 combined, 6 emblems, 6 special, the §3 16-item core cut) + [`effect_systems_design.md` §8](../systems/effect_systems_design.md) (substrate: `BASE_COMPONENTS`, `RECIPE_MAP`, item factories, §8.4 run-actions, `combine()`) + §10.1 (application order).
@@ -19,7 +19,7 @@ The seam is **combat-facing vs meta/cross-task**. T.29a is self-contained (deps 
 - **One re-baseline, two separable commits** (commit 1 re-baselines weather numbers; commit 2 is ~byte-identical by exact migration).
 
 ### T.29a — Component + combined-item engine + 16 core items (Est: M–L)
-- §3.1 component model + **real-stat mapping** + §3.1a mana-stat primitive (rename `cost`→`mana_cost`; add `ActiveSlot.max_mana`/`start_mana`; 3 engine sites; regression-safe).
+- §3.1 component model + **real-stat mapping** + §3.1a mana-stat primitive (per-ability `mana_cost`/`max_mana`/`start_mana`; `max_mana` = universal cap; MR = cast-rate knob; 3 engine sites). ⚠️ **§3.1a has two unresolved tensions — resolve before building (see §3.1a).**
 - §3.2 `RECIPE_MAP` (full 8×8 = 36 keys) + `combine()` (recipes only; gem branch stubbed for b).
 - §3.3 equip model: `Champion.items` (≤3, persistent) → threaded into `piece_from_champion`; `Piece.items` already exists ([piece.py:43](../../../src/game/piece.py#L43)); apply item bundles in `compile_loadout` (§10.1 step 5).
 - §3.4 `@register_item` factories for the **16 core-cut items** (modifier + hook, closure-per-combat) + 8 raw components.
@@ -81,18 +81,80 @@ The seam is **combat-facing vs meta/cross-task**. T.29a is self-contained (deps 
 
 **Mana items never reduce `mana_cost`** (decision §4). The two — and only two — mana item effects are **(a) mana regen** (pure piece-stat Modifier, above) and **(b) starting mana** (per-slot `start_mana`, §3.1a). `mana_cost` stays a fixed per-ability/per-boss tuning knob; nothing equips against it. This removes the negative-cost stacking bug at the source.
 
-### 3.1a Mana-stat primitive — rename `cost`→`mana_cost`, split into `mana_cost` / `max_mana` / `start_mana`
+### 3.1a Mana-stat primitive — `mana_cost` / `max_mana` / `start_mana` (per-ability slot)
 
-**Rename** the existing `ActiveSlot.cost` field → **`mana_cost`** (clearer + namespaced; touch every reference — piece.py, loadout.py:99,138, engine.py:463,656, bosses.py ×6, reference.py:115, tests). `mana_cost` today conflates **threshold** (mana needed to cast) and **cap** (regen clamps to it, engine.py:830) with **no starting value**. Split it so mana items have somewhere to land without touching `mana_cost`, and so a pool can *overload* (bank past one cast):
+> ⚠️ **NEEDS REFINEMENT BEFORE `/build T.29a` — do not implement as-is.** The mana
+> model was reworked in conversation 2026-06-13 (post-T.29-pre); two design tensions
+> below are **unresolved** and must be settled (a quick `/plan` refresh or a decision
+> here) before this section is built. The shape is settled; the tagged forks are not.
 
-- **`ActiveSlot`** gains two fields (all mana state stays per-slot — only `mana_regen` is a piece stat): `max_mana: int = 0` (overload cap; `__post_init__`: `if max_mana <= 0: max_mana = mana_cost * 5` — **default 5× mana_cost**, so external sources can bank up to ~5 casts out of the box) and `start_mana: int = 0` (combat-start seed). `mana_cost` (renamed), `current_mana`, `priority` unchanged in role.
-- **Engine (3 sites, all per-slot):**
-  - **regen tops up to `mana_cost` only** (never overloads): `if slot.current_mana < slot.mana_cost: slot.current_mana = min(slot.mana_cost, slot.current_mana + mr_val)` (was the unconditional `min(slot.cost, …)`, engine.py:830). The `< mana_cost` guard is a no-op unless already overloaded — passive regen gives you exactly your next cast, never banks. **Only start_mana / on-event gain overload** (matches the design intent: overload is item-granted, not free from waiting).
-  - cast → `slot.current_mana -= slot.mana_cost` (was `= 0.0`, engine.py:662) so externally-added overflow carries = overload.
-  - combat start (new) → `slot.current_mana = min(slot.max_mana, slot.start_mana)` per slot.
-- **Regression-safe (V.2, no re-baseline) — independent of the 5× default:** because regen is guarded at `mana_cost`, a no-item pool reaches **exactly** `mana_cost` then casts (`-= mana_cost` ≡ old `= 0`); it never overshoots, so the `max_mana` value is irrelevant without items. `start_mana == 0` → no start seed. ⇒ **byte-identical** to today. Bosses need **no rewrite** beyond the field rename (still `ActiveSlot(mana_cost=…)`; `max_mana` auto-defaults to 5× `mana_cost`, unused without items; `start_mana` 0); the `phase_hook_test` multi-slot fixture is untouched (per-slot model preserved).
-- **Starting-mana items:** equip step adds `slot.start_mana += S` (and `slot.max_mana = max(slot.max_mana, slot.start_mana)` only if a grant exceeds the 5× default). Seeds `current_mana` at combat start → instant first cast + bankable overflow. Additive + clamped → **bug-free** (unlike cost-reduction). This is the one item path that writes a slot; carried on the bundle via a new `slot_mana_start` field (§3.4) applied in `compile_loadout`'s equip step.
-- **On-event mana gain** (T.29b Deepwell/Relentless Spear) → hook calling a new `ctx.grant_mana(piece, amount)` helper, clamped to `max_mana` (the 5× cap) → banks past cost = overload. Event-driven, stays a hook; **no mana-hook items in the 16-core cut**, so T.29a needs zero hook work here.
+**Settled model.** Four mana fields are **per-ability/per-slot** (they live on the
+ability/`ActiveSlot`, alongside the existing `current_mana`); **`mana_regen` is the
+one piece-level stat** and the **intended cast-rate knob** (the only `Modifier`-able
+mana value — Springtear etc.). `max_mana` is the **single universal pool cap** —
+every clamp (regen, start, on-event grants) is to `max_mana`. The old "regen guarded
+at `mana_cost`" is **dropped**; the old 5×-default and the `max_mana = max(max_mana,
+start_mana)` **auto-bump are dropped** — `max_mana` is a deliberate, authored,
+**rarely-changed** cap.
+
+| Field | Base authored on | Mutable by | Role |
+|---|---|---|---|
+| `mana_cost` | **⚠️ see Tension 1** | ability/augment (rare) | cast threshold + amount deducted per cast |
+| `max_mana` | ability def | ability/augment (rare) | **universal pool cap** — everything clamps here; never auto-raised |
+| `start_mana` | ability def | ability/augment (rare) | combat-start fill (clamped to `max_mana`) |
+| `current_mana` | runtime | engine | per-slot pool |
+| `mana_regen` | champ/enemy def (stat) | **`Modifier`s** (items/weather/traits) | fills `current_mana` → `max_mana` each tick; **the cast-rate knob** |
+
+- **Defaults for all 5 — required even when a def specifies them.** Every field has a
+  fallback default so a partial def still constructs: `mana_cost` (default ⚠️ Tension 1),
+  `max_mana` **default = `mana_cost`** (⇒ no overload unless an ability authors higher),
+  `start_mana = 0`, `current_mana = 0`, `mana_regen` = champ/enemy base (V.35 `100`).
+  Defs override; defaults always exist.
+- **Engine (3 per-slot sites) — drop the MR guard:**
+  - regen → `slot.current_mana = min(slot.max_mana, slot.current_mana + mr_val)` (was
+    `min(slot.cost, …)`, engine.py:831). **`max_mana` is the clamp**; passive regen may
+    now bank/overload up to `max_mana`.
+  - cast → `slot.current_mana -= slot.mana_cost` (was `= 0.0`, engine.py:486,663) so
+    overflow carries.
+  - combat start (new) → `slot.current_mana = min(slot.max_mana, slot.start_mana)`.
+  - ready check unchanged: `slot.current_mana >= slot.mana_cost` (engine.py:463,657).
+- **Resources, not modifiers (V.43).** `mana_cost`/`max_mana`/`start_mana`/`current_mana`
+  are **slot resource state** — mutated by **explicit, rare** ability/augment effects via
+  **direct slot writes**, never `Modifier`s (V.43 codifies this). Only `mana_regen` (flow
+  stat) is `Modifier`-able. **Mana items grant `mana_regen` or `start_mana` — never reduce
+  `mana_cost`** (kills the negative-cost stacking bug).
+- **Regression / byte-identity (verify, don't assume).** With `max_mana` defaulting to
+  `mana_cost` and `start_mana = 0`: regen `min(mana_cost, …)` ≡ today, pool tops at
+  `mana_cost`, `-= mana_cost` ≡ old `= 0` (no overshoot since cap = cost) → **byte-identical**.
+  Cleaner anchor than the old 5× default. **Gate (lesson from T.29-pre):** capture a
+  pre-change baseline and diff — *prove* byte-identity empirically, do not trust this
+  paragraph (the AS-float "~byte-identical" claim was wrong; this one *should* hold because
+  it is integer-exact, but verify).
+- **Starting-mana items:** equip step does `slot.start_mana += S` (clamped: `start_mana`
+  seeds `current_mana = min(max_mana, start_mana)` at combat start — **no `max_mana`
+  auto-bump**; if `start_mana > max_mana` it is simply clamped). One slot-writing path,
+  carried on the bundle via `slot_mana_start` (§3.4).
+- **On-event mana gain** (T.29b) → `ctx.grant_mana(piece, amount)` clamped to `max_mana`.
+  No mana-hook items in the 16-core cut → T.29a needs zero hook work here.
+
+**⚠️ Tension 1 — where `mana_cost`'s base lives (UNRESOLVED, blocks build).** Today
+`mana_cost` is **not** authored on the ability — `ActiveSlot.cost` is seeded from the
+champ/enemy **`ability_cost` FLAT stat** (V.35, baseline `300_000`; per-kit deviations are
+the intended cost-tuning). Putting `mana_cost`'s base on the **ability def** (alongside
+`max_mana`/`start_mana`) moves that authority off V.35.
+- **Option A** — ability def owns `mana_cost`; deprecate/fold the champ `ability_cost` stat.
+  **Touches V.35** (needs a `/spec` amend) and re-homes all per-kit cost tuning.
+- **Option B** — ability def owns `max_mana`/`start_mana` only; `mana_cost` stays seeded from
+  `ability_cost` (V.35 untouched), keeping cost-tuning where it is. Lower blast radius.
+- `max_mana`/`start_mana` belong on the ability either way (new fields, no V.35 conflict) —
+  the fork is **only** `mana_cost`'s home. **Resolve before building §3.1a.**
+
+**⚠️ Tension 2 — rename scope + call-site sweep (verify before build).** The plan's
+original "rename `ActiveSlot.cost`→`mana_cost`" cited stale lines (engine.py:830/662/656,
+loadout.py:99,138, reference.py:115) that **shifted under T.29-pre** — re-grep every
+`slot.cost`/`ActiveSlot(cost=` site (current: engine.py:463,486,657,663,831; piece.py
+`ActiveSlot`) before renaming. Confirm bosses' multi-slot `ActiveSlot` construction
+carries the new per-slot `max_mana`/`start_mana` defaults.
 
 ### 3.2 `RECIPE_MAP` + `combine()`
 
@@ -189,7 +251,7 @@ Seed: `derive_seed(run_seed, node_index, CH_LOOT)`.
 - **3 item slots/piece** (catalog §6) — enforced in equip + `Champion.items` validator.
 - **Raw components are equippable** (catalog §1) — occupy a slot, apply their pure-modifier bundle.
 - **MVP = 16 core cut in T.29a** (catalog §3), remaining 20 in T.29b — your call.
-- **Mana primitive: rename `cost`→`mana_cost`, split `mana_cost`/`max_mana`/`start_mana`** (§3.1a) — all mana state stays per-slot except `mana_regen` (piece stat); `max_mana` defaults 5× `mana_cost`; regression-safe (regen guarded at `mana_cost`). Mana items grant **either `mana_regen` or `start_mana`, never reduce `mana_cost`** — `mana_cost` is a fixed per-ability knob; kills the negative-cost stacking bug.
+- **Mana primitive (§3.1a) — ⚠️ NEEDS REFINEMENT before build.** Per-ability slot fields `mana_cost`/`max_mana`/`start_mana` (+ runtime `current_mana`); `mana_regen` is the lone piece stat and **the cast-rate knob**. **`max_mana` = the universal pool cap** (every clamp is to it); the old "regen guarded at `mana_cost`", the 5× default, and the `start_mana` auto-bump are **dropped**. All 5 fields have fallback defaults (`max_mana` default `= mana_cost`). Mana items grant **`mana_regen` or `start_mana`, never reduce `mana_cost`** (kills negative-cost stacking). **Unresolved:** Tension 1 (where `mana_cost` base lives — ability def vs the `ability_cost` V.35 stat) + Tension 2 (rename call-site sweep) — see §3.1a.
 - **Flat-add modifiers** for all component stats (§3.1) — TFT-style, items favour early/mid game; tunable.
 - **Shop sells champions only** — items never enter the shop (T.22 contract; §3.7).
 - **Boss loot = 3-pair pick** via `generate_boss_loot` (§3.7) — deterministic, player picks one pair.
@@ -214,7 +276,7 @@ Values are TFT-style flat — meaningful at low tiers (~15-20%), modest at T10 (
 **Resolved here:**
 - Phasing → T.29a (engine + 16 core) / T.29b (rest + emblems + special).
 - Special items → backend run-actions **+ interactive CLI driver** (§3.6).
-- Mana handling → **rename `cost`→`mana_cost`, split `mana_cost`/`max_mana`/`start_mana`** (§3.1a); all per-slot except `mana_regen` (piece stat); `max_mana` defaults 5× `mana_cost`. Mana items grant `mana_regen` **or** `start_mana`, **never reduce `mana_cost`** — kills the negative-cost stacking bug; enables starting mana + overload (bank past `mana_cost` up to `max_mana`, regen guarded so overload is item-only).
+- Mana handling → per-ability slot `mana_cost`/`max_mana`/`start_mana` + piece-stat `mana_regen` (§3.1a); `max_mana` = universal cap (regen now fills to it, **guard dropped**), default `= mana_cost`; MR = cast-rate knob. Mana items grant `mana_regen` **or** `start_mana`, **never reduce `mana_cost`**. ⚠️ **Two tensions still open (§3.1a) — `mana_cost` home (vs V.35 `ability_cost`) + rename sweep — resolve before build.** (Reworked 2026-06-13 post-T.29-pre; supersedes the earlier 5×-default / guarded-regen model.)
 - **Component modifier type → flat add** (TFT-style; §3.1, §5). `crit_chance` and mana already flat by nature.
 - **Drop-table weights → T.29a owns** (§3.7): 45% component / 20% combined / 15% Amber / 15% champion recruit / 5% special. Flagged tunable.
 - **Champion recruit drops** (§3.7): REWARD loot can yield a champion id; reuses SUPPLY tier-pool logic. Returns in `RewardLoot`; UI/prep layer acts on it.
@@ -231,7 +293,7 @@ Values are TFT-style flat — meaningful at low tiers (~15-20%), modest at T10 (
 - **Recipes:** `combine()` resolves all 36 pairs (incl. same-component diagonal) + gem→emblem; unknown pair → `None`.
 - **Equip:** ≤3 slots enforced; raw component applies its stat; `Champion.items` round-trips `to_dict`/`from_dict`; `piece_from_champion` mirrors into `Piece.items`.
 - **Bundles:** modifier items shift stats; a hook item (Splitwind Talons, Stormscale Quiver) procs **deterministically** in a fixed-seed fight (no RNG); per-combat closure state resets each combat.
-- **Mana primitive (§3.1a):** field renamed `cost`→`mana_cost`; `max_mana` defaults 5× `mana_cost`, `start_mana==0`, regen guarded at `mana_cost` → no-item fights **byte-identical** to today (pool tops at `mana_cost`, `-= mana_cost` ≡ old `= 0`). Springtear shifts `mana_regen` (a piece stat) — no slot touch, **no item ever changes `mana_cost`**. A `start_mana` grant seeds `current_mana` at combat start and overloads past `mana_cost` up to `max_mana`; `ctx.grant_mana` clamps to `max_mana`.
+- **Mana primitive (§3.1a):** with `max_mana` default `= mana_cost` and `start_mana==0`, no-item fights are **byte-identical** to today (regen `min(mana_cost,…)` ≡ today; pool tops at `mana_cost`; `-= mana_cost` ≡ old `= 0`). ⚠️ **Verify empirically with a pre/post baseline diff — do not trust the claim** (T.29-pre lesson). Springtear shifts `mana_regen` (piece stat) — no slot touch; **no item ever changes `mana_cost`**. A `start_mana` grant seeds `current_mana = min(max_mana, start_mana)` at combat start; regen fills to `max_mana` (guard dropped); `ctx.grant_mana` clamps to `max_mana`.
 - **Emblems (b):** an emblem makes a non-native piece count toward a Kinship breakpoint (integration with T.28a `_resolve_traits`); ordering before resolution verified.
 - **Special items (b):** each run-action mutates `Run` correctly (reforge swaps a component, unbind returns to bench decomposed, echo adds a copy, salvage credits Amber); `sim_run --interactive` invokes them.
 - **REWARD drops:** seed-deterministic loot roll; same seed → same drop; bucket weights sum to 100; special bucket falls back to component while T.29b unshipped.
@@ -251,7 +313,7 @@ Values are TFT-style flat — meaningful at low tiers (~15-20%), modest at T10 (
 
 1. **§T:** replace the T.29 row with **T.29a** (engine + 16 core items; depends T.1, T.20, T.22; Est M–L) and **T.29b** (remaining 20 + emblems + special items + CLI driver; depends T.29a, T.28a; Est M–L); both 📋 Plan; both cite `docs/design/tasks/t29_item_engine_plan.md`. Update Implementation-Order Phase 1b to `… → T.29a → T.29b → T.31`.
 2. **New §V invariant:** items apply only via `compile_loadout` (combat-facing) or `RUN_ACTION_REGISTRY` (run-facing, never imported by `combat/`); ≤3 equipped items per piece; item procs deterministic (cadence/flags, no RNG). (T.29)
-2a. **New §V invariant (mana):** `ActiveSlot` carries `mana_cost`/`max_mana`/`start_mana` (renamed from `cost`; `max_mana` defaults to **5× `mana_cost`**, `start_mana` to 0); `mana_regen` is the only piece-level mana stat. **No item ever modifies `mana_cost`** — mana items grant `mana_regen` (Modifier) or `start_mana` (slot, additive+clamped) only. Regen is guarded at `mana_cost` (only `start_mana`/`grant_mana` overload up to `max_mana`), keeping no-item combat byte-identical (V.2). (T.29a)
+2a. **New §V invariant (mana) — ⚠️ DRAFT, pending §3.1a tension resolution:** `ActiveSlot` carries per-slot `mana_cost`/`max_mana`/`start_mana` (+ `current_mana`); `mana_regen` is the only piece-level mana stat and the cast-rate knob. **`max_mana` is the universal pool cap** — regen, start, and `grant_mana` all clamp to it (no `mana_cost` regen-guard; no `start_mana` auto-bump). All 5 fields default (`max_mana` default `= mana_cost`, `start_mana`/`current_mana` `= 0`). The four pool fields are **resource state** (direct slot writes only, never `Modifier`s — extends V.43); **no item/Modifier ever changes `mana_cost`** — mana items grant `mana_regen` (Modifier) or `start_mana` (slot). Default `max_mana = mana_cost` ⇒ no-item combat byte-identical (V.2). (T.29a) **Finalize the invariant text after Tension 1 decides where `mana_cost`'s base lives — Option A additionally amends V.35.**
 2b. **§T file-list:** add `game/piece.py`, `game/combat/engine.py`, `game/combat/context.py`, `game/effects.py` to the T.29a row (the §3.1a mana primitive).
 3. **New §V invariant:** special items (`RUN_ACTION_REGISTRY`) operate on `Run` only and are **never** referenced from `game/combat/` — combat sees only their result (§8.4). (T.29)
 4. **§D.9:** mark item system implemented in T.29a/b; leave open only magnitude tuning.
