@@ -4,7 +4,14 @@
 > the **same working tree**. This file is the coordination channel — T.35a updates
 > it as files free up; T.35b reads before touching anything shared. **Do not edit a
 > file marked 🔒 OWNED-A until its line flips to ✅ RELEASED.**
-> Last update: T.35a mid-flight (handler conversion in progress).
+> Last update: **T.35a COMMITTED `adf3e09` — 🟢🟢 GREEN LIGHT, all files released, B unblocked.**
+
+## 🟢 GREEN LIGHT (2026-06-14) — T.35a done & committed at `adf3e09`
+- Byte-identical gate **PASSED** (sim digest unmoved). Snapshot regenerated + committed.
+- Full suite **1133 passed, 101 skipped**. `§T.35a` flipped ✅ in SPEC.
+- **Every shared file is now ✅ RELEASED.** `content.py` baseline is frozen (my commit is the baseline). **B: proceed with your full execution order.**
+- **Snapshot protocol for B:** my snapshot regen is committed. After your re-tune + INT coeffs, regen **once** more (`UPDATE_ABILITY_SNAPSHOT=1 uv run pytest tests/game/test_ability_text.py`) and commit. The A2 guard (V.46) + axis↔scaling guard (V.47, you author in `test_content.py`) are your safety nets.
+- **Magnitude API to author your INT coeffs is live** (see quick-ref below). Group-2 restructured handlers to re-read: only `goldhide_rhino` (PctResource) + `iron_maiden` (SetByCaller). `glacierback_mammoth.passive` is on `_PROSE_ALLOWLIST` (flat growth) — add your INT term as a normal covered Magnitude; leave its allowlist line.
 
 ## Status legend
 🔒 OWNED-A — T.35a editing now, T.35b MUST NOT touch.
@@ -16,16 +23,16 @@
 | file | status | note |
 |---|---|---|
 | `src/game/registries.py` | ✅ RELEASED | **Magnitude family landed + stable.** Import `ScalingTerm`, `PctResource`, `MaxOfTerm`, `SetByCaller`, `Clause` (now has `template`+`terms`), `SummonSpec`. Safe to import + author against. T.35a will NOT touch again. |
-| `src/game/ability_text.py` | 🔒 OWNED-A | renderer dispatch — T.35a only. (T.35b shouldn't need it.) |
-| `src/game/abilities/champions.py` | 🔒 OWNED-A | T.35a relocating inline scalers → magnitudes. **T.35b dead-INT coeffs for champ carriers wait for ✅.** |
-| `src/game/abilities/enemies.py` | 🔒 OWNED-A | same — wait for ✅. |
-| `src/game/abilities/bosses.py` | 🔒 OWNED-A | T.35a only (vossberg pct-heal). T.35b has no boss work. |
-| `tests/game/test_ability_text.py` | 🔒 OWNED-A | A2 guard + snapshot tests. **T.35b axis↔scaling guard (V.47): add to `test_content.py` instead, NOT here.** |
-| `tests/game/ability_formulas.snapshot.json` | 🔒 OWNED-A | **Snapshot protocol below — do NOT regen while OWNED-A.** |
-| `src/game/content.py` | 🟡 NO-COLLISION but BAseline-BLOCKED | T.35a never *edits* it, but its **effect** (stat values) is the shared chokepoint A's byte-identical gate owns. **Hold until A commits T.35a** (see A-response below). |
-| `tests/game/test_role_intent.py` | 🟡 baseline-blocked | re-verify proxy after re-tune → same hold. |
-| `tests/game/test_content.py` | 🟡 baseline-blocked | value updates + V.47 guard → same hold. |
-| `tests/game/test_scaling.py` | 🟡 baseline-blocked | value updates → same hold. |
+| `src/game/ability_text.py` | ✅ RELEASED | per-kind dispatch done. (T.35b shouldn't need it.) |
+| `src/game/abilities/champions.py` | ✅ RELEASED | scalers relocated. Add champ dead-INT coeffs now. |
+| `src/game/abilities/enemies.py` | ✅ RELEASED | scalers relocated. Add enemy dead-INT coeffs now. |
+| `src/game/abilities/bosses.py` | ✅ RELEASED | vossberg done. No T.35b work. |
+| `tests/game/test_ability_text.py` | ✅ RELEASED | A2 guard + `_PROSE_ALLOWLIST` here. **V.47 guard → put in `test_content.py`, not here.** |
+| `tests/game/ability_formulas.snapshot.json` | ✅ RELEASED | A's regen committed; B regens once more after re-tune. |
+| `src/game/content.py` | 🟢 FREE | baseline frozen at `adf3e09`. **Re-tune now.** |
+| `tests/game/test_role_intent.py` | 🟢 FREE | re-verify proxy after re-tune. |
+| `tests/game/test_content.py` | 🟢 FREE | value updates + V.47 axis↔scaling guard here. |
+| `tests/game/test_scaling.py` | 🟢 FREE | value updates. |
 
 ## What T.35b can do RIGHT NOW (unblocked)
 1. `game/content.py`: `_DURABILITY` tanky `strength`/`intelligence` `0.55→0.42`; `_INTENT` damage `strength`/`intelligence` `1.08→1.14` (+ defense compensation `max_hp 0.93`, `armor`/`resistance 0.94`, `attack_speed 1.04`), utility `0.87` (+ `max_hp 1.12`, `armor`/`resistance 1.06`, `attack_speed 0.97`). Proxy stays in `[0.90,1.10]` (`1.075`/`0.947`).
