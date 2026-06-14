@@ -24,7 +24,10 @@ from src.game.registries import (
     ABILITY_REGISTRY,
     AbilityMeta,
     Clause,
+    MaxOfTerm,
+    PctResource,
     ScalingTerm,
+    SummonSpec,
     register_active,
     register_passive,
 )
@@ -335,11 +338,8 @@ ABILITY_META["champ_sunmane_lion.passive"] = AbilityMeta(
 
 
 # --- Goldhide Rhino (T7, Tank-Heal) ---
-# Passive: heals on auto-attack, scaling with max HP.
-# NB: max HP is a Piece attribute, not a base_stats key, so it can't be a
-# ScalingTerm (stat("max_hp") == 0). The %-of-max-HP heal stays inline; the
-# tooltip describes it as a clause. The hoisted constant is the single home.
-_GOLDHIDE_PASSIVE_HEAL_PCT = 0.03
+# Passive: heals on auto-attack, scaling with max HP (PctResource, V.46).
+_GOLDHIDE_PASSIVE_HEAL = PctResource("heal", 0.03)
 
 
 @register_passive("champ_goldhide_rhino.passive")
@@ -347,7 +347,7 @@ def goldhide_rhino_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.attacker is not owner:
             return
-        ctx.heal(owner, owner, owner.max_hp * _GOLDHIDE_PASSIVE_HEAL_PCT)
+        ctx.heal(owner, owner, _GOLDHIDE_PASSIVE_HEAL.eval(owner))
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
@@ -357,13 +357,13 @@ def goldhide_rhino_passive(owner: Any) -> EffectBundle:
 ABILITY_META["champ_goldhide_rhino.passive"] = AbilityMeta(
     name="Thick Hide", kind="passive",
     blurb="Each auto-attack heals you.",
-    clauses=(Clause(f"Restores {_GOLDHIDE_PASSIVE_HEAL_PCT * 100:g}% of max HP per hit."),),
+    clauses=(Clause(template="Restores {heal} HP per hit.", terms=(_GOLDHIDE_PASSIVE_HEAL,)),),
     tags=("heal",),
 )
 
 
 GOLDHIDE_RHINO_DMG = ScalingTerm("damage", 60.0, "strength*1.5")
-_GOLDHIDE_ACTIVE_HEAL_PCT = 0.05
+_GOLDHIDE_ACTIVE_HEAL = PctResource("heal", 0.05)
 
 
 @register_active("champ_goldhide_rhino.active")
@@ -374,14 +374,14 @@ def goldhide_rhino_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     ctx.deal_damage(actor, target, GOLDHIDE_RHINO_DMG.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
-    ctx.heal(actor, actor, actor.max_hp * _GOLDHIDE_ACTIVE_HEAL_PCT)
+    ctx.heal(actor, actor, _GOLDHIDE_ACTIVE_HEAL.eval(actor))
 
 
 ABILITY_META["champ_goldhide_rhino.active"] = AbilityMeta(
     name="Stampede", kind="active",
     blurb="Gore the primary target for {damage} physical damage.",
     terms=(GOLDHIDE_RHINO_DMG,),
-    clauses=(Clause(f"Heals you for {_GOLDHIDE_ACTIVE_HEAL_PCT * 100:g}% of max HP."),),
+    clauses=(Clause(template="Heals you for {heal} HP.", terms=(_GOLDHIDE_ACTIVE_HEAL,)),),
     tags=("physical", "heal"),
 )
 
@@ -722,8 +722,8 @@ ABILITY_META["champ_grovekeeper_tapir.active"] = AbilityMeta(
 )
 
 
-# Regen: %-of-max-HP, so stays inline (max_hp is not a base_stats key).
-_GROVEKEEPER_REGEN_PCT = 0.02
+# Regen: %-of-max-HP (PctResource, V.46).
+_GROVEKEEPER_REGEN = PctResource("heal", 0.02)
 
 
 @register_passive("champ_grovekeeper_tapir.passive")
@@ -734,7 +734,7 @@ def grovekeeper_tapir_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if ctx.current_tick - state["last_tick"] >= 300:
             state["last_tick"] = ctx.current_tick
-            ctx.heal(owner, owner, owner.max_hp * _GROVEKEEPER_REGEN_PCT)
+            ctx.heal(owner, owner, _GROVEKEEPER_REGEN.eval(owner))
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
@@ -744,14 +744,14 @@ def grovekeeper_tapir_passive(owner: Any) -> EffectBundle:
 ABILITY_META["champ_grovekeeper_tapir.passive"] = AbilityMeta(
     name="Verdant Renewal", kind="passive",
     blurb="Regenerates health over time.",
-    clauses=(Clause(f"Heals {_GROVEKEEPER_REGEN_PCT * 100:g}% of max HP every 3s."),),
+    clauses=(Clause(template="Heals {heal} HP every 3s.", terms=(_GROVEKEEPER_REGEN,)),),
     tags=("heal",),
 )
 
 
 # --- Coral Colossus (T5, Tank-Guardian) ---
-# Passive: regen when below 40% HP (%-of-max-HP stays inline)
-_CORAL_REGEN_PCT = 0.04
+# Passive: regen when below 40% HP (PctResource, V.46)
+_CORAL_REGEN = PctResource("heal", 0.04)
 
 
 @register_passive("champ_coral_colossus.passive")
@@ -762,7 +762,7 @@ def coral_colossus_passive(owner: Any) -> EffectBundle:
         if ctx.current_tick - state["last_tick"] >= 200:
             state["last_tick"] = ctx.current_tick
             if owner.hp_pct < 0.4:
-                ctx.heal(owner, owner, owner.max_hp * _CORAL_REGEN_PCT)
+                ctx.heal(owner, owner, _CORAL_REGEN.eval(owner))
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
@@ -772,7 +772,7 @@ def coral_colossus_passive(owner: Any) -> EffectBundle:
 ABILITY_META["champ_coral_colossus.passive"] = AbilityMeta(
     name="Coral Mend", kind="passive",
     blurb="Regenerates rapidly while wounded.",
-    clauses=(Clause(f"Below 40% HP, heals {_CORAL_REGEN_PCT * 100:g}% of max HP every 2s."),),
+    clauses=(Clause(template="Below 40% HP, heals {heal} HP every 2s.", terms=(_CORAL_REGEN,)),),
     tags=("heal",),
 )
 
@@ -1996,6 +1996,25 @@ ABILITY_META["champ_umbra.active"] = AbilityMeta(
 )
 
 
+# Clone statline: Magnitude fractions of the summoner + flat literals (SummonSpec, V.46).
+_UMBRA_CLONE = SummonSpec(stats={
+    "max_hp": PctResource("max_hp", 0.3),
+    "strength": ScalingTerm("strength", 0.0, "strength*0.4"),
+    "intelligence": ScalingTerm("intelligence", 0.0, "intelligence*0.4"),
+    "armor": ScalingTerm("armor", 0.0, "armor*0.3"),
+    "resistance": ScalingTerm("resistance", 0.0, "resistance*0.3"),
+    "attack_speed": ScalingTerm("attack_speed", 0.0, "attack_speed*1.0"),
+    "mana_regen": 0,
+    "move_speed": ScalingTerm("move_speed", 0.0, "move_speed*1.0"),
+    "threat": 20,
+    "attack_range": ScalingTerm("attack_range", 0.0, "attack_range*1.0"),
+    "ability_cost": 999_999,
+    "crit_chance": 0.0,
+    "penetration": 0,
+    "penetration_pct": 0.0,
+})
+
+
 # Active: summon shadow clones (spawn real flagged pieces)
 @register_active("champ_umbra.active")
 def umbra_active(ctx: Any, actor: Any, targets: list) -> None:
@@ -2004,22 +2023,7 @@ def umbra_active(ctx: Any, actor: Any, targets: list) -> None:
     for i in range(2):
         clone = Piece(
             id=f"{actor.id}_clone_{ctx.current_tick}_{i}",
-            base_stats={
-                "max_hp": actor.max_hp * 0.3,
-                "strength": actor.stat("strength") * 0.4,
-                "intelligence": actor.stat("intelligence") * 0.4,
-                "armor": actor.stat("armor") * 0.3,
-                "resistance": actor.stat("resistance") * 0.3,
-                "attack_speed": actor.stat("attack_speed"),
-                "mana_regen": 0,
-                "move_speed": actor.stat("move_speed"),
-                "threat": 20,
-                "attack_range": actor.stat("attack_range"),
-                "ability_cost": 999_999,
-                "crit_chance": 0.0,
-                "penetration": 0,
-                "penetration_pct": 0.0,
-            },
+            base_stats=_UMBRA_CLONE.eval(actor),
             affinity=actor.affinity,
             is_enemy=actor.is_enemy,
             summon=True,
@@ -2762,10 +2766,8 @@ ABILITY_META["champ_tempest_eel.passive"] = AbilityMeta(
 
 
 # --- Voltmane Jackal (T7, Hybrid Skirmisher) ---
-# Passive: autos alternate STR/INT; discharge on higher stat
-# Discharge scales on the *higher* of STR/INT — max() can't be a ScalingTerm
-# expression, so this Tier-B outlet stays inline with a hoisted coefficient.
-_JACKAL_DISCHARGE_COEFF = 0.5
+# Passive: autos alternate STR/INT; discharge on higher stat (MaxOfTerm, V.46).
+JACKAL_DISCHARGE = MaxOfTerm("bonus", 0.5, ("strength", "intelligence"))
 
 
 @register_passive("champ_voltmane_jackal.passive")
@@ -2776,12 +2778,9 @@ def voltmane_jackal_passive(owner: Any) -> EffectBundle:
         if event.attacker is not owner:
             return
         state["count"] += 1
-        str_val = owner.stat("strength")
-        int_val = owner.stat("intelligence")
         if state["count"] % 3 == 0:
             # Discharge: bonus damage based on higher stat
-            bonus = max(str_val, int_val) * _JACKAL_DISCHARGE_COEFF
-            ctx.deal_damage(owner, event.target, bonus, SourceTag.ABILITY)
+            ctx.deal_damage(owner, event.target, JACKAL_DISCHARGE.eval(owner), SourceTag.ABILITY)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
@@ -2790,8 +2789,8 @@ def voltmane_jackal_passive(owner: Any) -> EffectBundle:
 
 ABILITY_META["champ_voltmane_jackal.passive"] = AbilityMeta(
     name="Discharge", kind="passive",
-    blurb="Every 3rd auto-attack discharges bonus magic damage.",
-    clauses=(Clause(f"Deals {_JACKAL_DISCHARGE_COEFF:g}× your higher of Strength or Intelligence."),),
+    blurb="Every 3rd auto-attack discharges {bonus} bonus magic damage.",
+    terms=(JACKAL_DISCHARGE,),
     tags=("magic",),
 )
 

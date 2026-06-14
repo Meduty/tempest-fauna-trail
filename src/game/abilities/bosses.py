@@ -27,6 +27,7 @@ from src.game.registries import (
     ABILITY_META,
     AbilityMeta,
     Clause,
+    PctResource,
     ScalingTerm,
     register_active,
     register_passive,
@@ -663,8 +664,8 @@ ABILITY_META["vossberg.wildfire_leap"] = AbilityMeta(
 )
 
 
-# Phase 2 Passive: Feeding Frenzy — heal on kill (%-of-max-HP stays inline)
-_VOSSBERG_FRENZY_HEAL_PCT = 0.1
+# Phase 2 Passive: Feeding Frenzy — heal on kill (PctResource, V.46)
+_VOSSBERG_FRENZY_HEAL = PctResource("heal", 0.1)
 
 
 @register_passive("vossberg.feeding_frenzy")
@@ -672,7 +673,7 @@ def vossberg_feeding_frenzy(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.killer is not owner:
             return
-        ctx.heal(owner, owner, owner.max_hp * _VOSSBERG_FRENZY_HEAL_PCT)
+        ctx.heal(owner, owner, _VOSSBERG_FRENZY_HEAL.eval(owner))
 
     return EffectBundle(hooks=[
         Hook("on_kill", hook, scope=HookScope.PER_HIT),
@@ -681,7 +682,8 @@ def vossberg_feeding_frenzy(owner: Any) -> EffectBundle:
 
 ABILITY_META["vossberg.feeding_frenzy"] = AbilityMeta(
     name="Feeding Frenzy", kind="passive",
-    blurb="Killing an enemy heals for 10% of max HP.",
+    blurb="Killing an enemy heals you.",
+    clauses=(Clause(template="Heals {heal} HP per kill.", terms=(_VOSSBERG_FRENZY_HEAL,)),),
     tags=("heal",),
 )
 

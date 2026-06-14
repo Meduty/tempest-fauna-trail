@@ -59,16 +59,33 @@ value, so the headline number is fully traceable — and `text` carries a
 compact inline suffix beside the rendered total (`...550 magic damage. (100
 +150% STR +150% INT)`). Pure-flat / no-scaling terms (buffs) add no suffix.
 
-**Source-of-truth B (V.38):** a handler's headline damage/heal constant lives
-**once** in a `ScalingTerm` the handler reads via `term.eval(source)` — the
+**Source-of-truth B (V.38 + V.46):** every stat-scaled outlet a handler computes
+lives **once** in a `Magnitude` the handler reads via `term.eval(...)` — the
 tooltip renders the same object, so tooltip and combat numbers cannot drift.
-`ScalingTerm.eval` delegates to the engine's `_eval_scaling`, keeping
-`resolve_combat` byte-identical (V.2/V.14). Secondary/structural constants
-(execute multipliers, splash %, %-max-HP heals, summon fractions) are **Tier-B**:
-hoisted to a named module constant and described in a `Clause`, not a term.
-Caveat: `max_hp`/`hp` are `Piece` attributes, **not** `base_stats` keys, so they
-can't be `ScalingTerm` scaling expressions (`stat("max_hp")` is 0) — %-of-max-HP
-outlets stay inline + clause. `max()`-of-two-stats outlets likewise stay inline.
+T.35a promoted `ScalingTerm` into a **closed `Magnitude` family** (modeled on
+Unreal GAS's `EGameplayEffectModifierMagnitude`), so there is **no** free inline
+handler math anymore — the old "Tier-B stays inline + prose" carve-out is gone.
+The four kinds (all in `registries.py`, all pure/RNG-free, all self-describing via
+`eval`/`render_formula`/`render_inline`/`render_token`):
+
+| kind | shape | absorbs |
+|---|---|---|
+| `ScalingTerm` | `base + Σ source.stat·coeff` (delegates to `_eval_scaling`) | linear damage/heal/buff/shred |
+| `PctResource` | `getattr(obj, resource)·pct`, `of="self"\|"target"` | %-of-max-HP heals (reads `.max_hp` **directly** — `Piece.stat("max_hp")` is 0, see `effects.compute_stat`) |
+| `MaxOfTerm` | `base + max(source.stat(s)…)·coeff` | `max(STR,INT)` outlets (non-linear) |
+| `SetByCaller` | `base + caller[key]·coeff` (handler injects the runtime value) | per-stack / runtime-count outlets |
+
+`Clause` carries an optional `{token}` `template` + its own `terms`, so a Tier-B
+scaler's prose number is filled from the same `Magnitude` the handler reads (A1) —
+e.g. Hierarch's `Grants Armor ({armor})…`. `SummonSpec` holds a summon's statline
+as `Magnitude` fractions + flat literals (`eval(owner) -> base_stats`), so summon
+stats are introspectable, not inline. **A2 guard (`test_no_orphan_stat_reads`,
+V.46):** an AST walk fails the build if any handler reads `.stat()`/`.max_hp`
+outside a `Magnitude` on its meta — except ids on `_PROSE_ALLOWLIST` (flat
+`max_hp +=` growth: `champ_snowpelt_cub.passive`, `champ_glacierback_mammoth.passive`,
+`enemy_levyman.passive`). The conversion was **byte-identical** (sim digest unmoved,
+V.2/V.14); only the rendered `formula`/`text` of the 15 converted Tier-B abilities
+gained their scaling lines.
 
 **Tick → seconds (V.39):** `TICKS_PER_SECOND = 100` in `ability_text.py` is the
 single source for the `100 ticks = 1 second` display convention. Mechanics stay
@@ -90,5 +107,5 @@ champion/enemy (and optional boss) rosters with rendered descriptions to JSON.
 | Boss kits (2-phase) | `abilities/bosses.py` |
 | Shared/declarative | `abilities/reference.py`, `registries.register_active_simple` |
 | Registries + decorators | `registries.py` (`ABILITY_REGISTRY`, `PASSIVE_REGISTRY`, `@register_active`/`@register_passive`) |
-| Ability descriptions (T.34) | `registries.py` (`ABILITY_META`, `ScalingTerm`, `Clause`, `AbilityMeta`), `ability_text.py` (`render`, `render_for`, `TICKS_PER_SECOND`) |
+| Ability descriptions (T.34/T.35a) | `registries.py` (`ABILITY_META`, `Magnitude` family: `ScalingTerm`/`PctResource`/`MaxOfTerm`/`SetByCaller`, `Clause` w/ `template`+`terms`, `SummonSpec`, `AbilityMeta`), `ability_text.py` (`render` pure per-kind dispatch, `render_for`, `TICKS_PER_SECOND`) |
 | id source on the model | `content.py` (`active_ability`/`passive_ability`) |

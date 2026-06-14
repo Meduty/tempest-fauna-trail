@@ -19,7 +19,11 @@ from src.game.registries import (
     ABILITY_META,
     AbilityMeta,
     Clause,
+    MaxOfTerm,
+    PctResource,
     ScalingTerm,
+    SetByCaller,
+    SummonSpec,
     register_active,
     register_passive,
 )
@@ -344,7 +348,7 @@ ABILITY_META["enemy_field_medic.active"] = AbilityMeta(
 )
 
 
-_FIELD_MEDIC_REGEN_PCT = 0.02
+_FIELD_MEDIC_REGEN = PctResource("heal", 0.02)
 
 
 @register_passive("enemy_field_medic.passive")
@@ -354,7 +358,7 @@ def field_medic_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if ctx.current_tick - state["last_tick"] >= 300:
             state["last_tick"] = ctx.current_tick
-            ctx.heal(owner, owner, owner.max_hp * _FIELD_MEDIC_REGEN_PCT)
+            ctx.heal(owner, owner, _FIELD_MEDIC_REGEN.eval(owner))
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
@@ -364,7 +368,7 @@ def field_medic_passive(owner: Any) -> EffectBundle:
 ABILITY_META["enemy_field_medic.passive"] = AbilityMeta(
     name="Self-Care", kind="passive",
     blurb="Regenerates health over time.",
-    clauses=(Clause(f"Heals {_FIELD_MEDIC_REGEN_PCT * 100:g}% of max HP every 3s."),),
+    clauses=(Clause(template="Heals {heal} HP every 3s.", terms=(_FIELD_MEDIC_REGEN,)),),
     tags=("heal",),
 )
 
@@ -590,27 +594,31 @@ ABILITY_META["enemy_heavy_knight.active"] = AbilityMeta(
 
 
 # --- Steam Engineer (T4) --- deploy turret (summon)
+# Turret statline: Magnitude fractions of the engineer + flat literals (SummonSpec, V.46).
+_STEAM_TURRET = SummonSpec(stats={
+    "max_hp": PctResource("max_hp", 0.25),
+    "strength": 0,
+    "intelligence": ScalingTerm("intelligence", 0.0, "intelligence*0.5"),
+    "armor": 20,
+    "resistance": 20,
+    "attack_speed": 80,
+    "mana_regen": 0,
+    "move_speed": 0,
+    "threat": 10,
+    "attack_range": 3,
+    "ability_cost": 999_999,
+    "crit_chance": 0.0,
+    "penetration": 0,
+    "penetration_pct": 0.0,
+})
+
+
 @register_active("enemy_steam_engineer.active")
 def steam_engineer_active(ctx: Any, actor: Any, targets: list) -> None:
     from src.game.piece import Piece
     turret = Piece(
         id=f"{actor.id}_turret_{ctx.current_tick}",
-        base_stats={
-            "max_hp": actor.max_hp * 0.25,
-            "strength": 0,
-            "intelligence": actor.stat("intelligence") * 0.5,
-            "armor": 20,
-            "resistance": 20,
-            "attack_speed": 80,
-            "mana_regen": 0,
-            "move_speed": 0,
-            "threat": 10,
-            "attack_range": 3,
-            "ability_cost": 999_999,
-            "crit_chance": 0.0,
-            "penetration": 0,
-            "penetration_pct": 0.0,
-        },
+        base_stats=_STEAM_TURRET.eval(actor),
         affinity=actor.affinity,
         is_enemy=actor.is_enemy,
         summon=True,
@@ -761,14 +769,19 @@ ABILITY_META["enemy_gunslinger.active"] = AbilityMeta(
 
 
 # --- Company Captain (T5) --- mark target → INT-scaled armor/resistance reduction
+# Shred magnitude is a positive ScalingTerm; the handler applies it as a negative
+# modifier (the scaling grammar has no negative-coeff form). A1/V.46.
+COMPANY_CAPTAIN_SHRED = ScalingTerm("shred", 8.0, "intelligence*0.15")
+
+
 @register_active("enemy_company_captain.active")
 def company_captain_active(ctx: Any, actor: Any, targets: list) -> None:
     target = lowest_hp_enemy(actor, ctx)
     if not target:
         return
     # Mark: reduce target's resistance/armor — scales from INT for stronger debuffs
-    armor_reduction = -(8.0 + actor.stat("intelligence") * 0.15)
-    resistance_reduction = -(8.0 + actor.stat("intelligence") * 0.15)
+    armor_reduction = -COMPANY_CAPTAIN_SHRED.eval(actor)
+    resistance_reduction = -COMPANY_CAPTAIN_SHRED.eval(actor)
     ctx.apply_modifier(target, Modifier(
         "armor", "add", armor_reduction, Lifetime.TIMED,
         "ability:enemy_company_captain.mark",
@@ -784,20 +797,24 @@ def company_captain_active(ctx: Any, actor: Any, targets: list) -> None:
 ABILITY_META["enemy_company_captain.active"] = AbilityMeta(
     name="Mark Target", kind="active",
     blurb="Mark the lowest-HP enemy, shredding its Armor and Resistance for 6s.",
-    clauses=(Clause("Reduces both by 8 + 15% of the Captain's Intelligence."),),
+    clauses=(Clause(template="Reduces both by {shred}.", terms=(COMPANY_CAPTAIN_SHRED,)),),
     tags=("debuff",),
 )
 
 
 # --- Company Captain (T5) --- Focus Fire: mark hit targets; allies piling on
 # a marked target trigger bonus INT magic damage from the captain.
+# Per-LEVEL INT rate is a ScalingTerm; the handler multiplies by level (the
+# coeff is level-dependent, which a static scaling string can't hold). A1/V.46.
+COMPANY_CAPTAIN_FOCUS_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.1")
+
+
 @register_passive("enemy_company_captain.passive")
 def company_captain_passive(owner: Any) -> EffectBundle:
     FOCUS_FIRE_DURATION = 600
     # Conservative INT scaling with a modest per-level bump:
     # original L1 0.12·INT, L2 0.15·INT, L3 0.18·INT per ally hit on a marked target.
     level = getattr(owner, "level", 1)
-    bonus_coeff = 0.1 * level
     # Marked targets draw the captain's allies onto them (threat = targeting priority).
     threat_bonus = 15.0 * level
     _TRIGGER_TAGS = (SourceTag.BASIC_ATTACK.value, SourceTag.ABILITY.value)
@@ -832,7 +849,7 @@ def company_captain_passive(owner: Any) -> EffectBundle:
         # An ally other than the captain hits a marked target → bonus magic dmg.
         if (attacker.is_enemy == owner.is_enemy
                 and target.has_status("focus_fire")):
-            bonus = owner.stat("intelligence") * bonus_coeff
+            bonus = COMPANY_CAPTAIN_FOCUS_BONUS.eval(owner) * level
             if bonus <= 0:
                 return
             state["in_bonus"] = True
@@ -850,7 +867,8 @@ def company_captain_passive(owner: Any) -> EffectBundle:
 ABILITY_META["enemy_company_captain.passive"] = AbilityMeta(
     name="Focus Fire", kind="passive",
     blurb="The Captain's strikes mark enemies and raise their threat; allies hitting a marked target trigger bonus magic damage.",
-    clauses=(Clause("Bonus scales with the Captain's Intelligence and level."),),
+    clauses=(Clause(template="Bonus = {bonus} magic damage per Captain level.",
+                    terms=(COMPANY_CAPTAIN_FOCUS_BONUS,)),),
     tags=("magic", "debuff"),
 )
 
@@ -953,8 +971,9 @@ ABILITY_META["enemy_riflemaster.active"] = AbilityMeta(
 
 
 # --- Inquisitor (T6) --- bonus damage vs casters (high INT targets)
-# Bonus uses max(STR, INT) — can't be a ScalingTerm expression, stays inline.
-_INQUISITOR_COEFF = 0.3
+# Bonus uses max(STR, INT) → MaxOfTerm (V.46). The vs-caster gate is a target
+# predicate (reads target STR/INT — same stat names the term covers).
+INQUISITOR_BONUS = MaxOfTerm("bonus", 0.3, ("strength", "intelligence"))
 
 
 @register_passive("enemy_inquisitor.passive")
@@ -963,8 +982,7 @@ def inquisitor_passive(owner: Any) -> EffectBundle:
         if event.attacker is not owner:
             return
         if event.target.stat("intelligence") > event.target.stat("strength"):
-            bonus = max(owner.stat("strength"), owner.stat("intelligence")) * _INQUISITOR_COEFF
-            ctx.deal_damage(owner, event.target, bonus, SourceTag.BASIC_ATTACK)
+            ctx.deal_damage(owner, event.target, INQUISITOR_BONUS.eval(owner), SourceTag.BASIC_ATTACK)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
@@ -973,8 +991,8 @@ def inquisitor_passive(owner: Any) -> EffectBundle:
 
 ABILITY_META["enemy_inquisitor.passive"] = AbilityMeta(
     name="Witch Hunter", kind="passive",
-    blurb="Auto-attacks against caster-type targets deal bonus magic damage.",
-    clauses=(Clause(f"Deals {_INQUISITOR_COEFF:g}× the higher of Strength or Intelligence."),),
+    blurb="Auto-attacks against caster-type targets deal {bonus} bonus magic damage.",
+    terms=(INQUISITOR_BONUS,),
     tags=("magic",),
 )
 
@@ -1082,6 +1100,11 @@ ABILITY_META["enemy_lord_commander.passive"] = AbilityMeta(
 
 
 # --- Iron Maiden (T7) --- +armor on hit; release AOE STR every 600 ticks
+# Spike release = STR*0.5 (ScalingTerm) + 5 per stored stack (SetByCaller, V.46).
+IRON_MAIDEN_SPIKE = ScalingTerm("spike", 0.0, "strength*0.5")
+IRON_MAIDEN_PER_STACK = SetByCaller("per_stack", 0.0, 5.0, "stacks")
+
+
 @register_passive("enemy_iron_maiden.passive")
 def iron_maiden_passive(owner: Any) -> EffectBundle:
     state = {"stacks": 0, "last_release": 0}
@@ -1099,7 +1122,10 @@ def iron_maiden_passive(owner: Any) -> EffectBundle:
     def on_tick(ctx: Any, event: Any) -> None:
         if ctx.current_tick - state["last_release"] >= 600 and state["stacks"] > 0:
             state["last_release"] = ctx.current_tick
-            amount = owner.stat("strength") * 0.5 + state["stacks"] * 5
+            amount = (
+                IRON_MAIDEN_SPIKE.eval(owner)
+                + IRON_MAIDEN_PER_STACK.eval(owner, caller={"stacks": state["stacks"]})
+            )
             enemies = enemies_in_radius(owner.position_q, owner.position_r, 2, owner, ctx)
             for e in enemies:
                 ctx.deal_damage(owner, e, amount, SourceTag.ABILITY, damage_type="physical")
@@ -1114,7 +1140,8 @@ def iron_maiden_passive(owner: Any) -> EffectBundle:
 ABILITY_META["enemy_iron_maiden.passive"] = AbilityMeta(
     name="Spike Mantle", kind="passive",
     blurb="Each hit taken grants +3 Armor for 6s and stores a spike.",
-    clauses=(Clause("Every 6s, releases stored spikes as AoE physical damage (50% of Strength + 5 per stack)."),),
+    clauses=(Clause(template="Every 6s, releases stored spikes as AoE physical damage ({spike} + {per_stack} per stored stack).",
+                    terms=(IRON_MAIDEN_SPIKE, IRON_MAIDEN_PER_STACK)),),
     tags=("defense", "physical", "aoe"),
 )
 
@@ -1242,12 +1269,17 @@ ABILITY_META["enemy_spymaster.passive"] = AbilityMeta(
 
 
 # --- Hierarch (T8) --- shield whole enemy line (allies get INT-scaled armor buff)
+# INT-scaled armor/res buff → ScalingTerms the handler + clause both read (A1, V.46).
+HIERARCH_ARMOR = ScalingTerm("armor", 20.0, "intelligence*0.4")
+HIERARCH_RES = ScalingTerm("res", 10.0, "intelligence*0.2")
+
+
 @register_active("enemy_hierarch.active")
 def hierarch_active(ctx: Any, actor: Any, targets: list) -> None:
     allies = list(ctx.allies_of(actor))
     # Shield magnitude scales from INT — stronger shields for higher-tier/better-geared mages
-    armor_bonus = 20.0 + actor.stat("intelligence") * 0.4
-    resistance_bonus = 10.0 + actor.stat("intelligence") * 0.2
+    armor_bonus = HIERARCH_ARMOR.eval(actor)
+    resistance_bonus = HIERARCH_RES.eval(actor)
     for ally in allies:
         ctx.apply_modifier(ally, Modifier(
             "armor", "add", armor_bonus, Lifetime.TIMED,
@@ -1264,7 +1296,8 @@ def hierarch_active(ctx: Any, actor: Any, targets: list) -> None:
 ABILITY_META["enemy_hierarch.active"] = AbilityMeta(
     name="Sanctuary", kind="active",
     blurb="Shield the whole team for 5s.",
-    clauses=(Clause("Grants Armor (20 + 40% of Intelligence) and Resistance (10 + 20% of Intelligence)."),),
+    clauses=(Clause(template="Grants Armor ({armor}) and Resistance ({res}).",
+                    terms=(HIERARCH_ARMOR, HIERARCH_RES)),),
     tags=("defense", "team"),
 )
 
@@ -1272,12 +1305,15 @@ ABILITY_META["enemy_hierarch.active"] = AbilityMeta(
 # On-death: Last Rites — grant all surviving allies an INT-scaled barrier
 # (temp absorb pool, not armor) lasting 600·level ticks. Rewards killing the
 # Hierarch last; killing it early denies the team-wide barrier.
+HIERARCH_BARRIER = ScalingTerm("barrier", 50.0, "intelligence*2.0")
+
+
 @register_passive("enemy_hierarch.passive")
 def hierarch_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.victim is not owner:
             return
-        barrier = 50.0 + owner.stat("intelligence") * 2.0
+        barrier = HIERARCH_BARRIER.eval(owner)
         duration = 600 * owner.level
         for ally in ctx.allies_of(owner):
             if ally is owner or not ally.alive:
@@ -1292,7 +1328,7 @@ def hierarch_passive(owner: Any) -> EffectBundle:
 ABILITY_META["enemy_hierarch.passive"] = AbilityMeta(
     name="Last Rites", kind="passive",
     blurb="On death, grants all surviving allies a barrier.",
-    clauses=(Clause("Barrier = 50 + 2× Intelligence, lasting 6s per level."),),
+    clauses=(Clause(template="Barrier = {barrier}, lasting 6s per level.", terms=(HIERARCH_BARRIER,)),),
     tags=("defense", "team"),
 )
 
@@ -1450,7 +1486,7 @@ ABILITY_META["enemy_grand_marshal.active"] = AbilityMeta(
 
 
 # --- Blight Lurker (T3, Rain) --- regen when un-attacked (periodic heal)
-_BLIGHT_LURKER_REGEN_PCT = 0.03
+_BLIGHT_LURKER_REGEN = PctResource("heal", 0.03)
 
 
 @register_passive("enemy_blight_lurker.passive")
@@ -1466,7 +1502,7 @@ def blight_lurker_passive(owner: Any) -> EffectBundle:
         if ctx.current_tick - state["last_heal_tick"] >= 200:
             state["last_heal_tick"] = ctx.current_tick
             if ctx.current_tick - state["last_hit_tick"] >= 300:
-                ctx.heal(owner, owner, owner.max_hp * _BLIGHT_LURKER_REGEN_PCT)
+                ctx.heal(owner, owner, _BLIGHT_LURKER_REGEN.eval(owner))
 
     return EffectBundle(hooks=[
         Hook("on_damage_taken", on_hit, scope=HookScope.PER_HIT),
@@ -1477,7 +1513,8 @@ def blight_lurker_passive(owner: Any) -> EffectBundle:
 ABILITY_META["enemy_blight_lurker.passive"] = AbilityMeta(
     name="Lurking Regen", kind="passive",
     blurb="Regenerates while it avoids being hit.",
-    clauses=(Clause("After 3s without taking damage, heals 3% of max HP every 2s."),),
+    clauses=(Clause(template="After 3s without taking damage, heals {heal} HP every 2s.",
+                    terms=(_BLIGHT_LURKER_REGEN,)),),
     tags=("heal",),
 )
 
@@ -2108,7 +2145,8 @@ ABILITY_META["enemy_shaftmaw.passive"] = AbilityMeta(
 
 
 # --- Reaver of the Reach (T7, Cloudy) --- every 4th auto free cast; cleave
-_REAVER_CLEAVE_COEFF = 0.6
+# Cleave scales on the higher of STR/INT → MaxOfTerm (V.46).
+REAVER_CLEAVE = MaxOfTerm("bonus", 0.6, ("strength", "intelligence"))
 
 
 @register_passive("enemy_reaver_of_the_reach.passive")
@@ -2120,8 +2158,7 @@ def reaver_of_the_reach_passive(owner: Any) -> EffectBundle:
             return
         state["count"] += 1
         if state["count"] % 4 == 0:
-            # Free cleave — scales on higher of STR/INT (max() can't be a term)
-            amount = max(owner.stat("strength"), owner.stat("intelligence")) * _REAVER_CLEAVE_COEFF
+            amount = REAVER_CLEAVE.eval(owner)
             for n in neighbors_of(event.target, ctx):
                 if ctx.is_enemy(n, owner):
                     ctx.deal_damage(owner, n, amount, SourceTag.ABILITY, damage_type="physical")
@@ -2134,8 +2171,8 @@ def reaver_of_the_reach_passive(owner: Any) -> EffectBundle:
 
 ABILITY_META["enemy_reaver_of_the_reach.passive"] = AbilityMeta(
     name="Reaving Sweep", kind="passive",
-    blurb="Every 4th auto-attack cleaves a nearby enemy.",
-    clauses=(Clause(f"Deals {_REAVER_CLEAVE_COEFF:g}× the higher of Strength or Intelligence."),),
+    blurb="Every 4th auto-attack cleaves a nearby enemy for {bonus}.",
+    terms=(REAVER_CLEAVE,),
     tags=("physical",),
 )
 
