@@ -61,7 +61,7 @@ class RenderedAbility:
 
     name: str
     text: str                       # blurb with {tokens} replaced by live numbers
-    formula: str                    # one line per term, "267 = 80 + INT×2.2 (INT 85)"
+    formula: str                    # one line per term, "267 = 80 + 220% INT (INT 85)"
     tags: tuple[str, ...]
 
 
@@ -81,15 +81,14 @@ def _short(stat_name: str) -> str:
     return _STAT_SHORT.get(canon, canon.upper())
 
 
-def _format_scaling(term: ScalingTerm, source: object) -> str:
-    """Pretty-print a term's scaling string: ``base + STAT×coeff (STAT val)``.
+def _parse_term(term: ScalingTerm, source: object):
+    """Decompose a term into its flat base + per-stat ``(short, coeff, value)``.
 
-    Mirrors ``_eval_scaling``'s grammar (split on ``+``, ``*`` per part).
+    Mirrors ``_eval_scaling``'s grammar (split on ``+``, ``*`` per part). Shared
+    by ``_format_scaling`` (full formula line) and ``_scaling_inline`` (blurb
+    suffix) so both read the same coefficients.
     """
-    pieces: list[str] = []
-    stat_notes: list[str] = []
-    if term.base:
-        pieces.append(f"{term.base:g}")
+    scales: list[tuple[str, float, float]] = []
     expr = term.scaling.replace("-", "+-") if term.scaling else ""
     for part in expr.split("+"):
         part = part.strip()
@@ -98,13 +97,46 @@ def _format_scaling(term: ScalingTerm, source: object) -> str:
         stat_name, coeff = part.split("*", 1)
         stat_name = stat_name.strip()
         short = _short(stat_name)
-        pieces.append(f"{short}×{float(coeff.strip()):g}")
         canon = _ALIASES.get(stat_name, stat_name)
         val = source.stat(canon) if hasattr(source, "stat") else 0.0
-        stat_notes.append(f"{short} {val:g}")
+        scales.append((short, float(coeff.strip()), float(val)))
+    return scales
+
+
+def _format_scaling(term: ScalingTerm, source: object) -> str:
+    """Pretty-print a term: ``total = base + 130% STR  (STR 1.3×val)``.
+
+    Coefficients render as percentages (``×1.3`` → ``130% STR``) so the source
+    stats and their contribution read at a glance. The trailing note shows the
+    actual contribution math — ``coeff×stat`` (e.g. ``STR 1.8×104``) — not the
+    bare stat value, so the headline number is fully traceable.
+    """
+    scales = _parse_term(term, source)
+    pieces: list[str] = []
+    stat_notes: list[str] = []
+    if term.base:
+        pieces.append(f"{term.base:g}")
+    for short, coeff, val in scales:
+        pieces.append(f"{coeff * 100:g}% {short}")
+        stat_notes.append(f"{short} {coeff:g}×{val:g}")
     rhs = " + ".join(pieces) if pieces else "0"
     note = f"  ({', '.join(stat_notes)})" if stat_notes else ""
     return f"{round(term.eval(source))} = {rhs}{note}"
+
+
+def _scaling_inline(term: ScalingTerm, source: object) -> str:
+    """Compact blurb suffix for one term: ``100 +130% STR +130% INT``.
+
+    Empty when the term carries no stat scaling (pure flat constants add no
+    player insight). Lets the blurb show *what a number scales from* beside the
+    rendered total.
+    """
+    scales = _parse_term(term, source)
+    if not scales:
+        return ""
+    parts = [f"{term.base:g}"] if term.base else []
+    parts += [f"+{coeff * 100:g}% {short}" for short, coeff, _val in scales]
+    return " ".join(parts)
 
 
 def render(meta: AbilityMeta, source: object) -> RenderedAbility:
@@ -116,6 +148,9 @@ def render(meta: AbilityMeta, source: object) -> RenderedAbility:
         return str(values.get(key, match.group(0)))
 
     full = meta.blurb
+    inline = "; ".join(s for s in (_scaling_inline(t, source) for t in meta.terms) if s)
+    if inline:
+        full = full + f" ({inline})"
     if meta.clauses:
         full = full + " " + " ".join(c.text for c in meta.clauses)
     text = re.sub(r"\{(\w+)\}", _sub, full)

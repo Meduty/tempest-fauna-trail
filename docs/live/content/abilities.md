@@ -51,6 +51,14 @@ contexts — a base `Champion`/`Enemy` (roster sheet, via the `.stat()` field
 adapters) and a live `Piece` (combat, with modifiers; **bosses always via the
 compiled `Piece`**). `render_for(id, source)` is the dict-lookup convenience.
 
+Each scaling term renders its coefficients as **percentages of the source
+stat** so players read what a number scales from: `formula` lines read
+`550 = 100 + 150% STR + 150% INT  (STR 1.5×150, INT 1.5×150)` — the trailing
+note shows each term's contribution math (`coeff×stat`), not the bare stat
+value, so the headline number is fully traceable — and `text` carries a
+compact inline suffix beside the rendered total (`...550 magic damage. (100
++150% STR +150% INT)`). Pure-flat / no-scaling terms (buffs) add no suffix.
+
 **Source-of-truth B (V.38):** a handler's headline damage/heal constant lives
 **once** in a `ScalingTerm` the handler reads via `term.eval(source)` — the
 tooltip renders the same object, so tooltip and combat numbers cannot drift.

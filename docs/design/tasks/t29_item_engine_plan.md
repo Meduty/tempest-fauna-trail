@@ -1,6 +1,6 @@
 # T29 Plan — Item Engine
 
-> **Status:** approved — T.29a/T.29b split in SPEC (📋 Plan). **`T.29-pre` ✅ Done (2026-06-13)** — combat stat substrate landed ([Part B](#part-b--t29-pre--combat-stat-substrate-prerequisite-sequences-first)); `T.29-pre → T.29a → T.29b`. ⚠️ **`T.29a` is NOT build-ready: §3.1a (mana primitive) was reworked 2026-06-13 and carries two unresolved tensions** (Tension 1 — `mana_cost` base home vs the V.35 `ability_cost` stat; Tension 2 — rename call-site sweep). Resolve §3.1a (decision or `/plan` refresh) before `/build T.29a`. The rest of T.29a (components, recipes, equip, drops) is build-ready.
+> **Status:** approved — T.29a/T.29b split in SPEC (📋 Plan). **`T.29-pre` ✅ Done (2026-06-13)** — combat stat substrate landed ([Part B](#part-b--t29-pre--combat-stat-substrate-prerequisite-sequences-first)); `T.29-pre → T.29a → T.29b`. ⚠️ **`T.29a` is NOT build-ready: §3.1a (mana primitive) was reworked 2026-06-13 and carries four unresolved tensions** (Tension 1 — `mana_cost` base home vs the V.35 `ability_cost` stat; Tension 2 — rename call-site sweep; Tension 3 — how piece-level `mana_regen` allocates across multiple slot-local pools; Tension 4 — multi-ready cast semantics / one-cast-per-action / priority). **Agreed hard rule: at most one cast per action window.** Resolve §3.1a (decision or `/plan` refresh) before `/build T.29a`. The rest of T.29a (components, recipes, equip, drops) is build-ready.
 > **Depends:** T.1 (models — done), T.20 (effect substrate / `ITEM_REGISTRY` / `register_item` — done), **T.22** (Amber economy, `Run` shop/inventory — done; drop-table weights **owned by T.29a** per §3.7 decision). **T.29b emblems additionally depend on T.28a** (trait counting consumes emblem `granted_traits`). **T.29b special-item CLI driver shares the `sim_run` interactive shell with T.31** — coordinate. **T.29-pre (substrate) depends only on already-built work (T.2 weather, T.20 effects, T.28d trait riders, T.33a sort-order) — it can build immediately and is a soft prerequisite to T.29a (fixes the `(base+adds)×muls` compose rule + `source:` prefix vocab that item factories author against).**
 > **Resolves:** SPEC §D.9 (item system — components, recipes, emblems, special items, 3 slots) and the REWARD-drop half of §D.12.
 > **Design source of truth:** [`item_catalog.md`](../content/item_catalog.md) (8 components, 36 combined, 6 emblems, 6 special, the §3 16-item core cut) + [`effect_systems_design.md` §8](../systems/effect_systems_design.md) (substrate: `BASE_COMPONENTS`, `RECIPE_MAP`, item factories, §8.4 run-actions, `combine()`) + §10.1 (application order).
@@ -19,7 +19,7 @@ The seam is **combat-facing vs meta/cross-task**. T.29a is self-contained (deps 
 - **One re-baseline, two separable commits** (commit 1 re-baselines weather numbers; commit 2 is ~byte-identical by exact migration).
 
 ### T.29a — Component + combined-item engine + 16 core items (Est: M–L)
-- §3.1 component model + **real-stat mapping** + §3.1a mana-stat primitive (per-ability `mana_cost`/`max_mana`/`start_mana`; `max_mana` = universal cap; MR = cast-rate knob; 3 engine sites). ⚠️ **§3.1a has two unresolved tensions — resolve before building (see §3.1a).**
+- §3.1 component model + **real-stat mapping** + §3.1a mana-stat primitive (per-ability `mana_cost`/`max_mana`/`start_mana`; `max_mana` = universal cap; MR = cast-rate knob; 3 engine sites). ⚠️ **§3.1a has four unresolved tensions (mana_cost home, rename sweep, MR multi-slot allocation, multi-ready cast semantics) — resolve before building (see §3.1a).**
 - §3.2 `RECIPE_MAP` (full 8×8 = 36 keys) + `combine()` (recipes only; gem branch stubbed for b).
 - §3.3 equip model: `Champion.items` (≤3, persistent) → threaded into `piece_from_champion`; `Piece.items` already exists ([piece.py:43](../../../src/game/piece.py#L43)); apply item bundles in `compile_loadout` (§10.1 step 5).
 - §3.4 `@register_item` factories for the **16 core-cut items** (modifier + hook, closure-per-combat) + 8 raw components.
@@ -84,9 +84,14 @@ The seam is **combat-facing vs meta/cross-task**. T.29a is self-contained (deps 
 ### 3.1a Mana-stat primitive — `mana_cost` / `max_mana` / `start_mana` (per-ability slot)
 
 > ⚠️ **NEEDS REFINEMENT BEFORE `/build T.29a` — do not implement as-is.** The mana
-> model was reworked in conversation 2026-06-13 (post-T.29-pre); two design tensions
+> model was reworked in conversation 2026-06-13 (post-T.29-pre); **four** design tensions
 > below are **unresolved** and must be settled (a quick `/plan` refresh or a decision
-> here) before this section is built. The shape is settled; the tagged forks are not.
+> here) before this section is built. The single-pool *shape* is settled; the tagged forks
+> are not. **One hard rule IS agreed: at most one cast per action window** (Tension 4) —
+> no multi-cast burst when several slots are ready. Tensions 1–2 are implementation/authority
+> forks; **Tensions 3–4 are the load-bearing multi-active design forks** — the per-slot engine
+> sites below currently *assume* full-MR-to-every-slot (Tension 3 Option A), which is **not yet
+> decided** and is balance-dangerous (see Tension 3).
 
 **Settled model.** Four mana fields are **per-ability/per-slot** (they live on the
 ability/`ActiveSlot`, alongside the existing `current_mana`); **`mana_regen` is the
@@ -113,11 +118,15 @@ start_mana)` **auto-bump are dropped** — `max_mana` is a deliberate, authored,
 - **Engine (3 per-slot sites) — drop the MR guard:**
   - regen → `slot.current_mana = min(slot.max_mana, slot.current_mana + mr_val)` (was
     `min(slot.cost, …)`, engine.py:831). **`max_mana` is the clamp**; passive regen may
-    now bank/overload up to `max_mana`.
+    now bank/overload up to `max_mana`. ⚠️ **`mr_val` per-slot allocation is Tension 3 —**
+    this line as written gives **every** slot the full piece `mana_regen` (Tension 3 Option A,
+    balance-dangerous); the actual per-slot `mr_val` must follow the Tension 3 decision.
   - cast → `slot.current_mana -= slot.mana_cost` (was `= 0.0`, engine.py:486,663) so
-    overflow carries.
+    overflow carries. ⚠️ **When >1 slot is ready, only one may cast this window** (Tension 4
+    hard rule) — the cast site needs a single-cast gate + a ready-slot selection policy.
   - combat start (new) → `slot.current_mana = min(slot.max_mana, slot.start_mana)`.
-  - ready check unchanged: `slot.current_mana >= slot.mana_cost` (engine.py:463,657).
+  - ready check unchanged per-slot: `slot.current_mana >= slot.mana_cost` (engine.py:463,657)
+    — but **acting on multiple ready slots is gated by Tension 4** (one cast/window).
 - **Resources, not modifiers (V.43).** `mana_cost`/`max_mana`/`start_mana`/`current_mana`
   are **slot resource state** — mutated by **explicit, rare** ability/augment effects via
   **direct slot writes**, never `Modifier`s (V.43 codifies this). Only `mana_regen` (flow
@@ -155,6 +164,60 @@ loadout.py:99,138, reference.py:115) that **shifted under T.29-pre** — re-grep
 `slot.cost`/`ActiveSlot(cost=` site (current: engine.py:463,486,657,663,831; piece.py
 `ActiveSlot`) before renaming. Confirm bosses' multi-slot `ActiveSlot` construction
 carries the new per-slot `max_mana`/`start_mana` defaults.
+
+**⚠️ Tension 3 — how one piece-level `mana_regen` allocates across multiple slot-local pools
+(UNRESOLVED, blocks build — load-bearing).** Pools are per-slot but `mana_regen` is one piece
+stat. **Design constraint:** *X `mana_regen` should be ≈ equal power whether a piece has one
+slot or many* — else slot count silently multiplies MR value (Springtear / weather-MR / trait-MR
+buffs all get stronger on multi-active kits; balance becomes unstable; once mana items exist this
+is a live balance bug, not academic).
+- **Option A — full MR to every slot.** Each slot gets the full piece `mana_regen`. *Simplest,
+  preserves independent bars; but 2-/3-slot pieces get 2×/3× value from the same stat — violates
+  the invariance, over-rewards multi-active.* **(This is what the §3.1a engine site currently
+  assumes — must be confirmed or replaced.)**
+- **Option B — split MR evenly across slots.** One budget divided among slots. *Keeps MR value
+  stable across slot count; but every ability slows as slot count rises, multi-active feels
+  half-speed, several bars crawl together.*
+- **Option C — route MR to one slot at a time (recommended MVP).** One budget, only the selected
+  slot gets passive mana at a time; recommended target = highest-priority unready slot. *Preserves
+  MR as a unit-level cast-rate knob, no throughput inflation, clean primary/secondary identity;
+  needs a routing policy, can starve low-priority slots.*
+- **Option D — shared piece-level current-mana pool.** Move `current_mana` back to the piece
+  (keep per-slot thresholds maybe). *Strongest single-capacitor model, natural MR invariance,
+  abilities truly compete; but cuts against the adopted slot-local pool architecture and muddies
+  per-slot `max_mana`/overload/`start_mana` semantics.*
+- **Resolve before building §3.1a.** Choice drives the `mr_val` per-slot line above.
+
+**⚠️ Tension 4 — cast readiness / ordering / burst when multiple slots are ready (UNRESOLVED,
+blocks build — load-bearing).** If slots charge independently several can become ready together;
+current permissive behavior would let a unit burst multiple casts in one window (undesirable).
+- **AGREED HARD RULE (settled):** *each action/cast opportunity allows **at most one cast**.*
+  Multiple slots may be ready; only one casts per window; the others stay ready for later windows.
+  No multi-cast burst. **This is decided — implement it.**
+- **Still open — what `priority` means** (the selection policy):
+  - **1. Cast-only priority** — priority only picks which ready slot consumes the one cast;
+    charge routing independent. *Simple; less coherence between charge + cast.*
+  - **2. Unified priority (recommended, pairs with Tension 3 Option C)** — priority drives both
+    which unready slot charges **and** which ready slot casts. *Very readable, clean
+    primary/secondary kits; low-priority slots may starve, kits become hierarchical not peer.*
+  - **3. Rotating / round-robin** — precedence rotates after each cast. *Fairer "rotation" feel;
+    less authored, more systemic complexity, harder to reason about for item balance.*
+- **Resolve before building §3.1a.**
+
+**Recommended MVP resolution for Tensions 3+4 (proposed, not yet ratified):** **piece-level MR
+budget + one-slot-at-a-time routing (T3 Option C) + one-cast-per-action (settled) + unified
+priority (T4 option 2)** — recommended target = highest-priority unready slot for charge,
+highest-priority ready slot for cast. Gives MR value stability across slot counts, no parallel
+throughput inflation, no same-window burst dump, preserved per-slot `max_mana`/`start_mana`/overload,
+clear primary/secondary structure, manageable MVP complexity. **Consequence (authored intent):** a
+multi-active unit is **not** "several equal independent casters charging in parallel" — it is a
+**primary spell + one or more secondary/delayed/overflow spells**; multi-slot kits must be designed
+around priority + cost spacing (maybe special secondary triggers later), not as N peer mana bars.
+**Downside:** low-priority abilities may be subordinate/starved — judged acceptable for MVP over
+duplicated MR (A) or vague parallel charging. **Why it matters for items:** unresolved mana
+semantics become balance bugs once mana items ship — MR duplication makes Springtear over-strong on
+multi-active; `start_mana` hitting all slots accelerates several spells per item; multi-ready
+multi-cast explodes burst windows; implicit priority makes itemized multi-slot kits unreasonable.
 
 ### 3.2 `RECIPE_MAP` + `combine()`
 
@@ -251,7 +314,7 @@ Seed: `derive_seed(run_seed, node_index, CH_LOOT)`.
 - **3 item slots/piece** (catalog §6) — enforced in equip + `Champion.items` validator.
 - **Raw components are equippable** (catalog §1) — occupy a slot, apply their pure-modifier bundle.
 - **MVP = 16 core cut in T.29a** (catalog §3), remaining 20 in T.29b — your call.
-- **Mana primitive (§3.1a) — ⚠️ NEEDS REFINEMENT before build.** Per-ability slot fields `mana_cost`/`max_mana`/`start_mana` (+ runtime `current_mana`); `mana_regen` is the lone piece stat and **the cast-rate knob**. **`max_mana` = the universal pool cap** (every clamp is to it); the old "regen guarded at `mana_cost`", the 5× default, and the `start_mana` auto-bump are **dropped**. All 5 fields have fallback defaults (`max_mana` default `= mana_cost`). Mana items grant **`mana_regen` or `start_mana`, never reduce `mana_cost`** (kills negative-cost stacking). **Unresolved:** Tension 1 (where `mana_cost` base lives — ability def vs the `ability_cost` V.35 stat) + Tension 2 (rename call-site sweep) — see §3.1a.
+- **Mana primitive (§3.1a) — ⚠️ NEEDS REFINEMENT before build.** Per-ability slot fields `mana_cost`/`max_mana`/`start_mana` (+ runtime `current_mana`); `mana_regen` is the lone piece stat and **the cast-rate knob**. **`max_mana` = the universal pool cap** (every clamp is to it); the old "regen guarded at `mana_cost`", the 5× default, and the `start_mana` auto-bump are **dropped**. All 5 fields have fallback defaults (`max_mana` default `= mana_cost`). Mana items grant **`mana_regen` or `start_mana`, never reduce `mana_cost`** (kills negative-cost stacking). **Settled hard rule: at most one cast per action window** (no multi-ready burst). **Unresolved (4 tensions, see §3.1a):** T1 `mana_cost` base home (ability def vs `ability_cost` V.35 stat); T2 rename call-site sweep; **T3 how piece `mana_regen` allocates across multiple slots** (A full-MR-each / B split / **C route-one-at-a-time [rec]** / D shared pool); **T4 priority meaning** (1 cast-only / **2 unified [rec]** / 3 round-robin). Recommended MVP combo: **C + one-cast + unified priority** → MR value stable across slot count, primary/secondary kit structure.
 - **Flat-add modifiers** for all component stats (§3.1) — TFT-style, items favour early/mid game; tunable.
 - **Shop sells champions only** — items never enter the shop (T.22 contract; §3.7).
 - **Boss loot = 3-pair pick** via `generate_boss_loot` (§3.7) — deterministic, player picks one pair.
@@ -276,7 +339,7 @@ Values are TFT-style flat — meaningful at low tiers (~15-20%), modest at T10 (
 **Resolved here:**
 - Phasing → T.29a (engine + 16 core) / T.29b (rest + emblems + special).
 - Special items → backend run-actions **+ interactive CLI driver** (§3.6).
-- Mana handling → per-ability slot `mana_cost`/`max_mana`/`start_mana` + piece-stat `mana_regen` (§3.1a); `max_mana` = universal cap (regen now fills to it, **guard dropped**), default `= mana_cost`; MR = cast-rate knob. Mana items grant `mana_regen` **or** `start_mana`, **never reduce `mana_cost`**. ⚠️ **Two tensions still open (§3.1a) — `mana_cost` home (vs V.35 `ability_cost`) + rename sweep — resolve before build.** (Reworked 2026-06-13 post-T.29-pre; supersedes the earlier 5×-default / guarded-regen model.)
+- Mana handling → per-ability slot `mana_cost`/`max_mana`/`start_mana` + piece-stat `mana_regen` (§3.1a); `max_mana` = universal cap (regen now fills to it, **guard dropped**), default `= mana_cost`; MR = cast-rate knob. Mana items grant `mana_regen` **or** `start_mana`, **never reduce `mana_cost`**. ⚠️ **Four tensions still open (§3.1a) — resolve before build:** T1 `mana_cost` home (vs V.35 `ability_cost`); T2 rename sweep; **T3 MR multi-slot allocation** (full-each / split / route-one [rec] / shared pool); **T4 priority meaning** (cast-only / unified [rec] / round-robin). **Settled:** at most one cast per action window. Recommended MVP: route-one-at-a-time + one-cast + unified priority (multi-active = primary + secondary spells, not N peer bars). (Reworked 2026-06-13 post-T.29-pre; supersedes the earlier 5×-default / guarded-regen model.)
 - **Component modifier type → flat add** (TFT-style; §3.1, §5). `crit_chance` and mana already flat by nature.
 - **Drop-table weights → T.29a owns** (§3.7): 45% component / 20% combined / 15% Amber / 15% champion recruit / 5% special. Flagged tunable.
 - **Champion recruit drops** (§3.7): REWARD loot can yield a champion id; reuses SUPPLY tier-pool logic. Returns in `RewardLoot`; UI/prep layer acts on it.
@@ -313,7 +376,7 @@ Values are TFT-style flat — meaningful at low tiers (~15-20%), modest at T10 (
 
 1. **§T:** replace the T.29 row with **T.29a** (engine + 16 core items; depends T.1, T.20, T.22; Est M–L) and **T.29b** (remaining 20 + emblems + special items + CLI driver; depends T.29a, T.28a; Est M–L); both 📋 Plan; both cite `docs/design/tasks/t29_item_engine_plan.md`. Update Implementation-Order Phase 1b to `… → T.29a → T.29b → T.31`.
 2. **New §V invariant:** items apply only via `compile_loadout` (combat-facing) or `RUN_ACTION_REGISTRY` (run-facing, never imported by `combat/`); ≤3 equipped items per piece; item procs deterministic (cadence/flags, no RNG). (T.29)
-2a. **New §V invariant (mana) — ⚠️ DRAFT, pending §3.1a tension resolution:** `ActiveSlot` carries per-slot `mana_cost`/`max_mana`/`start_mana` (+ `current_mana`); `mana_regen` is the only piece-level mana stat and the cast-rate knob. **`max_mana` is the universal pool cap** — regen, start, and `grant_mana` all clamp to it (no `mana_cost` regen-guard; no `start_mana` auto-bump). All 5 fields default (`max_mana` default `= mana_cost`, `start_mana`/`current_mana` `= 0`). The four pool fields are **resource state** (direct slot writes only, never `Modifier`s — extends V.43); **no item/Modifier ever changes `mana_cost`** — mana items grant `mana_regen` (Modifier) or `start_mana` (slot). Default `max_mana = mana_cost` ⇒ no-item combat byte-identical (V.2). (T.29a) **Finalize the invariant text after Tension 1 decides where `mana_cost`'s base lives — Option A additionally amends V.35.**
+2a. **New §V invariant (mana) — ⚠️ DRAFT, pending §3.1a tension resolution:** `ActiveSlot` carries per-slot `mana_cost`/`max_mana`/`start_mana` (+ `current_mana`); `mana_regen` is the only piece-level mana stat and the cast-rate knob. **`max_mana` is the universal pool cap** — regen, start, and `grant_mana` all clamp to it (no `mana_cost` regen-guard; no `start_mana` auto-bump). All 5 fields default (`max_mana` default `= mana_cost`, `start_mana`/`current_mana` `= 0`). The four pool fields are **resource state** (direct slot writes only, never `Modifier`s — extends V.43); **no item/Modifier ever changes `mana_cost`** — mana items grant `mana_regen` (Modifier) or `start_mana` (slot). Default `max_mana = mana_cost` ⇒ no-item combat byte-identical (V.2). (T.29a) **Finalize the invariant text after the §3.1a tensions resolve:** Tension 1 fixes where `mana_cost`'s base lives (Option A additionally amends V.35); **Tension 3 fixes how piece `mana_regen` allocates across multiple slots** (the invariant must state the chosen rule — full-each / split / route-one / shared pool — and the *X MR ≈ equal power regardless of slot count* constraint where it holds); **Tension 4 adds the settled hard rule — at most one cast per action window** — plus the chosen ready-slot priority policy. Add a §V clause for both once decided.
 2b. **§T file-list:** add `game/piece.py`, `game/combat/engine.py`, `game/combat/context.py`, `game/effects.py` to the T.29a row (the §3.1a mana primitive).
 3. **New §V invariant:** special items (`RUN_ACTION_REGISTRY`) operate on `Run` only and are **never** referenced from `game/combat/` — combat sees only their result (§8.4). (T.29)
 4. **§D.9:** mark item system implemented in T.29a/b; leave open only magnitude tuning.

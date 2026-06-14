@@ -29,6 +29,7 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_aegis_tortoise.active",
         "name": "Fortify",
@@ -79,11 +80,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_aerion.active",
         "name": "Board Storm",
-        "text": "Summon a storm over all enemies within 4 hexes, each taking 60% of 448 magic damage. Charges struck enemies for 2s.",
-        "formula": "448 = 100 + STR×1.3 + INT×1.3  (STR 134, INT 134)",
+        "text": "Summon a storm over all enemies within 4 hexes, each taking 60% of 448 magic damage. (100 +130% STR +130% INT) Charges struck enemies for 2s.",
+        "formula": "448 = 100 + 130% STR + 130% INT  (STR 1.3×134, INT 1.3×134)",
         "tags": [
           "magic",
           "aoe"
@@ -92,8 +94,8 @@
       "passive": {
         "id": "champ_aerion.passive",
         "name": "Overcharge",
-        "text": "While mana is near-full, auto-attacks unleash 107 bonus magic damage.",
-        "formula": "107 = INT×0.8  (INT 134)",
+        "text": "While mana is near-full, auto-attacks unleash 107 bonus magic damage. (+80% INT)",
+        "formula": "107 = 80% INT  (INT 0.8×134)",
         "tags": [
           "magic"
         ]
@@ -129,11 +131,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_aurion.active",
         "name": "Solar Nova",
-        "text": "Erupt for 550 magic damage to all enemies within 2 hexes. Disarms struck enemies for 2s.",
-        "formula": "550 = 100 + STR×1.5 + INT×1.5  (STR 150, INT 150)",
+        "text": "Erupt for 550 magic damage to all enemies within 2 hexes. (100 +150% STR +150% INT) Disarms struck enemies for 2s.",
+        "formula": "550 = 100 + 150% STR + 150% INT  (STR 1.5×150, INT 1.5×150)",
         "tags": [
           "magic",
           "aoe",
@@ -181,11 +184,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_borealis.active",
         "name": "Blizzard",
-        "text": "Conjure a blizzard for 459 magic damage to all enemies within 3 hexes. Applies 2 stacks of slow for 3s.",
-        "formula": "459 = 80 + STR×1.2 + INT×1.2  (STR 158, INT 158)",
+        "text": "Conjure a blizzard for 459 magic damage to all enemies within 3 hexes. (80 +120% STR +120% INT) Applies 2 stacks of slow for 3s.",
+        "formula": "459 = 80 + 120% STR + 120% INT  (STR 1.2×158, INT 1.2×158)",
         "tags": [
           "magic",
           "aoe",
@@ -233,11 +237,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_boulderhide_skink.active",
         "name": "Rolling Boulder",
-        "text": "Roll a boulder into the primary target for 368 physical damage. One enemy in the line takes 50% damage.",
-        "formula": "368 = 60 + STR×1.8  (STR 171)",
+        "text": "Roll a boulder into the primary target for 368 physical damage. (60 +180% STR) One enemy in the line takes 50% damage.",
+        "formula": "368 = 60 + 180% STR  (STR 1.8×171)",
         "tags": [
           "physical",
           "aoe"
@@ -282,11 +287,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_cliffeyrie_eagle.active",
         "name": "Diving Talon",
-        "text": "Dive the primary target for 564 physical damage.",
-        "formula": "564 = 80 + STR×2.2  (STR 220)",
+        "text": "Dive the primary target for 564 physical damage. (80 +220% STR)",
+        "formula": "564 = 80 + 220% STR  (STR 2.2×220)",
         "tags": [
           "physical"
         ]
@@ -294,8 +300,8 @@
       "passive": {
         "id": "champ_cliffeyrie_eagle.passive",
         "name": "Talon Dive",
-        "text": "The first auto-attack deals 330 bonus physical damage.",
-        "formula": "330 = STR×1.5  (STR 220)",
+        "text": "The first auto-attack deals 330 bonus physical damage. (+150% STR)",
+        "formula": "330 = 150% STR  (STR 1.5×220)",
         "tags": [
           "physical"
         ]
@@ -330,6 +336,7 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_coppercrest_stork.active",
         "name": "Copper Ward",
@@ -380,6 +387,7 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_coral_colossus.active",
         "name": "Shell Bastion",
@@ -429,11 +437,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_dawnwisp.active",
         "name": "Knit Wound",
-        "text": "Mend the lowest-HP ally for 252.",
-        "formula": "252 = 40 + INT×2.5  (INT 85)",
+        "text": "Mend the lowest-HP ally for 252. (40 +250% INT)",
+        "formula": "252 = 40 + 250% INT  (INT 2.5×85)",
         "tags": [
           "heal"
         ]
@@ -441,8 +450,8 @@
       "passive": {
         "id": "champ_dawnwisp.passive",
         "name": "Lingering Light",
-        "text": "Each of your heals also restores 26 to its target.",
-        "formula": "26 = INT×0.3  (INT 85)",
+        "text": "Each of your heals also restores 26 to its target. (+30% INT)",
+        "formula": "26 = 30% INT  (INT 0.3×85)",
         "tags": [
           "heal"
         ]
@@ -478,6 +487,7 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_dusk_bat.active",
         "name": "Blinding Screech",
@@ -527,11 +537,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_duskstep_marten.active",
         "name": "Shadow Strike",
-        "text": "Strike the lowest-HP enemy for 324 magic damage.",
-        "formula": "324 = 70 + INT×2  (INT 127)",
+        "text": "Strike the lowest-HP enemy for 324 magic damage. (70 +200% INT)",
+        "formula": "324 = 70 + 200% INT  (INT 2×127)",
         "tags": [
           "magic"
         ]
@@ -539,8 +550,8 @@
       "passive": {
         "id": "champ_duskstep_marten.passive",
         "name": "Shadow Step",
-        "text": "Every 4th auto-attack blinks behind the target for 76 bonus magic damage.",
-        "formula": "76 = INT×0.6  (INT 127)",
+        "text": "Every 4th auto-attack blinks behind the target for 76 bonus magic damage. (+60% INT)",
+        "formula": "76 = 60% INT  (INT 0.6×127)",
         "tags": [
           "magic"
         ]
@@ -575,11 +586,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_eclipse_jaguar.active",
         "name": "Twin Strike",
-        "text": "Strike the primary target twice: 173 physical and 173 magic damage.",
-        "formula": "173 = 50 + STR×1.5  (STR 82)\n173 = 50 + INT×1.5  (INT 82)",
+        "text": "Strike the primary target twice: 173 physical and 173 magic damage. (50 +150% STR; 50 +150% INT)",
+        "formula": "173 = 50 + 150% STR  (STR 1.5×82)\n173 = 50 + 150% INT  (INT 1.5×82)",
         "tags": [
           "physical",
           "magic"
@@ -588,8 +600,8 @@
       "passive": {
         "id": "champ_eclipse_jaguar.passive",
         "name": "Eclipse Rhythm",
-        "text": "Auto-attacks alternate bonus damage: 25 physical on odd hits, 33 magic on even hits.",
-        "formula": "25 = STR×0.3  (STR 82)\n33 = INT×0.4  (INT 82)",
+        "text": "Auto-attacks alternate bonus damage: 25 physical on odd hits, 33 magic on even hits. (+30% STR; +40% INT)",
+        "formula": "25 = 30% STR  (STR 0.3×82)\n33 = 40% INT  (INT 0.4×82)",
         "tags": [
           "physical",
           "magic"
@@ -625,11 +637,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_ember_salamander.active",
         "name": "Kindling Light",
-        "text": "Sear the primary target for 352 magic damage. Sets the target burning for 3s.",
-        "formula": "352 = 60 + INT×1.8  (INT 162)",
+        "text": "Sear the primary target for 352 magic damage. (60 +180% INT) Sets the target burning for 3s.",
+        "formula": "352 = 60 + 180% INT  (INT 1.8×162)",
         "tags": [
           "magic",
           "burn"
@@ -638,8 +651,8 @@
       "passive": {
         "id": "champ_ember_salamander.passive",
         "name": "Smoldering Strikes",
-        "text": "Auto-attacks against burning targets deal 49 bonus magic damage.",
-        "formula": "49 = INT×0.3  (INT 162)",
+        "text": "Auto-attacks against burning targets deal 49 bonus magic damage. (+30% INT)",
+        "formula": "49 = 30% INT  (INT 0.3×162)",
         "tags": [
           "magic",
           "burn"
@@ -675,11 +688,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_fogveil_moth.active",
         "name": "Shroud",
-        "text": "Shroud the primary target for 191 magic damage and cut 35 Attack Speed for 5s.",
-        "formula": "191 = 30 + INT×1.2  (INT 134)",
+        "text": "Shroud the primary target for 191 magic damage and cut 35 Attack Speed for 5s. (30 +120% INT)",
+        "formula": "191 = 30 + 120% INT  (INT 1.2×134)",
         "tags": [
           "magic",
           "debuff"
@@ -724,11 +738,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_frostfang_wolverine.active",
         "name": "Frozen Leap",
-        "text": "Leap onto the primary target for 583 physical damage (always crits). Deals +50% to frozen or slowed targets.",
-        "formula": "583 = 90 + STR×2.2  (STR 224)",
+        "text": "Leap onto the primary target for 583 physical damage (always crits). (90 +220% STR) Deals +50% to frozen or slowed targets.",
+        "formula": "583 = 90 + 220% STR  (STR 2.2×224)",
         "tags": [
           "physical",
           "crit"
@@ -774,11 +789,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_frostplate_tortoise.active",
         "name": "Ice Slam",
-        "text": "Slam the primary target for 193 physical damage. Roots for 2s.",
-        "formula": "193 = 60 + STR×1.6  (STR 83)",
+        "text": "Slam the primary target for 193 physical damage. (60 +160% STR) Roots for 2s.",
+        "formula": "193 = 60 + 160% STR  (STR 1.6×83)",
         "tags": [
           "physical",
           "root"
@@ -824,11 +840,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_frostquill_porcupine.active",
         "name": "Quill Volley",
-        "text": "Loose quills at the primary target for 489 physical damage. Up to 2 nearby enemies take 50% splash; all hit are slowed.",
-        "formula": "489 = 70 + STR×1.8  (STR 233)",
+        "text": "Loose quills at the primary target for 489 physical damage. (70 +180% STR) Up to 2 nearby enemies take 50% splash; all hit are slowed.",
+        "formula": "489 = 70 + 180% STR  (STR 1.8×233)",
         "tags": [
           "physical",
           "aoe",
@@ -838,8 +855,8 @@
       "passive": {
         "id": "champ_frostquill_porcupine.passive",
         "name": "Chill Quills",
-        "text": "Auto-attacks slow for 1.5s and deal 58 bonus physical damage to slowed targets.",
-        "formula": "58 = STR×0.25  (STR 233)",
+        "text": "Auto-attacks slow for 1.5s and deal 58 bonus physical damage to slowed targets. (+25% STR)",
+        "formula": "58 = 25% STR  (STR 0.25×233)",
         "tags": [
           "physical",
           "slow"
@@ -875,6 +892,7 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_geode_beetle.active",
         "name": "Geode Ward",
@@ -924,11 +942,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_glacierback_mammoth.active",
         "name": "Knockback Stomp",
-        "text": "Stomp for 204 physical damage to all adjacent enemies. Stuns struck enemies for 1s.",
-        "formula": "204 = 80 + STR×2  (STR 62)",
+        "text": "Stomp for 204 physical damage to all adjacent enemies. (80 +200% STR) Stuns struck enemies for 1s.",
+        "formula": "204 = 80 + 200% STR  (STR 2×62)",
         "tags": [
           "physical",
           "aoe",
@@ -976,11 +995,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_glade_heron.active",
         "name": "Quickening",
-        "text": "Gain +185 Attack Speed for 25s, out-pacing poison decay.",
-        "formula": "185 = INT×0.8  (INT 231)",
+        "text": "Gain +185 Attack Speed for 25s, out-pacing poison decay. (+80% INT)",
+        "formula": "185 = 80% INT  (INT 0.8×231)",
         "tags": [
           "buff"
         ]
@@ -988,8 +1008,8 @@
       "passive": {
         "id": "champ_glade_heron.passive",
         "name": "Venom Tip",
-        "text": "Each auto-attack applies a stack of poison for 4s. Against targets with 3+ poison stacks, autos also deal 46 bonus magic damage.",
-        "formula": "46 = INT×0.2  (INT 231)",
+        "text": "Each auto-attack applies a stack of poison for 4s. (+20% INT) Against targets with 3+ poison stacks, autos also deal 46 bonus magic damage.",
+        "formula": "46 = 20% INT  (INT 0.2×231)",
         "tags": [
           "poison",
           "magic"
@@ -1025,6 +1045,7 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_goldcrest_lark.active",
         "name": "Rallying Song",
@@ -1075,11 +1096,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_goldhide_rhino.active",
         "name": "Stampede",
-        "text": "Gore the primary target for 153 physical damage. Heals you for 5% of max HP.",
-        "formula": "153 = 60 + STR×1.5  (STR 62)",
+        "text": "Gore the primary target for 153 physical damage. (60 +150% STR) Heals you for 5% of max HP.",
+        "formula": "153 = 60 + 150% STR  (STR 1.5×62)",
         "tags": [
           "physical",
           "heal"
@@ -1124,11 +1146,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_granite_gorilla.active",
         "name": "Ground Slam",
-        "text": "Slam the ground for 257 magic damage to all adjacent enemies. Stuns struck enemies for 1s.",
-        "formula": "257 = 70 + INT×1.8  (INT 104)",
+        "text": "Slam the ground for 257 magic damage to all adjacent enemies. (70 +180% INT) Stuns struck enemies for 1s.",
+        "formula": "257 = 70 + 180% INT  (INT 1.8×104)",
         "tags": [
           "magic",
           "aoe",
@@ -1176,11 +1199,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_grovekeeper_tapir.active",
         "name": "Vine Snare",
-        "text": "Snare the primary target for 138 hybrid damage. Roots for 2s and applies 2 stacks of poison for 4s.",
-        "formula": "138 = 40 + STR×1 + INT×1  (STR 49, INT 49)",
+        "text": "Snare the primary target for 138 hybrid damage. (40 +100% STR +100% INT) Roots for 2s and applies 2 stacks of poison for 4s.",
+        "formula": "138 = 40 + 100% STR + 100% INT  (STR 1×49, INT 1×49)",
         "tags": [
           "hybrid",
           "root",
@@ -1226,11 +1250,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_hoarfrost_owl.active",
         "name": "Ice Shield",
-        "text": "Shield the lowest-HP ally with +60 Armor for 4s and heal 201.",
-        "formula": "201 = 30 + INT×1.5  (INT 114)",
+        "text": "Shield the lowest-HP ally with +60 Armor for 4s and heal 201. (30 +150% INT)",
+        "formula": "201 = 30 + 150% INT  (INT 1.5×114)",
         "tags": [
           "defense",
           "heal"
@@ -1276,11 +1301,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_hollow_elk.active",
         "name": "Spirit Drain",
-        "text": "Drain the primary target for 186 magic damage. Heals you for 30% of the damage dealt.",
-        "formula": "186 = 60 + INT×1.8  (INT 70)",
+        "text": "Drain the primary target for 186 magic damage. (60 +180% INT) Heals you for 30% of the damage dealt.",
+        "formula": "186 = 60 + 180% INT  (INT 1.8×70)",
         "tags": [
           "magic",
           "heal"
@@ -1326,11 +1352,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_iceclaw_lynx.active",
         "name": "Frost Pounce",
-        "text": "Pounce the primary target for 364 magic damage. Freezes for 1.5s.",
-        "formula": "364 = 80 + INT×2  (INT 142)",
+        "text": "Pounce the primary target for 364 magic damage. (80 +200% INT) Freezes for 1.5s.",
+        "formula": "364 = 80 + 200% INT  (INT 2×142)",
         "tags": [
           "magic",
           "freeze"
@@ -1339,8 +1366,8 @@
       "passive": {
         "id": "champ_iceclaw_lynx.passive",
         "name": "Frostclaw",
-        "text": "Auto-attacks deal 57 bonus magic damage and slow for 1s.",
-        "formula": "57 = INT×0.4  (INT 142)",
+        "text": "Auto-attacks deal 57 bonus magic damage and slow for 1s. (+40% INT)",
+        "formula": "57 = 40% INT  (INT 0.4×142)",
         "tags": [
           "magic",
           "slow"
@@ -1376,11 +1403,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_lostlight_wisp.active",
         "name": "Wisplight",
-        "text": "Mend the lowest-HP ally for 195.",
-        "formula": "195 = 35 + INT×2  (INT 80)",
+        "text": "Mend the lowest-HP ally for 195. (35 +200% INT)",
+        "formula": "195 = 35 + 200% INT  (INT 2×80)",
         "tags": [
           "heal"
         ]
@@ -1388,8 +1416,8 @@
       "passive": {
         "id": "champ_lostlight_wisp.passive",
         "name": "Guiding Glow",
-        "text": "Every 2s, heal the lowest-HP ally for 24.",
-        "formula": "24 = INT×0.3  (INT 80)",
+        "text": "Every 2s, heal the lowest-HP ally for 24. (+30% INT)",
+        "formula": "24 = 30% INT  (INT 0.3×80)",
         "tags": [
           "heal"
         ]
@@ -1425,11 +1453,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_marsh_thrush.active",
         "name": "Quickening Trill",
-        "text": "Grant the whole team +28 Move Speed and +28 Attack Speed for 6s.",
-        "formula": "28 = 8 + INT×0.14  (INT 143)",
+        "text": "Grant the whole team +28 Move Speed and +28 Attack Speed for 6s. (8 +14% INT)",
+        "formula": "28 = 8 + 14% INT  (INT 0.14×143)",
         "tags": [
           "buff",
           "team"
@@ -1438,8 +1467,8 @@
       "passive": {
         "id": "champ_marsh_thrush.passive",
         "name": "Restless Wings",
-        "text": "Grants +19 Move Speed for the whole battle.",
-        "formula": "19 = 5 + INT×0.1  (INT 143)",
+        "text": "Grants +19 Move Speed for the whole battle. (5 +10% INT)",
+        "formula": "19 = 5 + 10% INT  (INT 0.1×143)",
         "tags": [
           "buff"
         ]
@@ -1474,11 +1503,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_marshghast_boar.active",
         "name": "Ghost Charge",
-        "text": "Charge the primary target for 199 hybrid damage.",
-        "formula": "199 = 60 + STR×1.2 + INT×1.2  (STR 58, INT 58)",
+        "text": "Charge the primary target for 199 hybrid damage. (60 +120% STR +120% INT)",
+        "formula": "199 = 60 + 120% STR + 120% INT  (STR 1.2×58, INT 1.2×58)",
         "tags": [
           "hybrid"
         ]
@@ -1523,11 +1553,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_mirage_caracal.active",
         "name": "Blink Execute",
-        "text": "Blink to the lowest-HP enemy for 573 magic damage. Deals +50% to targets below 30% HP.",
-        "formula": "573 = 80 + INT×2.2  (INT 224)",
+        "text": "Blink to the lowest-HP enemy for 573 magic damage. (80 +220% INT) Deals +50% to targets below 30% HP.",
+        "formula": "573 = 80 + 220% INT  (INT 2.2×224)",
         "tags": [
           "magic",
           "execute"
@@ -1536,8 +1567,8 @@
       "passive": {
         "id": "champ_mirage_caracal.passive",
         "name": "Afterimage",
-        "text": "After casting, your next auto-attack deals 112 bonus magic damage.",
-        "formula": "112 = INT×0.5  (INT 224)",
+        "text": "After casting, your next auto-attack deals 112 bonus magic damage. (+50% INT)",
+        "formula": "112 = 50% INT  (INT 0.5×224)",
         "tags": [
           "magic"
         ]
@@ -1572,11 +1603,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_mirewarden_toad.active",
         "name": "Tongue Pull",
-        "text": "Yank the furthest enemy for 224 magic damage. Applies 2 stacks of slow for 3s and roots for 1.5s.",
-        "formula": "224 = 50 + INT×1.5  (INT 116)",
+        "text": "Yank the furthest enemy for 224 magic damage. (50 +150% INT) Applies 2 stacks of slow for 3s and roots for 1.5s.",
+        "formula": "224 = 50 + 150% INT  (INT 1.5×116)",
         "tags": [
           "magic",
           "slow",
@@ -1624,11 +1656,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_mournhollow.active",
         "name": "Board Fear",
-        "text": "Terrify all enemies within 3 hexes, each taking 60% of 334 magic damage. Feared for 2s.",
-        "formula": "334 = 80 + INT×1.8  (INT 141)",
+        "text": "Terrify all enemies within 3 hexes, each taking 60% of 334 magic damage. (80 +180% INT) Feared for 2s.",
+        "formula": "334 = 80 + 180% INT  (INT 1.8×141)",
         "tags": [
           "magic",
           "aoe",
@@ -1675,11 +1708,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_nerei.active",
         "name": "Tidal Wave",
-        "text": "Crash a wave over all enemies within 3 hexes, each taking 70% of 372 magic damage. Become charged for 3s.",
-        "formula": "372 = 90 + INT×2  (INT 141)",
+        "text": "Crash a wave over all enemies within 3 hexes, each taking 70% of 372 magic damage. (90 +200% INT) Become charged for 3s.",
+        "formula": "372 = 90 + 200% INT  (INT 2×141)",
         "tags": [
           "magic",
           "aoe"
@@ -1688,8 +1722,8 @@
       "passive": {
         "id": "champ_nerei.passive",
         "name": "Tideturn",
-        "text": "After casting, your next 3 auto-attacks each deal 85 bonus magic damage.",
-        "formula": "85 = INT×0.6  (INT 141)",
+        "text": "After casting, your next 3 auto-attacks each deal 85 bonus magic damage. (+60% INT)",
+        "formula": "85 = 60% INT  (INT 0.6×141)",
         "tags": [
           "magic"
         ]
@@ -1724,11 +1758,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_nightglass_mantis.active",
         "name": "Vanishing Execute",
-        "text": "Vanish and strike the lowest-HP enemy for 712 magic damage. Deals +60% to targets below 30% HP.",
-        "formula": "712 = 100 + INT×2.5  (INT 245)",
+        "text": "Vanish and strike the lowest-HP enemy for 712 magic damage. (100 +250% INT) Deals +60% to targets below 30% HP.",
+        "formula": "712 = 100 + 250% INT  (INT 2.5×245)",
         "tags": [
           "magic",
           "execute"
@@ -1737,8 +1772,8 @@
       "passive": {
         "id": "champ_nightglass_mantis.passive",
         "name": "Ambush",
-        "text": "The first auto-attack after each cast deals 196 bonus magic damage.",
-        "formula": "196 = INT×0.8  (INT 245)",
+        "text": "The first auto-attack after each cast deals 196 bonus magic damage. (+80% INT)",
+        "formula": "196 = 80% INT  (INT 0.8×245)",
         "tags": [
           "magic"
         ]
@@ -1774,6 +1809,7 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_pebbleback_pangolin.active",
         "name": "Curl Up",
@@ -1823,11 +1859,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_permafrost_walrus.active",
         "name": "Ice Boulder",
-        "text": "Hurl a boulder at the primary target for 414 physical damage. Adjacent enemies take 40% splash.",
-        "formula": "414 = 70 + STR×1.8  (STR 191)",
+        "text": "Hurl a boulder at the primary target for 414 physical damage. (70 +180% STR) Adjacent enemies take 40% splash.",
+        "formula": "414 = 70 + 180% STR  (STR 1.8×191)",
         "tags": [
           "physical",
           "aoe"
@@ -1873,11 +1910,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_phantom_lynx.active",
         "name": "Phase Strike",
-        "text": "Phase through the lowest-HP enemy for 394 magic damage. Gain +30% magic penetration for 2s.",
-        "formula": "394 = 90 + INT×2.2  (INT 138)",
+        "text": "Phase through the lowest-HP enemy for 394 magic damage. (90 +220% INT) Gain +30% magic penetration for 2s.",
+        "formula": "394 = 90 + 220% INT  (INT 2.2×138)",
         "tags": [
           "magic",
           "penetration"
@@ -1922,11 +1960,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_reedbank_otter.active",
         "name": "Slippery Strike",
-        "text": "Strike the primary target for 197 physical damage. Gain +20 Attack Speed for 4s.",
-        "formula": "197 = 40 + STR×1.6  (STR 98)",
+        "text": "Strike the primary target for 197 physical damage. (40 +160% STR) Gain +20 Attack Speed for 4s.",
+        "formula": "197 = 40 + 160% STR  (STR 1.6×98)",
         "tags": [
           "physical",
           "buff"
@@ -1971,11 +2010,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_riptide_caiman.active",
         "name": "Death Roll",
-        "text": "Lunge at the lowest-HP enemy for 790 physical damage.",
-        "formula": "790 = 100 + STR×2.5  (STR 276)",
+        "text": "Lunge at the lowest-HP enemy for 790 physical damage. (100 +250% STR)",
+        "formula": "790 = 100 + 250% STR  (STR 2.5×276)",
         "tags": [
           "physical"
         ]
@@ -2020,11 +2060,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_snowpelt_cub.active",
         "name": "Frostbite Nip",
-        "text": "Nip the primary target for 87 physical damage. Applies 1 stack of slow for 2s.",
-        "formula": "87 = 25 + STR×1.2  (STR 52)",
+        "text": "Nip the primary target for 87 physical damage. (25 +120% STR) Applies 1 stack of slow for 2s.",
+        "formula": "87 = 25 + 120% STR  (STR 1.2×52)",
         "tags": [
           "physical",
           "slow"
@@ -2070,11 +2111,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_sparkfly.active",
         "name": "Static Jolt",
-        "text": "Jolt the primary target for 89 magic damage. Stuns for 1.5s.",
-        "formula": "89 = 20 + INT×1  (INT 69)",
+        "text": "Jolt the primary target for 89 magic damage. (20 +100% INT) Stuns for 1.5s.",
+        "formula": "89 = 20 + 100% INT  (INT 1×69)",
         "tags": [
           "magic",
           "stun"
@@ -2119,11 +2161,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_spectral_heron.active",
         "name": "Spectral Beam",
-        "text": "Fire a beam through the primary target for 600 magic damage. Enemies in the line take 60% damage.",
-        "formula": "600 = 80 + INT×2  (INT 260)",
+        "text": "Fire a beam through the primary target for 600 magic damage. (80 +200% INT) Enemies in the line take 60% damage.",
+        "formula": "600 = 80 + 200% INT  (INT 2×260)",
         "tags": [
           "magic",
           "aoe"
@@ -2132,8 +2175,8 @@
       "passive": {
         "id": "champ_spectral_heron.passive",
         "name": "Piercing Shot",
-        "text": "Auto-attacks pierce to one enemy behind the target for 78 magic damage.",
-        "formula": "78 = INT×0.3  (INT 260)",
+        "text": "Auto-attacks pierce to one enemy behind the target for 78 magic damage. (+30% INT)",
+        "formula": "78 = 30% INT  (INT 0.3×260)",
         "tags": [
           "magic"
         ]
@@ -2169,11 +2212,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_springfrog.active",
         "name": "Healing Rain",
-        "text": "Shower the lowest-HP ally for 210.",
-        "formula": "210 = 30 + INT×2  (INT 90)",
+        "text": "Shower the lowest-HP ally for 210. (30 +200% INT)",
+        "formula": "210 = 30 + 200% INT  (INT 2×90)",
         "tags": [
           "heal"
         ]
@@ -2181,8 +2225,8 @@
       "passive": {
         "id": "champ_springfrog.passive",
         "name": "Dewfall",
-        "text": "Every 2s, heal the lowest-HP ally for 36.",
-        "formula": "36 = INT×0.4  (INT 90)",
+        "text": "Every 2s, heal the lowest-HP ally for 36. (+40% INT)",
+        "formula": "36 = 40% INT  (INT 0.4×90)",
         "tags": [
           "heal"
         ]
@@ -2218,11 +2262,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_storm_eagle.active",
         "name": "Lightning Dive",
-        "text": "Dive the primary target for 752 magic damage. Chains to 2 nearby enemies for 50% damage.",
-        "formula": "752 = 100 + INT×2.8  (INT 233)",
+        "text": "Dive the primary target for 752 magic damage. (100 +280% INT) Chains to 2 nearby enemies for 50% damage.",
+        "formula": "752 = 100 + 280% INT  (INT 2.8×233)",
         "tags": [
           "magic",
           "aoe"
@@ -2231,8 +2276,8 @@
       "passive": {
         "id": "champ_storm_eagle.passive",
         "name": "Forked Lightning",
-        "text": "Every 3rd auto-attack forks to up to 2 nearby enemies for 93 magic damage each.",
-        "formula": "93 = INT×0.4  (INT 233)",
+        "text": "Every 3rd auto-attack forks to up to 2 nearby enemies for 93 magic damage each. (+40% INT)",
+        "formula": "93 = 40% INT  (INT 0.4×233)",
         "tags": [
           "magic",
           "aoe"
@@ -2268,11 +2313,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_sunmane_lion.active",
         "name": "Regal Cleave",
-        "text": "Cleave the primary target for 418 physical damage. Heals for 30% of the damage dealt.",
-        "formula": "418 = 80 + STR×2  (STR 169)",
+        "text": "Cleave the primary target for 418 physical damage. (80 +200% STR) Heals for 30% of the damage dealt.",
+        "formula": "418 = 80 + 200% STR  (STR 2×169)",
         "tags": [
           "physical",
           "heal"
@@ -2317,11 +2363,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_sunspear_falcon.active",
         "name": "Diving Strike",
-        "text": "Dive the primary target for 472 physical damage.",
-        "formula": "472 = 70 + STR×2  (STR 201)",
+        "text": "Dive the primary target for 472 physical damage. (70 +200% STR)",
+        "formula": "472 = 70 + 200% STR  (STR 2×201)",
         "tags": [
           "physical"
         ]
@@ -2329,8 +2376,8 @@
       "passive": {
         "id": "champ_sunspear_falcon.passive",
         "name": "Sun Mark",
-        "text": "The first auto-attack marks a target; every later auto on it deals 70 bonus physical damage.",
-        "formula": "70 = STR×0.35  (STR 201)",
+        "text": "The first auto-attack marks a target; every later auto on it deals 70 bonus physical damage. (+35% STR)",
+        "formula": "70 = 35% STR  (STR 0.35×201)",
         "tags": [
           "physical"
         ]
@@ -2365,11 +2412,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_tempest_eel.active",
         "name": "Chain Lightning",
-        "text": "Strike the primary target for 490 magic damage. Arcs to up to 2 nearby enemies for 60% then 40% damage.",
-        "formula": "490 = 100 + INT×2  (INT 195)",
+        "text": "Strike the primary target for 490 magic damage. (100 +200% INT) Arcs to up to 2 nearby enemies for 60% then 40% damage.",
+        "formula": "490 = 100 + 200% INT  (INT 2×195)",
         "tags": [
           "magic",
           "aoe"
@@ -2414,11 +2462,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_thunderclap_gorilla.active",
         "name": "Shockwave",
-        "text": "Unleash a shockwave for 559 physical damage to all enemies within 2 hexes. Stuns struck enemies for 1.5s.",
-        "formula": "559 = 90 + STR×2.2  (STR 213)",
+        "text": "Unleash a shockwave for 559 physical damage to all enemies within 2 hexes. (90 +220% STR) Stuns struck enemies for 1.5s.",
+        "formula": "559 = 90 + 220% STR  (STR 2.2×213)",
         "tags": [
           "physical",
           "aoe",
@@ -2465,11 +2514,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_thunderhide_bison.active",
         "name": "Thunder Stomp",
-        "text": "Stomp the primary target for 209 physical damage. Stuns for 1.2s.",
-        "formula": "209 = 60 + STR×1.8  (STR 83)",
+        "text": "Stomp the primary target for 209 physical damage. (60 +180% STR) Stuns for 1.2s.",
+        "formula": "209 = 60 + 180% STR  (STR 1.8×83)",
         "tags": [
           "physical",
           "stun"
@@ -2515,11 +2565,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_thunderhoof_colt.active",
         "name": "Thunder Charge",
-        "text": "Charge the primary target for 202 physical damage.",
-        "formula": "202 = 45 + STR×1.6  (STR 98)",
+        "text": "Charge the primary target for 202 physical damage. (45 +160% STR)",
+        "formula": "202 = 45 + 160% STR  (STR 1.6×98)",
         "tags": [
           "physical"
         ]
@@ -2563,11 +2614,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_torrent_heron.active",
         "name": "Water Spears",
-        "text": "Spear the primary target for 295 physical damage. Up to 2 adjacent enemies take 60% splash.",
-        "formula": "295 = 50 + STR×1.6  (STR 153)",
+        "text": "Spear the primary target for 295 physical damage. (50 +160% STR) Up to 2 adjacent enemies take 60% splash.",
+        "formula": "295 = 50 + 160% STR  (STR 1.6×153)",
         "tags": [
           "physical",
           "aoe"
@@ -2613,6 +2665,7 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_umbra.active",
         "name": "Shadow Clones",
@@ -2625,8 +2678,8 @@
       "passive": {
         "id": "champ_umbra.passive",
         "name": "Shadow Echo",
-        "text": "Every 5th auto-attack unleashes a clone strike for 225 magic damage.",
-        "formula": "225 = INT×1.5  (INT 150)",
+        "text": "Every 5th auto-attack unleashes a clone strike for 225 magic damage. (+150% INT)",
+        "formula": "225 = 150% INT  (INT 1.5×150)",
         "tags": [
           "magic"
         ]
@@ -2661,11 +2714,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_veilfang_wolf.active",
         "name": "Fang Rush",
-        "text": "Rush the primary target for 535 magic damage.",
-        "formula": "535 = 80 + INT×2.2  (INT 207)",
+        "text": "Rush the primary target for 535 magic damage. (80 +220% INT)",
+        "formula": "535 = 80 + 220% INT  (INT 2.2×207)",
         "tags": [
           "magic"
         ]
@@ -2673,8 +2727,8 @@
       "passive": {
         "id": "champ_veilfang_wolf.passive",
         "name": "Rending Fangs",
-        "text": "Auto-attacks deal 72 bonus magic damage and shred 8 Resistance for 4s.",
-        "formula": "72 = INT×0.35  (INT 207)",
+        "text": "Auto-attacks deal 72 bonus magic damage and shred 8 Resistance for 4s. (+35% INT)",
+        "formula": "72 = 35% INT  (INT 0.35×207)",
         "tags": [
           "magic",
           "debuff"
@@ -2711,11 +2765,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_veldt_pronghorn.active",
         "name": "Lunging Charge",
-        "text": "Charge the primary target for 237 physical damage.",
-        "formula": "237 = 50 + STR×1.8  (STR 104)",
+        "text": "Charge the primary target for 237 physical damage. (50 +180% STR)",
+        "formula": "237 = 50 + 180% STR  (STR 1.8×104)",
         "tags": [
           "physical"
         ]
@@ -2760,11 +2815,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_voltmane_jackal.active",
         "name": "Static Discharge",
-        "text": "Blast the primary target for 288 hybrid magic damage. Charges the target for 3s.",
-        "formula": "288 = 60 + STR×1.2 + INT×1.2  (STR 95, INT 95)",
+        "text": "Blast the primary target for 288 hybrid magic damage. (60 +120% STR +120% INT) Charges the target for 3s.",
+        "formula": "288 = 60 + 120% STR + 120% INT  (STR 1.2×95, INT 1.2×95)",
         "tags": [
           "magic"
         ]
@@ -2808,11 +2864,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_voltscale_mamba.active",
         "name": "Electric Dash",
-        "text": "Dash through the primary target for 282 physical damage. Leaves a trail that burns for 2s.",
-        "formula": "282 = 55 + STR×1.8  (STR 126)",
+        "text": "Dash through the primary target for 282 physical damage. (55 +180% STR) Leaves a trail that burns for 2s.",
+        "formula": "282 = 55 + 180% STR  (STR 1.8×126)",
         "tags": [
           "physical",
           "burn"
@@ -2857,6 +2914,7 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_will_o_fawn.active",
         "name": "Conjure Double",
@@ -2905,11 +2963,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_wintermoth.active",
         "name": "Frost Blessing",
-        "text": "Grant the lowest-HP ally +25 Attack Speed for 6s and heal 121.",
-        "formula": "121 = 20 + INT×1  (INT 101)",
+        "text": "Grant the lowest-HP ally +25 Attack Speed for 6s and heal 121. (20 +100% INT)",
+        "formula": "121 = 20 + 100% INT  (INT 1×101)",
         "tags": [
           "buff",
           "heal"
@@ -2955,11 +3014,12 @@
       "crit_chance": 0.0,
       "penetration": 0,
       "penetration_pct": 0.0,
+      "items": [],
       "active": {
         "id": "champ_wraithorn_stag.active",
         "name": "Spectral Gore",
-        "text": "Gore the primary target for 432 physical damage.",
-        "formula": "432 = 80 + STR×2.2  (STR 160)",
+        "text": "Gore the primary target for 432 physical damage. (80 +220% STR)",
+        "formula": "432 = 80 + 220% STR  (STR 2.2×160)",
         "tags": [
           "physical"
         ]
@@ -3004,8 +3064,8 @@
       "active": {
         "id": "enemy_arcanist.active",
         "name": "Chain Lightning",
-        "text": "Strike the primary target for 1010 magic damage. Bounces to up to 3 nearby enemies at 60%, 45%, then 30% damage.",
-        "formula": "1010 = 100 + INT×2.8  (INT 325)",
+        "text": "Strike the primary target for 1010 magic damage. (100 +280% INT) Bounces to up to 3 nearby enemies at 60%, 45%, then 30% damage.",
+        "formula": "1010 = 100 + 280% INT  (INT 2.8×325)",
         "tags": [
           "magic",
           "aoe"
@@ -3014,8 +3074,8 @@
       "passive": {
         "id": "enemy_arcanist.passive",
         "name": "Arcane Surge",
-        "text": "Auto-attacks deal 114 bonus magic damage.",
-        "formula": "114 = INT×0.35  (INT 325)",
+        "text": "Auto-attacks deal 114 bonus magic damage. (+35% INT)",
+        "formula": "114 = 35% INT  (INT 0.35×325)",
         "tags": [
           "magic"
         ]
@@ -3049,8 +3109,8 @@
       "active": {
         "id": "enemy_archmagus_imperator.active",
         "name": "Imperial Nuke",
-        "text": "Blast the primary target for 458 hybrid magic damage.",
-        "formula": "458 = 80 + STR×1.5 + INT×1.5  (STR 126, INT 126)",
+        "text": "Blast the primary target for 458 hybrid magic damage. (80 +150% STR +150% INT)",
+        "formula": "458 = 80 + 150% STR + 150% INT  (STR 1.5×126, INT 1.5×126)",
         "tags": [
           "magic"
         ]
@@ -3058,8 +3118,8 @@
       "passive": {
         "id": "enemy_archmagus_imperator.passive",
         "name": "Spellblade",
-        "text": "Auto-attacks alternate 38 physical (odd) and 44 magic (even) bonus damage.",
-        "formula": "38 = STR×0.3  (STR 126)\n44 = INT×0.35  (INT 126)",
+        "text": "Auto-attacks alternate 38 physical (odd) and 44 magic (even) bonus damage. (+30% STR; +35% INT)",
+        "formula": "38 = 30% STR  (STR 0.3×126)\n44 = 35% INT  (INT 0.35×126)",
         "tags": [
           "physical",
           "magic"
@@ -3094,8 +3154,8 @@
       "active": {
         "id": "enemy_avalanche_engine.active",
         "name": "Ice Boulder",
-        "text": "Roll a boulder into the primary target for 454 physical damage. Slows the target (2 stacks); one enemy in the line takes 50% and is slowed.",
-        "formula": "454 = 65 + STR×1.8  (STR 216)",
+        "text": "Roll a boulder into the primary target for 454 physical damage. (65 +180% STR) Slows the target (2 stacks); one enemy in the line takes 50% and is slowed.",
+        "formula": "454 = 65 + 180% STR  (STR 1.8×216)",
         "tags": [
           "physical",
           "aoe",
@@ -3138,8 +3198,8 @@
       "active": {
         "id": "enemy_battlemage.active",
         "name": "Fireball",
-        "text": "Hurl a fireball at the primary target for 478 magic damage. Adjacent enemies take 50% splash.",
-        "formula": "478 = 70 + INT×2  (INT 204)",
+        "text": "Hurl a fireball at the primary target for 478 magic damage. (70 +200% INT) Adjacent enemies take 50% splash.",
+        "formula": "478 = 70 + 200% INT  (INT 2×204)",
         "tags": [
           "magic",
           "aoe"
@@ -3181,8 +3241,8 @@
       "active": {
         "id": "enemy_blight_lurker.active",
         "name": "Blighted Claw",
-        "text": "Claw the primary target for 139 physical damage.",
-        "formula": "139 = 40 + STR×1.5  (STR 66)",
+        "text": "Claw the primary target for 139 physical damage. (40 +150% STR)",
+        "formula": "139 = 40 + 150% STR  (STR 1.5×66)",
         "tags": [
           "physical"
         ]
@@ -3225,8 +3285,8 @@
       "active": {
         "id": "enemy_brineblight_berserker.active",
         "name": "Frenzied Blow",
-        "text": "Strike the primary target for 338 physical damage.",
-        "formula": "338 = 60 + STR×2  (STR 139)",
+        "text": "Strike the primary target for 338 physical damage. (60 +200% STR)",
+        "formula": "338 = 60 + 200% STR  (STR 2×139)",
         "tags": [
           "physical"
         ]
@@ -3269,8 +3329,8 @@
       "active": {
         "id": "enemy_caged_banshee.active",
         "name": "Wailing Scream",
-        "text": "Scream at all enemies within 3 hexes for 164 magic damage each. Fears struck enemies for 2s.",
-        "formula": "164 = 30 + INT×1  (INT 134)",
+        "text": "Scream at all enemies within 3 hexes for 164 magic damage each. (30 +100% INT) Fears struck enemies for 2s.",
+        "formula": "164 = 30 + 100% INT  (INT 1×134)",
         "tags": [
           "magic",
           "aoe",
@@ -3313,8 +3373,8 @@
       "active": {
         "id": "enemy_caged_storm_drake.active",
         "name": "Storm Dive",
-        "text": "Dive for 374 hybrid magic damage to all enemies within 2 hexes. Stuns struck enemies for 1s.",
-        "formula": "374 = 80 + STR×1.3 + INT×1.3  (STR 113, INT 113)",
+        "text": "Dive for 374 hybrid magic damage to all enemies within 2 hexes. (80 +130% STR +130% INT) Stuns struck enemies for 1s.",
+        "formula": "374 = 80 + 130% STR + 130% INT  (STR 1.3×113, INT 1.3×113)",
         "tags": [
           "magic",
           "aoe",
@@ -3324,8 +3384,8 @@
       "passive": {
         "id": "enemy_caged_storm_drake.passive",
         "name": "Storm Conduit",
-        "text": "While mana is near-full, auto-attacks chain to a nearby enemy for 45 magic damage.",
-        "formula": "45 = INT×0.4  (INT 113)",
+        "text": "While mana is near-full, auto-attacks chain to a nearby enemy for 45 magic damage. (+40% INT)",
+        "formula": "45 = 40% INT  (INT 0.4×113)",
         "tags": [
           "magic"
         ]
@@ -3359,8 +3419,8 @@
       "active": {
         "id": "enemy_cannoneer.active",
         "name": "Cannon Blast",
-        "text": "Fire a cannonball at the primary target for 617 physical damage. Adjacent enemies take 40% splash.",
-        "formula": "617 = 80 + STR×2.2  (STR 244)",
+        "text": "Fire a cannonball at the primary target for 617 physical damage. (80 +220% STR) Adjacent enemies take 40% splash.",
+        "formula": "617 = 80 + 220% STR  (STR 2.2×244)",
         "tags": [
           "physical",
           "aoe"
@@ -3369,8 +3429,8 @@
       "passive": {
         "id": "enemy_cannoneer.passive",
         "name": "Scattershot",
-        "text": "Auto-attacks splash 49 physical damage to nearby enemies.",
-        "formula": "49 = STR×0.2  (STR 244)",
+        "text": "Auto-attacks splash 49 physical damage to nearby enemies. (+20% STR)",
+        "formula": "49 = 20% STR  (STR 0.2×244)",
         "tags": [
           "physical",
           "aoe"
@@ -3405,8 +3465,8 @@
       "active": {
         "id": "enemy_capture_rig_wolf.active",
         "name": "Shock Bite",
-        "text": "Bite the primary target for 221 physical damage.",
-        "formula": "221 = 45 + STR×1.6  (STR 110)",
+        "text": "Bite the primary target for 221 physical damage. (45 +160% STR)",
+        "formula": "221 = 45 + 160% STR  (STR 1.6×110)",
         "tags": [
           "physical"
         ]
@@ -3449,8 +3509,8 @@
       "active": {
         "id": "enemy_cold_iron_yeti.active",
         "name": "Knockback Charge",
-        "text": "Charge the primary target for 208 physical damage. Stuns for 1.5s.",
-        "formula": "208 = 60 + STR×1.8  (STR 82)",
+        "text": "Charge the primary target for 208 physical damage. (60 +180% STR) Stuns for 1.5s.",
+        "formula": "208 = 60 + 180% STR  (STR 1.8×82)",
         "tags": [
           "physical",
           "stun"
@@ -3584,8 +3644,8 @@
       "active": {
         "id": "enemy_conscript.active",
         "name": "Thrust",
-        "text": "Strike the primary target for 184 physical damage.",
-        "formula": "184 = 30 + STR×1.5  (STR 103)",
+        "text": "Strike the primary target for 184 physical damage. (30 +150% STR)",
+        "formula": "184 = 30 + 150% STR  (STR 1.5×103)",
         "tags": [
           "physical"
         ]
@@ -3593,8 +3653,8 @@
       "passive": {
         "id": "enemy_conscript.passive",
         "name": "Heavy Swing",
-        "text": "Every 4th auto-attack deals 52 bonus physical damage.",
-        "formula": "52 = STR×0.5  (STR 103)",
+        "text": "Every 4th auto-attack deals 52 bonus physical damage. (+50% STR)",
+        "formula": "52 = 50% STR  (STR 0.5×103)",
         "tags": [
           "physical"
         ]
@@ -3628,8 +3688,8 @@
       "active": {
         "id": "enemy_crossbow_levy.active",
         "name": "Piercing Bolt",
-        "text": "Fire a bolt at the primary target for 227 physical damage. Gains +15 Penetration for the hit.",
-        "formula": "227 = 40 + STR×1.8  (STR 104)",
+        "text": "Fire a bolt at the primary target for 227 physical damage. (40 +180% STR) Gains +15 Penetration for the hit.",
+        "formula": "227 = 40 + 180% STR  (STR 1.8×104)",
         "tags": [
           "physical",
           "penetration"
@@ -3673,8 +3733,8 @@
       "active": {
         "id": "enemy_drained_stalker.active",
         "name": "Drain Bolt",
-        "text": "Strike the primary target for 273 magic damage.",
-        "formula": "273 = 50 + INT×1.8  (INT 124)",
+        "text": "Strike the primary target for 273 magic damage. (50 +180% INT)",
+        "formula": "273 = 50 + 180% INT  (INT 1.8×124)",
         "tags": [
           "magic"
         ]
@@ -3682,8 +3742,8 @@
       "passive": {
         "id": "enemy_drained_stalker.passive",
         "name": "Soul Pierce",
-        "text": "Auto-attacks pierce to one enemy behind the target for 31 magic damage.",
-        "formula": "31 = INT×0.25  (INT 124)",
+        "text": "Auto-attacks pierce to one enemy behind the target for 31 magic damage. (+25% INT)",
+        "formula": "31 = 25% INT  (INT 0.25×124)",
         "tags": [
           "magic"
         ]
@@ -3717,8 +3777,8 @@
       "active": {
         "id": "enemy_dredge_hulk.active",
         "name": "Crushing Sweep",
-        "text": "Sweep the primary target for 232 physical damage. Applies 2 stacks of slow for 4s.",
-        "formula": "232 = 60 + STR×1.5 + INT×1  (STR 69, INT 69)",
+        "text": "Sweep the primary target for 232 physical damage. (60 +150% STR +100% INT) Applies 2 stacks of slow for 4s.",
+        "formula": "232 = 60 + 150% STR + 100% INT  (STR 1.5×69, INT 1×69)",
         "tags": [
           "physical",
           "slow"
@@ -3763,8 +3823,8 @@
       "active": {
         "id": "enemy_drowned_siren.active",
         "name": "Drowning Song",
-        "text": "Flood all enemies within 2 hexes for 360 magic damage each. Silences struck enemies for 2s.",
-        "formula": "360 = 50 + INT×1.8  (INT 172)",
+        "text": "Flood all enemies within 2 hexes for 360 magic damage each. (50 +180% INT) Silences struck enemies for 2s.",
+        "formula": "360 = 50 + 180% INT  (INT 1.8×172)",
         "tags": [
           "magic",
           "aoe",
@@ -3807,8 +3867,8 @@
       "active": {
         "id": "enemy_field_chaplain.active",
         "name": "Benediction",
-        "text": "Heal all allies within 2 hexes for 200 each.",
-        "formula": "200 = 30 + INT×1.5  (INT 113)",
+        "text": "Heal all allies within 2 hexes for 200 each. (30 +150% INT)",
+        "formula": "200 = 30 + 150% INT  (INT 1.5×113)",
         "tags": [
           "heal",
           "aoe"
@@ -3850,8 +3910,8 @@
       "active": {
         "id": "enemy_field_medic.active",
         "name": "Triage",
-        "text": "Heal the lowest-HP ally for 220.",
-        "formula": "220 = 30 + INT×2  (INT 95)",
+        "text": "Heal the lowest-HP ally for 220. (30 +200% INT)",
+        "formula": "220 = 30 + 200% INT  (INT 2×95)",
         "tags": [
           "heal"
         ]
@@ -3894,8 +3954,8 @@
       "active": {
         "id": "enemy_flood_tyrant.active",
         "name": "Deluge",
-        "text": "Flood all enemies within 3 hexes for 60% of 438 magic damage.",
-        "formula": "438 = 90 + INT×2.2  (INT 158)",
+        "text": "Flood all enemies within 3 hexes for 60% of 438 magic damage. (90 +220% INT)",
+        "formula": "438 = 90 + 220% INT  (INT 2.2×158)",
         "tags": [
           "magic",
           "aoe"
@@ -3940,8 +4000,8 @@
       "active": {
         "id": "enemy_frost_sovereign.active",
         "name": "Absolute Zero",
-        "text": "Freeze all enemies within 3 hexes for 60% of 568 magic damage. Freezes struck enemies for 1.5s.",
-        "formula": "568 = 90 + STR×1.2 + INT×1.5  (STR 177, INT 177)",
+        "text": "Freeze all enemies within 3 hexes for 60% of 568 magic damage. (90 +120% STR +150% INT) Freezes struck enemies for 1.5s.",
+        "formula": "568 = 90 + 120% STR + 150% INT  (STR 1.2×177, INT 1.5×177)",
         "tags": [
           "magic",
           "aoe",
@@ -4033,8 +4093,8 @@
       "active": {
         "id": "enemy_grand_marshal.active",
         "name": "Decapitate",
-        "text": "Strike the primary target for 742 physical damage.",
-        "formula": "742 = 90 + STR×2.5  (STR 261)",
+        "text": "Strike the primary target for 742 physical damage. (90 +250% STR)",
+        "formula": "742 = 90 + 250% STR  (STR 2.5×261)",
         "tags": [
           "physical"
         ]
@@ -4078,8 +4138,8 @@
       "active": {
         "id": "enemy_gunslinger.active",
         "name": "Deadeye Shot",
-        "text": "Shoot the primary target for 300 physical damage.",
-        "formula": "300 = 50 + STR×1.8  (STR 139)",
+        "text": "Shoot the primary target for 300 physical damage. (50 +180% STR)",
+        "formula": "300 = 50 + 180% STR  (STR 1.8×139)",
         "tags": [
           "physical"
         ]
@@ -4087,8 +4147,8 @@
       "passive": {
         "id": "enemy_gunslinger.passive",
         "name": "Ricochet",
-        "text": "Auto-attacks ricochet to a nearby enemy for 42 physical damage.",
-        "formula": "42 = STR×0.3  (STR 139)",
+        "text": "Auto-attacks ricochet to a nearby enemy for 42 physical damage. (+30% STR)",
+        "formula": "42 = 30% STR  (STR 0.3×139)",
         "tags": [
           "physical"
         ]
@@ -4122,8 +4182,8 @@
       "active": {
         "id": "enemy_heavy_knight.active",
         "name": "Greatsword",
-        "text": "Strike the primary target for 181 physical damage.",
-        "formula": "181 = 50 + STR×1.6  (STR 82)",
+        "text": "Strike the primary target for 181 physical damage. (50 +160% STR)",
+        "formula": "181 = 50 + 160% STR  (STR 1.6×82)",
         "tags": [
           "physical"
         ]
@@ -4166,8 +4226,8 @@
       "active": {
         "id": "enemy_hexblade_officer.active",
         "name": "Hex Bolt",
-        "text": "Blast the primary target for 357 magic damage. Gain +20 Intelligence for 6s, empowering autos.",
-        "formula": "357 = 60 + INT×1.8  (INT 165)",
+        "text": "Blast the primary target for 357 magic damage. (60 +180% INT) Gain +20 Intelligence for 6s, empowering autos.",
+        "formula": "357 = 60 + 180% INT  (INT 1.8×165)",
         "tags": [
           "magic",
           "buff"
@@ -4176,8 +4236,8 @@
       "passive": {
         "id": "enemy_hexblade_officer.passive",
         "name": "Hexed Blade",
-        "text": "Auto-attacks deal 41 bonus magic damage.",
-        "formula": "41 = INT×0.25  (INT 165)",
+        "text": "Auto-attacks deal 41 bonus magic damage. (+25% INT)",
+        "formula": "41 = 25% INT  (INT 0.25×165)",
         "tags": [
           "magic"
         ]
@@ -4257,8 +4317,8 @@
       "active": {
         "id": "enemy_hollowed_wisp.active",
         "name": "Spirit Bolt",
-        "text": "Strike the primary target for 311 magic damage.",
-        "formula": "311 = 50 + INT×1.8  (INT 145)",
+        "text": "Strike the primary target for 311 magic damage. (50 +180% INT)",
+        "formula": "311 = 50 + 180% INT  (INT 1.8×145)",
         "tags": [
           "magic"
         ]
@@ -4266,8 +4326,8 @@
       "passive": {
         "id": "enemy_hollowed_wisp.passive",
         "name": "Phantom Strike",
-        "text": "The first auto-attack deals 116 bonus magic damage.",
-        "formula": "116 = INT×0.8  (INT 145)",
+        "text": "The first auto-attack deals 116 bonus magic damage. (+80% INT)",
+        "formula": "116 = 80% INT  (INT 0.8×145)",
         "tags": [
           "magic"
         ]
@@ -4301,8 +4361,8 @@
       "active": {
         "id": "enemy_inquisitor.active",
         "name": "Smite",
-        "text": "Smite the primary target for 281 hybrid magic damage.",
-        "formula": "281 = 55 + STR×1.2 + INT×1.2  (STR 94, INT 94)",
+        "text": "Smite the primary target for 281 hybrid magic damage. (55 +120% STR +120% INT)",
+        "formula": "281 = 55 + 120% STR + 120% INT  (STR 1.2×94, INT 1.2×94)",
         "tags": [
           "magic"
         ]
@@ -4345,8 +4405,8 @@
       "active": {
         "id": "enemy_iron_collared_hound.active",
         "name": "Savage Bite",
-        "text": "Bite the primary target for 216 physical damage. Applies 2 stacks of slow for 2.5s.",
-        "formula": "216 = 40 + STR×1.6  (STR 110)",
+        "text": "Bite the primary target for 216 physical damage. (40 +160% STR) Applies 2 stacks of slow for 2.5s.",
+        "formula": "216 = 40 + 160% STR  (STR 1.6×110)",
         "tags": [
           "physical",
           "slow"
@@ -4390,8 +4450,8 @@
       "active": {
         "id": "enemy_iron_maiden.active",
         "name": "Impale",
-        "text": "Impale the primary target for 184 physical damage.",
-        "formula": "184 = 60 + STR×1.8  (STR 69)",
+        "text": "Impale the primary target for 184 physical damage. (60 +180% STR)",
+        "formula": "184 = 60 + 180% STR  (STR 1.8×69)",
         "tags": [
           "physical"
         ]
@@ -4436,8 +4496,8 @@
       "active": {
         "id": "enemy_levyman.active",
         "name": "Cudgel",
-        "text": "Strike the primary target for 93 physical damage.",
-        "formula": "93 = 25 + STR×1.3  (STR 52)",
+        "text": "Strike the primary target for 93 physical damage. (25 +130% STR)",
+        "formula": "93 = 25 + 130% STR  (STR 1.3×52)",
         "tags": [
           "physical"
         ]
@@ -4480,8 +4540,8 @@
       "active": {
         "id": "enemy_lord_commander.active",
         "name": "Commanding Shockwave",
-        "text": "Unleash a shockwave for 438 physical damage to all enemies within 2 hexes. Stuns struck enemies for 1.5s.",
-        "formula": "438 = 80 + STR×2  (STR 179)",
+        "text": "Unleash a shockwave for 438 physical damage to all enemies within 2 hexes. (80 +200% STR) Stuns struck enemies for 1.5s.",
+        "formula": "438 = 80 + 200% STR  (STR 2×179)",
         "tags": [
           "physical",
           "aoe",
@@ -4526,8 +4586,8 @@
       "active": {
         "id": "enemy_maw_of_the_drowned.active",
         "name": "Vortex",
-        "text": "Pull all enemies within 3 hexes, each taking 60% of 362 magic damage. Roots struck enemies for 2s.",
-        "formula": "362 = 80 + INT×2  (INT 141)",
+        "text": "Pull all enemies within 3 hexes, each taking 60% of 362 magic damage. (80 +200% INT) Roots struck enemies for 2s.",
+        "formula": "362 = 80 + 200% INT  (INT 2×141)",
         "tags": [
           "magic",
           "aoe",
@@ -4537,8 +4597,8 @@
       "passive": {
         "id": "enemy_maw_of_the_drowned.passive",
         "name": "Devouring Tide",
-        "text": "After casting, the next 3 auto-attacks each deal 70 bonus magic damage.",
-        "formula": "70 = INT×0.5  (INT 141)",
+        "text": "After casting, the next 3 auto-attacks each deal 70 bonus magic damage. (+50% INT)",
+        "formula": "70 = 50% INT  (INT 0.5×141)",
         "tags": [
           "magic"
         ]
@@ -4572,8 +4632,8 @@
       "active": {
         "id": "enemy_picket.active",
         "name": "Jab",
-        "text": "Strike the primary target for 130 physical damage.",
-        "formula": "130 = 20 + STR×1.2  (STR 92)",
+        "text": "Strike the primary target for 130 physical damage. (20 +120% STR)",
+        "formula": "130 = 20 + 120% STR  (STR 1.2×92)",
         "tags": [
           "physical"
         ]
@@ -4614,8 +4674,8 @@
       "active": {
         "id": "enemy_pikeman.active",
         "name": "Pike Thrust",
-        "text": "Strike the primary target for 122 physical damage.",
-        "formula": "122 = 35 + STR×1.5  (STR 58)",
+        "text": "Strike the primary target for 122 physical damage. (35 +150% STR)",
+        "formula": "122 = 35 + 150% STR  (STR 1.5×58)",
         "tags": [
           "physical"
         ]
@@ -4658,8 +4718,8 @@
       "active": {
         "id": "enemy_powder_sapper.active",
         "name": "Powder Charge",
-        "text": "Detonate on the primary target for 271 physical damage. Adjacent enemies take 40% splash.",
-        "formula": "271 = 50 + STR×1.8  (STR 123)",
+        "text": "Detonate on the primary target for 271 physical damage. (50 +180% STR) Adjacent enemies take 40% splash.",
+        "formula": "271 = 50 + 180% STR  (STR 1.8×123)",
         "tags": [
           "physical",
           "aoe"
@@ -4701,8 +4761,8 @@
       "active": {
         "id": "enemy_quarried_behemoth.active",
         "name": "Ground Slam",
-        "text": "Slam for 271 physical damage to all enemies within 2 hexes. Stuns struck enemies for 1s.",
-        "formula": "271 = 80 + STR×2.2  (STR 87)",
+        "text": "Slam for 271 physical damage to all enemies within 2 hexes. (80 +220% STR) Stuns struck enemies for 1s.",
+        "formula": "271 = 80 + 220% STR  (STR 2.2×87)",
         "tags": [
           "physical",
           "aoe",
@@ -4748,8 +4808,8 @@
       "active": {
         "id": "enemy_quarry_crawler.active",
         "name": "Pincer",
-        "text": "Strike the primary target for 221 physical damage.",
-        "formula": "221 = 40 + STR×1.6  (STR 113)",
+        "text": "Strike the primary target for 221 physical damage. (40 +160% STR)",
+        "formula": "221 = 40 + 160% STR  (STR 1.6×113)",
         "tags": [
           "physical"
         ]
@@ -4792,8 +4852,8 @@
       "active": {
         "id": "enemy_reaver_of_the_reach.active",
         "name": "Reaver Strike",
-        "text": "Strike the primary target for 308 hybrid physical damage.",
-        "formula": "308 = 70 + STR×1.5 + INT×1  (STR 95, INT 95)",
+        "text": "Strike the primary target for 308 hybrid physical damage. (70 +150% STR +100% INT)",
+        "formula": "308 = 70 + 150% STR + 100% INT  (STR 1.5×95, INT 1×95)",
         "tags": [
           "physical"
         ]
@@ -4836,8 +4896,8 @@
       "active": {
         "id": "enemy_riflemaster.active",
         "name": "Aimed Shot",
-        "text": "Take aim at the primary target for 400 physical damage.",
-        "formula": "400 = 70 + STR×2  (STR 165)",
+        "text": "Take aim at the primary target for 400 physical damage. (70 +200% STR)",
+        "formula": "400 = 70 + 200% STR  (STR 2×165)",
         "tags": [
           "physical"
         ]
@@ -4845,8 +4905,8 @@
       "passive": {
         "id": "enemy_riflemaster.passive",
         "name": "Long Shot",
-        "text": "Grants +1 attack range; the first auto-attack deals 198 bonus physical damage.",
-        "formula": "198 = STR×1.2  (STR 165)",
+        "text": "Grants +1 attack range; the first auto-attack deals 198 bonus physical damage. (+120% STR)",
+        "formula": "198 = 120% STR  (STR 1.2×165)",
         "tags": [
           "physical"
         ]
@@ -4880,8 +4940,8 @@
       "active": {
         "id": "enemy_riven_frost_wyrm.active",
         "name": "Frost Cone",
-        "text": "Breathe frost on the primary target for 428 hybrid magic damage. Adjacent enemies take 50% damage.",
-        "formula": "428 = 80 + STR×1.3 + INT×1.3  (STR 134, INT 134)",
+        "text": "Breathe frost on the primary target for 428 hybrid magic damage. (80 +130% STR +130% INT) Adjacent enemies take 50% damage.",
+        "formula": "428 = 80 + 130% STR + 130% INT  (STR 1.3×134, INT 1.3×134)",
         "tags": [
           "magic",
           "aoe"
@@ -4925,8 +4985,8 @@
       "active": {
         "id": "enemy_sergeant_at_arms.active",
         "name": "Cleave",
-        "text": "Cleave the primary target for 112 physical damage. Adjacent enemies take 50% damage.",
-        "formula": "112 = 50 + STR×1.6  (STR 39)",
+        "text": "Cleave the primary target for 112 physical damage. (50 +160% STR) Adjacent enemies take 50% damage.",
+        "formula": "112 = 50 + 160% STR  (STR 1.6×39)",
         "tags": [
           "physical",
           "aoe"
@@ -4970,8 +5030,8 @@
       "active": {
         "id": "enemy_shaftmaw.active",
         "name": "Blink Maul",
-        "text": "Blink to the lowest-HP enemy for 436 magic damage.",
-        "formula": "436 = 70 + INT×2  (INT 183)",
+        "text": "Blink to the lowest-HP enemy for 436 magic damage. (70 +200% INT)",
+        "formula": "436 = 70 + 200% INT  (INT 2×183)",
         "tags": [
           "magic"
         ]
@@ -5012,8 +5072,8 @@
       "active": {
         "id": "enemy_shroud_killer.active",
         "name": "Shadow Execute",
-        "text": "Dash to the lowest-HP enemy for 588 physical damage. Deals +50% to targets below 30% HP.",
-        "formula": "588 = 90 + STR×2.5  (STR 199)",
+        "text": "Dash to the lowest-HP enemy for 588 physical damage. (90 +250% STR) Deals +50% to targets below 30% HP.",
+        "formula": "588 = 90 + 250% STR  (STR 2.5×199)",
         "tags": [
           "physical",
           "execute"
@@ -5103,8 +5163,8 @@
       "active": {
         "id": "enemy_slag_sentinel.active",
         "name": "Molten Grasp",
-        "text": "Strike the primary target for 168 physical damage. Roots for 2.5s.",
-        "formula": "168 = 45 + STR×1.5  (STR 82)",
+        "text": "Strike the primary target for 168 physical damage. (45 +150% STR) Roots for 2.5s.",
+        "formula": "168 = 45 + 150% STR  (STR 1.5×82)",
         "tags": [
           "physical",
           "root"
@@ -5148,8 +5208,8 @@
       "active": {
         "id": "enemy_spymaster.active",
         "name": "Assassinate",
-        "text": "Strike the lowest-HP enemy for 660 magic damage. Deals +60% to targets below 30% HP.",
-        "formula": "660 = 100 + INT×2.5  (INT 224)",
+        "text": "Strike the lowest-HP enemy for 660 magic damage. (100 +250% INT) Deals +60% to targets below 30% HP.",
+        "formula": "660 = 100 + 250% INT  (INT 2.5×224)",
         "tags": [
           "magic",
           "execute"
@@ -5158,8 +5218,8 @@
       "passive": {
         "id": "enemy_spymaster.passive",
         "name": "Opening Strike",
-        "text": "The first auto-attack deals 224 bonus magic damage.",
-        "formula": "224 = INT×1  (INT 224)",
+        "text": "The first auto-attack deals 224 bonus magic damage. (+100% INT)",
+        "formula": "224 = 100% INT  (INT 1×224)",
         "tags": [
           "magic"
         ]
@@ -5281,8 +5341,8 @@
       "active": {
         "id": "enemy_steam_knight.active",
         "name": "Piston Strike",
-        "text": "Strike the primary target for 364 physical damage.",
-        "formula": "364 = 60 + STR×1.8  (STR 169)",
+        "text": "Strike the primary target for 364 physical damage. (60 +180% STR)",
+        "formula": "364 = 60 + 180% STR  (STR 1.8×169)",
         "tags": [
           "physical"
         ]
@@ -5290,8 +5350,8 @@
       "passive": {
         "id": "enemy_steam_knight.passive",
         "name": "Steam Vent",
-        "text": "Every 3rd hit taken reflects 68 physical damage to the attacker.",
-        "formula": "68 = STR×0.4  (STR 169)",
+        "text": "Every 3rd hit taken reflects 68 physical damage to the attacker. (+40% STR)",
+        "formula": "68 = 40% STR  (STR 0.4×169)",
         "tags": [
           "physical",
           "reflect"
@@ -5326,8 +5386,8 @@
       "active": {
         "id": "enemy_stone_warden.active",
         "name": "Seismic Slam",
-        "text": "Slam for 274 physical damage to all enemies within 2 hexes.",
-        "formula": "274 = 80 + STR×2  (STR 97)",
+        "text": "Slam for 274 physical damage to all enemies within 2 hexes. (80 +200% STR)",
+        "formula": "274 = 80 + 200% STR  (STR 2×97)",
         "tags": [
           "physical",
           "aoe"
@@ -5372,8 +5432,8 @@
       "active": {
         "id": "enemy_storm_tyrant.active",
         "name": "Tempest",
-        "text": "Unleash a tempest on all enemies within 3 hexes for 60% of 420 magic damage.",
-        "formula": "420 = 90 + STR×1.3 + INT×1.3  (STR 127, INT 127)",
+        "text": "Unleash a tempest on all enemies within 3 hexes for 60% of 420 magic damage. (90 +130% STR +130% INT)",
+        "formula": "420 = 90 + 130% STR + 130% INT  (STR 1.3×127, INT 1.3×127)",
         "tags": [
           "magic",
           "aoe"
@@ -5418,8 +5478,8 @@
       "active": {
         "id": "enemy_stormhawk.active",
         "name": "Lightning Dive",
-        "text": "Dive the primary target for 253 magic damage.",
-        "formula": "253 = 50 + INT×1.8  (INT 113)",
+        "text": "Dive the primary target for 253 magic damage. (50 +180% INT)",
+        "formula": "253 = 50 + 180% INT  (INT 1.8×113)",
         "tags": [
           "magic"
         ]
@@ -5427,8 +5487,8 @@
       "passive": {
         "id": "enemy_stormhawk.passive",
         "name": "Arc Strike",
-        "text": "Auto-attacks arc to a nearby enemy for 34 magic damage.",
-        "formula": "34 = INT×0.3  (INT 113)",
+        "text": "Auto-attacks arc to a nearby enemy for 34 magic damage. (+30% INT)",
+        "formula": "34 = 30% INT  (INT 0.3×113)",
         "tags": [
           "magic"
         ]
@@ -5462,8 +5522,8 @@
       "active": {
         "id": "enemy_stretcher_hand.active",
         "name": "Field Dressing",
-        "text": "Heal the lowest-HP ally for 152.",
-        "formula": "152 = 25 + INT×1.5  (INT 85)",
+        "text": "Heal the lowest-HP ally for 152. (25 +150% INT)",
+        "formula": "152 = 25 + 150% INT  (INT 1.5×85)",
         "tags": [
           "heal"
         ]
@@ -5504,8 +5564,8 @@
       "active": {
         "id": "enemy_sundered_lord.active",
         "name": "Haunt",
-        "text": "Haunt all enemies within 3 hexes for 60% of 372 magic damage. Fears struck enemies for 1.5s.",
-        "formula": "372 = 70 + STR×1.2 + INT×1.2  (STR 126, INT 126)",
+        "text": "Haunt all enemies within 3 hexes for 60% of 372 magic damage. (70 +120% STR +120% INT) Fears struck enemies for 1.5s.",
+        "formula": "372 = 70 + 120% STR + 120% INT  (STR 1.2×126, INT 1.2×126)",
         "tags": [
           "magic",
           "aoe",
@@ -5515,8 +5575,8 @@
       "passive": {
         "id": "enemy_sundered_lord.passive",
         "name": "Haunting Blade",
-        "text": "Every 2nd auto-attack deals 38 bonus magic damage.",
-        "formula": "38 = INT×0.3  (INT 126)",
+        "text": "Every 2nd auto-attack deals 38 bonus magic damage. (+30% INT)",
+        "formula": "38 = 30% INT  (INT 0.3×126)",
         "tags": [
           "magic"
         ]
@@ -5550,8 +5610,8 @@
       "active": {
         "id": "enemy_thunder_bull.active",
         "name": "Discharge",
-        "text": "Gore the primary target for 450 physical damage. Stuns for 1.8s.",
-        "formula": "450 = 70 + STR×2  (STR 190)",
+        "text": "Gore the primary target for 450 physical damage. (70 +200% STR) Stuns for 1.8s.",
+        "formula": "450 = 70 + 200% STR  (STR 2×190)",
         "tags": [
           "physical",
           "stun"
@@ -5595,8 +5655,8 @@
       "active": {
         "id": "enemy_veil_lord.active",
         "name": "Shroud Burst",
-        "text": "Blast all enemies within 3 hexes for 60% of 362 magic damage.",
-        "formula": "362 = 80 + INT×2  (INT 141)",
+        "text": "Blast all enemies within 3 hexes for 60% of 362 magic damage. (80 +200% INT)",
+        "formula": "362 = 80 + 200% INT  (INT 2×141)",
         "tags": [
           "magic",
           "aoe"
@@ -5641,8 +5701,8 @@
       "active": {
         "id": "enemy_voltaic_diviner.active",
         "name": "Chain Lightning",
-        "text": "Strike the primary target for 431 magic damage. Bounces to up to 2 nearby enemies at 50% then 35% damage.",
-        "formula": "431 = 65 + INT×2  (INT 183)",
+        "text": "Strike the primary target for 431 magic damage. (65 +200% INT) Bounces to up to 2 nearby enemies at 50% then 35% damage.",
+        "formula": "431 = 65 + 200% INT  (INT 2×183)",
         "tags": [
           "magic",
           "aoe"
@@ -5693,8 +5753,8 @@
         "active": {
           "id": "holloway.pressure_vent",
           "name": "Pressure Vent",
-          "text": "Vent scalding steam for 300 physical damage to all enemies within 2 hexes. Burns struck enemies for 4s.",
-          "formula": "300 = 100 + STR×2.5  (STR 80)",
+          "text": "Vent scalding steam for 300 physical damage to all enemies within 2 hexes. (100 +250% STR) Burns struck enemies for 4s.",
+          "formula": "300 = 100 + 250% STR  (STR 2.5×80)",
           "tags": [
             "physical",
             "aoe",
@@ -5722,8 +5782,8 @@
         "phase2_active": {
           "id": "holloway.magma_heave",
           "name": "Magma Heave",
-          "text": "Erupt for 70% of 380 physical damage to all enemies within 3 hexes. Burns struck enemies for 5s.",
-          "formula": "380 = 140 + STR×3  (STR 80)",
+          "text": "Erupt for 70% of 380 physical damage to all enemies within 3 hexes. (140 +300% STR) Burns struck enemies for 5s.",
+          "formula": "380 = 140 + 300% STR  (STR 3×80)",
           "tags": [
             "physical",
             "aoe",
@@ -5783,8 +5843,8 @@
         "active": {
           "id": "vance.focusing_lens",
           "name": "Focusing Lens",
-          "text": "Focus a beam on the furthest enemy for 484 magic damage.",
-          "formula": "484 = 120 + INT×2.8  (INT 130)",
+          "text": "Focus a beam on the furthest enemy for 484 magic damage. (120 +280% INT)",
+          "formula": "484 = 120 + 280% INT  (INT 2.8×130)",
           "tags": [
             "magic"
           ]
@@ -5811,8 +5871,8 @@
         "phase2_active": {
           "id": "vance.sunflare_pounce",
           "name": "Sunflare Pounce",
-          "text": "Pounce the lowest-HP enemy for 540 magic damage. Fears for 2.5s.",
-          "formula": "540 = 150 + INT×3  (INT 130)",
+          "text": "Pounce the lowest-HP enemy for 540 magic damage. (150 +300% INT) Fears for 2.5s.",
+          "formula": "540 = 150 + 300% INT  (INT 3×130)",
           "tags": [
             "magic",
             "fear"
@@ -5872,8 +5932,8 @@
         "active": {
           "id": "strand.arc_cascade",
           "name": "Arc Cascade",
-          "text": "Strike the primary target for 485 magic damage. Chains to up to 3 nearby enemies at 60%, 50%, then 40% damage.",
-          "formula": "485 = 110 + INT×2.5  (INT 150)",
+          "text": "Strike the primary target for 485 magic damage. (110 +250% INT) Chains to up to 3 nearby enemies at 60%, 50%, then 40% damage.",
+          "formula": "485 = 110 + 250% INT  (INT 2.5×150)",
           "tags": [
             "magic",
             "aoe"
@@ -5901,8 +5961,8 @@
         "phase2_active": {
           "id": "strand.thunderhead",
           "name": "Thunderhead",
-          "text": "Call down a storm for 60% of 580 magic damage to all enemies within 4 hexes. Charges struck enemies for 3s.",
-          "formula": "580 = 130 + INT×3  (INT 150)",
+          "text": "Call down a storm for 60% of 580 magic damage to all enemies within 4 hexes. (130 +300% INT) Charges struck enemies for 3s.",
+          "formula": "580 = 130 + 300% INT  (INT 3×150)",
           "tags": [
             "magic",
             "aoe"
@@ -5911,8 +5971,8 @@
         "phase2_passive": {
           "id": "strand.stormform",
           "name": "Stormform",
-          "text": "Auto-attacks against charged enemies deal 60 bonus magic damage.",
-          "formula": "60 = INT×0.4  (INT 150)",
+          "text": "Auto-attacks against charged enemies deal 60 bonus magic damage. (+40% INT)",
+          "formula": "60 = 40% INT  (INT 0.4×150)",
           "tags": [
             "magic"
           ]
@@ -5961,8 +6021,8 @@
         "active": {
           "id": "vossberg.scorched_advance",
           "name": "Scorched Advance",
-          "text": "Charge the primary target for 522 physical damage and burn for 3s. Adjacent enemies take 40% splash.",
-          "formula": "522 = 130 + STR×2.8  (STR 140)",
+          "text": "Charge the primary target for 522 physical damage and burn for 3s. (130 +280% STR) Adjacent enemies take 40% splash.",
+          "formula": "522 = 130 + 280% STR  (STR 2.8×140)",
           "tags": [
             "physical",
             "aoe",
@@ -5991,8 +6051,8 @@
         "phase2_active": {
           "id": "vossberg.wildfire_leap",
           "name": "Wildfire Leap",
-          "text": "Leap and erupt for 80% of 608 physical damage to all enemies within 2 hexes. Burns struck enemies for 4s.",
-          "formula": "608 = 160 + STR×3.2  (STR 140)",
+          "text": "Leap and erupt for 80% of 608 physical damage to all enemies within 2 hexes. (160 +320% STR) Burns struck enemies for 4s.",
+          "formula": "608 = 160 + 320% STR  (STR 3.2×140)",
           "tags": [
             "physical",
             "aoe",
@@ -6050,8 +6110,8 @@
         "active": {
           "id": "crege.harpoon_winch",
           "name": "Harpoon Winch",
-          "text": "Harpoon the furthest enemy for 400 physical damage. Pulls the target toward Crège and roots it for 2.5s.",
-          "formula": "400 = 100 + STR×2 + INT×1  (STR 110, INT 80)",
+          "text": "Harpoon the furthest enemy for 400 physical damage. (100 +200% STR +100% INT) Pulls the target toward Crège and roots it for 2.5s.",
+          "formula": "400 = 100 + 200% STR + 100% INT  (STR 2×110, INT 1×80)",
           "tags": [
             "physical",
             "root"
@@ -6079,8 +6139,8 @@
         "phase2_active": {
           "id": "crege.maelstrom_jaws",
           "name": "Maelstrom Jaws",
-          "text": "Engulf all enemies within 3 hexes for 70% of 515 physical damage. Applies 2 stacks of slow for 4s.",
-          "formula": "515 = 120 + STR×2.5 + INT×1.5  (STR 110, INT 80)",
+          "text": "Engulf all enemies within 3 hexes for 70% of 515 physical damage. (120 +250% STR +150% INT) Applies 2 stacks of slow for 4s.",
+          "formula": "515 = 120 + 250% STR + 150% INT  (STR 2.5×110, INT 1.5×80)",
           "tags": [
             "physical",
             "aoe",
@@ -6139,8 +6199,8 @@
         "active": {
           "id": "iron_emperor.decree_of_iron",
           "name": "Decree of Iron",
-          "text": "Mark the lowest-HP enemy for 640 magic damage. Shreds 25 Armor and 25 Resistance for 6s.",
-          "formula": "640 = 100 + STR×1.5 + INT×1.5  (STR 180, INT 180)",
+          "text": "Mark the lowest-HP enemy for 640 magic damage. (100 +150% STR +150% INT) Shreds 25 Armor and 25 Resistance for 6s.",
+          "formula": "640 = 100 + 150% STR + 150% INT  (STR 1.5×180, INT 1.5×180)",
           "tags": [
             "magic",
             "debuff"
@@ -6167,8 +6227,8 @@
         "phase2_active": {
           "id": "iron_emperor.reclamation",
           "name": "Reclamation",
-          "text": "Channel a finisher for 50% of 870 magic damage to all enemies within 4 hexes. Applies 3 stacks of slow for 4s.",
-          "formula": "870 = 150 + STR×2 + INT×2  (STR 180, INT 180)",
+          "text": "Channel a finisher for 50% of 870 magic damage to all enemies within 4 hexes. (150 +200% STR +200% INT) Applies 3 stacks of slow for 4s.",
+          "formula": "870 = 150 + 200% STR + 200% INT  (STR 2×180, INT 2×180)",
           "tags": [
             "magic",
             "aoe",
