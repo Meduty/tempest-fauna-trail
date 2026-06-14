@@ -1,6 +1,6 @@
 # T29 Plan — Item Engine
 
-> **Status:** approved — T.29a/T.29b split in SPEC (📋 Plan). **`T.29-pre` ✅ Done (2026-06-13)** — combat stat substrate landed ([Part B](#part-b--t29-pre--combat-stat-substrate-prerequisite-sequences-first)); `T.29-pre → T.29a → T.29b`. ⚠️ **`T.29a` is NOT build-ready: §3.1a (mana primitive) was reworked 2026-06-13 and carries four unresolved tensions** (Tension 1 — `mana_cost` base home vs the V.35 `ability_cost` stat; Tension 2 — rename call-site sweep; Tension 3 — how piece-level `mana_regen` allocates across multiple slot-local pools; Tension 4 — multi-ready cast semantics / one-cast-per-action / priority). **Agreed hard rule: at most one cast per action window.** Resolve §3.1a (decision or `/plan` refresh) before `/build T.29a`. The rest of T.29a (components, recipes, equip, drops) is build-ready.
+> **Status:** approved — T.29a/T.29b split in SPEC (📋 Plan). **`T.29-pre` ✅ Done (2026-06-13)** — combat stat substrate landed ([Part B](#part-b--t29-pre--combat-stat-substrate-prerequisite-sequences-first)); `T.29-pre → T.29a → T.29b`. ✅ **§3.1a mana primitive RESOLVED (2026-06-14)** — all four tensions decided: **T1 = Option A** (`mana_cost` base on the ability def; deprecate the V.35 `ability_cost` stat — amends V.35); **T2** = mechanical re-grep, not a fork; **T3 = weighted-rank charge cycle** (per-slot `priority` rank; one budget, one slot charged per tick, throughput slot-count-invariant); **T4 = one-cast-per-window (settled) + unified `priority`** (same rank picks the cast). **`max_mana` default raised to `2× mana_cost`** (overload headroom). ⚠️ **CORRECTION 2026-06-14:** T.29a **already shipped** (PR #41, commit `403e7e2`) as the **item engine only** — it did **not** build §3.1a (kept the old `ActiveSlot.cost`/`current_mana` model). So the resolved §3.1a mana primitive is its **own new row T.29c** (depends T.29a, done), and it must **retrofit 3 T.29a mana items that reduce `mana_cost`** (`springtear`/`deepwell`/`everbloom_staff` + `wildfury_lash` clamp — violate V.48). The §3.1b multi-slot + Multicaster work is row **T.29d** (depends T.29c + T.28a). Both 📋 Plan; **applied to SPEC 2026-06-14** (V.48/V.49, T.29c/T.29d rows, V.34/V.35 amends, D.23/D.24). Below, read "§3.1a → T.29c" and "§3.1b → T.29d".
 > **Depends:** T.1 (models — done), T.20 (effect substrate / `ITEM_REGISTRY` / `register_item` — done), **T.22** (Amber economy, `Run` shop/inventory — done; drop-table weights **owned by T.29a** per §3.7 decision). **T.29b emblems additionally depend on T.28a** (trait counting consumes emblem `granted_traits`). **T.29b special-item CLI driver shares the `sim_run` interactive shell with T.31** — coordinate. **T.29-pre (substrate) depends only on already-built work (T.2 weather, T.20 effects, T.28d trait riders, T.33a sort-order) — it can build immediately and is a soft prerequisite to T.29a (fixes the `(base+adds)×muls` compose rule + `source:` prefix vocab that item factories author against).**
 > **Resolves:** SPEC §D.9 (item system — components, recipes, emblems, special items, 3 slots) and the REWARD-drop half of §D.12.
 > **Design source of truth:** [`item_catalog.md`](../content/item_catalog.md) (8 components, 36 combined, 6 emblems, 6 special, the §3 16-item core cut) + [`effect_systems_design.md` §8](../systems/effect_systems_design.md) (substrate: `BASE_COMPONENTS`, `RECIPE_MAP`, item factories, §8.4 run-actions, `combine()`) + §10.1 (application order).
@@ -19,7 +19,7 @@ The seam is **combat-facing vs meta/cross-task**. T.29a is self-contained (deps 
 - **One re-baseline, two separable commits** (commit 1 re-baselines weather numbers; commit 2 is ~byte-identical by exact migration).
 
 ### T.29a — Component + combined-item engine + 16 core items (Est: M–L)
-- §3.1 component model + **real-stat mapping** + §3.1a mana-stat primitive (per-ability `mana_cost`/`max_mana`/`start_mana`; `max_mana` = universal cap; MR = cast-rate knob; 3 engine sites). ⚠️ **§3.1a has four unresolved tensions (mana_cost home, rename sweep, MR multi-slot allocation, multi-ready cast semantics) — resolve before building (see §3.1a).**
+- §3.1 component model + **real-stat mapping** + §3.1a mana-stat primitive (per-ability `mana_cost`/`max_mana`/`start_mana`/`priority`; `max_mana` = universal cap, default 2× cost; MR = cast-rate knob via weighted-rank charge cycle; ≤1 cast/window). ✅ **§3.1a all four tensions DECIDED 2026-06-14 (T1 cost-on-ability-def / T2 re-grep / T3 weighted-rank cycle / T4 one-cast+unified-priority) — build-ready (see §3.1a).**
 - §3.2 `RECIPE_MAP` (full 8×8 = 36 keys) + `combine()` (recipes only; gem branch stubbed for b).
 - §3.3 equip model: `Champion.items` (≤3, persistent) → threaded into `piece_from_champion`; `Piece.items` already exists ([piece.py:43](../../../src/game/piece.py#L43)); apply item bundles in `compile_loadout` (§10.1 step 5).
 - §3.4 `@register_item` factories for the **16 core-cut items** (modifier + hook, closure-per-combat) + 8 raw components.
@@ -83,15 +83,14 @@ The seam is **combat-facing vs meta/cross-task**. T.29a is self-contained (deps 
 
 ### 3.1a Mana-stat primitive — `mana_cost` / `max_mana` / `start_mana` (per-ability slot)
 
-> ⚠️ **NEEDS REFINEMENT BEFORE `/build T.29a` — do not implement as-is.** The mana
-> model was reworked in conversation 2026-06-13 (post-T.29-pre); **four** design tensions
-> below are **unresolved** and must be settled (a quick `/plan` refresh or a decision
-> here) before this section is built. The single-pool *shape* is settled; the tagged forks
-> are not. **One hard rule IS agreed: at most one cast per action window** (Tension 4) —
-> no multi-cast burst when several slots are ready. Tensions 1–2 are implementation/authority
-> forks; **Tensions 3–4 are the load-bearing multi-active design forks** — the per-slot engine
-> sites below currently *assume* full-MR-to-every-slot (Tension 3 Option A), which is **not yet
-> decided** and is balance-dangerous (see Tension 3).
+> ✅ **RESOLVED 2026-06-14 — build-ready.** The mana model was reworked 2026-06-13
+> (post-T.29-pre); all **four** tensions are now decided (see the per-tension blocks below,
+> each headed **DECIDED**): **T1 Option A** (`mana_cost` on the ability def, deprecate the
+> V.35 `ability_cost` stat), **T2** mechanical re-grep, **T3 weighted-rank charge cycle**,
+> **T4 one-cast-per-window + unified `priority`**. **`max_mana` default = `2× mana_cost`.**
+> Authoring a multi-ability kit = two numbers per slot (`mana_cost`, `priority`); cost is the
+> **ability** knob, `mana_regen` the **piece** knob. Implement the engine sites below per the
+> DECIDED rules (not the old full-MR-to-every-slot assumption).
 
 **Settled model.** Four mana fields are **per-ability/per-slot** (they live on the
 ability/`ActiveSlot`, alongside the existing `current_mana`); **`mana_regen` is the
@@ -104,113 +103,123 @@ start_mana)` **auto-bump are dropped** — `max_mana` is a deliberate, authored,
 
 | Field | Base authored on | Mutable by | Role |
 |---|---|---|---|
-| `mana_cost` | **⚠️ see Tension 1** | ability/augment (rare) | cast threshold + amount deducted per cast |
-| `max_mana` | ability def | ability/augment (rare) | **universal pool cap** — everything clamps here; never auto-raised |
+| `mana_cost` | **ability def** (T1 Option A; deprecates V.35 `ability_cost`) | ability/augment (rare) | cast threshold + amount deducted per cast — **the ability cost knob** |
+| `max_mana` | ability def | ability/augment (rare) | **universal pool cap** — everything clamps here; never auto-raised. **Default `= 2× mana_cost`** (overload headroom) |
 | `start_mana` | ability def | ability/augment (rare) | combat-start fill (clamped to `max_mana`) |
+| `priority` | ability def (per-slot rank, default `1`) | — | **unified rank** — drives both the T3 charge cycle **and** the T4 cast pick |
 | `current_mana` | runtime | engine | per-slot pool |
-| `mana_regen` | champ/enemy def (stat) | **`Modifier`s** (items/weather/traits) | fills `current_mana` → `max_mana` each tick; **the cast-rate knob** |
+| `mana_regen` | champ/enemy def (stat) | **`Modifier`s** (items/weather/traits) | fills the **rank-cycle-selected** slot's `current_mana` → `max_mana` each tick; **the piece-level cast-rate knob** |
 
-- **Defaults for all 5 — required even when a def specifies them.** Every field has a
-  fallback default so a partial def still constructs: `mana_cost` (default ⚠️ Tension 1),
-  `max_mana` **default = `mana_cost`** (⇒ no overload unless an ability authors higher),
-  `start_mana = 0`, `current_mana = 0`, `mana_regen` = champ/enemy base (V.35 `100`).
-  Defs override; defaults always exist.
-- **Engine (3 per-slot sites) — drop the MR guard:**
-  - regen → `slot.current_mana = min(slot.max_mana, slot.current_mana + mr_val)` (was
-    `min(slot.cost, …)`, engine.py:831). **`max_mana` is the clamp**; passive regen may
-    now bank/overload up to `max_mana`. ⚠️ **`mr_val` per-slot allocation is Tension 3 —**
-    this line as written gives **every** slot the full piece `mana_regen` (Tension 3 Option A,
-    balance-dangerous); the actual per-slot `mr_val` must follow the Tension 3 decision.
-  - cast → `slot.current_mana -= slot.mana_cost` (was `= 0.0`, engine.py:486,663) so
-    overflow carries. ⚠️ **When >1 slot is ready, only one may cast this window** (Tension 4
-    hard rule) — the cast site needs a single-cast gate + a ready-slot selection policy.
+- **Defaults for all fields — required even when a def specifies them.** Every field has a
+  fallback default so a partial def still constructs: `mana_cost` default = the old baseline
+  constant (`300_000`, the former V.35 `ability_cost` baseline — now the `mana_cost` default),
+  `max_mana` **default = `2× mana_cost`** (overload headroom; abilities author higher/lower),
+  `priority` default = `1`, `start_mana = 0`, `current_mana = 0`, `mana_regen` = champ/enemy
+  base (V.35 `100`). Defs override; defaults always exist.
+- **Engine sites — drop the MR guard + add the rank cycle + single-cast gate:**
+  - **regen — weighted-rank charge cycle (T3 DECIDED):** maintain a per-piece deterministic
+    cycle counter (cadence, V.2/V.14 — like `crit_counter`). Cycle length = `sum(slot.priority
+    for slot in actives)`; each slot occupies `priority` positions. Each tick advances the
+    counter and routes the **full** piece `mana_regen` to the **one** selected slot:
+    `slot.current_mana = min(slot.max_mana, slot.current_mana + mr_val)` (was `min(slot.cost,
+    …)`, engine.py:831). **`max_mana` is the clamp** (overload banks). **Skip rule:** if the
+    cycle-selected slot is already at `max_mana`, advance to the next cycle position with a slot
+    that has room (still deterministic). One slot charged per tick ⇒ total throughput =
+    `mana_regen`/tick **regardless of slot count** (the T3 invariance constraint). Single-slot
+    pieces: cycle len = that slot's `priority`, every tick charges it = full MR/tick = today.
+  - **cast — one per window + unified priority (T4 DECIDED):** at most **one** cast per action
+    window. Among slots with `current_mana >= mana_cost`, the **highest `priority`** casts
+    (tie → lowest slot index, deterministic); `slot.current_mana -= slot.mana_cost` (was
+    `= 0.0`, engine.py:486,663) so overflow carries. Other ready slots stay ready for later
+    windows (no burst).
   - combat start (new) → `slot.current_mana = min(slot.max_mana, slot.start_mana)`.
   - ready check unchanged per-slot: `slot.current_mana >= slot.mana_cost` (engine.py:463,657)
-    — but **acting on multiple ready slots is gated by Tension 4** (one cast/window).
+    — selection among multiple ready is the unified-priority pick above.
 - **Resources, not modifiers (V.43).** `mana_cost`/`max_mana`/`start_mana`/`current_mana`
   are **slot resource state** — mutated by **explicit, rare** ability/augment effects via
   **direct slot writes**, never `Modifier`s (V.43 codifies this). Only `mana_regen` (flow
   stat) is `Modifier`-able. **Mana items grant `mana_regen` or `start_mana` — never reduce
-  `mana_cost`** (kills the negative-cost stacking bug).
-- **Regression / byte-identity (verify, don't assume).** With `max_mana` defaulting to
-  `mana_cost` and `start_mana = 0`: regen `min(mana_cost, …)` ≡ today, pool tops at
-  `mana_cost`, `-= mana_cost` ≡ old `= 0` (no overshoot since cap = cost) → **byte-identical**.
-  Cleaner anchor than the old 5× default. **Gate (lesson from T.29-pre):** capture a
-  pre-change baseline and diff — *prove* byte-identity empirically, do not trust this
-  paragraph (the AS-float "~byte-identical" claim was wrong; this one *should* hold because
-  it is integer-exact, but verify).
+  `mana_cost`** (kills the negative-cost stacking bug). ⚠️ **Retrofit (T.29c finding 2026-06-14):**
+  T.29a shipped **3 mana items that violate this** via `combined.py:69 _apply_mana_to_slots(...,
+  cost_mult<1.0)` → `slot.cost = round(slot.cost * cost_mult)`: **`springtear`** (`0.90` + 200 mana —
+  the very item V.48 cites as the canonical *pure-`mana_regen`* item), **`deepwell`** (`0.80` + 400
+  mana + on-cast cost refund `:206`), **`everbloom_staff`** (`0.90` + 200 mana). Also
+  `wildfury_lash:350` sets `current_mana = cost` (should clamp to `max_mana`). T.29c rewrites these:
+  grant `mana_regen` (`Modifier`) and/or `start_mana` (slot), delete the `cost_mult` path, reclamp
+  current-mana writes to `max_mana`.
+- **Regression / byte-identity (verify, don't assume).** With `max_mana = 2× mana_cost`,
+  `start_mana = 0`, single-slot pieces (≈ the whole current roster): the cycle has one slot,
+  so it charges every tick exactly like today; passive regen (baseline `100`/tick vs cost
+  `300_000` → ~3000 ticks/cast) **never approaches `2× cost`**, so the raised cap is never hit
+  by regen alone; a slot casts the tick it crosses `mana_cost`, leaving sub-`mana_regen`
+  overflow, `-= mana_cost` ≡ old `= 0` within rounding → **expected byte-identical**. The 2×
+  headroom only bites for `start_mana` items / on-event grants / multi-slot banking. **Gate
+  (lesson from T.29-pre):** capture a pre-change baseline and diff — *prove* byte-identity
+  empirically; the AS-float "~byte-identical" claim was wrong, and raising the cap to 2× is a
+  behavioral change for any banking path, so do **not** trust this paragraph — verify.
 - **Starting-mana items:** equip step does `slot.start_mana += S` (clamped: `start_mana`
   seeds `current_mana = min(max_mana, start_mana)` at combat start — **no `max_mana`
   auto-bump**; if `start_mana > max_mana` it is simply clamped). One slot-writing path,
   carried on the bundle via `slot_mana_start` (§3.4).
 - **On-event mana gain** (T.29b) → `ctx.grant_mana(piece, amount)` clamped to `max_mana`.
   No mana-hook items in the 16-core cut → T.29a needs zero hook work here.
+- **UI requirement (note for the UI tasks T.8–T.15, not combat):** render **one mana bar per
+  ability slot**, and because `max_mana = 2× mana_cost` the bar now has headroom past the cast
+  point — the bar **must mark the `mana_cost` cast threshold** (sub-cast tick) so overload vs
+  ready-to-cast is legible. Record this requirement now so it isn't lost when the views ship.
 
-**⚠️ Tension 1 — where `mana_cost`'s base lives (UNRESOLVED, blocks build).** Today
-`mana_cost` is **not** authored on the ability — `ActiveSlot.cost` is seeded from the
-champ/enemy **`ability_cost` FLAT stat** (V.35, baseline `300_000`; per-kit deviations are
-the intended cost-tuning). Putting `mana_cost`'s base on the **ability def** (alongside
-`max_mana`/`start_mana`) moves that authority off V.35.
-- **Option A** — ability def owns `mana_cost`; deprecate/fold the champ `ability_cost` stat.
-  **Touches V.35** (needs a `/spec` amend) and re-homes all per-kit cost tuning.
-- **Option B** — ability def owns `max_mana`/`start_mana` only; `mana_cost` stays seeded from
-  `ability_cost` (V.35 untouched), keeping cost-tuning where it is. Lower blast radius.
-- `max_mana`/`start_mana` belong on the ability either way (new fields, no V.35 conflict) —
-  the fork is **only** `mana_cost`'s home. **Resolve before building §3.1a.**
+**✅ Tension 1 — where `mana_cost`'s base lives — DECIDED: Option A (2026-06-14).** `mana_cost`'s
+base is authored **on the ability def** (registry meta, the `loadout.py:59` `granted_abilities`
+seam already supports a cost lookup). The champ/enemy **`ability_cost` FLAT stat is deprecated**
+and **dropped from V.35** (`/spec` amend — see §10.2a). **Rationale:** cost is the *ability*
+knob (how expensive THIS spell is); the *piece* knob is `mana_regen` (global cast rate). Mana
+items never reduce `mana_cost` (already settled) → no cost-reduction piece knob exists → cost
+belongs wholly on the ability. **Blast radius (small, verified 2026-06-14):** only **6 bosses**
+deviate from baseline (`bosses/data.py` 380k–520k) + **2 `999_999` "can't-cast" sentinels**
+(`champions.py:2029`, `enemies.py:621`); every other champ/enemy shares one baseline constant
+(`content.py:322`) → becomes the `mana_cost` default. **Migration:** re-home those 8 values onto
+their ability defs; delete `ability_cost` from the model/stat tuples/serialization. **Authoring
+a 1.5×-cost kit** = two numbers per slot — e.g. `@register_ability("dire_bite", mana_cost=300_000,
+priority=2)` + `@register_ability("dire_howl", mana_cost=450_000, priority=1)`: only `mana_cost`
+differs (450k/300k = 1.5×), `max_mana` auto = 2× each, the shared `mana_regen` + rank cycle do
+the rest. ⚠️ **Multi-active *champions* additionally need the `Champion` model to carry a list of
+abilities** (today single `active_ability`/`ability_cost`, `models.py:116`); bosses already hold
+multi-slot actives. That model change is a **separate** item (see §10.2c) from the mana primitive.
 
-**⚠️ Tension 2 — rename scope + call-site sweep (verify before build).** The plan's
-original "rename `ActiveSlot.cost`→`mana_cost`" cited stale lines (engine.py:830/662/656,
-loadout.py:99,138, reference.py:115) that **shifted under T.29-pre** — re-grep every
-`slot.cost`/`ActiveSlot(cost=` site (current: engine.py:463,486,657,663,831; piece.py
-`ActiveSlot`) before renaming. Confirm bosses' multi-slot `ActiveSlot` construction
-carries the new per-slot `max_mana`/`start_mana` defaults.
+**✅ Tension 2 — rename scope + call-site sweep — DECIDED: mechanical, not a fork.** Just re-grep
+before renaming `ActiveSlot.cost`→`mana_cost`. The plan's old line refs (engine.py:830/662/656,
+loadout.py:99,138, reference.py:115) **shifted under T.29-pre** — re-grep every `slot.cost` /
+`ActiveSlot(cost=` site at build time (current: engine.py:463,486,657,663,831; piece.py
+`ActiveSlot`) before editing. Confirm bosses' multi-slot `ActiveSlot` construction carries the
+new per-slot `max_mana`/`start_mana`/`priority` defaults.
 
-**⚠️ Tension 3 — how one piece-level `mana_regen` allocates across multiple slot-local pools
-(UNRESOLVED, blocks build — load-bearing).** Pools are per-slot but `mana_regen` is one piece
-stat. **Design constraint:** *X `mana_regen` should be ≈ equal power whether a piece has one
-slot or many* — else slot count silently multiplies MR value (Springtear / weather-MR / trait-MR
-buffs all get stronger on multi-active kits; balance becomes unstable; once mana items exist this
-is a live balance bug, not academic).
-- **Option A — full MR to every slot.** Each slot gets the full piece `mana_regen`. *Simplest,
-  preserves independent bars; but 2-/3-slot pieces get 2×/3× value from the same stat — violates
-  the invariance, over-rewards multi-active.* **(This is what the §3.1a engine site currently
-  assumes — must be confirmed or replaced.)**
-- **Option B — split MR evenly across slots.** One budget divided among slots. *Keeps MR value
-  stable across slot count; but every ability slows as slot count rises, multi-active feels
-  half-speed, several bars crawl together.*
-- **Option C — route MR to one slot at a time (recommended MVP).** One budget, only the selected
-  slot gets passive mana at a time; recommended target = highest-priority unready slot. *Preserves
-  MR as a unit-level cast-rate knob, no throughput inflation, clean primary/secondary identity;
-  needs a routing policy, can starve low-priority slots.*
-- **Option D — shared piece-level current-mana pool.** Move `current_mana` back to the piece
-  (keep per-slot thresholds maybe). *Strongest single-capacitor model, natural MR invariance,
-  abilities truly compete; but cuts against the adopted slot-local pool architecture and muddies
-  per-slot `max_mana`/overload/`start_mana` semantics.*
-- **Resolve before building §3.1a.** Choice drives the `mr_val` per-slot line above.
+**✅ Tension 3 — MR allocation across multiple slot-local pools — DECIDED: weighted-rank charge
+cycle (2026-06-14).** Pools are per-slot, `mana_regen` is one piece stat. **Constraint held:**
+*X `mana_regen` ≈ equal power whether a piece has one slot or many* (else slot count silently
+multiplies MR value — Springtear/weather-MR/trait-MR buffs scale with slot count). **Decision:**
+a deterministic **weighted round-robin** charge router (cadence counter, V.2/V.14). Cycle length
+= `sum(slot.priority)`; each slot occupies `priority` positions in cycle order; **one** slot is
+charged per tick with the **full** piece `mana_regen` (skip-to-next-with-room if the selected
+slot is at `max_mana`). Example — 3 slots ranked 3/2/1 → cycle `[s3,s3,s3,s2,s2,s1]`. **Why this
+over plain Option C:** one-slot-per-tick keeps total throughput = `mana_regen`/tick regardless of
+slot count (the invariance), **and** the rank weighting fixes C's starvation — every slot gets a
+`priority`-proportional share. Single-slot pieces: cycle = `[s]`, charges every tick = today
+(byte-identity anchor). Default `priority = 1` ⇒ unweighted round-robin if unauthored.
 
-**⚠️ Tension 4 — cast readiness / ordering / burst when multiple slots are ready (UNRESOLVED,
-blocks build — load-bearing).** If slots charge independently several can become ready together;
-current permissive behavior would let a unit burst multiple casts in one window (undesirable).
-- **AGREED HARD RULE (settled):** *each action/cast opportunity allows **at most one cast**.*
-  Multiple slots may be ready; only one casts per window; the others stay ready for later windows.
-  No multi-cast burst. **This is decided — implement it.**
-- **Still open — what `priority` means** (the selection policy):
-  - **1. Cast-only priority** — priority only picks which ready slot consumes the one cast;
-    charge routing independent. *Simple; less coherence between charge + cast.*
-  - **2. Unified priority (recommended, pairs with Tension 3 Option C)** — priority drives both
-    which unready slot charges **and** which ready slot casts. *Very readable, clean
-    primary/secondary kits; low-priority slots may starve, kits become hierarchical not peer.*
-  - **3. Rotating / round-robin** — precedence rotates after each cast. *Fairer "rotation" feel;
-    less authored, more systemic complexity, harder to reason about for item balance.*
-- **Resolve before building §3.1a.**
+**✅ Tension 4 — multi-ready cast semantics — DECIDED: one-cast-per-window + unified priority
+(2026-06-14).** (a) **Hard rule (was already settled):** at most **one** cast per action window —
+multiple slots may be ready, only the chosen one casts, the rest stay ready for later windows
+(no burst). (b) **`priority` = unified** (T4 option 2): the **same** per-slot rank that drives
+the T3 charge cycle also picks the casting slot — among ready slots, **highest `priority`** casts
+(tie → lowest slot index, deterministic). Charge + cast stay coherent (one rank, one mental
+model). Trade accepted: low-priority slots are subordinate (primary/secondary kit), not peers.
 
-**Recommended MVP resolution for Tensions 3+4 (proposed, not yet ratified):** **piece-level MR
-budget + one-slot-at-a-time routing (T3 Option C) + one-cast-per-action (settled) + unified
-priority (T4 option 2)** — recommended target = highest-priority unready slot for charge,
-highest-priority ready slot for cast. Gives MR value stability across slot counts, no parallel
-throughput inflation, no same-window burst dump, preserved per-slot `max_mana`/`start_mana`/overload,
-clear primary/secondary structure, manageable MVP complexity. **Consequence (authored intent):** a
-multi-active unit is **not** "several equal independent casters charging in parallel" — it is a
+**Ratified MVP combo (2026-06-14):** **weighted-rank charge cycle (T3) + one-cast-per-window +
+unified `priority` (T4) + `mana_cost` on the ability def (T1) + `max_mana` default 2× cost.**
+MR value is stable across slot counts, no parallel throughput inflation, no same-window burst,
+per-slot `max_mana`/`start_mana`/overload preserved, clean primary/secondary structure, MVP-sized.
+**Consequence (authored intent):** a multi-active unit is **not** "several equal independent
+casters charging in parallel" — it is a
 **primary spell + one or more secondary/delayed/overflow spells**; multi-slot kits must be designed
 around priority + cost spacing (maybe special secondary triggers later), not as N peer mana bars.
 **Downside:** low-priority abilities may be subordinate/starved — judged acceptable for MVP over
@@ -218,6 +227,75 @@ duplicated MR (A) or vague parallel charging. **Why it matters for items:** unre
 semantics become balance bugs once mana items ship — MR duplication makes Springtear over-strong on
 multi-active; `start_mana` hitting all slots accelerates several spells per item; multi-ready
 multi-cast explodes burst windows; implicit priority makes itemized multi-slot kits unreasonable.
+
+### 3.1b Multi-slot pieces + Multicaster showcase (NEW row **T.29d**)
+
+> **Added 2026-06-14.** The §3.1a mana primitive makes multi-slot pieces cheap to enable
+> (the engine is already multi-slot via bosses). This sub ships the small model change +
+> a **new `Multicaster` Calling** + **9 showcase pieces** (6 champs, 3 enemies) carrying a
+> 2nd authored ability, to actually exercise the per-slot pools / rank cycle / one-cast gate.
+> **Seam:** carved out as its own row **T.29d** (depends **T.29c** mana primitive + T.28a trait
+> counting). Enemies get a 2nd slot **mechanically**; the
+> Multicaster Calling is **champion-side synergy only** (enemies use `human`/`corrupted`/…
+> tags, not Callings).
+
+**Model change (cheap).** `Champion.active_ability: str` → **`active_abilities: list[str]`**
+(`Enemy` likewise, `models.py:235/253`); `from_dict` reads the legacy single `active_ability`
+key for back-compat (no save migration). `ability_cost` is removed (T1 Option A) — per-slot
+cost now comes from the ability cost-meta. `loadout.piece_from_champion`/`piece_from_enemy`
+build **one `ActiveSlot` per entry**, each seeded with that ability's `mana_cost`/`max_mana`/
+`start_mana`/`priority` from the cost-meta. Single-ability pieces (the other ~57 champs) keep a
+one-element list → one slot → byte-identical (V.2). Validation: list non-empty, ids unique.
+
+**Cost-meta home (T1 Option A wiring).** Add an **`ABILITY_MANA: dict[str, AbilityMana]`**
+registry (parallel to `ABILITY_META`/`ABILITY_REGISTRY`) — `AbilityMana(mana_cost=300_000,
+max_mana=2×cost, start_mana=0, priority=1)`, populated via optional kwargs on `@register_active`
+(falls through to defaults for unregistered/partial ids — the `loadout.py:59` "cost from registry
+meta if available" seam). This is where the 6 boss costs + 2 `999_999` sentinels re-home (T1
+migration), and where the showcase secondaries author their `mana_cost`/`priority`.
+
+**New Calling: `Multicaster` — quick-caster identity.** Reward casting *often* (what a 2-slot
+piece does) with escalating cast speed. New mechanic **`cast_momentum`** (mirror `time_ramp`
+`mechanics.py:100` but triggered on **`on_cast_complete`** instead of `on_tick`): each completed
+cast adds one stack of `+per` `attack_speed` mul (COMBAT lifetime, capped at `cap` stacks),
+plus a small `mana_regen` add so casting snowballs the next cast. **RNG-free** (per-cast cadence,
+V.2/V.14). Breakpoints sized to the **~6-carrier pool** (no team-wide apex — V.37 apex =
+`min(carrier-pool, board-cap)`):
+
+| Rung | Scope | Stat pack | Mechanic |
+|---|---|---|---|
+| 2 | per-trait | `{attack_speed:0.06, mana_regen:0.10}` | `cast_momentum(per=0.04, cap=5)` |
+| 3 | per-trait | `{mana_regen:0.10, attack_speed:0.06}` | `cast_momentum(per=0.05, cap=6)` |
+| 4 | per-trait | `{mana_regen:0.14, attack_speed:0.08}` | `cast_momentum(per=0.06, cap=8)` |
+
+Add `"Multicaster"` to `CALLING_TAGS` (`content.py:201`) — V-guard vocab must include it.
+
+**9 showcase pieces.** Each champ keeps its existing `.active` as **primary** (`priority=2`,
+`mana_cost=300_000`) and gains a **new `.active2` secondary** (`priority=1`, `mana_cost≈450_000`
+= 1.5× — the cost-ratio worked example). Champs gain the `Multicaster` trait; enemies get the
+2nd slot only. **Author/verify the primary is a real handler** (some roster `.active` ids no-op
+today) **and author the secondary**:
+
+| Piece | Weather/Affinity | +trait | Secondary `.active2` (sketch — /build refines) |
+|---|---|---|---|
+| `champ_ember_salamander` | CLEAR / Scaled·Mystic | Multicaster | **Magma Burst** — INT splash to enemies in radius |
+| `champ_marsh_thrush` | RAIN / Skyborn·Warden·Mystic | Multicaster ⚠️4 traits | **Gale Note** — slow + minor dmg, furthest enemy |
+| `champ_wintermoth` | SNOW / Swarm·Warden | Multicaster | **Frost Pollen** — chill/slow enemies in radius |
+| `champ_geode_beetle` | CLOUDY / Swarm·Warden | Multicaster | **Crystal Lattice** — shield lowest-HP ally |
+| `champ_will_o_fawn` | MIST / Spirit·Mystic | Multicaster | **Wisp Lure** — INT dmg + threat drop, primary target |
+| `champ_tempest_eel` | THUNDER / Tidekin·Mystic | Multicaster | **Voltaic Lash** — chain lightning, 2 enemies |
+| `enemy_battlemage` | CLEAR / human | — | **Arcane Nova** — AoE INT dmg |
+| `enemy_arcanist` | CLEAR / human | — | **Mana Burn** — dmg + mana denial |
+| `enemy_drowned_siren` | RAIN / corrupted·spirit | — | **Siren Wail** — AoE slow + DoT |
+
+⚠️ `champ_marsh_thrush` would reach **4 traits** (Skyborn·Warden·Mystic·Multicaster) — no hard
+cap exists in the model, but flag it; swap to a ≤2-trait RAIN caster (e.g. `champ_mirewarden_toad`)
+at `/build` if 4 feels busy. **Determinism gate:** capture a pre/post sim baseline — the 57
+untouched pieces must stay byte-identical; only the 9 showcase pieces' fights change.
+
+**Out of scope (your discretion call):** *delisting overpopulated existing Callings* — declined
+for this addition (separate vocab/V-guard/roster reconciliation + breakpoint rebalance; coupling
+it here risks the showcase). Logged as optional follow-up **§D** (see §10).
 
 ### 3.2 `RECIPE_MAP` + `combine()`
 
@@ -314,7 +392,7 @@ Seed: `derive_seed(run_seed, node_index, CH_LOOT)`.
 - **3 item slots/piece** (catalog §6) — enforced in equip + `Champion.items` validator.
 - **Raw components are equippable** (catalog §1) — occupy a slot, apply their pure-modifier bundle.
 - **MVP = 16 core cut in T.29a** (catalog §3), remaining 20 in T.29b — your call.
-- **Mana primitive (§3.1a) — ⚠️ NEEDS REFINEMENT before build.** Per-ability slot fields `mana_cost`/`max_mana`/`start_mana` (+ runtime `current_mana`); `mana_regen` is the lone piece stat and **the cast-rate knob**. **`max_mana` = the universal pool cap** (every clamp is to it); the old "regen guarded at `mana_cost`", the 5× default, and the `start_mana` auto-bump are **dropped**. All 5 fields have fallback defaults (`max_mana` default `= mana_cost`). Mana items grant **`mana_regen` or `start_mana`, never reduce `mana_cost`** (kills negative-cost stacking). **Settled hard rule: at most one cast per action window** (no multi-ready burst). **Unresolved (4 tensions, see §3.1a):** T1 `mana_cost` base home (ability def vs `ability_cost` V.35 stat); T2 rename call-site sweep; **T3 how piece `mana_regen` allocates across multiple slots** (A full-MR-each / B split / **C route-one-at-a-time [rec]** / D shared pool); **T4 priority meaning** (1 cast-only / **2 unified [rec]** / 3 round-robin). Recommended MVP combo: **C + one-cast + unified priority** → MR value stable across slot count, primary/secondary kit structure.
+- **Mana primitive (§3.1a) — ✅ DECIDED 2026-06-14, build-ready.** Per-ability slot fields `mana_cost`/`max_mana`/`start_mana`/`priority` (+ runtime `current_mana`); `mana_regen` is the lone piece stat and **the cast-rate knob**. **`max_mana` = the universal pool cap** (every clamp is to it); the old "regen guarded at `mana_cost`", the 5× default, and the `start_mana` auto-bump are **dropped**. Defaults: `mana_cost=300_000`, **`max_mana=2× mana_cost`**, `priority=1`, `start_mana/current_mana=0`. Mana items grant **`mana_regen` or `start_mana`, never reduce `mana_cost`** (kills negative-cost stacking). **Resolutions:** T1 = `mana_cost` base **on the ability def** (deprecate V.35 `ability_cost`); T2 = re-grep before rename (mechanical); T3 = **weighted-rank charge cycle** (cycle len `sum(priority)`, one slot/tick full MR, skip-if-full → throughput slot-count-invariant); T4 = **≤1 cast/window + unified `priority`** (highest-rank ready slot casts, tie→slot index). Multi-active = primary + secondary spells, not N peer bars.
 - **Flat-add modifiers** for all component stats (§3.1) — TFT-style, items favour early/mid game; tunable.
 - **Shop sells champions only** — items never enter the shop (T.22 contract; §3.7).
 - **Boss loot = 3-pair pick** via `generate_boss_loot` (§3.7) — deterministic, player picks one pair.
@@ -339,7 +417,7 @@ Values are TFT-style flat — meaningful at low tiers (~15-20%), modest at T10 (
 **Resolved here:**
 - Phasing → T.29a (engine + 16 core) / T.29b (rest + emblems + special).
 - Special items → backend run-actions **+ interactive CLI driver** (§3.6).
-- Mana handling → per-ability slot `mana_cost`/`max_mana`/`start_mana` + piece-stat `mana_regen` (§3.1a); `max_mana` = universal cap (regen now fills to it, **guard dropped**), default `= mana_cost`; MR = cast-rate knob. Mana items grant `mana_regen` **or** `start_mana`, **never reduce `mana_cost`**. ⚠️ **Four tensions still open (§3.1a) — resolve before build:** T1 `mana_cost` home (vs V.35 `ability_cost`); T2 rename sweep; **T3 MR multi-slot allocation** (full-each / split / route-one [rec] / shared pool); **T4 priority meaning** (cast-only / unified [rec] / round-robin). **Settled:** at most one cast per action window. Recommended MVP: route-one-at-a-time + one-cast + unified priority (multi-active = primary + secondary spells, not N peer bars). (Reworked 2026-06-13 post-T.29-pre; supersedes the earlier 5×-default / guarded-regen model.)
+- Mana handling → per-ability slot `mana_cost`/`max_mana`/`start_mana`/`priority` + piece-stat `mana_regen` (§3.1a); `max_mana` = universal cap (regen now fills to it, **guard dropped**), default `= 2× mana_cost`; MR = cast-rate knob. `mana_cost` base **on the ability def** (V.35 `ability_cost` deprecated). Mana items grant `mana_regen` **or** `start_mana`, **never reduce `mana_cost`**. ✅ **All four tensions DECIDED 2026-06-14:** T1 cost-on-ability-def; T2 re-grep (mechanical); **T3 weighted-rank charge cycle** (cycle len `sum(priority)`, one slot/tick full MR → slot-count-invariant throughput); **T4 ≤1 cast/window + unified `priority`** (highest-rank ready casts). Multi-active = primary + secondary spells, not N peer bars. (Reworked 2026-06-13 post-T.29-pre, tensions resolved 2026-06-14; supersedes the earlier 5×-default / guarded-regen model.)
 - **Component modifier type → flat add** (TFT-style; §3.1, §5). `crit_chance` and mana already flat by nature.
 - **Drop-table weights → T.29a owns** (§3.7): 45% component / 20% combined / 15% Amber / 15% champion recruit / 5% special. Flagged tunable.
 - **Champion recruit drops** (§3.7): REWARD loot can yield a champion id; reuses SUPPLY tier-pool logic. Returns in `RewardLoot`; UI/prep layer acts on it.
@@ -356,7 +434,7 @@ Values are TFT-style flat — meaningful at low tiers (~15-20%), modest at T10 (
 - **Recipes:** `combine()` resolves all 36 pairs (incl. same-component diagonal) + gem→emblem; unknown pair → `None`.
 - **Equip:** ≤3 slots enforced; raw component applies its stat; `Champion.items` round-trips `to_dict`/`from_dict`; `piece_from_champion` mirrors into `Piece.items`.
 - **Bundles:** modifier items shift stats; a hook item (Splitwind Talons, Stormscale Quiver) procs **deterministically** in a fixed-seed fight (no RNG); per-combat closure state resets each combat.
-- **Mana primitive (§3.1a):** with `max_mana` default `= mana_cost` and `start_mana==0`, no-item fights are **byte-identical** to today (regen `min(mana_cost,…)` ≡ today; pool tops at `mana_cost`; `-= mana_cost` ≡ old `= 0`). ⚠️ **Verify empirically with a pre/post baseline diff — do not trust the claim** (T.29-pre lesson). Springtear shifts `mana_regen` (piece stat) — no slot touch; **no item ever changes `mana_cost`**. A `start_mana` grant seeds `current_mana = min(max_mana, start_mana)` at combat start; regen fills to `max_mana` (guard dropped); `ctx.grant_mana` clamps to `max_mana`.
+- **Mana primitive (§3.1a):** with `max_mana` default `= 2× mana_cost`, `start_mana==0`, and **single-slot** pieces (≈ whole current roster), no-item fights are **expected byte-identical** to today (one-slot cycle charges every tick like today; baseline regen `100`/tick never reaches `2× cost` = 600k → raised cap never hit by regen; pool crosses `mana_cost`, casts, `-= mana_cost` ≡ old `= 0` within rounding). ⚠️ **Verify empirically with a pre/post baseline diff — do not trust the claim** (T.29-pre lesson; 2× cap is a behavioral change for any banking/`start_mana`/multi-slot path). Springtear shifts `mana_regen` (piece stat) — no slot touch; **no item ever changes `mana_cost`**. A `start_mana` grant seeds `current_mana = min(max_mana, start_mana)` at combat start; regen fills to `max_mana` (guard dropped); `ctx.grant_mana` clamps to `max_mana`.
 - **Emblems (b):** an emblem makes a non-native piece count toward a Kinship breakpoint (integration with T.28a `_resolve_traits`); ordering before resolution verified.
 - **Special items (b):** each run-action mutates `Run` correctly (reforge swaps a component, unbind returns to bench decomposed, echo adds a copy, salvage credits Amber); `sim_run --interactive` invokes them.
 - **REWARD drops:** seed-deterministic loot roll; same seed → same drop; bucket weights sum to 100; special bucket falls back to component while T.29b unshipped.
@@ -369,21 +447,24 @@ Values are TFT-style flat — meaningful at low tiers (~15-20%), modest at T10 (
 2. (a) `Champion.items` model + serialization + validator; `Piece.items` consumed in loadout.
 3. (b) Remaining 20 combined items + 6 emblems (counting via T.28a) + gem `combine()` branch.
 4. (b) `RUN_ACTION_REGISTRY` + 6 special-item functions + `sim_run --interactive` driver.
-5. All item procs deterministic (no RNG); mana primitive (§3.1a) — `cost` renamed `mana_cost`, split `mana_cost`/`max_mana`/`start_mana` per-slot (`max_mana` 5× default), `mana_regen` piece stat; no item touches `mana_cost`; no-item fights byte-identical.
+5. All item procs deterministic (no RNG); mana primitive (§3.1a) — `cost` renamed `mana_cost` (base now on the ability def, `ability_cost` stat removed), per-slot `mana_cost`/`max_mana`/`start_mana`/`priority` (`max_mana` **2× default**), `mana_regen` piece stat; charge = deterministic weighted-rank cycle (throughput slot-count-invariant); ≤1 cast/window, unified-`priority` cast pick; no item touches `mana_cost`; single-slot no-item fights byte-identical.
 6. `tests/game/test_items.py` (+ loadout/encounter/CLI tests) pass; full suite green; no-item regression intact.
 
 ## 10. SPEC changes needed (for `/spec`)
 
 1. **§T:** replace the T.29 row with **T.29a** (engine + 16 core items; depends T.1, T.20, T.22; Est M–L) and **T.29b** (remaining 20 + emblems + special items + CLI driver; depends T.29a, T.28a; Est M–L); both 📋 Plan; both cite `docs/design/tasks/t29_item_engine_plan.md`. Update Implementation-Order Phase 1b to `… → T.29a → T.29b → T.31`.
 2. **New §V invariant:** items apply only via `compile_loadout` (combat-facing) or `RUN_ACTION_REGISTRY` (run-facing, never imported by `combat/`); ≤3 equipped items per piece; item procs deterministic (cadence/flags, no RNG). (T.29)
-2a. **New §V invariant (mana) — ⚠️ DRAFT, pending §3.1a tension resolution:** `ActiveSlot` carries per-slot `mana_cost`/`max_mana`/`start_mana` (+ `current_mana`); `mana_regen` is the only piece-level mana stat and the cast-rate knob. **`max_mana` is the universal pool cap** — regen, start, and `grant_mana` all clamp to it (no `mana_cost` regen-guard; no `start_mana` auto-bump). All 5 fields default (`max_mana` default `= mana_cost`, `start_mana`/`current_mana` `= 0`). The four pool fields are **resource state** (direct slot writes only, never `Modifier`s — extends V.43); **no item/Modifier ever changes `mana_cost`** — mana items grant `mana_regen` (Modifier) or `start_mana` (slot). Default `max_mana = mana_cost` ⇒ no-item combat byte-identical (V.2). (T.29a) **Finalize the invariant text after the §3.1a tensions resolve:** Tension 1 fixes where `mana_cost`'s base lives (Option A additionally amends V.35); **Tension 3 fixes how piece `mana_regen` allocates across multiple slots** (the invariant must state the chosen rule — full-each / split / route-one / shared pool — and the *X MR ≈ equal power regardless of slot count* constraint where it holds); **Tension 4 adds the settled hard rule — at most one cast per action window** — plus the chosen ready-slot priority policy. Add a §V clause for both once decided.
-2b. **§T file-list:** add `game/piece.py`, `game/combat/engine.py`, `game/combat/context.py`, `game/effects.py` to the T.29a row (the §3.1a mana primitive).
+2a. **New §V invariant (mana) — ✅ FINALIZED (2026-06-14, all §3.1a tensions decided):** `ActiveSlot` carries per-slot `mana_cost`/`max_mana`/`start_mana`/`priority` (+ runtime `current_mana`); `mana_regen` is the only piece-level mana stat and the cast-rate knob. **`mana_cost`'s base is authored on the ability def** (T1 Option A; the V.35 `ability_cost` stat is deprecated — see §10.2a-bis). **`max_mana` is the universal pool cap** — regen, start, and `grant_mana` all clamp to it (no `mana_cost` regen-guard; no `start_mana` auto-bump). Defaults: `mana_cost = 300_000` (old `ability_cost` baseline), **`max_mana = 2× mana_cost`**, `priority = 1`, `start_mana`/`current_mana` `= 0`. The pool fields are **resource state** (direct slot writes only, never `Modifier`s — extends V.43); **no item/Modifier ever changes `mana_cost`** — mana items grant `mana_regen` (Modifier) or `start_mana` (slot). **Charge = deterministic weighted-rank cycle** (T3): cycle length `sum(slot.priority)`, one slot charged per tick with the full `mana_regen` (skip slots at `max_mana`) ⇒ total throughput = `mana_regen`/tick **regardless of slot count**; RNG-free cadence (V.2/V.14). **Cast = at most one per action window** (T4 hard rule); among ready slots the **highest `priority`** casts (tie → lowest slot index). Single-slot, no-item combat ⇒ byte-identical (V.2, verify empirically). ✅ **APPLIED to SPEC 2026-06-14 as V.48 (row T.29c — NOT T.29a, which already shipped).** (T.29c)
+2a-bis. **§V.35 amend (T1 Option A):** **drop `ability_cost`** from the FLAT-stat set / `Champion`+`Enemy` stat fields / serialization; per-ability cast cost now lives as `mana_cost` on the ability def (default = the old `300_000` baseline). Migrate the 6 boss deviations (`bosses/data.py` 380k–520k) + 2 `999_999` "can't-cast" sentinels (`champions.py:2029`, `enemies.py:621`) onto their ability defs.
+2b. **§T file-list (now the T.29c row):** `game/piece.py`, `game/combat/engine.py`, `game/combat/context.py`, `game/effects.py` (the §3.1a mana primitive) + `game/abilities/`, `game/bosses/data.py`, `game/content.py`, `game/scaling.py`, `game/items/combined.py` (the T1 cost re-home + `ability_cost` removal + item retrofit). ✅ Applied (T.29c row in SPEC).
+2c. **NEW §T row — T.29d (multi-slot pieces + Multicaster showcase; §3.1b):** ✅ applied to SPEC. Depends **T.29c** (mana primitive + `ABILITY_MANA` cost-meta) + **T.28a** (trait counting); Est **M**; 📋 Plan; cites this plan. Scope: (i) `Champion`/`Enemy` `active_ability`→`active_abilities: list[str]` (+ `from_dict` legacy read, validation) and per-entry `ActiveSlot` build in `loadout`; (ii) `ABILITY_MANA` registry + `@register_active` mana kwargs; (iii) **new `Multicaster` Calling** (breakpoints 2/3/4, ~6-carrier pool, no team apex) + **new `cast_momentum` mechanic** (`on_cast_complete` stacking `attack_speed`, RNG-free); (iv) add `"Multicaster"` to `CALLING_TAGS`; (v) **9 showcase pieces** — 6 champs gain the trait + a `.active2` secondary, 3 enemies gain a 2nd slot; author/verify all primaries + 9 secondaries. Files: `game/models.py`, `game/loadout.py`, `game/content.py`, `game/registries.py`, `game/traits/callings.py`, `game/traits/mechanics.py`, `game/abilities/champions.py`, `game/abilities/enemies.py`, `docs/live/` trait + content docs, tests. **Implementation Order (applied): `… → T.29a → T.29b → T.29c → T.29d → T.31`.**
+2d. **§V amends for T.29d (✅ applied as V.49):** (a) extend the §V trait-vocab/`CALLING_TAGS` guard to include `Multicaster`; (b) add a determinism clause — `cast_momentum` is RNG-free (per-cast cadence, V.2/V.14); (c) note multi-slot champs use `active_abilities: list` (the §3.1a mana invariant already covers per-slot pools + the rank cycle). Confirm no hard trait-count cap is asserted (marsh_thrush = 4 traits) or add one ≥4 if desired.
 3. **New §V invariant:** special items (`RUN_ACTION_REGISTRY`) operate on `Run` only and are **never** referenced from `game/combat/` — combat sees only their result (§8.4). (T.29)
 4. **§D.9:** mark item system implemented in T.29a/b; leave open only magnitude tuning.
 5. **§D.12:** update to "REWARD loot drops fully integrated in T.29a — weights authored there (45% component / 20% combined / 15% Amber / 15% champion recruit / 5% special; first-pass, tunable); boss defeat = 3-pair pick via `generate_boss_loot`. T.22 never defined weights." Mark §D.12 resolved by T.29a. Shop stays champions-only (T.22 contract).
 6. **New §B entry:** doc drift — `effect_systems_design.md` §8.1 "15 combined" and the dangling "§14" 3-slot ref; reconciled to `item_catalog.md` (36, 8-component matrix) and §3.3 of this plan.
 7. **T.29 planning note** (T.18-T.31 block): item engine on the T.20 substrate; real-stat mapping (mana per-slot, flat-add magnitudes); emblems gate on T.28a; special items are run-actions with a `sim_run` interactive driver shared with T.31; Heartwood = generic stat-mult (MVP).
-8. **New §D rows (post-MVP):** (i) authored per-item Heartwood variants (MVP ships the generic ×1.5 stat-mult); (ii) bosses wearing items (T.30 kits tuned without — needs sim retune pass if revisited).
+8. **New §D rows (post-MVP):** (i) authored per-item Heartwood variants (MVP ships the generic ×1.5 stat-mult); (ii) bosses wearing items (T.30 kits tuned without — needs sim retune pass if revisited); (iii) **delist overpopulated existing Callings** — deferred from T.29c (separate vocab/V-guard reconciliation + breakpoint rebalance; Multicaster shipped purely additive); revisit when the Calling roster is rebalanced; (iv) **expand multi-slot beyond the 9 showcase pieces** — once the rank cycle / one-cast gate prove out, more champs/enemies can gain 2nd abilities (and 3rd slots) as content.
 
 > **Note:** the `T.29-pre` substrate (Part B) has its own `/spec` delta list — see [§B.10](#b10-spec-changes-needed-for-spec--t29-pre). It is sequenced **before** these item rows.
 
