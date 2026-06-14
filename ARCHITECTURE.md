@@ -139,15 +139,24 @@ directly. It plugs in through three declarative primitives, then reacts through 
   `on_cast` / `on_cast_complete`, `on_death`, `on_kill`, `on_heal`, `on_tick`,
   `on_status_applied` / `on_status_expired`, `on_spawn`, `on_combat_start` /
   `on_combat_end`. Typed payloads live in `events.py` (`AttackEvent`, `DamageEvent`, …).
-- **Registries** (`registries.py`) — `ABILITY_REGISTRY` + `PASSIVE_REGISTRY` are
-  populated; `ITEM_REGISTRY` / `TRAIT_REGISTRY` / `AUGMENT_REGISTRY` exist as empty
-  scaffolds awaiting their content (T.28 / T.29 / T.31). Content factories self-register
+- **Registries** (`registries.py`) — `ABILITY_REGISTRY` (135) + `PASSIVE_REGISTRY` (147)
+  + `TRAIT_REGISTRY` (24, T.28) + `ITEM_REGISTRY` (24, T.29a) populated; `AUGMENT_REGISTRY`
+  is still an empty scaffold awaiting its content (T.31). Content factories self-register
   via `@register_*` decorators; importing the content package triggers them. Lookups are
   by **string id**.
+- **Presentation layer** (`registries.py` + `ability_text.py`, T.34/T.35) — a parallel
+  `ABILITY_META` (276 ids) gives every roster ability a tooltip. Numeric outlets flow
+  through the **closed `Magnitude` family** (`ScalingTerm` linear / `PctResource` /
+  `MaxOfTerm` / `SetByCaller`, GAS-modeled, V.46): the handler reads the number via
+  `term.eval(...)` and `ability_text.render` renders the *same* object (source-of-truth B,
+  V.38 — tooltip can't drift from combat). Pure, no Flet (V.1). An AST guard
+  (`test_no_orphan_stat_reads`) fails the build on any handler stat-read not backed by a
+  `Magnitude`.
 
-> **V.15 / V.22 / V.17 — every id resolves.** Any `ability_id`, `passive_id`, `trait`
-> tag, or augment id referenced by content data must resolve in its registry, enforced
-> by CI guard tests. A typo'd id fails the suite, not silently no-ops.
+> **V.15 / V.22 / V.17 / V.38 / V.46 / V.47 — every id resolves + every scaler is visible.**
+> Any `ability_id`, `passive_id`, `trait` tag, or augment id referenced by content data must
+> resolve in its registry; every ability id must have an `ABILITY_META`; every handler stat
+> read must be a `Magnitude`; an `int`/`hybrid` unit must read INT in its kit. All CI-guarded.
 
 The **`CombatContext`** (`context.py`) is the single mutation point: `ctx.deal_damage`,
 `ctx.apply_status`, `ctx.grant_barrier`, `ctx.heal`, `ctx.register_bundle`, etc. "Direct
@@ -199,8 +208,10 @@ inert in both. The 6 weather states (V.5) map 1:1 to OpenWeather id groups.
 | Boss kits — 6 two-phase bosses | `src/game/abilities/bosses.py` |
 | Boss definitions, supporting cast, phase/death hooks | `src/game/bosses/data.py` |
 | Boss **map effects** (decoupled board hazards) | `src/game/map_effects.py`, `src/game/board.py` |
-| Synergy traits (Kinship / Calling / Affinity) | `docs/design/content/trait_catalog.md` → `game/traits/` (T.28, planned) |
-| Items, augments | `game/items/` (T.29), `game/augments.py` (T.31) — planned |
+| Ability tooltips — `AbilityMeta` + `Magnitude` family + renderer (T.34/T.35) | `src/game/registries.py`, `src/game/ability_text.py` |
+| Synergy traits (Kinship / Calling / Affinity) | `docs/design/content/trait_catalog.md` → `game/traits/` (T.28 ✅) |
+| Items | `game/items/` (T.29a ✅; T.29b remaining 📋) |
+| Augments | `game/augments.py` (T.31 📋 — planned) |
 
 Content **vocabulary lives with content** (V.8): synergy tags are open-ended strings the
 engine treats as opaque labels. The roster has a history of drifting from the catalog
