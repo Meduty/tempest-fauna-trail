@@ -223,13 +223,18 @@ ABILITY_META["enemy_signal_drummer.passive"] = AbilityMeta(
 )
 
 
+# T.35b: drum-roll haste scales with the drummer's INT (V.47 dead-INT fix).
+SIGNAL_DRUMMER_HASTE = ScalingTerm("haste", 15.0, "intelligence*0.12")
+
+
 @register_active("enemy_signal_drummer.active")
 def signal_drummer_active(ctx: Any, actor: Any, targets: list) -> None:
     # Drum roll: buff all allies AS
     allies = list(ctx.allies_of(actor))
+    haste = SIGNAL_DRUMMER_HASTE.eval(actor)
     for ally in allies:
         ctx.apply_modifier(ally, Modifier(
-            "attack_speed", "add", 15.0, Lifetime.TIMED,
+            "attack_speed", "add", haste, Lifetime.TIMED,
             "ability:enemy_signal_drummer",
             expires_at_tick=ctx.current_tick + 600,
         ))
@@ -237,7 +242,8 @@ def signal_drummer_active(ctx: Any, actor: Any, targets: list) -> None:
 
 ABILITY_META["enemy_signal_drummer.active"] = AbilityMeta(
     name="Drum Roll", kind="active",
-    blurb="Grant the whole team +15 Attack Speed for 6s.",
+    blurb="Grant the whole team Attack Speed for 6s.",
+    clauses=(Clause(template="Grants +{haste} Attack Speed.", terms=(SIGNAL_DRUMMER_HASTE,)),),
     tags=("buff", "team"),
 )
 
@@ -439,7 +445,7 @@ ABILITY_META["enemy_sergeant_at_arms.passive"] = AbilityMeta(
 )
 
 
-SERGEANT_AT_ARMS_DMG = ScalingTerm("damage", 50.0, "strength*1.6")
+SERGEANT_AT_ARMS_DMG = ScalingTerm("damage", 50.0, "strength*1.6+intelligence*0.2")  # T.35b: +INT (V.47)
 _SERGEANT_CLEAVE = 0.5
 
 
@@ -529,13 +535,18 @@ ABILITY_META["enemy_standard_bearer.passive"] = AbilityMeta(
 )
 
 
+# T.35b: rally buff scales with the bearer's INT (V.47 dead-INT fix).
+STANDARD_BEARER_BUFF = ScalingTerm("buff", 12.0, "intelligence*0.12")
+
+
 @register_active("enemy_standard_bearer.active")
 def standard_bearer_active(ctx: Any, actor: Any, targets: list) -> None:
     # Rally: grant all allies STR/INT buff
     allies = list(ctx.allies_of(actor))
+    buff = STANDARD_BEARER_BUFF.eval(actor)
     for ally in allies:
         ctx.apply_modifier(ally, Modifier(
-            "strength", "add", 12.0, Lifetime.TIMED,
+            "strength", "add", buff, Lifetime.TIMED,
             "ability:enemy_standard_bearer",
             expires_at_tick=ctx.current_tick + 600,
         ))
@@ -543,7 +554,8 @@ def standard_bearer_active(ctx: Any, actor: Any, targets: list) -> None:
 
 ABILITY_META["enemy_standard_bearer.active"] = AbilityMeta(
     name="Rally", kind="active",
-    blurb="Grant the whole team +12 Strength for 6s.",
+    blurb="Grant the whole team Strength for 6s.",
+    clauses=(Clause(template="Grants +{buff} Strength.", terms=(STANDARD_BEARER_BUFF,)),),
     tags=("buff", "team"),
 )
 
@@ -664,11 +676,15 @@ ABILITY_META["enemy_company_guard.passive"] = AbilityMeta(
 )
 
 
+# T.35b: brace armor scales with the guard's INT (V.47 — hybrid tank, INT via kit).
+COMPANY_GUARD_ARMOR = ScalingTerm("armor", 40.0, "intelligence*0.2")
+
+
 @register_active("enemy_company_guard.active")
 def company_guard_active(ctx: Any, actor: Any, targets: list) -> None:
     # Shield wall: gain armor + aggro enemies via threat
     ctx.apply_modifier(actor, Modifier(
-        "armor", "add", 40.0, Lifetime.TIMED,
+        "armor", "add", COMPANY_GUARD_ARMOR.eval(actor), Lifetime.TIMED,
         "ability:enemy_company_guard",
         expires_at_tick=ctx.current_tick + 600,
     ))
@@ -681,7 +697,8 @@ def company_guard_active(ctx: Any, actor: Any, targets: list) -> None:
 
 ABILITY_META["enemy_company_guard.active"] = AbilityMeta(
     name="Shield Wall", kind="active",
-    blurb="Brace for 6s, gaining +40 Armor and +50 threat to draw fire.",
+    blurb="Brace for 6s, gaining +50 threat to draw fire.",
+    clauses=(Clause(template="Gains +{armor} Armor.", terms=(COMPANY_GUARD_ARMOR,)),),
     tags=("defense", "taunt"),
 )
 
@@ -1101,7 +1118,7 @@ ABILITY_META["enemy_lord_commander.passive"] = AbilityMeta(
 
 # --- Iron Maiden (T7) --- +armor on hit; release AOE STR every 600 ticks
 # Spike release = STR*0.5 (ScalingTerm) + 5 per stored stack (SetByCaller, V.46).
-IRON_MAIDEN_SPIKE = ScalingTerm("spike", 0.0, "strength*0.5")
+IRON_MAIDEN_SPIKE = ScalingTerm("spike", 0.0, "strength*0.5+intelligence*0.2")  # T.35b: +INT (V.47)
 IRON_MAIDEN_PER_STACK = SetByCaller("per_stack", 0.0, 5.0, "stacks")
 
 
@@ -2219,7 +2236,7 @@ ABILITY_META["enemy_quarried_behemoth.passive"] = AbilityMeta(
 )
 
 
-QUARRIED_BEHEMOTH_DMG = ScalingTerm("damage", 80.0, "strength*2.2")
+QUARRIED_BEHEMOTH_DMG = ScalingTerm("damage", 80.0, "strength*2.2+intelligence*0.2")  # T.35b: +INT (V.47)
 
 
 @register_active("enemy_quarried_behemoth.active")
@@ -2264,7 +2281,7 @@ ABILITY_META["enemy_stone_warden.passive"] = AbilityMeta(
 )
 
 
-STONE_WARDEN_DMG = ScalingTerm("damage", 80.0, "strength*2.0")
+STONE_WARDEN_DMG = ScalingTerm("damage", 80.0, "strength*2.0+intelligence*0.2")  # T.35b: +INT (V.47)
 
 
 @register_active("enemy_stone_warden.active")

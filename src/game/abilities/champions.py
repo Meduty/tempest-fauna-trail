@@ -197,12 +197,17 @@ ABILITY_META["champ_ember_salamander.passive"] = AbilityMeta(
 
 # --- Goldcrest Lark (T4, SUP-Buff) ---
 # Cast: allies gain damage and Attack Speed for one round (600 ticks).
+# T.35b: the STR buff scales with the lark's INT (V.47 dead-INT fix).
+GOLDCREST_LARK_BUFF = ScalingTerm("strength", 20.0, "intelligence*0.15")
+
+
 @register_active("champ_goldcrest_lark.active")
 def goldcrest_lark_active(ctx: Any, actor: Any, targets: list) -> None:
     allies = list(ctx.allies_of(actor))
+    buff = GOLDCREST_LARK_BUFF.eval(actor)
     for ally in allies:
         ctx.apply_modifier(ally, Modifier(
-            "strength", "add", 20.0, Lifetime.TIMED,
+            "strength", "add", buff, Lifetime.TIMED,
             "ability:champ_goldcrest_lark.active",
             expires_at_tick=ctx.current_tick + 600,
         ))
@@ -216,7 +221,8 @@ def goldcrest_lark_active(ctx: Any, actor: Any, targets: list) -> None:
 ABILITY_META["champ_goldcrest_lark.active"] = AbilityMeta(
     name="Rallying Song", kind="active",
     blurb="Empower the whole team for 6s.",
-    clauses=(Clause("Allies gain +20 Strength and +20% Attack Speed."),),
+    clauses=(Clause(template="Allies gain +{strength} Strength and +20% Attack Speed.",
+                    terms=(GOLDCREST_LARK_BUFF,)),),
     tags=("buff", "team"),
 )
 
@@ -362,7 +368,7 @@ ABILITY_META["champ_goldhide_rhino.passive"] = AbilityMeta(
 )
 
 
-GOLDHIDE_RHINO_DMG = ScalingTerm("damage", 60.0, "strength*1.5")
+GOLDHIDE_RHINO_DMG = ScalingTerm("damage", 60.0, "strength*1.5+intelligence*0.2")  # T.35b: +INT (V.47)
 _GOLDHIDE_ACTIVE_HEAL = PctResource("heal", 0.05)
 
 
@@ -1359,7 +1365,7 @@ ABILITY_META["champ_glacierback_mammoth.passive"] = AbilityMeta(
 
 
 # Active: knockback stomp (STR damage + stun to neighbors)
-GLACIERBACK_MAMMOTH_DMG = ScalingTerm("damage", 80.0, "strength*2.0")
+GLACIERBACK_MAMMOTH_DMG = ScalingTerm("damage", 80.0, "strength*2.0+intelligence*0.2")  # T.35b: +INT (V.47)
 
 
 @register_active("champ_glacierback_mammoth.active")
@@ -1576,13 +1582,17 @@ ABILITY_META["champ_pebbleback_pangolin.active"] = AbilityMeta(
 
 # --- Dusk Bat (T2, Trickster) ---
 # Active: blind one enemy (reduce AS)
+# T.35b: blind strength scales with the bat's INT (V.47 dead-INT fix).
+DUSK_BAT_BLIND = ScalingTerm("blind", 30.0, "intelligence*0.15")
+
+
 @register_active("champ_dusk_bat.active")
 def dusk_bat_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
     ctx.apply_modifier(target, Modifier(
-        "attack_speed", "add", -30.0, Lifetime.TIMED,
+        "attack_speed", "add", -DUSK_BAT_BLIND.eval(actor), Lifetime.TIMED,
         "ability:champ_dusk_bat.blind",
         expires_at_tick=ctx.current_tick + 400,
     ))
@@ -1590,7 +1600,8 @@ def dusk_bat_active(ctx: Any, actor: Any, targets: list) -> None:
 
 ABILITY_META["champ_dusk_bat.active"] = AbilityMeta(
     name="Blinding Screech", kind="active",
-    blurb="Blind the primary target, cutting 30 Attack Speed for 4s.",
+    blurb="Blind the primary target for 4s.",
+    clauses=(Clause(template="Cuts {blind} Attack Speed.", terms=(DUSK_BAT_BLIND,)),),
     tags=("debuff", "control"),
 )
 
@@ -1655,18 +1666,23 @@ ABILITY_META["champ_boulderhide_skink.passive"] = AbilityMeta(
 
 # --- Geode Beetle (T4, SUP-Shield) ---
 # Active: ally shield (large armor buff that blocks next big hit)
+# T.35b: shield magnitude scales with the beetle's INT (V.47 dead-INT fix).
+GEODE_BEETLE_ARMOR = ScalingTerm("armor", 80.0, "intelligence*0.35")
+GEODE_BEETLE_RES = ScalingTerm("resistance", 40.0, "intelligence*0.2")
+
+
 @register_active("champ_geode_beetle.active")
 def geode_beetle_active(ctx: Any, actor: Any, targets: list) -> None:
     ally = lowest_hp_ally(actor, ctx)
     if not ally:
         return
     ctx.apply_modifier(ally, Modifier(
-        "armor", "add", 80.0, Lifetime.TIMED,
+        "armor", "add", GEODE_BEETLE_ARMOR.eval(actor), Lifetime.TIMED,
         "ability:champ_geode_beetle.shield",
         expires_at_tick=ctx.current_tick + 400,
     ))
     ctx.apply_modifier(ally, Modifier(
-        "resistance", "add", 40.0, Lifetime.TIMED,
+        "resistance", "add", GEODE_BEETLE_RES.eval(actor), Lifetime.TIMED,
         "ability:champ_geode_beetle.shield",
         expires_at_tick=ctx.current_tick + 400,
     ))
@@ -1674,7 +1690,9 @@ def geode_beetle_active(ctx: Any, actor: Any, targets: list) -> None:
 
 ABILITY_META["champ_geode_beetle.active"] = AbilityMeta(
     name="Geode Ward", kind="active",
-    blurb="Shield the lowest-HP ally with +80 Armor and +40 Resistance for 4s.",
+    blurb="Shield the lowest-HP ally for 4s.",
+    clauses=(Clause(template="Grants +{armor} Armor and +{resistance} Resistance.",
+                    terms=(GEODE_BEETLE_ARMOR, GEODE_BEETLE_RES)),),
     tags=("defense", "buff"),
 )
 
@@ -2090,6 +2108,11 @@ ABILITY_META["champ_lostlight_wisp.passive"] = AbilityMeta(
 
 # --- Will-o-Fawn (T2, INT Mystic) ---
 # Active: conjure ally-auto double (grant ally bonus attack)
+# T.35b: haste scales with the fawn's INT (V.47 dead-INT fix). NB: authored as a
+# mage but ships a pure support kit — role mismatch flagged for a later content pass.
+WILL_O_FAWN_HASTE = ScalingTerm("haste", 40.0, "intelligence*0.2")
+
+
 @register_active("champ_will_o_fawn.active")
 def will_o_fawn_active(ctx: Any, actor: Any, targets: list) -> None:
     # Grant an ally a temporary attack speed buff (simulates double attack)
@@ -2098,7 +2121,7 @@ def will_o_fawn_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     ally = min(allies, key=lambda a: (a.hp, a.id))
     ctx.apply_modifier(ally, Modifier(
-        "attack_speed", "add", 40.0, Lifetime.TIMED,
+        "attack_speed", "add", WILL_O_FAWN_HASTE.eval(actor), Lifetime.TIMED,
         "ability:champ_will_o_fawn",
         expires_at_tick=ctx.current_tick + 300,
     ))
@@ -2106,7 +2129,8 @@ def will_o_fawn_active(ctx: Any, actor: Any, targets: list) -> None:
 
 ABILITY_META["champ_will_o_fawn.active"] = AbilityMeta(
     name="Conjure Double", kind="active",
-    blurb="Grant a wounded ally +40 Attack Speed for 3s.",
+    blurb="Grant a wounded ally Attack Speed for 3s.",
+    clauses=(Clause(template="Grants +{haste} Attack Speed.", terms=(WILL_O_FAWN_HASTE,)),),
     tags=("buff",),
 )
 
@@ -2635,6 +2659,10 @@ ABILITY_META["champ_voltscale_mamba.passive"] = AbilityMeta(
 
 # --- Coppercrest Stork (T4, SUP-Shield) ---
 # Active: ally shield that reflects damage
+# T.35b: shield magnitude scales with the stork's INT (V.47 dead-INT fix).
+COPPERCREST_STORK_ARMOR = ScalingTerm("armor", 50.0, "intelligence*0.35")
+
+
 @register_active("champ_coppercrest_stork.active")
 def coppercrest_stork_active(ctx: Any, actor: Any, targets: list) -> None:
     ally = lowest_hp_ally(actor, ctx)
@@ -2642,7 +2670,7 @@ def coppercrest_stork_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     # Shield as armor buff
     ctx.apply_modifier(ally, Modifier(
-        "armor", "add", 50.0, Lifetime.TIMED,
+        "armor", "add", COPPERCREST_STORK_ARMOR.eval(actor), Lifetime.TIMED,
         "ability:champ_coppercrest_stork.shield",
         expires_at_tick=ctx.current_tick + 400,
     ))
@@ -2650,7 +2678,8 @@ def coppercrest_stork_active(ctx: Any, actor: Any, targets: list) -> None:
 
 ABILITY_META["champ_coppercrest_stork.active"] = AbilityMeta(
     name="Copper Ward", kind="active",
-    blurb="Shield the lowest-HP ally with +50 Armor for 4s.",
+    blurb="Shield the lowest-HP ally for 4s.",
+    clauses=(Clause(template="Grants +{armor} Armor.", terms=(COPPERCREST_STORK_ARMOR,)),),
     tags=("defense", "buff"),
 )
 

@@ -74,16 +74,16 @@ _DURABILITY: dict[str, dict[str, float]] = {
         "max_hp": 1.8,
         "armor": 0.8,
         "resistance": 0.8,
-        "strength": 0.55,
-        "intelligence": 0.55,
+        "strength": 0.42,  # T.35b (B.20): tanky STR/INT 0.55→0.42 — a primary-stat
+        "intelligence": 0.42,  # tank no longer rivals an assassin's primary (1.8×0.42=0.76)
         "threat": 1.4,
     },
     "tanky_arm": {
         "max_hp": 0.9,
         "armor": 2.0,
         "resistance": 2.0,
-        "strength": 0.55,
-        "intelligence": 0.55,
+        "strength": 0.42,  # T.35b (B.20): see tanky_hp
+        "intelligence": 0.42,
         "threat": 1.4,
     },
 }
@@ -114,24 +114,27 @@ _SPEED: dict[str, dict[str, float]] = {
 # before the tier round()). `hybrid` is identity → byte-identical to pre-change.
 # Keeps the HP·DPS power proxy within ±10% (re-flavour, not stealth buff);
 # `threat` is off the power budget by design (B.6).
+# T.35b (B.20): widened STR/INT bias (damage 1.08→1.14, utility 0.94→0.87) with
+# matching defensive compensation so the proxy stays in band (damage 1.075,
+# utility 0.947) — verified by `test_role_intent.py::test_hp_dps_proxy_within_10pct`.
 _INTENT: dict[str, dict[str, float]] = {
     "damage": {
-        "strength": 1.08,
-        "intelligence": 1.08,
-        "attack_speed": 1.05,
-        "max_hp": 0.96,
-        "armor": 0.97,
-        "resistance": 0.97,
+        "strength": 1.14,
+        "intelligence": 1.14,
+        "attack_speed": 1.04,
+        "max_hp": 0.93,
+        "armor": 0.94,
+        "resistance": 0.94,
         "mana_regen": 0.97,
         "threat": 0.92,
     },
     "utility": {
-        "strength": 0.94,
-        "intelligence": 0.94,
-        "attack_speed": 0.96,
-        "max_hp": 1.08,
-        "armor": 1.05,
-        "resistance": 1.05,
+        "strength": 0.87,
+        "intelligence": 0.87,
+        "attack_speed": 0.97,
+        "max_hp": 1.12,
+        "armor": 1.06,
+        "resistance": 1.06,
         "mana_regen": 1.08,
         "threat": 1.10,
     },

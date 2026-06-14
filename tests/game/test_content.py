@@ -305,3 +305,85 @@ class TestComposeStats:
     def test_invalid_playstyle_axis_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Unknown playstyle axis value"):
             compose_stats("str", "melee", "hybrid", "burst", "hybrid", "hybrid", 1)
+
+
+# --------------------------------------------------------------------------- #
+# V.47 — axis ↔ scaling alignment (T.35b, B.20)
+# --------------------------------------------------------------------------- #
+#
+# A unit whose `stat` axis is INT-heavy must actually *read* INT in its kit, or
+# the INT-heavy statline is dead weight (#42 Finding B). The universal auto-attack
+# (1.0·STR + 0.2·INT) counts for STR, so `str` units are auto-satisfied; `int` and
+# `hybrid` units must reference INT via a Magnitude on their active/passive meta.
+
+
+def _meta_references_int(ability_id: str) -> bool:
+    """True if any Magnitude on this ability's meta scales from intelligence."""
+    from src.game.registries import (
+        ABILITY_META,
+        MaxOfTerm,
+        ScalingTerm,
+    )
+
+    meta = ABILITY_META.get(ability_id)
+    if meta is None:
+        return False
+    terms = list(meta.terms)
+    for clause in meta.clauses:
+        terms.extend(clause.terms)
+    for t in terms:
+        if isinstance(t, ScalingTerm):
+            s = t.scaling
+            if "intelligence" in s or re.search(r"\bint\b", s):
+                return True
+        elif isinstance(t, MaxOfTerm):
+            if any(st in ("intelligence", "int") for st in t.stats):
+                return True
+    return False
+
+
+# INT flows through a non-meta channel (a summon's SummonSpec stat-fraction), so a
+# meta-only scan can't see it — but the INT is NOT dead. Allowlisted with reason.
+_V47_SUMMON_INT_ALLOWLIST: dict[str, str] = {
+    "enemy_steam_engineer": "INT sizes the turret statline via _STEAM_TURRET SummonSpec (intelligence*0.5), not a meta outlet",
+}
+
+
+class TestAxisScalingAlignment:
+    """V.47: int/hybrid units must read INT in their kit (no dead INT)."""
+
+    def _defs(self):
+        import src.game.abilities  # noqa: F401  (registers ABILITY_META)
+        from src.game.content import _CHAMPION_DEFS, _ENEMY_DEFS
+
+        return list(_CHAMPION_DEFS) + list(_ENEMY_DEFS)
+
+    def test_int_and_hybrid_units_reference_int(self) -> None:
+        offenders = []
+        for d in self._defs():
+            if d.stat not in ("int", "hybrid"):
+                continue  # str auto-satisfied via the auto-attack (1.0 STR + 0.2 INT)
+            if d.id in _V47_SUMMON_INT_ALLOWLIST:
+                continue
+            if not (
+                _meta_references_int(d.active_ability)
+                or _meta_references_int(d.passive_ability)
+            ):
+                offenders.append(f"{d.id} (stat={d.stat})")
+        assert not offenders, (
+            "V.47: these int/hybrid units never read INT in their kit (dead INT):\n"
+            + "\n".join(sorted(offenders))
+        )
+
+    def test_guard_detects_a_dead_int_meta(self) -> None:
+        # Negative control: a meta with no INT magnitude must read as non-referencing.
+        from src.game.registries import ABILITY_META, AbilityMeta, ScalingTerm
+
+        ABILITY_META["__test_dead_int__"] = AbilityMeta(
+            name="Dead", kind="active", blurb="x",
+            terms=(ScalingTerm("damage", 10.0, "strength*1.0"),),
+        )
+        try:
+            assert _meta_references_int("__test_dead_int__") is False
+        finally:
+            del ABILITY_META["__test_dead_int__"]
