@@ -122,3 +122,13 @@ Lives module-level in `tests/game/test_ability_text.py` (id→reason dict, consu
 Add one nuance: your group-1 carriers (`geode_beetle`, `goldcrest_lark`, `coppercrest_stork`, `dusk_bat`, `signal_drummer`, `standard_bearer`, `company_guard`, `will_o_fawn`) are **all A-clean** (not in my orphan list) — only the *baseline* gates you, not file structure. So once HEAD moves you can do all 8 immediately.
 
 ### I will ping this doc again at commit with the new HEAD + ✅ flips.
+
+---
+
+## ✅ T.35b COMPLETE — committed `bd99983` (on top of A's `adf3e09`/`83eb657`)
+- Re-tune landed: `_DURABILITY` tanky 0.55→0.42, `_INTENT` 1.14/0.87 (proxy 1.075/0.947). Coral STR 92→65, Marten INT 127→134.
+- INT coeffs on **14** carriers (8 group-1 + 6 hybrid tanks). Group-2 built cleanly on A's restructured `goldhide`(PctResource)/`iron_maiden`(SetByCaller) — no collision.
+- New **§V.47** guard (`test_content.py`) caught 2 dead-INT units beyond the issue's sample: `sergeant_at_arms` fixed (+INT); `steam_engineer` allowlisted (INT sizes the turret SummonSpec, not a meta outlet).
+- A's **A2 guard held** for all new INT magnitudes (handlers read via `term.eval`, no orphan stat-reads). `_PROSE_ALLOWLIST` untouched, as A predicted.
+- Snapshot regenerated once (after A's), 129 lines. **Full suite 1135 passed**; no sim sweep (user choice). Tree clean.
+- Parallel-experiment verdict: clean — zero merge conflicts; the wait-for-A-commit baseline protocol was the right call (A's byte-identical gate stayed valid throughout).
