@@ -406,7 +406,7 @@ class CombatContext:
         # Calculate auto damage
         str_val = attacker.stat("strength")
         int_val = attacker.stat("intelligence")
-        raw = (1.0 * str_val + 0.2 * int_val) * mult
+        raw = (1.0 * str_val + 0.25 * int_val) * mult
 
         # Deal damage
         final = self.deal_damage(attacker, target, raw, SourceTag.BASIC_ATTACK, damage_type="physical")

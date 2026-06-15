@@ -17,21 +17,26 @@ champions by roster axis (`stat` × `playstyle`) and reports **`wr_delta` =
 win_rate − power-expected win_rate** (tier-controlled: positive = beats its power
 budget). tqdm progress; `--csv` per-champion dump.
 
-## Result (3v3, clear, n≈200 — direction; rerun larger for stable magnitudes)
+## Result (3v3, clear, n=4000 — stable)
 
 ```
-stat × playstyle  [wr_delta]
-              str       int
-auto        +0.107    −0.099     ← same playstyle, swap stat → ~20pp gap
-ability     −0.083    −0.014
-hybrid      +0.034    +0.083
+stat × playstyle  [wr_delta | n]
+              str            int
+auto        +0.044 (n12)   −0.029 (n5)    gap +0.073
+ability     +0.053 (n3)    −0.038 (n19)   gap +0.091
+hybrid      −0.028 (n6)    −0.017 (n3)
+by stat:    STR +0.024     INT −0.034     gap +0.058
 ```
 
-**auto/STR beats its budget by +0.107; auto/INT under-performs by −0.099** — a
-~20-point swing explained entirely by the auto formula. STR-as-coeff is strictly
-stronger than INT-as-coeff: autos tag along for free on STR, not on INT. Direct
-evidence that **INT ability (and on-hit/auto-INT) coeffs must be raised** to reach
-parity — logged as **§D.25**.
+**INT under-performs its power budget in every playstyle row (−0.017 to −0.038);
+STR over-performs (+0.024).** Same playstyle, swap STR→INT ≈ **7–9pp** win-rate
+drop — explained by the auto formula (STR 5× the auto value). STR-as-coeff is
+strictly stronger: autos tag along free on STR, not INT. INT needs ~+0.06 wr_delta
+to reach parity → **§D.25** (lever 1: raise engine auto `0.2·INT`→~0.35 global;
+lever 2: +20–30% INT ability coeffs; sim-validate iteratively).
+
+(An early n≈200 smoke read auto/INT at −0.099 — noise; n=4000 settles it at −0.029.
+Lesson: don't quote magnitudes off a 200-battle run.)
 
 ## Two findings that fell out
 

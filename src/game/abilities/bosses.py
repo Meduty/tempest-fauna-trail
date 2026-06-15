@@ -224,7 +224,7 @@ ABILITY_META["holloway.boiler_burst"] = AbilityMeta(
 
 
 # Phase 1 Active: Focusing Lens — high INT single target nuke
-VANCE_FOCUSING_LENS = ScalingTerm("damage", 120.0, "intelligence*2.8")
+VANCE_FOCUSING_LENS = ScalingTerm("damage", 120.0, "intelligence*3.36")
 
 
 @register_active("vance.focusing_lens")
@@ -306,7 +306,7 @@ ABILITY_META["vance.phase_hook"] = AbilityMeta(
 
 
 # Phase 2 Active: Sunflare Pounce — INT burst + fear
-VANCE_SUNFLARE_POUNCE = ScalingTerm("damage", 150.0, "intelligence*3.0")
+VANCE_SUNFLARE_POUNCE = ScalingTerm("damage", 150.0, "intelligence*3.6")
 
 
 @register_active("vance.sunflare_pounce")
@@ -387,7 +387,7 @@ ABILITY_META["vance.sun_husk_collapse"] = AbilityMeta(
 
 
 # Phase 1 Active: Arc Cascade — chain lightning
-STRAND_ARC_CASCADE = ScalingTerm("damage", 110.0, "intelligence*2.5")
+STRAND_ARC_CASCADE = ScalingTerm("damage", 110.0, "intelligence*3")
 
 
 @register_active("strand.arc_cascade")
@@ -474,7 +474,7 @@ ABILITY_META["strand.phase_hook"] = AbilityMeta(
 
 
 # Phase 2 Active: Thunderhead — massive AOE + charged status
-STRAND_THUNDERHEAD = ScalingTerm("damage", 130.0, "intelligence*3.0")
+STRAND_THUNDERHEAD = ScalingTerm("damage", 130.0, "intelligence*3.6")
 _STRAND_THUNDERHEAD_AOE = 0.6
 
 
@@ -496,7 +496,7 @@ ABILITY_META["strand.thunderhead"] = AbilityMeta(
 
 
 # Phase 2 Passive: Stormform — bonus damage to charged enemies
-STRAND_STORMFORM = ScalingTerm("bonus", 0.0, "intelligence*0.4")
+STRAND_STORMFORM = ScalingTerm("bonus", 0.0, "intelligence*0.48")
 
 
 @register_passive("strand.stormform")
@@ -722,7 +722,7 @@ ABILITY_META["vossberg.fire_gutters_out"] = AbilityMeta(
 
 
 # Phase 1 Active: Harpoon Winch — pull + damage + root
-CREGE_HARPOON_WINCH = ScalingTerm("damage", 100.0, "strength*2.0+intelligence*1.0")
+CREGE_HARPOON_WINCH = ScalingTerm("damage", 100.0, "strength*2.0+intelligence*1.2")
 
 
 @register_active("crege.harpoon_winch")
@@ -808,7 +808,7 @@ ABILITY_META["crege.phase_hook"] = AbilityMeta(
 
 
 # Phase 2 Active: Maelstrom Jaws — massive AOE + slow
-CREGE_MAELSTROM_JAWS = ScalingTerm("damage", 120.0, "strength*2.5+intelligence*1.5")
+CREGE_MAELSTROM_JAWS = ScalingTerm("damage", 120.0, "strength*2.5+intelligence*1.8")
 _CREGE_MAELSTROM_AOE = 0.7
 
 
@@ -889,7 +889,7 @@ ABILITY_META["crege.silt_drains"] = AbilityMeta(
 
 
 # Phase 1 Active: Decree of Iron — mark target for +damage taken
-IRON_EMPEROR_DECREE = ScalingTerm("damage", 100.0, "strength*1.5+intelligence*1.5")
+IRON_EMPEROR_DECREE = ScalingTerm("damage", 100.0, "strength*1.5+intelligence*1.8")
 
 
 @register_active("iron_emperor.decree_of_iron")
@@ -996,7 +996,7 @@ ABILITY_META["iron_emperor.phase_hook"] = AbilityMeta(
 
 
 # Phase 2 Active: Reclamation — channel finisher (massive damage)
-IRON_EMPEROR_RECLAMATION = ScalingTerm("damage", 150.0, "strength*2.0+intelligence*2.0")
+IRON_EMPEROR_RECLAMATION = ScalingTerm("damage", 150.0, "strength*2.0+intelligence*2.4")
 _IRON_EMPEROR_RECLAMATION_AOE = 0.5
 
 

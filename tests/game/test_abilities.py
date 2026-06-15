@@ -650,11 +650,11 @@ class TestHierarchBarrier:
         ctx.bus.fire("on_death", DeathEvent(victim=hierarch, killer=ally), ctx=ctx)
 
         # 50 + INT(100)*2.0 = 250 barrier on the surviving ally
-        assert ally.barrier_total == 250.0
+        assert ally.barrier_total == 290.0
         # Duration = 600 * level(1); not expired yet at tick 0
         ctx.current_tick = 599
         expire_modifiers(ctx, [ally])
-        assert ally.barrier_total == 250.0
+        assert ally.barrier_total == 290.0
         ctx.current_tick = 600
         expire_modifiers(ctx, [ally])
         assert ally.barrier_total == 0.0
@@ -687,8 +687,8 @@ class TestGladeHeronRework:
         ctx = _make_ctx(team=[heron], enemies=[target])
 
         ABILITY_REGISTRY["champ_glade_heron.active"](ctx, heron, [])
-        # base 100 + INT(200)*0.8 = 260
-        assert heron.stat("attack_speed") == 260.0
+        # base 100 + INT(200)*0.96 = 292
+        assert heron.stat("attack_speed") == 292.0
 
     def test_active_refreshes_not_stacks(self):
         heron = self._heron(intelligence=200.0)
@@ -702,7 +702,7 @@ class TestGladeHeronRework:
         # Still a single haste modifier; AS not multiplied by recasts
         haste = [m for m in heron.modifiers if m.source_id == "ability:champ_glade_heron.haste"]
         assert len(haste) == 1
-        assert heron.stat("attack_speed") == 260.0
+        assert heron.stat("attack_speed") == 292.0
 
     def test_passive_applies_poison_per_auto(self):
         heron = self._heron()
@@ -735,9 +735,9 @@ class TestGladeHeronRework:
         # Pre-poison to 2 stacks; next auto adds the 3rd -> burst fires
         ctx.apply_status(target, "poison", duration_ticks=400, stacks=2, source_id=heron.id)
         ctx.bus.fire("on_attack_landed", AttackEvent(attacker=heron, target=target, amount=10.0), ctx=ctx)
-        # burst = INT(200)*0.2 = 40, res=0 -> full
+        # burst = INT(200)*0.24 = 48, res=0 -> full
         assert target.status_stacks("poison") == 3
-        assert target.hp == 5000.0 - 40.0
+        assert target.hp == 5000.0 - 48.0
 
 
 class TestGladeHeronFlatStacks:
