@@ -85,3 +85,23 @@ normal sims" beat my synthetic-harness instinct, and the right experiment design
 (team not 1v1, wr_delta not win_rate, content-present-not-synthetic) emerged from
 their domain corrections, not from my first plan. Build the cheapest tool that can
 show the signal, then let the domain expert sharpen the controls.
+
+## Outcome — D.25 resolved (3 iterations)
+
+| stat (by-marginal wr_delta) | pre-tune | final (n=4000) |
+|---|---|---|
+| str | +0.024 | **+0.000** |
+| int | −0.034 | **−0.018** |
+| hybrid | ~0 | **−0.002** |
+
+Levers applied: auto INT term `0.2→0.25`; INT ability coeffs ×1.58 cumulative
+(iters 1.2 · 1.2 · 1.1); STR ability coeffs ×0.8. str + hybrid land dead-on
+parity; int within noise.
+
+**iter3 found the wall.** ×1.1 INT moved int only −0.021→−0.018 and left
+**int/ability −0.028**. That cell lags from cast *rarity* (rare-but-big caster),
+not per-cast damage — so coeffs are the wrong lever for the last 3pp. The real
+lever is **cast frequency** (mana cadence / mana items), and over-pumping coeffs
+would make the rare casts oppressive. Left as the intended caster feast/famine.
+**Lesson:** know when a lever is exhausted — diminishing returns + a structural
+(cadence) cause means stop tuning coeffs, don't chase the metric to 0.

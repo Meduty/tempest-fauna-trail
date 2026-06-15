@@ -681,7 +681,15 @@ in their T-task plan docs; what remains here is genuinely undecided.
 - D.24 Expand multi-slot beyond the 9 showcase pieces — **post-MVP**. Once the
   V.48 rank cycle / one-cast gate prove out, more champs/enemies can gain 2nd (and
   3rd) abilities as content; sized as a content pass, not engine work. (T.29d)
-- D.25 **Cast-power balance pass — INT ability coeffs ≪ intended.** Design intent
+- D.25 **RESOLVED [2026-06-15] — STR/INT coeff parity reached; residual is cadence, not coeffs.** Three
+  iterations (auto INT `0.2→0.25`; INT ability coeffs ×1.58 cumulative; STR ability ×0.8) brought the
+  stat marginals to parity: final n=4000 multisize `wr_delta` **str +0.000 / int −0.018 / hybrid −0.002**
+  (was str +0.024 / int −0.034 pre-tune). iter3 (×1.1) confirmed the **coeff lever is exhausted** — it
+  moved int −0.021→−0.018 and left **int/ability −0.028**: that cell lags from cast *rarity* (rare-but-big
+  caster identity), not per-cast damage, so the real future lever is **cast frequency (mana cadence /
+  items)**, not coeffs — pushing coeffs further would make rare casts oppressive. Left as the intended
+  caster feast/famine. Original analysis below. (resolved via `tools/simulation/stat_edge.py`)
+- D.25 (orig) **Cast-power balance pass — INT ability coeffs ≪ intended.** Design intent
   (2026-06-15): casts are rare (every 25–50 s) so each should be a **big INT nuke,
   INT coeff ≫ STR/autos**. Measured today: pure INT casters land ~3–7× their auto
   (mirage 6.6×, 302 dmg), but **hybrids cast *weaker* than they auto** (aurion 0.7×)
