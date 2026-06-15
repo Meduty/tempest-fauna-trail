@@ -197,14 +197,22 @@ def worldroot_bloom(owner: Any) -> EffectBundle:
 # --- Deepwell (Springtear + Springtear) ---
 @register_item("deepwell")
 def deepwell(owner: Any) -> EffectBundle:
-    """Deepwell — +30% mana regen and +200_000 flat starting mana; after the first
-    cast, refunds 50% of `mana_cost` on every subsequent cast (V.48, T.29c).
+    """Deepwell — +30% mana regen, +200_000 flat starting mana, and a combat-start
+    barrier (15% of holder max HP) on the lowest-HP ally (support-caster anchor);
+    after the first cast, refunds 50% of `mana_cost` on every subsequent cast (V.48).
 
     Never reduces `mana_cost`; the refund grants mana (clamped to `max_mana`)."""
     state: dict[str, bool] = {"first_cast_done": False}
 
     def on_start(ctx: Any, ev: Any) -> None:
         _grant_start_mana(owner, 200_000)  # flat ≈2/3 of default cost (two springtears)
+        # Support: shield the lowest-HP ally (the mana battery peels for the team).
+        if ctx is None:
+            return
+        from src.game.targeting import lowest_hp_ally
+        ally = lowest_hp_ally(owner, ctx)
+        if ally is not None:
+            ctx.grant_barrier(ally, owner.max_hp * 0.15)
 
     def on_cast(ctx: Any, ev: Any) -> None:
         if ev.caster is not owner:
@@ -253,9 +261,9 @@ def mammoth_hide(owner: Any) -> EffectBundle:
 @register_item("bramble_carapace")
 def bramble_carapace(owner: Any) -> EffectBundle:
     """Bramble Carapace — +28% Armor; retaliates a FLAT magic hit to any melee
-    attacker (thorns, TFT-style). Flat by design: it's a tank item and INT is the
-    tank dump stat (the old INT×0.35 dealt ~2 dmg). Flat ≈80 stays relevant as
-    chip + punishes fast multi-hit attackers."""
+    attacker (thorns, TFT-style) AND inflicts grievous wounds (halved healing) on
+    that attacker. Flat thorns by design: tank item, INT is the dump stat (the old
+    INT×0.35 dealt ~2 dmg). Restores the catalog's 'cuts attacker healing'."""
     THORNS = 80.0
 
     def on_damaged(ctx: Any, ev: Any) -> None:
@@ -267,6 +275,7 @@ def bramble_carapace(owner: Any) -> EffectBundle:
         if attacker.stat("attack_range") > 1:   # melee only (range 1)
             return
         ctx.deal_damage(owner, attacker, THORNS, SourceTag.ITEM_PROC)
+        ctx.apply_status(attacker, "grievous", 200)   # antiheal 2 s
 
     return EffectBundle(
         modifiers=[_armor_mod(1.28, "item:bramble_carapace")],
@@ -402,10 +411,11 @@ def everbloom_staff(owner: Any) -> EffectBundle:
 # --- Witherbloom Censer (Heartseed + Old Hide) ---
 @register_item("witherbloom_censer")
 def witherbloom_censer(owner: Any) -> EffectBundle:
-    """Witherbloom Censer — +12% INT, +12% HP; basic attacks apply burn (3 s) AND
-    sunder the target's Resistance by 20% while it burns. The res-shred is the
-    scaling lever (amplifies the holder's INT autos/casts) since flat burn does
-    not scale; refreshed each hit, single instance (no stacking)."""
+    """Witherbloom Censer — +12% INT, +12% HP; basic attacks apply burn (3 s),
+    sunder the target's Resistance by 20%, AND inflict grievous wounds (halved
+    healing) — the 'withering rot'. Res-shred is the scaling lever (amplifies the
+    holder's INT autos/casts) since flat burn doesn't scale; grievous restores the
+    catalog's 'cuts target healing'. All refresh each hit, single instances."""
     SHRED_TICKS = 300   # 3 s — matches the burn duration
     RES_SHRED = "item:witherbloom_censer"
 
@@ -414,6 +424,7 @@ def witherbloom_censer(owner: Any) -> EffectBundle:
             return
         target = ev.target
         ctx.apply_status(target, "burn", 300)   # 3 s (was 1.5 s — too short vs cadence)
+        ctx.apply_status(target, "grievous", 300)   # antiheal while burning
         # Resistance sunder: single refreshing instance (drop the prior one so
         # repeated hits refresh duration, not stack ×0.8 repeatedly).
         target.modifiers = [
@@ -485,24 +496,43 @@ def spellfang_crown(owner: Any) -> EffectBundle:
 # --- Living Bulwark (Old Hide + Stoneplate) ---
 @register_item("living_bulwark")
 def living_bulwark(owner: Any) -> EffectBundle:
-    """Living Bulwark — +12% HP, +14% Armor (pure defensive stat stick)."""
-    return EffectBundle(modifiers=[
-        _hp_mod(1.12, "item:living_bulwark"),
-        _armor_mod(1.14, "item:living_bulwark"),
-    ])
+    """Living Bulwark — +12% HP, +14% Armor; at combat start grants adjacent allies
+    a +18% Armor aura (support anchor). Was a pure stat stick — the aura gives the
+    frontline brick a team identity."""
+    def on_start(ctx: Any, ev: Any) -> None:
+        if ctx is None:
+            return
+        from src.game.targeting import allies_in_radius
+        for ally in allies_in_radius(owner.position_q, owner.position_r, 1, owner, ctx):
+            if ally is owner:
+                continue
+            ctx.apply_modifier(ally, Modifier(
+                "armor", "mul", 1.18, Lifetime.COMBAT, "item:living_bulwark",
+            ))
+
+    return EffectBundle(
+        modifiers=[
+            _hp_mod(1.12, "item:living_bulwark"),
+            _armor_mod(1.14, "item:living_bulwark"),
+        ],
+        hooks=[Hook("on_combat_start", on_start, scope=HookScope.PER_HIT)],
+    )
 
 
 # --- Splitwind Talons (Talon + Wardpelt) ---
 @register_item("splitwind_talons")
 def splitwind_talons(owner: Any) -> EffectBundle:
     """Splitwind Talons — +12% AS, +14% RES; autos also strike the nearest second
-    enemy within range 2 for 50% of the hit's damage (ITEM_PROC tag)."""
+    enemy within range 2 for 50% of the hit's damage AND apply Slow (soft CC) to
+    both. The auto-attacker's control/kite item."""
     SPLASH_RANGE = 2
 
     def on_attack(ctx: Any, ev: Any) -> None:
         if ev.attacker is not owner:
             return
         primary = ev.target
+        if primary.alive:
+            ctx.apply_status(primary, "slow", 200)   # soft CC, 2 s
         # Find the nearest second enemy (excluding the primary target)
         second: Any = None
         best_dist = 999
@@ -515,6 +545,7 @@ def splitwind_talons(owner: Any) -> EffectBundle:
                 second = e
         if second is not None:
             ctx.deal_damage(owner, second, ev.amount * 0.50, SourceTag.ITEM_PROC, crit=False)
+            ctx.apply_status(second, "slow", 200)
 
     return EffectBundle(
         modifiers=[

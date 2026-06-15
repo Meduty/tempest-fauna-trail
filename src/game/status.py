@@ -127,6 +127,17 @@ FOCUS_FIRE = _register(StatusDef(
     stack_behaviour=StackBehaviour.REFRESH,
 ))
 
+# Grievous — antiheal / grievous-wounds marker. While present, the bearer's
+# incoming healing is reduced by GRIEVOUS_HEAL_MULT (read in ctx.heal). Pure
+# marker (no gates/DOT). Applied by Bramble Carapace (attacker) / Witherbloom
+# Censer (target); available to abilities too.
+GRIEVOUS_HEAL_MULT = 0.5  # incoming heal ×0.5 while grievous
+GRIEVOUS = _register(StatusDef(
+    id="grievous",
+    display_name="Grievous Wounds",
+    stack_behaviour=StackBehaviour.REFRESH,
+))
+
 # Hexproof — excluded from single-target acquisition (auto-attacks + targeted
 # abilities); AoE/untargeted effects still hit. The piece can still act. Used by
 # Spirit/Stalker/Shrouded opener/after-takedown windows (T.28b; renamed T.28d, V.40).

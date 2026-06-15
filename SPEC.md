@@ -122,6 +122,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - V.48: **Per-ability mana primitive + deterministic cast scheduling.** Each `ActiveSlot` carries per-slot **`mana_cost`/`max_mana`/`start_mana`/`priority`** (+ runtime `current_mana`). `mana_cost`'s base is authored **on the ability def** via an `ABILITY_MANA` registry (the replacement for the deprecated `ability_cost` stat — V.34/V.35 amended); **`mana_regen` is the only piece-level mana stat and the cast-rate knob** (the lone `Modifier`-able mana value). **`max_mana` = universal pool cap** — regen/start/`grant_mana` all clamp to it; **default `= 2× mana_cost`**; never auto-raised. Defaults: `mana_cost=300_000`, `max_mana=2×mana_cost`, `priority=1`, `start_mana=current_mana=0`. The pool fields are **resource state** — direct slot writes only, **never `Modifier` targets** (extends V.43); **no item/`Modifier` ever changes `mana_cost`** (mana items grant `mana_regen` via `Modifier` or `start_mana` via slot — kills negative-cost stacking). **Charge = deterministic weighted-rank cycle:** cycle length `sum(slot.priority)`, each slot occupies `priority` positions, **one** slot charged per tick with the full `mana_regen` (skip a slot already at `max_mana`) ⇒ total throughput = `mana_regen`/tick **regardless of slot count**. **Cast = at most one per action window;** among slots with `current_mana ≥ mana_cost` the **highest `priority`** casts (tie → lowest slot index). Single-slot, no-item combat is byte-identical to pre-T.29c (V.2). RNG-free cadence (V.2/V.14). (T.29c, amends V.34/V.35, extends V.43)
 - V.49: **Multi-slot pieces + `Multicaster` Calling.** `Champion`/`Enemy` carry **`active_abilities: list[str]`** (`from_dict` reads the legacy single `active_ability` key; a one-element list ⇒ one `ActiveSlot` ⇒ byte-identical, V.2); `compile_loadout` builds **one `ActiveSlot` per entry**, each seeded from `ABILITY_MANA` (V.48). New Calling **`Multicaster`** ∈ `CALLING_TAGS` (extends the V.22 vocab guard), breakpoints **2/3/4 per-trait** sized to its ~6-carrier pool (no team-wide apex — apex = `min(pool, cap)`, V.37). New mechanic **`cast_momentum`** (`on_cast_complete` → stacking `attack_speed` mul + small `mana_regen`, capped) is **RNG-free** (cadence per cast, extends V.37). Enemies may field extra slots but **never light up the `Multicaster` Calling** (V.22 — enemy tags are opaque). (T.29d, extends V.22/V.37, builds on V.48)
 - V.50: **Every ability activation records exactly one `cast` event.** Both cast paths emit one `EVENT_CAST` into `BattleResult.events`: registered abilities via `BattleResultRecorder._on_cast` (subscribed to the `on_cast` the `ctx.cast_ability` fires), and the unregistered-ability fallback via the engine's direct `recorder.record_cast`. Neither path fires both (the fallback bypasses `cast_ability`/`on_cast`) ⇒ no double-count, no drop. Cast **damage/heal** is attributed separately (`_on_damage_dealt` / heal totals); the cast event marks the activation (amount may be 0). This keeps casters visible in the combat log, sim metrics, and `turns` count — a `pass` stub here silently zeroed all registered casts (B.22). (T.29c, fixes B.22)
+- V.51: **Antiheal is the `grievous` status, honored in `ctx.heal`.** A `grievous`-afflicted piece receives healing scaled by `GRIEVOUS_HEAL_MULT` (0.5) — the single grievous-wounds primitive. `ctx.heal` is the **only** heal path and applies the reduction before the `max_hp` clamp, so every heal source (regen items, lifesteal, ability heals) respects it uniformly. Pure marker status (no gates/DOT); applied by Bramble Carapace (attacker), Witherbloom Censer (target), and available to abilities. RNG-free (V.2/V.14). (T.29a item rebalance, fixes B.23)
 
 ## T. Tasks
 
@@ -542,6 +543,21 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   (amount 0, note `ability_id`; damage attributed via `_on_damage_dealt`); `combat_log` renders a
   clean activation line. Guard: V.50 + `test_combat`/sim show casts. Touches `game/combat/recorder.py`,
   `game/combat_log.py`.
+- B.23 [2026-06-15] **T.29a item procs mis-scaled / overtuned** (Copilot, PR #41) — evaluated
+  against measured combat (autos ~5 s, casts 25–50 s, HP 600–1500, dmg 50–200). **Causes:**
+  (a) `bramble_carapace` retaliate `INT×0.35` on an **armor item → tanks (INT≈6)** = ~2 dmg, and
+  the catalog's "cut attacker healing" was dropped; (b) `witherbloom_censer` burn = flat `40`, 1.5 s
+  (one tick, non-scaling), heal-cut dropped; (c) `mistward_shroud` `1.5%/s` self-regen ≈ out-healed
+  auto DPS (near-unkillable); (d) `mammoth_hide` regen gated on "no damage 2 s" → erratic. **Pattern:**
+  Copilot's **% stat mods were fine** (scale with tier); the misses were all **flat or wrong-stat
+  procs** (same class as the flat 200 start-mana, T.29c). **Fix (T.29a rebalance):** bramble → flat 80
+  thorns + `grievous`; witherbloom → burn 3 s + RES sunder + `grievous`; mistward → 1%/s self;
+  mammoth → ungated 2%/2 s self+adjacent team aura. Added the `grievous` antiheal primitive (V.51),
+  one soft-CC item (`splitwind_talons` Slow), two support effects (`living_bulwark` armor aura,
+  `deepwell` ally shield). **Guard:** judge every item proc against the combat-scale baseline, and
+  scale procs on a stat the holder actually has. Touches `game/items/combined.py`, `game/status.py`,
+  `game/combat/context.py`. **Still open:** INT ability coeffs ≪ intended (casts should be big nukes,
+  hybrids currently cast < auto) — a dedicated balance pass, see §D.
 
 ## D. Systems Yet To Be Determined
 
@@ -665,6 +681,15 @@ in their T-task plan docs; what remains here is genuinely undecided.
 - D.24 Expand multi-slot beyond the 9 showcase pieces — **post-MVP**. Once the
   V.48 rank cycle / one-cast gate prove out, more champs/enemies can gain 2nd (and
   3rd) abilities as content; sized as a content pass, not engine work. (T.29d)
+- D.25 **Cast-power balance pass — INT ability coeffs ≪ intended.** Design intent
+  (2026-06-15): casts are rare (every 25–50 s) so each should be a **big INT nuke,
+  INT coeff ≫ STR/autos**. Measured today: pure INT casters land ~3–7× their auto
+  (mirage 6.6×, 302 dmg), but **hybrids cast *weaker* than they auto** (aurion 0.7×)
+  and absolute cast values are low; ability `ScalingTerm` INT coeffs sit at ~1.8–2.5.
+  Fix = a dedicated pass raising INT damage coeffs across the ~120 ability handlers
+  (and re-checking auto's `0.2·INT`), **sim-validated** — too large + balance-sensitive
+  to bundle into the item work. Interlocks with the value of mana items (springtear/
+  deepwell/everbloom) which only pay off if casts hit hard. (post T.29c)
 
 ### Economy & Meta
 

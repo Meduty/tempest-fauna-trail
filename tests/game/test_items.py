@@ -351,12 +351,16 @@ class TestLivingBulwark:
         assert pytest.approx(piece.stat("hp"), rel=1e-3) == 1000 * 1.12
         assert pytest.approx(piece.stat("armor"), rel=1e-3) == 50 * 1.14
 
-    def test_living_bulwark_has_no_hooks(self) -> None:
+    def test_living_bulwark_has_support_aura_hook(self) -> None:
+        # T.29a rebalance: living_bulwark gained an on_combat_start ally-armor aura
+        # (was a pure stat stick). Stat modifiers + exactly one hook.
         champ = _make_champ(items=["living_bulwark"])
         piece = piece_from_champion(champ)
         factory = ITEM_REGISTRY["living_bulwark"]
         bundle = factory(piece)
-        assert bundle.hooks == []
+        assert len(bundle.hooks) == 1
+        assert bundle.hooks[0].event == "on_combat_start"
+        assert len(bundle.modifiers) == 2  # +HP, +armor
 
 
 # ---------------------------------------------------------------------------

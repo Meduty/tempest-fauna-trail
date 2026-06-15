@@ -118,3 +118,19 @@ def test_one_cast_per_window_highest_priority():
         reg.ABILITY_REGISTRY.pop("test:reg", None)
         reg.ABILITY_REGISTRY.pop("test:reg2", None)
         ABILITY_MANA.pop("test:reg", None)
+
+
+# --- Grievous antiheal primitive (item rebalance) ---------------------------
+
+def test_grievous_halves_incoming_heal():
+    from src.game.combat.context import CombatContext
+    from src.game.effects import EventBus
+    from src.game.models import WeatherState
+    p = Piece(id="h", base_stats={"hp": 1000.0})
+    p.max_hp = 1000.0
+    p.hp = 100.0
+    ctx = CombatContext([p], EventBus(), WeatherState.CLEAR, seed=1)
+    assert ctx.heal(p, p, 200.0) == 200.0  # no grievous → full
+    p.hp = 100.0
+    ctx.apply_status(p, "grievous", 200)
+    assert ctx.heal(p, p, 200.0) == 100.0  # grievous → ×0.5

@@ -296,9 +296,16 @@ class CombatContext:
         return final
 
     def heal(self, source: Piece, target: Piece, amount: float) -> float:
-        """Heal a target. Returns actual amount healed."""
+        """Heal a target. Returns actual amount healed.
+
+        Antiheal (V): a `grievous` target receives reduced healing
+        (GRIEVOUS_HEAL_MULT) — the grievous-wounds primitive (Bramble/Witherbloom).
+        """
         if not target.alive:
             return 0.0
+        if target.has_status("grievous"):
+            from src.game.status import GRIEVOUS_HEAL_MULT
+            amount *= GRIEVOUS_HEAL_MULT
         actual = min(amount, target.max_hp - target.hp)
         target.hp += actual
         event = HealEvent(source=source, target=target, amount=actual)
