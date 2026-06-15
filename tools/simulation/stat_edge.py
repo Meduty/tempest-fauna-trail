@@ -99,14 +99,16 @@ def _fmt_group(label: str, deltas: list[float], wrs: list[float]) -> str:
     )
 
 
-def run(team_size: int, n_battles: int, weathers: list[WeatherState],
+def run(team_sizes: list[int], n_battles: int, weathers: list[WeatherState],
         workers: int, seed: int) -> dict[str, dict]:
-    """Run the sweep; return per-(champion-base) aggregated win_rate + wr_delta."""
+    """Run the sweep over every (team_size × weather); pool all battles into one
+    per-(champion-base) aggregate of win_rate + wr_delta."""
     all_results = []
-    for w in weathers:
-        configs = sample_teams(w, team_size, n_battles, seed=seed, tier_stratified=True)
-        label = f"{team_size}v{team_size} @ {w.value}"
-        all_results.extend(_run_with_progress(configs, label, workers))
+    for ts in team_sizes:
+        for w in weathers:
+            configs = sample_teams(w, ts, n_battles, seed=seed, tier_stratified=True)
+            label = f"{ts}v{ts} @ {w.value}"
+            all_results.extend(_run_with_progress(configs, label, workers))
 
     stats = aggregate_stats(all_results)
 
@@ -194,8 +196,9 @@ def report(rows: dict[str, dict]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="stat_edge", description=__doc__)
-    p.add_argument("--team-size", type=int, default=3)
-    p.add_argument("--n", type=int, default=4000, help="battles per weather")
+    p.add_argument("--team-sizes", default="3",
+                   help="comma-separated team sizes to pool, e.g. 2,3,4,5 (default 3)")
+    p.add_argument("--n", type=int, default=4000, help="battles per (size × weather)")
     p.add_argument("--weather", default="all",
                    help="'all' or a single weather state (e.g. clear)")
     p.add_argument("--workers", type=int, default=1)
@@ -204,7 +207,8 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     weathers = _WEATHERS if args.weather == "all" else [WeatherState(args.weather)]
-    rows = run(args.team_size, args.n, weathers, args.workers, args.seed)
+    team_sizes = [int(s) for s in args.team_sizes.split(",") if s.strip()]
+    rows = run(team_sizes, args.n, weathers, args.workers, args.seed)
     report(rows)
 
     if args.csv:
