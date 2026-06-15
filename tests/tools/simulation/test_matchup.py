@@ -29,7 +29,7 @@ def test_as_enemy_piece_copies_combat_fields():
     assert enemy.affinity == champ.affinity
     assert enemy.role == champ.role
     assert enemy.tier == champ.tier
-    assert enemy.active_ability == champ.active_ability
+    assert enemy.active_abilities == champ.active_abilities
     assert enemy.passive_ability == champ.passive_ability
 
 

@@ -111,7 +111,7 @@ def _stat_kwargs(piece: Champion | Enemy) -> dict:
         "armor": piece.armor,
         "resistance": piece.resistance,
         "attack_range": piece.attack_range,
-        "active_ability": piece.active_ability,
+        "active_abilities": list(piece.active_abilities),
         "passive_ability": piece.passive_ability,
         "crit_chance": piece.crit_chance,
         "penetration": piece.penetration,

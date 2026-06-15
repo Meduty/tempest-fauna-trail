@@ -54,7 +54,7 @@ def _make_champ(**kwargs: Any) -> Champion:
         "armor": 50,
         "resistance": 50,
         "attack_range": 1,
-        "active_ability": "",
+        "active_abilities": [],
         "passive_ability": "",
         "traits": ["Beast"],
     }
@@ -264,7 +264,7 @@ class TestRawComponents:
 class TestSpringtearMana:
     def _piece_with_slot(self, item_ids: list[str]) -> Piece:
         """Build a piece with an active slot and apply item bundles + on_combat_start."""
-        champ = _make_champ(items=item_ids, active_ability="test_ability")
+        champ = _make_champ(items=item_ids, active_abilities=["test_ability"])
         piece = piece_from_champion(champ)
         piece.actives = [ActiveSlot(ability_id="test_ability", mana_cost=300_000, current_mana=0.0)]
         bus = EventBus()
@@ -310,7 +310,7 @@ class TestSpringtearMana:
 
     def test_mana_cap_at_max_mana(self) -> None:
         """Granted starting mana is clamped to max_mana (the universal cap, V.48)."""
-        champ = _make_champ(items=["deepwell"], active_ability="x")
+        champ = _make_champ(items=["deepwell"], active_abilities=["x"])
         piece = piece_from_champion(champ)
         # Small cost ⇒ max_mana = 2*100 = 200; deepwell grants 200_000 → clamp to 200.
         piece.actives = [ActiveSlot(ability_id="x", mana_cost=100, current_mana=0.0)]
@@ -376,7 +376,7 @@ class TestCompileLoadoutItems:
         """Build a minimal champion with given items for compile_loadout testing."""
         return _make_champ(
             id="hero",
-            active_ability="",
+            active_abilities=[],
             passive_ability="",
             items=item_ids,
         )
@@ -400,7 +400,7 @@ class TestCompileLoadoutItems:
             armor=0,
             resistance=0,
             attack_range=1,
-            active_ability="",
+            active_abilities=[],
             passive_ability="",
         )
 

@@ -47,7 +47,8 @@ def _ability_block(ability_id: str, source: Any) -> dict[str, Any] | None:
 
 def _unit_block(unit: Any) -> dict[str, Any]:
     block = unit.to_dict()
-    block["active"] = _ability_block(unit.active_ability, unit)
+    # T.29d: units may carry multiple actives — one block per slot.
+    block["actives"] = [_ability_block(aid, unit) for aid in unit.active_abilities]
     block["passive"] = _ability_block(unit.passive_ability, unit)
     return block
 

@@ -127,9 +127,10 @@ def piece_from_champion(champion: Champion) -> Piece:
         passives=[champion.passive_ability] if champion.passive_ability else [],
         items=list(champion.items),
     )
-    # Set up active ability slot — mana statline from the ability def (V.48).
-    if champion.active_ability:
-        piece.actives.append(make_slot(champion.active_ability))
+    # One ActiveSlot per ability (T.29d, V.49) — mana statline from the ability
+    # def (V.48). Single-ability champs ⇒ one slot ⇒ byte-identical.
+    for ability_id in champion.active_abilities:
+        piece.actives.append(make_slot(ability_id))
     # Set HP
     piece.hp = float(champion.max_hp)
     piece.max_hp = float(champion.max_hp)
@@ -161,9 +162,9 @@ def piece_from_enemy(enemy: Enemy) -> Piece:
         level=enemy.level,
         passives=[enemy.passive_ability] if enemy.passive_ability else [],
     )
-    # Set up active ability slot — mana statline from the ability def (V.48).
-    if enemy.active_ability:
-        piece.actives.append(make_slot(enemy.active_ability))
+    # One ActiveSlot per ability (T.29d, V.49). Enemies may field >1 slot.
+    for ability_id in enemy.active_abilities:
+        piece.actives.append(make_slot(ability_id))
     # Set HP
     piece.hp = float(enemy.max_hp)
     piece.max_hp = float(enemy.max_hp)

@@ -77,18 +77,25 @@ def _mr_mod(value: float, source: str) -> Modifier:
 
 
 def _grant_start_mana(owner: Any, amount: float) -> None:
-    """Grant a FLAT amount of starting mana to all active slots (V.48, T.29c).
+    """Grant a flat TOTAL of starting mana, split across the piece's active slots
+    **by priority weight** (V.48/V.49, T.29d).
 
-    Cost is ≈300_000, so a meaningful head-start is sized in that scale (≈1/3 of
-    default cost = 100_000), not a flat sip. The grant is a flat value (not a
-    pct of cost). Bumps `start_mana` (the record) and seeds `current_mana`,
-    clamped to `max_mana`. Mana items NEVER reduce `mana_cost` — they grant
+    `amount` is the whole-piece total (≈1/3 of default cost = 100_000), so the
+    grant is **slot-count-invariant** — a 2-slot piece gets the same total as a
+    1-slot piece, distributed proportional to each slot's `priority` (matching the
+    charge cycle's weighting). This avoids the multi-slot duplication the MR cycle
+    was designed to prevent. Mana items NEVER reduce `mana_cost` — they grant
     `mana_regen` (Modifier) or `start_mana` (here). Runs from an on_combat_start
     hook (after all bundles applied, before the first tick).
     """
-    for slot in owner.actives:
-        slot.start_mana += int(amount)
-        slot.current_mana = min(float(slot.max_mana), slot.current_mana + amount)
+    slots = owner.actives
+    if not slots:
+        return
+    total_prio = sum(s.priority for s in slots)
+    for slot in slots:
+        share = amount * slot.priority / total_prio
+        slot.start_mana += int(round(share))
+        slot.current_mana = min(float(slot.max_mana), slot.current_mana + share)
 
 
 # ---------------------------------------------------------------------------

@@ -709,7 +709,7 @@ BATTLEMAGE_DMG = ScalingTerm("damage", 70.0, "intelligence*2.0")
 _BATTLEMAGE_SPLASH = 0.5
 
 
-@register_active("enemy_battlemage.active")
+@register_active("enemy_battlemage.active", priority=2)
 def battlemage_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
@@ -727,6 +727,23 @@ ABILITY_META["enemy_battlemage.active"] = AbilityMeta(
     terms=(BATTLEMAGE_DMG,),
     clauses=(Clause(f"Adjacent enemies take {int(_BATTLEMAGE_SPLASH * 100)}% splash."),),
     tags=("magic", "aoe"),
+)
+
+
+# --- Battlemage — Arcane Nova (AoE INT dmg) ---
+BATTLEMAGE_NOVA = ScalingTerm("damage", 45.0, "intelligence*1.4")
+
+
+@register_active("enemy_battlemage.active2")
+def enemy_battlemage_active2(ctx: Any, actor: Any, targets: list) -> None:
+    for e in enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx):
+        ctx.deal_damage(actor, e, BATTLEMAGE_NOVA.eval(actor), SourceTag.ABILITY, damage_type="magical")
+
+
+ABILITY_META["enemy_battlemage.active2"] = AbilityMeta(
+    name="Arcane Nova", kind="active",
+    blurb="Detonate arcane force for {damage} magic damage to all enemies within 2 hexes.",
+    terms=(BATTLEMAGE_NOVA,), tags=("magic", "aoe"),
 )
 
 
@@ -1355,7 +1372,7 @@ ABILITY_META["enemy_hierarch.passive"] = AbilityMeta(
 ARCANIST_DMG = ScalingTerm("damage", 100.0, "intelligence*2.8")
 
 
-@register_active("enemy_arcanist.active")
+@register_active("enemy_arcanist.active", priority=2)
 def arcanist_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
@@ -1378,6 +1395,28 @@ ABILITY_META["enemy_arcanist.active"] = AbilityMeta(
     terms=(ARCANIST_DMG,),
     clauses=(Clause("Bounces to up to 3 nearby enemies at 60%, 45%, then 30% damage."),),
     tags=("magic", "aoe"),
+)
+
+
+# --- Arcanist — Mana Burn (dmg + mana denial) ---
+ARCANIST_BURN = ScalingTerm("damage", 50.0, "intelligence*1.5")
+
+
+@register_active("enemy_arcanist.active2")
+def enemy_arcanist_active2(ctx: Any, actor: Any, targets: list) -> None:
+    target = primary_target(actor, ctx)
+    if not target:
+        return
+    ctx.deal_damage(actor, target, ARCANIST_BURN.eval(actor), SourceTag.ABILITY, damage_type="magical")
+    # Mana denial: drain the target's slot pools (direct slot write, V.48).
+    for slot in target.actives:
+        slot.current_mana = max(0.0, slot.current_mana - slot.mana_cost * 0.5)
+
+
+ABILITY_META["enemy_arcanist.active2"] = AbilityMeta(
+    name="Mana Burn", kind="active",
+    blurb="Sear the target for {damage} magic damage and drain half a cast's worth of mana.",
+    terms=(ARCANIST_BURN,), tags=("magic",),
 )
 
 
@@ -1560,7 +1599,7 @@ ABILITY_META["enemy_blight_lurker.active"] = AbilityMeta(
 DROWNED_SIREN_DMG = ScalingTerm("damage", 50.0, "intelligence*1.8")
 
 
-@register_active("enemy_drowned_siren.active")
+@register_active("enemy_drowned_siren.active", priority=2)
 def drowned_siren_active(ctx: Any, actor: Any, targets: list) -> None:
     amount = DROWNED_SIREN_DMG.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
@@ -1574,6 +1613,25 @@ ABILITY_META["enemy_drowned_siren.active"] = AbilityMeta(
     blurb="Flood all enemies within 2 hexes for {damage} magic damage each.",
     terms=(DROWNED_SIREN_DMG,),
     clauses=(Clause("Silences struck enemies for 2s."),), tags=("magic", "aoe", "silence"),
+)
+
+
+# --- Drowned Siren — Siren Wail (AoE slow + DoT) ---
+SIREN_WAIL = ScalingTerm("damage", 30.0, "intelligence*1.0")
+
+
+@register_active("enemy_drowned_siren.active2")
+def enemy_drowned_siren_active2(ctx: Any, actor: Any, targets: list) -> None:
+    for e in enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx):
+        ctx.deal_damage(actor, e, SIREN_WAIL.eval(actor), SourceTag.ABILITY, damage_type="magical")
+        ctx.apply_status(e, "slow", duration_ticks=secs(4), stacks=1, source_id=actor.id)
+        ctx.apply_status(e, "poison", duration_ticks=secs(4), stacks=1, source_id=actor.id)
+
+
+ABILITY_META["enemy_drowned_siren.active2"] = AbilityMeta(
+    name="Siren Wail", kind="active",
+    blurb="A keening wail deals {damage} magic damage, slowing and poisoning all enemies within 3 hexes.",
+    terms=(SIREN_WAIL,), clauses=(Clause("Slows and poisons for 4s."),), tags=("magic", "aoe", "slow"),
 )
 
 

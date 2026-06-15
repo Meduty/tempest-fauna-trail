@@ -30,6 +30,7 @@ from src.game.content import (
     ENEMY_ROSTER,
     _CHAMPION_DEFS,
     _ENEMY_DEFS,
+    discover_abilities,
 )
 from src.game.registries import ABILITY_META, _eval_scaling
 
@@ -37,11 +38,11 @@ SNAPSHOT_PATH = Path(__file__).parent / "ability_formulas.snapshot.json"
 
 # Champion roster ability-id coverage set (the V.38 guarantee for T.34a).
 CHAMPION_IDS = sorted(
-    {a for d in _CHAMPION_DEFS for a in (d.active_ability, d.passive_ability)}
+    {a for d in _CHAMPION_DEFS for a in (*discover_abilities(d.id), d.passive_ability)}
 )
 # Enemy roster ability-id coverage set (T.34b).
 ENEMY_IDS = sorted(
-    {a for d in _ENEMY_DEFS for a in (d.active_ability, d.passive_ability)}
+    {a for d in _ENEMY_DEFS for a in (*discover_abilities(d.id), d.passive_ability)}
 )
 
 # Boss ability-id coverage set (T.34c) — V.15 field-set over all 6 BossDdefs.
@@ -81,7 +82,7 @@ def _source_for(ability_id: str) -> object:
         return _BOSS_SHEETS[ability_id]
     return next(
         s for s in _ALL_SHEETS.values()
-        if ability_id in (s.active_ability, s.passive_ability)
+        if ability_id in (*s.active_abilities, s.passive_ability)
     )
 
 
@@ -109,13 +110,14 @@ def test_all_boss_abilities_have_meta() -> None:
 
 
 def test_champion_id_count() -> None:
-    # 60 champions x (active + passive) = 120 ids (content budget).
-    assert len(CHAMPION_IDS) == 120
+    # 60 champions x (active + passive) = 120, + 6 T.29d Multicaster `.active2`
+    # secondaries = 126 ids.
+    assert len(CHAMPION_IDS) == 126
 
 
 def test_enemy_id_count() -> None:
-    # 60 enemies x (active + passive) = 120 ids.
-    assert len(ENEMY_IDS) == 120
+    # 60 enemies x (active + passive) = 120, + 3 T.29d `.active2` secondaries = 123.
+    assert len(ENEMY_IDS) == 123
 
 
 def test_boss_id_count() -> None:
@@ -178,7 +180,7 @@ def test_term_numbers_match_eval_scaling() -> None:
     for aid in sampled:
         champ = next(
             c for c in CHAMPION_ROSTER.values()
-            if aid in (c.active_ability, c.passive_ability)
+            if aid in (*c.active_abilities, c.passive_ability)
         )
         meta = ABILITY_META[aid]
         for term in meta.terms:

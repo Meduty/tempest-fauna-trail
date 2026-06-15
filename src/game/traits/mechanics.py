@@ -99,6 +99,28 @@ def enrage(threshold: float = 0.25, as_mul: float = 1.5, str_mul: float = 1.3, d
     return build
 
 
+def cast_momentum(per: float = 0.04, cap: int = 5, mr_per: float = 0.03) -> HookBuilder:
+    """Multicaster (T.29d): each completed cast stacks +`per` attack_speed mul and
+    +`mr_per` mana_regen mul (COMBAT), up to `cap` stacks — casting snowballs the
+    next cast. Quick-caster identity; RNG-free per-cast cadence (V.2/V.14)."""
+    def build(owner: Piece, sid: str) -> list[Hook]:
+        state = {"stacks": 0}
+
+        def hook(ctx: Any, event: Any) -> None:
+            if not owner.alive or state["stacks"] >= cap:
+                return
+            # Only the caster's own casts count.
+            if getattr(event, "caster", None) is not owner:
+                return
+            state["stacks"] += 1
+            ctx.apply_modifier(owner, Modifier("attack_speed", "mul", 1.0 + per, Lifetime.COMBAT, sid))
+            ctx.apply_modifier(owner, Modifier("mana_regen", "mul", 1.0 + mr_per, Lifetime.COMBAT, sid))
+
+        return [Hook("on_cast_complete", hook, scope=HookScope.PER_HIT)]
+
+    return build
+
+
 def time_ramp(interval: int = 100, per: float = 0.03, cap: int = 8, stat: str = "attack_speed") -> HookBuilder:
     """Stack a small `stat` mul every `interval` ticks up to `cap` (Skirmisher)."""
     def build(owner: Piece, sid: str) -> list[Hook]:

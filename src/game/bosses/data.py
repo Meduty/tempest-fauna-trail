@@ -118,7 +118,7 @@ class BossDef:
             move_speed=self.move_speed,
             threat=self.threat,
             attack_range=self.attack_range,
-            active_ability=self.phase1_active,
+            active_abilities=[self.phase1_active] if self.phase1_active else [],
             passive_ability=self.phase1_passive,
         )
 

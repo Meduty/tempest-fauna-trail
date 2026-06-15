@@ -41,7 +41,7 @@ _CHAMP_DEFAULTS = dict(
     armor=0,
     resistance=0,
     attack_range=1,
-    active_ability="zap",
+    active_abilities=["zap"],
     passive_ability="none",
 )
 

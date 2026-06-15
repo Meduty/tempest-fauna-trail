@@ -45,7 +45,7 @@ def _make_champion(affinity: WeatherState) -> Champion:
         armor=10,
         resistance=10,
         attack_range=2,
-        active_ability="Test Cast",
+        active_abilities=["Test Cast"],
         passive_ability="Test Passive",
         traits=["Mammal", "Hunter"],
     )
@@ -69,7 +69,7 @@ def _make_enemy(affinity: WeatherState) -> Enemy:
         armor=8,
         resistance=8,
         attack_range=1,
-        active_ability="Test Cast",
+        active_abilities=["Test Cast"],
         passive_ability="Test Passive",
     )
 

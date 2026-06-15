@@ -111,8 +111,11 @@ class Champion:
     armor: int
     resistance: int
     attack_range: int
-    active_ability: str
     passive_ability: str
+    # Multi-slot abilities (T.29d, V.49): one ActiveSlot per id. A one-element
+    # list is the common single-ability case (byte-identical, V.2). Empty = no
+    # active. `active_ability` (below) is a back-compat read of the first entry.
+    active_abilities: list[str] = field(default_factory=list)
     traits: list[str] = field(default_factory=list)
     intent: str = "hybrid"
     role_code: str = ""
@@ -138,6 +141,12 @@ class Champion:
         _require_unit_float(self.crit_chance, "Champion crit_chance")
         _require_non_negative_int(self.penetration, "Champion penetration")
         _require_unit_float(self.penetration_pct, "Champion penetration_pct")
+
+        self.active_abilities = list(self.active_abilities)
+        if any(not isinstance(a, str) or not a for a in self.active_abilities):
+            raise ValueError("Champion active_abilities must be non-empty strings.")
+        if len(set(self.active_abilities)) != len(self.active_abilities):
+            raise ValueError("Champion active_abilities must be unique.")
 
         self.traits = list(self.traits)
         if any(not isinstance(t, str) or not t for t in self.traits):
@@ -185,7 +194,7 @@ class Champion:
             "armor": self.armor,
             "resistance": self.resistance,
             "attack_range": self.attack_range,
-            "active_ability": self.active_ability,
+            "active_abilities": list(self.active_abilities),
             "passive_ability": self.passive_ability,
             "crit_chance": self.crit_chance,
             "penetration": self.penetration,
@@ -215,7 +224,7 @@ class Champion:
             armor=payload["armor"],
             resistance=payload["resistance"],
             attack_range=payload["attack_range"],
-            active_ability=payload["active_ability"],
+            active_abilities=payload.get("active_abilities") or ([payload["active_ability"]] if payload.get("active_ability") else []),
             passive_ability=payload["passive_ability"],
             crit_chance=payload.get("crit_chance", 0.0),
             penetration=payload.get("penetration", 0),
@@ -243,8 +252,10 @@ class Enemy:
     armor: int
     resistance: int
     attack_range: int
-    active_ability: str
     passive_ability: str
+    # Multi-slot abilities (T.29d, V.49). Enemies may field >1 slot but never
+    # light up Callings (V.22). `active_ability` property = first entry.
+    active_abilities: list[str] = field(default_factory=list)
     intent: str = "hybrid"
     role_code: str = ""
     crit_chance: float = 0.0
@@ -267,6 +278,11 @@ class Enemy:
         _require_unit_float(self.crit_chance, "Enemy crit_chance")
         _require_non_negative_int(self.penetration, "Enemy penetration")
         _require_unit_float(self.penetration_pct, "Enemy penetration_pct")
+        self.active_abilities = list(self.active_abilities)
+        if any(not isinstance(a, str) or not a for a in self.active_abilities):
+            raise ValueError("Enemy active_abilities must be non-empty strings.")
+        if len(set(self.active_abilities)) != len(self.active_abilities):
+            raise ValueError("Enemy active_abilities must be unique.")
         if self.intent not in ("damage", "hybrid", "utility"):
             raise ValueError(
                 f"Enemy intent must be one of damage/hybrid/utility, got {self.intent!r}."
@@ -301,7 +317,7 @@ class Enemy:
             "armor": self.armor,
             "resistance": self.resistance,
             "attack_range": self.attack_range,
-            "active_ability": self.active_ability,
+            "active_abilities": list(self.active_abilities),
             "passive_ability": self.passive_ability,
             "crit_chance": self.crit_chance,
             "penetration": self.penetration,
@@ -329,7 +345,7 @@ class Enemy:
             armor=payload["armor"],
             resistance=payload["resistance"],
             attack_range=payload["attack_range"],
-            active_ability=payload["active_ability"],
+            active_abilities=payload.get("active_abilities") or ([payload["active_ability"]] if payload.get("active_ability") else []),
             passive_ability=payload["passive_ability"],
             crit_chance=payload.get("crit_chance", 0.0),
             penetration=payload.get("penetration", 0),

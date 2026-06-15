@@ -26,6 +26,7 @@ from .content import (
     build_role_code,
     classify_role,
     compose_stats,
+    discover_abilities,
 )
 from .models import Enemy, WeatherState
 from .route import StageDef
@@ -300,7 +301,7 @@ def _instantiate_enemy(d: EnemyDef, level: int) -> Enemy:
         move_speed=round(base["move_speed"]),
         threat=round(base["threat"]),
         attack_range=base["attack_range"],
-        active_ability=d.active_ability,
+        active_abilities=(d.abilities if d.abilities is not None else discover_abilities(d.id)),
         passive_ability=d.passive_ability,
         crit_chance=base["crit_chance"],
         penetration=base["penetration"],
@@ -675,7 +676,7 @@ def _champion_def_to_enemy(d: ChampionDef, level: int = 1) -> "Enemy":
         move_speed=round(base["move_speed"]),
         threat=round(base["threat"]),
         attack_range=base["attack_range"],
-        active_ability=d.active_ability,
+        active_abilities=(d.abilities if d.abilities is not None else discover_abilities(d.id)),
         passive_ability=d.passive_ability,
         crit_chance=base["crit_chance"],
         penetration=base["penetration"],

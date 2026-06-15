@@ -246,6 +246,17 @@ multi-cast explodes burst windows; implicit priority makes itemized multi-slot k
 
 ### 3.1b Multi-slot pieces + Multicaster showcase (NEW row **T.29d**)
 
+> ⚠️ **BUILT DIFFERENTLY THAN SKETCHED BELOW (2026-06-15) — code is truth.** The
+> §3.1b sketch (a `secondary=` authoring kwarg; secondary `priority=1`,
+> `mana_cost≈450_000` = 1.5×) was **superseded during build** by a cleaner design
+> (V.49): (1) **no `active_ability` singular** — one `active_abilities: list`;
+> (2) **convention discovery** — `discover_abilities` auto-attaches `{id}.active*`,
+> `abilities=` overrides (no `secondary=` kwarg); (3) **distinct slots required**
+> (cost OR unique priority — no simul-cast); default = same cost, unique priorities
+> (primary `priority=2`); (4) **Ultimate** secondaries for tier ≥ 5 (600k cost,
+> priority ∝ cost, ~2× output) instead of a flat 1.5×; (5) **start-mana split
+> priority-weighted** (slot-count-invariant). See the 2026-06-15 journal + V.49.
+
 > **Added 2026-06-14.** The §3.1a mana primitive makes multi-slot pieces cheap to enable
 > (the engine is already multi-slot via bosses). This sub ships the small model change +
 > a **new `Multicaster` Calling** + **9 showcase pieces** (6 champs, 3 enemies) carrying a

@@ -142,3 +142,13 @@ define_trait(
     (2, _TEAM, {"strength": 0.10, "intelligence": 0.10, "hp": 0.10}, {}, [m.second_wind()]),
     (3, _TEAM, {"strength": 0.14, "intelligence": 0.14, "hp": 0.14}, {}, [m.second_wind()]),
 )
+
+# Multicaster — pool 6 (the T.29d showcase champs), @2/3/4. Quick-caster: stack
+# attack_speed + mana_regen per cast (cast_momentum); no team apex (apex =
+# min(pool, cap), V.37). Per-trait throughout — the few-carrier quick-cast identity.
+define_trait(
+    "Multicaster",
+    (2, _PER, {"attack_speed": 0.06, "mana_regen": 0.10}, {}, [m.cast_momentum(per=0.04, cap=5)]),
+    (3, _PER, {"attack_speed": 0.06, "mana_regen": 0.10}, {}, [m.cast_momentum(per=0.05, cap=6)]),
+    (4, _PER, {"attack_speed": 0.08, "mana_regen": 0.14}, {}, [m.cast_momentum(per=0.06, cap=8)]),
+)

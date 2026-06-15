@@ -12,6 +12,17 @@ from src.game.scaling import (
     level_scale_stats,
     stat_multiplier,
 )
+from src.game.registries import ABILITY_REGISTRY
+import src.game.abilities as _abilities  # noqa: F401 — populate ABILITY_REGISTRY before roster build (discovery)
+
+
+def discover_abilities(piece_id: str) -> list[str]:
+    """Auto-discover a piece's active abilities by convention (T.29d, V.49):
+    every registered `{piece_id}.active`, `{piece_id}.active2`, … in sorted order
+    (`.active` < `.active2` < …). Empty if none registered. Defs may override via
+    the explicit `abilities=` kwarg (named kits / bosses / null stat-sticks)."""
+    pat = re.compile(rf"{re.escape(piece_id)}\.active\d*$")
+    return sorted(k for k in ABILITY_REGISTRY if pat.fullmatch(k))
 
 _BASE_STATS: dict[str, Any] = {
     "max_hp": 600,
@@ -210,6 +221,7 @@ CALLING_TAGS = frozenset(
         "Stalker",
         "Trickster",
         "Channeler",
+        "Multicaster",  # T.29d — quick-caster synergy on multi-slot champs
     }
 )
 ALL_TRAIT_TAGS = KINSHIP_TAGS | CALLING_TAGS
@@ -230,8 +242,11 @@ class ChampionDef:
     intent: str
     speed: str
     traits: list[str]
-    active_ability: str
     passive_ability: str
+    # Active abilities (T.29d, V.49): None ⇒ auto-discover `{id}.active*` from
+    # ABILITY_REGISTRY (convention default); explicit list ⇒ named kit or `[]`
+    # for a deliberately ability-less stat-stick piece.
+    abilities: list[str] | None = None
     stat_overrides: dict[str, int] = field(default_factory=dict)
 
 
@@ -248,8 +263,8 @@ class EnemyDef:
     intent: str
     speed: str
     tags: frozenset[str]
-    active_ability: str
     passive_ability: str
+    abilities: list[str] | None = None  # T.29d — None ⇒ discover `{id}.active*`
     stat_overrides: dict[str, int] = field(default_factory=dict)
 
 
@@ -382,7 +397,7 @@ def _build_champion(d: ChampionDef, level: int = 1) -> Champion:
         threat=round(base["threat"]),
         attack_range=base["attack_range"],
         traits=d.traits,
-        active_ability=d.active_ability,
+        active_abilities=(d.abilities if d.abilities is not None else discover_abilities(d.id)),
         passive_ability=d.passive_ability,
         crit_chance=base["crit_chance"],
         penetration=base["penetration"],
@@ -416,7 +431,7 @@ def _build_enemy(d: EnemyDef, level: int = 1) -> Enemy:
         move_speed=round(base["move_speed"]),
         threat=round(base["threat"]),
         attack_range=base["attack_range"],
-        active_ability=d.active_ability,
+        active_abilities=(d.abilities if d.abilities is not None else discover_abilities(d.id)),
         passive_ability=d.passive_ability,
         crit_chance=base["crit_chance"],
         penetration=base["penetration"],
@@ -437,6 +452,7 @@ def _champion_def(
     playstyle: str = "hybrid",
     intent: str = "hybrid",
     speed: str = "hybrid",
+    abilities: list[str] | None = None,
     stat_overrides: dict[str, int] | None = None,
 ) -> ChampionDef:
     # Every identity axis defaults to `hybrid` here (the factory is the sole home
@@ -455,8 +471,8 @@ def _champion_def(
         intent=intent,
         speed=speed,
         traits=traits,
-        active_ability=f"{id}.active",
         passive_ability=f"{id}.passive",
+        abilities=abilities,
         stat_overrides=stat_overrides or {},
     )
 
@@ -474,6 +490,7 @@ def _enemy_def(
     playstyle: str = "hybrid",
     intent: str = "hybrid",
     speed: str = "hybrid",
+    abilities: list[str] | None = None,
     stat_overrides: dict[str, int] | None = None,
 ) -> EnemyDef:
     return EnemyDef(
@@ -488,8 +505,8 @@ def _enemy_def(
         intent=intent,
         speed=speed,
         tags=tags,
-        active_ability=f"{id}.active",
         passive_ability=f"{id}.passive",
+        abilities=abilities,
         stat_overrides=stat_overrides or {},
     )
 
@@ -497,7 +514,7 @@ def _enemy_def(
 _CHAMPION_DEFS: tuple[ChampionDef, ...] = (
     _champion_def("champ_dawnwisp", "Dawnwisp", WeatherState.CLEAR, 1, "ranged", ["Spirit", "Mender"], stat="int", playstyle="ability", intent="utility", speed="hybrid"),
     _champion_def("champ_veldt_pronghorn", "Veldt Pronghorn", WeatherState.CLEAR, 2, "melee", ["Beast", "Skirmisher", "Packmate"], stat="str", playstyle="auto", intent="damage", speed="brisk"),
-    _champion_def("champ_ember_salamander", "Ember Salamander", WeatherState.CLEAR, 3, "ranged", ["Scaled", "Mystic"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="steady"),
+    _champion_def("champ_ember_salamander", "Ember Salamander", WeatherState.CLEAR, 3, "ranged", ["Scaled", "Mystic", "Multicaster"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="steady"),
     _champion_def("champ_goldcrest_lark", "Goldcrest Lark", WeatherState.CLEAR, 4, "ranged", ["Skyborn", "Warden"], stat="int", playstyle="ability", intent="utility", speed="hybrid"),
     _champion_def("champ_aegis_tortoise", "Aegis Tortoise", WeatherState.CLEAR, 5, "melee", ["Scaled", "Guardian"], stat="str", durability="tanky_arm", intent="utility", speed="leaden"),
     _champion_def("champ_sunmane_lion", "Sunmane Lion", WeatherState.CLEAR, 6, "melee", ["Beast", "Bruiser"], stat="str", playstyle="auto", intent="utility", speed="heavy"),
@@ -510,13 +527,13 @@ _CHAMPION_DEFS: tuple[ChampionDef, ...] = (
     _champion_def("champ_torrent_heron", "Torrent Heron", WeatherState.RAIN, 3, "ranged", ["Tidekin", "Mystic"], stat="str", durability="squishy", playstyle="ability", intent="damage", speed="hybrid"),
     _champion_def("champ_grovekeeper_tapir", "Grovekeeper Tapir", WeatherState.RAIN, 4, "melee", ["Tidekin", "Bruiser", "Mender"], durability="tanky_hp", speed="leaden"),
     _champion_def("champ_coral_colossus", "Coral Colossus", WeatherState.RAIN, 5, "melee", ["Tidekin", "Guardian", "Mender"], stat="str", durability="tanky_hp", intent="utility", speed="leaden"),
-    _champion_def("champ_marsh_thrush", "Marsh Thrush", WeatherState.RAIN, 6, "ranged", ["Skyborn", "Warden", "Mystic"], stat="int", playstyle="ability", intent="utility", speed="brisk"),
+    _champion_def("champ_marsh_thrush", "Marsh Thrush", WeatherState.RAIN, 6, "ranged", ["Skyborn", "Warden", "Mystic", "Multicaster"], stat="int", playstyle="ability", intent="utility", speed="brisk"),
     _champion_def("champ_mirewarden_toad", "Mirewarden Toad", WeatherState.RAIN, 7, "melee", ["Tidekin", "Guardian"], stat="int", durability="tanky_hp", playstyle="ability", intent="utility", speed="leaden"),
     _champion_def("champ_glade_heron", "Glade Heron", WeatherState.RAIN, 8, "ranged", ["Skyborn", "Hunter", "Trickster"], stat="int", playstyle="ability", intent="damage", stat_overrides={"resistance": 40}, speed="steady"),
     _champion_def("champ_riptide_caiman", "Riptide Caiman", WeatherState.RAIN, 9, "melee", ["Scaled", "Stalker"], stat="str", durability="squishy", playstyle="auto", intent="damage", speed="speedy"),
     _champion_def("champ_nerei", "Nerei, the Floodmother", WeatherState.RAIN, 10, "ranged", ["Tidekin", "Primordial", "Channeler"], speed="hybrid"),
     _champion_def("champ_snowpelt_cub", "Snowpelt Cub", WeatherState.SNOW, 1, "melee", ["Beast", "Guardian", "Packmate"], stat="str", durability="tanky_hp", intent="utility", speed="heavy"),
-    _champion_def("champ_wintermoth", "Wintermoth", WeatherState.SNOW, 2, "ranged", ["Swarm", "Warden"], stat="int", playstyle="ability", intent="utility", speed="steady"),
+    _champion_def("champ_wintermoth", "Wintermoth", WeatherState.SNOW, 2, "ranged", ["Swarm", "Warden", "Multicaster"], stat="int", playstyle="ability", intent="utility", speed="steady"),
     _champion_def("champ_permafrost_walrus", "Permafrost Walrus", WeatherState.SNOW, 3, "ranged", ["Tidekin", "Mystic"], stat="str", durability="squishy", playstyle="ability", intent="damage", speed="leaden"),
     _champion_def("champ_hoarfrost_owl", "Hoarfrost Owl", WeatherState.SNOW, 4, "ranged", ["Skyborn", "Warden"], stat="int", playstyle="ability", intent="utility", speed="brisk"),
     _champion_def("champ_frostplate_tortoise", "Frostplate Tortoise", WeatherState.SNOW, 5, "melee", ["Scaled", "Guardian"], stat="str", durability="tanky_arm", intent="utility", speed="heavy"),
@@ -528,7 +545,7 @@ _CHAMPION_DEFS: tuple[ChampionDef, ...] = (
     _champion_def("champ_pebbleback_pangolin", "Pebbleback Pangolin", WeatherState.CLOUDY, 1, "melee", ["Scaled", "Guardian", "Packmate"], stat="str", durability="tanky_hp", intent="utility", speed="leaden"),
     _champion_def("champ_dusk_bat", "Dusk Bat", WeatherState.CLOUDY, 2, "ranged", ["Swarm", "Trickster", "Hunter"], stat="int", playstyle="ability", intent="utility", speed="blinding"),
     _champion_def("champ_boulderhide_skink", "Boulderhide Skink", WeatherState.CLOUDY, 3, "ranged", ["Scaled", "Mystic", "Packmate"], stat="str", durability="squishy", playstyle="ability", intent="damage", speed="heavy"),
-    _champion_def("champ_geode_beetle", "Geode Beetle", WeatherState.CLOUDY, 4, "ranged", ["Swarm", "Warden"], stat="int", playstyle="ability", intent="utility", speed="heavy"),
+    _champion_def("champ_geode_beetle", "Geode Beetle", WeatherState.CLOUDY, 4, "ranged", ["Swarm", "Warden", "Multicaster"], stat="int", playstyle="ability", intent="utility", speed="heavy"),
     _champion_def("champ_duskstep_marten", "Duskstep Marten", WeatherState.CLOUDY, 5, "melee", ["Beast", "Skirmisher"], stat="int", playstyle="ability", intent="damage", speed="blinding"),
     _champion_def("champ_granite_gorilla", "Granite Gorilla", WeatherState.CLOUDY, 6, "melee", ["Beast", "Guardian"], stat="int", durability="tanky_hp", playstyle="ability", intent="utility", speed="leaden"),
     _champion_def("champ_eclipse_jaguar", "Eclipse Jaguar", WeatherState.CLOUDY, 7, "ranged", ["Beast", "Channeler"], speed="blinding"),
@@ -536,7 +553,7 @@ _CHAMPION_DEFS: tuple[ChampionDef, ...] = (
     _champion_def("champ_cliffeyrie_eagle", "Cliffeyrie Eagle", WeatherState.CLOUDY, 9, "ranged", ["Skyborn", "Hunter"], stat="str", playstyle="auto", intent="damage", speed="speedy"),
     _champion_def("champ_umbra", "Umbra, the Mountain's Shadow", WeatherState.CLOUDY, 10, "ranged", ["Scaled", "Primordial", "Stalker"], speed="steady"),
     _champion_def("champ_lostlight_wisp", "Lostlight Wisp", WeatherState.MIST, 1, "ranged", ["Spirit", "Mender"], stat="int", playstyle="ability", intent="utility", speed="brisk"),
-    _champion_def("champ_will_o_fawn", "Will-o-Fawn", WeatherState.MIST, 2, "ranged", ["Spirit", "Mystic"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="hybrid"),
+    _champion_def("champ_will_o_fawn", "Will-o-Fawn", WeatherState.MIST, 2, "ranged", ["Spirit", "Mystic", "Multicaster"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="hybrid"),
     _champion_def("champ_phantom_lynx", "Phantom Lynx", WeatherState.MIST, 3, "melee", ["Spirit", "Stalker", "Packmate"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="speedy"),
     _champion_def("champ_hollow_elk", "Hollow Elk", WeatherState.MIST, 4, "melee", ["Spirit", "Guardian", "Channeler"], stat="int", durability="tanky_hp", playstyle="ability", intent="utility", speed="steady"),
     _champion_def("champ_fogveil_moth", "Fogveil Moth", WeatherState.MIST, 5, "ranged", ["Swarm", "Trickster"], stat="int", playstyle="ability", intent="utility", speed="hybrid"),
@@ -550,7 +567,7 @@ _CHAMPION_DEFS: tuple[ChampionDef, ...] = (
     _champion_def("champ_voltscale_mamba", "Voltscale Mamba", WeatherState.THUNDER, 3, "melee", ["Scaled", "Stalker"], stat="str", durability="squishy", playstyle="auto", intent="damage", speed="blinding"),
     _champion_def("champ_coppercrest_stork", "Coppercrest Stork", WeatherState.THUNDER, 4, "ranged", ["Skyborn", "Warden"], stat="int", playstyle="ability", intent="utility", speed="speedy"),
     _champion_def("champ_thunderhide_bison", "Thunderhide Bison", WeatherState.THUNDER, 5, "melee", ["Beast", "Guardian", "Bruiser"], stat="str", durability="tanky_arm", intent="utility", speed="heavy"),
-    _champion_def("champ_tempest_eel", "Tempest Eel", WeatherState.THUNDER, 6, "ranged", ["Tidekin", "Mystic"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="speedy"),
+    _champion_def("champ_tempest_eel", "Tempest Eel", WeatherState.THUNDER, 6, "ranged", ["Tidekin", "Mystic", "Multicaster"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="speedy"),
     _champion_def("champ_voltmane_jackal", "Voltmane Jackal", WeatherState.THUNDER, 7, "ranged", ["Beast", "Skirmisher", "Channeler"], speed="brisk"),
     _champion_def("champ_thunderclap_gorilla", "Thunderclap Gorilla", WeatherState.THUNDER, 8, "melee", ["Beast", "Bruiser"], stat="str", playstyle="auto", intent="utility", speed="heavy"),
     _champion_def("champ_storm_eagle", "Storm Eagle", WeatherState.THUNDER, 9, "ranged", ["Skyborn", "Hunter", "Channeler"], stat="int", playstyle="ability", intent="damage", speed="brisk"),

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import src.game.abilities  # Trigger registration  # noqa: F401
 from src.game.combat.context import CombatContext
-from src.game.content import _CHAMPION_DEFS, _ENEMY_DEFS
+from src.game.content import _CHAMPION_DEFS, _ENEMY_DEFS, discover_abilities
 from src.game.effects import EventBus, Lifetime, Modifier, SourceTag
 from src.game.models import WeatherState
 from src.game.piece import ActiveSlot, Piece
@@ -81,11 +81,15 @@ def _make_ctx(pieces: list[Piece]) -> CombatContext:
 
 
 def test_all_champion_abilities_resolve():
-    """Every champion roster active_ability resolves in ABILITY_REGISTRY."""
+    """Every champion roster active ability resolves in ABILITY_REGISTRY (T.29d:
+    a piece may have multiple discovered actives; all must resolve)."""
     for d in _CHAMPION_DEFS:
-        assert d.active_ability in ABILITY_REGISTRY, (
-            f"Champion {d.id}: active_ability '{d.active_ability}' not in ABILITY_REGISTRY"
-        )
+        actives = d.abilities if d.abilities is not None else discover_abilities(d.id)
+        assert actives, f"Champion {d.id}: no active abilities discovered"
+        for aid in actives:
+            assert aid in ABILITY_REGISTRY, (
+                f"Champion {d.id}: active '{aid}' not in ABILITY_REGISTRY"
+            )
 
 
 def test_all_champion_passives_resolve():
@@ -97,11 +101,14 @@ def test_all_champion_passives_resolve():
 
 
 def test_all_enemy_abilities_resolve():
-    """Every enemy roster active_ability resolves in ABILITY_REGISTRY."""
+    """Every enemy roster active ability resolves in ABILITY_REGISTRY (T.29d)."""
     for d in _ENEMY_DEFS:
-        assert d.active_ability in ABILITY_REGISTRY, (
-            f"Enemy {d.id}: active_ability '{d.active_ability}' not in ABILITY_REGISTRY"
-        )
+        actives = d.abilities if d.abilities is not None else discover_abilities(d.id)
+        assert actives, f"Enemy {d.id}: no active abilities discovered"
+        for aid in actives:
+            assert aid in ABILITY_REGISTRY, (
+                f"Enemy {d.id}: active '{aid}' not in ABILITY_REGISTRY"
+            )
 
 
 def test_all_enemy_passives_resolve():

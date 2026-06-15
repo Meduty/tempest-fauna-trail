@@ -14,6 +14,7 @@ from src.game.content import (
     ENEMY_TAGS,
     ENEMY_TAGS_MAP,
     KINSHIP_TAGS,
+    discover_abilities,
     champions_by_affinity,
     compose_stats,
     enemies_by_affinity,
@@ -362,8 +363,11 @@ class TestAxisScalingAlignment:
                 continue  # str auto-satisfied via the auto-attack (1.0 STR + 0.2 INT)
             if d.id in _V47_SUMMON_INT_ALLOWLIST:
                 continue
+            # T.29d: a piece may have multiple discovered actives — INT may be
+            # referenced in any active or the passive.
+            active_ids = d.abilities if d.abilities is not None else discover_abilities(d.id)
             if not (
-                _meta_references_int(d.active_ability)
+                any(_meta_references_int(aid) for aid in active_ids)
                 or _meta_references_int(d.passive_ability)
             ):
                 offenders.append(f"{d.id} (stat={d.stat})")

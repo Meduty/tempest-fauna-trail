@@ -59,6 +59,15 @@ cadence is exact. Mana is per-slot: `mana_cost`/`max_mana` (default `2×cost`)/
 `start_mana`/`priority` are authored on the ability def (`ABILITY_MANA`), not a
 piece stat; a cast deducts `-= mana_cost` so overflow banks toward the next.
 
+**Multi-slot pieces (T.29d, V.49):** a piece carries `active_abilities: list[str]`
+— one `ActiveSlot` per id (single/null/multi are just list lengths; empty = a
+stat-stick with no mana bar). Roster ids are **discovered by convention**
+(`content.discover_abilities`: `{id}.active`, `{id}.active2`, … sorted) unless a
+def sets `abilities=` explicitly (bosses' named kits, or `[]`). A multicaster's
+slots must differ in cost **or** priority (no lockstep simul-cast); the default is
+same cost + unique priorities (primary dominant), with high-tier **Ultimate**
+secondaries diverging by cost (2×) + priority ∝ cost.
+
 **Status durations** are authored with `secs(x)` (seconds → ticks, fractions OK,
 e.g. `secs(3.5)`) — `SECS` (=100) for raw tick intervals. The stored value is
 always real ticks (no hidden runtime scaling; tick↔time stays honest). CC/DoT

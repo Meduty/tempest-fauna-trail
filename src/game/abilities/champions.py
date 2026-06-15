@@ -155,7 +155,7 @@ ABILITY_META["champ_veldt_pronghorn.active"] = AbilityMeta(
 EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "intelligence*1.8")
 
 
-@register_active("champ_ember_salamander.active")
+@register_active("champ_ember_salamander.active", priority=2)
 def ember_salamander_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
@@ -169,6 +169,27 @@ ABILITY_META["champ_ember_salamander.active"] = AbilityMeta(
     blurb="Sear the primary target for {damage} magic damage.",
     terms=(EMBER_SALAMANDER_DMG,),
     clauses=(Clause("Sets the target burning for 3s."),), tags=("magic", "burn"),
+)
+
+
+# --- Ember Salamander — Magma Burst (INT splash) ---
+EMBER_MAGMA_BURST = ScalingTerm("damage", 60.0, "intelligence*1.8")
+
+
+@register_active("champ_ember_salamander.active2")
+def ember_salamander_active2(ctx: Any, actor: Any, targets: list) -> None:
+    target = primary_target(actor, ctx)
+    if not target:
+        return
+    dmg = EMBER_MAGMA_BURST.eval(actor)
+    for e in enemies_in_radius(target.position_q, target.position_r, 2, actor, ctx):
+        ctx.deal_damage(actor, e, dmg, SourceTag.ABILITY, damage_type="magical")
+
+
+ABILITY_META["champ_ember_salamander.active2"] = AbilityMeta(
+    name="Magma Burst", kind="active",
+    blurb="Erupt molten rock for {damage} magic damage to all enemies within 2 hexes of the target.",
+    terms=(EMBER_MAGMA_BURST,), tags=("magic", "aoe"),
 )
 
 
@@ -838,6 +859,31 @@ ABILITY_META["champ_marsh_thrush.active"] = AbilityMeta(
 )
 
 
+# --- Marsh Thrush — Galecrash (ULTIMATE, T6) ---
+# Tier >= 5 multicaster secondary = ultimate: 2x default cost (600_000), ~2x
+# output (T.29d). Fires ~half as often as the primary at equal MR share.
+MARSH_GALECRASH = ScalingTerm("damage", 120.0, "intelligence*3.0")
+
+
+@register_active("champ_marsh_thrush.active2", mana_cost=600_000, priority=2)
+def marsh_thrush_active2(ctx: Any, actor: Any, targets: list) -> None:
+    # Stormfront: heavy AoE around the furthest enemy + team-wide slow.
+    anchor = furthest_enemy(actor, ctx) or primary_target(actor, ctx)
+    if not anchor:
+        return
+    dmg = MARSH_GALECRASH.eval(actor)
+    for e in enemies_in_radius(anchor.position_q, anchor.position_r, 3, actor, ctx):
+        ctx.deal_damage(actor, e, dmg, SourceTag.ABILITY, damage_type="magical")
+        ctx.apply_status(e, "slow", duration_ticks=secs(4), stacks=2, source_id=actor.id)
+
+
+ABILITY_META["champ_marsh_thrush.active2"] = AbilityMeta(
+    name="Galecrash", kind="active",
+    blurb="ULTIMATE: a stormfront deals {damage} magic damage and heavily slows all enemies within 3 hexes of the furthest target.",
+    terms=(MARSH_GALECRASH,), clauses=(Clause("Slows for 4s."),), tags=("magic", "aoe", "slow", "ultimate"),
+)
+
+
 MARSH_THRUSH_PASSIVE_MS = ScalingTerm("speed", 5.0, "intelligence*0.1")
 
 
@@ -1126,7 +1172,7 @@ ABILITY_META["champ_snowpelt_cub.active"] = AbilityMeta(
 WINTERMOTH_HEAL = ScalingTerm("heal", 20.0, "intelligence*1.0")
 
 
-@register_active("champ_wintermoth.active")
+@register_active("champ_wintermoth.active", priority=2)
 def wintermoth_active(ctx: Any, actor: Any, targets: list) -> None:
     ally = lowest_hp_ally(actor, ctx)
     if not ally:
@@ -1143,6 +1189,24 @@ ABILITY_META["champ_wintermoth.active"] = AbilityMeta(
     name="Frost Blessing", kind="active",
     blurb="Grant the lowest-HP ally +25 Attack Speed for 6s and heal {heal}.",
     terms=(WINTERMOTH_HEAL,), tags=("buff", "heal"),
+)
+
+
+# --- Wintermoth — Frost Pollen (chill/slow enemies in radius) ---
+WINTERMOTH_FROST = ScalingTerm("damage", 30.0, "intelligence*1.0")
+
+
+@register_active("champ_wintermoth.active2")
+def wintermoth_active2(ctx: Any, actor: Any, targets: list) -> None:
+    for e in enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx):
+        ctx.deal_damage(actor, e, WINTERMOTH_FROST.eval(actor), SourceTag.ABILITY, damage_type="magical")
+        ctx.apply_status(e, "slow", duration_ticks=secs(4), stacks=1, source_id=actor.id)
+
+
+ABILITY_META["champ_wintermoth.active2"] = AbilityMeta(
+    name="Frost Pollen", kind="active",
+    blurb="Scatter chilling spores for {damage} magic damage, slowing all enemies within 3 hexes.",
+    terms=(WINTERMOTH_FROST,), clauses=(Clause("Slows for 4s."),), tags=("magic", "aoe", "slow"),
 )
 
 
@@ -1673,7 +1737,7 @@ GEODE_BEETLE_ARMOR = ScalingTerm("armor", 80.0, "intelligence*0.35")
 GEODE_BEETLE_RES = ScalingTerm("resistance", 40.0, "intelligence*0.2")
 
 
-@register_active("champ_geode_beetle.active")
+@register_active("champ_geode_beetle.active", priority=2)
 def geode_beetle_active(ctx: Any, actor: Any, targets: list) -> None:
     ally = lowest_hp_ally(actor, ctx)
     if not ally:
@@ -1696,6 +1760,25 @@ ABILITY_META["champ_geode_beetle.active"] = AbilityMeta(
     clauses=(Clause(template="Grants +{armor} Armor and +{resistance} Resistance.",
                     terms=(GEODE_BEETLE_ARMOR, GEODE_BEETLE_RES)),),
     tags=("defense", "buff"),
+)
+
+
+# --- Geode Beetle — Crystal Lattice (shield lowest-HP ally) ---
+GEODE_SHIELD = ScalingTerm("shield", 80.0, "intelligence*2.0")
+
+
+@register_active("champ_geode_beetle.active2")
+def geode_beetle_active2(ctx: Any, actor: Any, targets: list) -> None:
+    ally = lowest_hp_ally(actor, ctx)
+    if not ally:
+        return
+    ctx.grant_barrier(ally, GEODE_SHIELD.eval(actor), duration_ticks=secs(6))
+
+
+ABILITY_META["champ_geode_beetle.active2"] = AbilityMeta(
+    name="Crystal Lattice", kind="active",
+    blurb="Encase the lowest-HP ally in a {shield}-point crystal barrier (6s).",
+    terms=(GEODE_SHIELD,), tags=("shield", "support"),
 )
 
 
@@ -2114,7 +2197,7 @@ ABILITY_META["champ_lostlight_wisp.passive"] = AbilityMeta(
 WILL_O_FAWN_HASTE = ScalingTerm("haste", 40.0, "intelligence*0.2")
 
 
-@register_active("champ_will_o_fawn.active")
+@register_active("champ_will_o_fawn.active", priority=2)
 def will_o_fawn_active(ctx: Any, actor: Any, targets: list) -> None:
     # Grant an ally a temporary attack speed buff (simulates double attack)
     allies = [a for a in ctx.allies_of(actor) if a is not actor]
@@ -2133,6 +2216,28 @@ ABILITY_META["champ_will_o_fawn.active"] = AbilityMeta(
     blurb="Grant a wounded ally Attack Speed for 3s.",
     clauses=(Clause(template="Grants +{haste} Attack Speed.", terms=(WILL_O_FAWN_HASTE,)),),
     tags=("buff",),
+)
+
+
+# --- Will-o-Fawn — Wisp Lure (INT dmg + threat drop, primary target) ---
+WILL_WISP_LURE = ScalingTerm("damage", 50.0, "intelligence*1.6")
+
+
+@register_active("champ_will_o_fawn.active2")
+def will_o_fawn_active2(ctx: Any, actor: Any, targets: list) -> None:
+    target = primary_target(actor, ctx)
+    if not target:
+        return
+    ctx.deal_damage(actor, target, WILL_WISP_LURE.eval(actor), SourceTag.ABILITY, damage_type="magical")
+    # Threat drop: temporary -30% threat so the wisp is harder to pin down.
+    ctx.apply_modifier(actor, Modifier("threat", "mul", 0.70, Lifetime.TIMED, "champ_will_o_fawn.active2",
+                                       expires_at_tick=ctx.current_tick + secs(4)))
+
+
+ABILITY_META["champ_will_o_fawn.active2"] = AbilityMeta(
+    name="Wisp Lure", kind="active",
+    blurb="Lure the target with a phantom light for {damage} magic damage; the caster sheds threat.",
+    terms=(WILL_WISP_LURE,), clauses=(Clause("-30% threat for 4s."),), tags=("magic",),
 )
 
 
@@ -2778,6 +2883,35 @@ ABILITY_META["champ_tempest_eel.active"] = AbilityMeta(
     terms=(TEMPEST_EEL_DMG,),
     clauses=(Clause(f"Arcs to up to 2 nearby enemies for {int(_TEMPEST_EEL_CHAIN1_MULT * 100)}% then {int(_TEMPEST_EEL_CHAIN2_MULT * 100)}% damage."),),
     tags=("magic", "aoe"),
+)
+
+
+# --- Tempest Eel — Maelstrom (ULTIMATE, T6) ---
+# Tier >= 5 multicaster secondary = ultimate: 2x default cost (600_000), ~2x
+# output (T.29d). Full chain-lightning storm vs the single Voltaic Lash.
+TEMPEST_MAELSTROM = ScalingTerm("damage", 110.0, "intelligence*3.0")
+
+
+@register_active("champ_tempest_eel.active2", mana_cost=600_000, priority=2)
+def tempest_eel_active2(ctx: Any, actor: Any, targets: list) -> None:
+    target = primary_target(actor, ctx)
+    if not target:
+        return
+    dmg = TEMPEST_MAELSTROM.eval(actor)
+    ctx.deal_damage(actor, target, dmg, SourceTag.ABILITY, damage_type="magical")
+    ctx.apply_status(target, "charged", duration_ticks=secs(3), source_id=actor.id)
+    # Storm: arc to EVERY other enemy near the target at 70% damage.
+    for e in enemies_in_radius(target.position_q, target.position_r, 3, actor, ctx):
+        if e is target:
+            continue
+        ctx.deal_damage(actor, e, dmg * 0.7, SourceTag.ABILITY, damage_type="magical")
+        ctx.apply_status(e, "charged", duration_ticks=secs(3), source_id=actor.id)
+
+
+ABILITY_META["champ_tempest_eel.active2"] = AbilityMeta(
+    name="Maelstrom", kind="active",
+    blurb="ULTIMATE: a lightning storm hits the target for {damage} magic damage, arcing to every nearby enemy at 70%.",
+    terms=(TEMPEST_MAELSTROM,), clauses=(Clause("Charges all struck enemies for 3s."),), tags=("magic", "aoe", "chain", "ultimate"),
 )
 
 

@@ -492,7 +492,7 @@ class TestLoadout:
             role="tank", tier=1, level=1, max_hp=1000, strength=50,
             intelligence=30, attack_speed=100, move_speed=90, mana_regen=10,
             threat=60, armor=25, resistance=25, attack_range=1,
-            active_ability="smash", passive_ability="",
+            active_abilities=["smash"], passive_ability="",
         )
         piece = piece_from_champion(champ)
         assert piece.id == "test_champ"
@@ -508,14 +508,14 @@ class TestLoadout:
             role="tank", tier=1, level=1, max_hp=1000, strength=50,
             intelligence=30, attack_speed=100, move_speed=90, mana_regen=10,
             threat=60, armor=25, resistance=25, attack_range=1,
-            active_ability="smash", passive_ability="",
+            active_abilities=["smash"], passive_ability="",
         )
         enemy = Enemy(
             id="test_enemy", name="Baddie", affinity=WeatherState.RAIN,
             role="fighter", tier=1, level=1, max_hp=800, strength=40,
             intelligence=20, attack_speed=90, move_speed=80, mana_regen=8,
             threat=50, armor=20, resistance=20, attack_range=1,
-            active_ability="smash", passive_ability="",
+            active_abilities=["smash"], passive_ability="",
         )
         pieces, bus, _ = compile_loadout([champ], [enemy], WeatherState.CLEAR)
         assert len(pieces) == 2
@@ -564,14 +564,14 @@ class TestResolveCombatEntryPoint:
             role="tank", tier=1, level=1, max_hp=1000, strength=80,
             intelligence=30, attack_speed=100, move_speed=90, mana_regen=10,
             threat=60, armor=25, resistance=25, attack_range=1,
-            active_ability="smash", passive_ability="",
+            active_abilities=["smash"], passive_ability="",
         )
         enemy = Enemy(
             id="test_enemy", name="Baddie", affinity=WeatherState.CLEAR,
             role="fighter", tier=1, level=1, max_hp=500, strength=30,
             intelligence=20, attack_speed=80, move_speed=80, mana_regen=8,
             threat=50, armor=20, resistance=20, attack_range=1,
-            active_ability="", passive_ability="",
+            active_abilities=[], passive_ability="",
         )
         result = resolve_combat([champ], [enemy], WeatherState.CLEAR)
         assert result.outcome == CombatOutcome.WIN
