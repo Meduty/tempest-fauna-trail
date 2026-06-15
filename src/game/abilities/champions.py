@@ -687,7 +687,7 @@ ABILITY_META["champ_reedbank_otter.active"] = AbilityMeta(
 
 # --- Torrent Heron (T3, APC-STR Mage) ---
 # Cast: three water-spears in a cone, STR-scaled.
-TORRENT_HERON_DMG = ScalingTerm("damage", 50.0, "strength*1.28")
+TORRENT_HERON_DMG = ScalingTerm("damage", 50.0, "strength*0.7+intelligence*1.0")
 _TORRENT_SPLASH_MULT = 0.6
 
 
@@ -1488,10 +1488,17 @@ ABILITY_META["champ_frostfang_wolverine.active"] = AbilityMeta(
 )
 
 
+# Hybrid auto (T.29d, every-Nth-auto INT proc): STR autos hit hard, and every 3rd
+# auto detonates an INT frost burst — kit reads BOTH stats (V.47). Active stays the
+# STR crit leap (Frozen Leap).
+FROSTFANG_WOLVERINE_PROC = ScalingTerm("burst", 0.0, "intelligence*1.4")
+
+
 @register_passive("champ_frostfang_wolverine.passive")
 def frostfang_wolverine_passive(owner: Any) -> EffectBundle:
-    # Frenzy: gains AS after each kill
-    def hook(ctx: Any, event: Any) -> None:
+    state = {"n": 0}
+
+    def on_kill(ctx: Any, event: Any) -> None:
         if event.killer is not owner:
             return
         ctx.apply_modifier(owner, Modifier(
@@ -1499,15 +1506,25 @@ def frostfang_wolverine_passive(owner: Any) -> EffectBundle:
             "passive:champ_frostfang_wolverine.frenzy",
         ))
 
+    def on_hit(ctx: Any, event: Any) -> None:
+        if event.attacker is not owner or not event.target.alive:
+            return
+        state["n"] += 1
+        if state["n"] % 3 == 0:
+            ctx.deal_damage(owner, event.target, FROSTFANG_WOLVERINE_PROC.eval(owner),
+                            SourceTag.ABILITY, damage_type="magical")
+
     return EffectBundle(hooks=[
-        Hook("on_kill", hook, scope=HookScope.PER_HIT),
+        Hook("on_kill", on_kill, scope=HookScope.PER_HIT),
+        Hook("on_attack_landed", on_hit, scope=HookScope.PER_HIT),
     ])
 
 
 ABILITY_META["champ_frostfang_wolverine.passive"] = AbilityMeta(
     name="Frenzy", kind="passive",
-    blurb="Each kill grants +20 Attack Speed for the rest of the battle.",
-    tags=("buff", "scaling"),
+    blurb="Each kill grants +20 Attack Speed for the battle; every 3rd auto-attack "
+          "detonates a {burst} magic frost burst.",
+    terms=(FROSTFANG_WOLVERINE_PROC,), tags=("buff", "magic", "scaling"),
 )
 
 
@@ -2061,7 +2078,7 @@ ABILITY_META["champ_cliffeyrie_eagle.passive"] = AbilityMeta(
 )
 
 
-CLIFFEYRIE_EAGLE_DMG = ScalingTerm("damage", 80.0, "strength*1.76")
+CLIFFEYRIE_EAGLE_DMG = ScalingTerm("damage", 80.0, "strength*0.9+intelligence*1.1")
 
 
 @register_active("champ_cliffeyrie_eagle.active")
@@ -2368,7 +2385,7 @@ ABILITY_META["champ_hollow_elk.active"] = AbilityMeta(
 
 # --- Fogveil Moth (T5, Trickster) ---
 # Active: shroud enemy (reduce their AS — simulates miss chance)
-FOGVEIL_MOTH_DMG = ScalingTerm("damage", 30.0, "intelligence*1.73")
+FOGVEIL_MOTH_DMG = ScalingTerm("damage", 30.0, "strength*0.6+intelligence*1.0")
 
 
 @register_active("champ_fogveil_moth.active")
@@ -2427,12 +2444,19 @@ ABILITY_META["champ_wraithorn_stag.active"] = AbilityMeta(
 )
 
 
+# Hybrid auto (T.29d, INT-buffs-autos): autos deal bonus INT magic damage; the
+# active is the STR burst (Spectral Gore) — kit reads BOTH stats (V.47). High STR
+# autos hit hard, INT rides along as on-hit magic (Volibear feel).
+WRAITHORN_STAG_ONHIT = ScalingTerm("bonus", 0.0, "intelligence*0.6")
+
+
 @register_passive("champ_wraithorn_stag.passive")
 def wraithorn_stag_passive(owner: Any) -> EffectBundle:
-    # Phase-move: gains move speed after attacking
     def hook(ctx: Any, event: Any) -> None:
-        if event.attacker is not owner:
+        if event.attacker is not owner or not event.target.alive:
             return
+        ctx.deal_damage(owner, event.target, WRAITHORN_STAG_ONHIT.eval(owner),
+                        SourceTag.ABILITY, damage_type="magical")
         ctx.apply_modifier(owner, Modifier(
             "move_speed", "add", 25.0, Lifetime.TIMED,
             "passive:champ_wraithorn_stag",
@@ -2446,8 +2470,8 @@ def wraithorn_stag_passive(owner: Any) -> EffectBundle:
 
 ABILITY_META["champ_wraithorn_stag.passive"] = AbilityMeta(
     name="Phase Drift", kind="passive",
-    blurb="Auto-attacks grant +25 Move Speed for 3s.",
-    tags=("buff",),
+    blurb="Auto-attacks deal {bonus} bonus magic damage and grant +25 Move Speed for 3s.",
+    terms=(WRAITHORN_STAG_ONHIT,), tags=("magic", "buff"),
 )
 
 
@@ -2710,9 +2734,21 @@ ABILITY_META["champ_sparkfly.passive"] = AbilityMeta(
 
 # --- Thunderhoof Colt (T2, ADC-STR Skirmisher) ---
 # Passive: stacking AS when auto attacked
+# Hybrid auto (T.29d, AS-per-INT): INT fuels attack speed (more autos), STR makes
+# each auto hit — a Jax/Voli-style hybrid auto-carrier. Active stays STR (Thunder
+# Charge), passive routes INT → AS, so the kit reads BOTH stats (V.47).
+THUNDERHOOF_COLT_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.5")
+
+
 @register_passive("champ_thunderhoof_colt.passive")
 def thunderhoof_colt_passive(owner: Any) -> EffectBundle:
-    def hook(ctx: Any, event: Any) -> None:
+    def on_start(ctx: Any, event: Any) -> None:
+        ctx.apply_modifier(owner, Modifier(
+            "attack_speed", "add", THUNDERHOOF_COLT_HASTE.eval(owner),
+            Lifetime.COMBAT, "passive:champ_thunderhoof_colt.int_haste",
+        ))
+
+    def on_hit(ctx: Any, event: Any) -> None:
         if event.target is not owner:
             return
         ctx.apply_modifier(owner, Modifier(
@@ -2722,14 +2758,16 @@ def thunderhoof_colt_passive(owner: Any) -> EffectBundle:
         ))
 
     return EffectBundle(hooks=[
-        Hook("on_damage_taken", hook, scope=HookScope.PER_HIT),
+        Hook("on_combat_start", on_start, scope=HookScope.PER_HIT),
+        Hook("on_damage_taken", on_hit, scope=HookScope.PER_HIT),
     ])
 
 
 ABILITY_META["champ_thunderhoof_colt.passive"] = AbilityMeta(
     name="Galvanize", kind="passive",
-    blurb="Each hit taken grants +8 Attack Speed for 6s, stacking.",
-    tags=("buff",),
+    blurb="Gain attack speed scaling on Intelligence ({haste}) at combat start; "
+          "each hit taken adds +8 Attack Speed for 6s, stacking.",
+    terms=(THUNDERHOOF_COLT_HASTE,), tags=("buff", "haste"),
 )
 
 
