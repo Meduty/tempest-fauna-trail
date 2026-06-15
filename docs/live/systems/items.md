@@ -114,14 +114,14 @@ factories represent the scale factor (e.g. `1.12` = ×1.12 the base stat).
 | `tempest_talons` | talon + talon | ×1.24 AS; each auto-hit adds +0.5% of current AS (compounding ramp) |
 | `worldroot_bloom` | heartseed + heartseed | ×1.30 INT (pure stat stick) |
 | `deepwell` | springtear + springtear | ×1.30 `mana_regen` + +200_000 flat starting mana (≈2/3 of default cost); after first cast, refunds 50% of `mana_cost` (clamped to `max_mana`) on every subsequent cast (V.48) |
-| `mammoth_hide` | old_hide + old_hide | ×1.24 HP; regenerates 2% max HP every 1.5 s while not recently damaged (2 s window) |
-| `bramble_carapace` | stoneplate + stoneplate | ×1.28 Armor; when struck by a melee attacker, retaliates INT×0.35 magic damage (ITEM_PROC) |
-| `mistward_shroud` | wardpelt + wardpelt | ×1.28 RES; regenerates 1.5% max HP every second |
+| `mammoth_hide` | old_hide + old_hide | ×1.24 HP; every 2 s heals holder + adjacent allies 2% max HP (team regen aura ≈1%/s, ungated) |
+| `bramble_carapace` | stoneplate + stoneplate | ×1.28 Armor; flat 80 magic retaliate to melee attackers (thorns — flat by design, tank item) |
+| `mistward_shroud` | wardpelt + wardpelt | ×1.28 RES; regenerates 1% max HP every second (self only) |
 | `perfect_predator` | keen_claw + keen_claw | +30% crit chance; critical hits deal +25% bonus damage (ITEM_PROC) |
 | `bloodthorn_briar` | fang + heartseed | ×1.12 STR, ×1.12 INT; heals holder for 18% of all damage dealt |
 | `wildfury_lash` | talon + heartseed | ×1.12 AS, ×1.12 INT; each auto adds +1% current AS; every 5th auto triggers a free cast |
 | `everbloom_staff` | heartseed + springtear | ×1.12 INT, ×1.15 `mana_regen`, +100_000 flat starting mana; INT grows +1% per 2 s while alive (V.48) |
-| `witherbloom_censer` | heartseed + old_hide | ×1.12 INT, ×1.12 HP; basic attacks apply burn (150 ticks) to the target |
+| `witherbloom_censer` | heartseed + old_hide | ×1.12 INT, ×1.12 HP; autos apply burn (300 t = 3 s) + sunder target RES ×0.80 while burning (single refreshing TIMED mod) |
 | `stormglass_totem` | heartseed + wardpelt | ×1.12 INT, ×1.14 RES; when a nearby enemy casts (radius 5), zaps them for INT×0.50 magic damage |
 | `spellfang_crown` | heartseed + keen_claw | ×1.12 INT, +15% crit chance; abilities can crit (`ability_can_crit` set on `on_combat_start`) |
 | `living_bulwark` | old_hide + stoneplate | ×1.12 HP, ×1.14 Armor; no hooks |

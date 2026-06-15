@@ -135,7 +135,7 @@ def keen_claw(owner: Any) -> EffectBundle:
 
 @register_item("springtear")
 def springtear(owner: Any) -> EffectBundle:
-    """Springtear — +15% mana regen and +200 starting mana (V.48, T.29c).
+    """Springtear — +15% mana regen and +100_000 flat starting mana (V.48, T.29c).
 
     The mana component: faster casting via the `mana_regen` cast-rate knob
     (Modifier) plus a head-start (`start_mana`). Never touches `mana_cost`.
@@ -197,8 +197,8 @@ def worldroot_bloom(owner: Any) -> EffectBundle:
 # --- Deepwell (Springtear + Springtear) ---
 @register_item("deepwell")
 def deepwell(owner: Any) -> EffectBundle:
-    """Deepwell — +30% mana regen and +400 starting mana; after the first cast,
-    refunds 50% of `mana_cost` on every subsequent cast (V.48, T.29c).
+    """Deepwell — +30% mana regen and +200_000 flat starting mana; after the first
+    cast, refunds 50% of `mana_cost` on every subsequent cast (V.48, T.29c).
 
     Never reduces `mana_cost`; the refund grants mana (clamped to `max_mana`)."""
     state: dict[str, bool] = {"first_cast_done": False}
@@ -230,49 +230,43 @@ def deepwell(owner: Any) -> EffectBundle:
 # --- Mammoth Hide (Old Hide + Old Hide) ---
 @register_item("mammoth_hide")
 def mammoth_hide(owner: Any) -> EffectBundle:
-    """Mammoth Hide — +24% HP; regenerates 2% max HP every 1.5 s while not
-    recently damaged (no damage taken in the last 2 s)."""
-    last_damaged: list[int] = [-9999]   # mutable closure: last tick owner took damage
-
-    def on_damaged(ctx: Any, ev: Any) -> None:
-        if ev.target is owner:
-            last_damaged[0] = ctx.current_tick
-
+    """Mammoth Hide — +24% HP; every 2 s heals the holder AND adjacent allies for
+    2% of their max HP (a frontline regen aura ≈ 1%/s, ungated). The team-wide
+    sibling of Mistward Shroud's self-only 1%/s sustain."""
     def on_tick(ctx: Any, ev: Any) -> None:
         if not owner.alive:
             return
-        tick = ev.tick
-        # Regen pulse every 150 ticks (1.5 s); no damage in last 200 ticks (2 s).
-        if tick % 150 != 0:
+        if ev.tick == 0 or ev.tick % 200 != 0:   # every 200 ticks = 2 s
             return
-        if tick - last_damaged[0] >= 200:
-            ctx.heal(owner, owner, owner.max_hp * 0.02)
+        from src.game.targeting import allies_in_radius
+        # radius 1 = adjacent; allies_of includes self, so owner is covered.
+        for ally in allies_in_radius(owner.position_q, owner.position_r, 1, owner, ctx):
+            ctx.heal(owner, ally, ally.max_hp * 0.02)
 
     return EffectBundle(
         modifiers=[_hp_mod(1.24, "item:mammoth_hide")],
-        hooks=[
-            Hook("on_damage_taken", on_damaged, scope=HookScope.PER_HIT),
-            Hook("on_tick", on_tick, scope=HookScope.PER_HIT),
-        ],
+        hooks=[Hook("on_tick", on_tick, scope=HookScope.PER_HIT)],
     )
 
 
 # --- Bramble Carapace (Stoneplate + Stoneplate) ---
 @register_item("bramble_carapace")
 def bramble_carapace(owner: Any) -> EffectBundle:
-    """Bramble Carapace — +28% Armor; when struck by a melee attacker, retaliates
-    with magic damage proportional to the holder's Intelligence."""
+    """Bramble Carapace — +28% Armor; retaliates a FLAT magic hit to any melee
+    attacker (thorns, TFT-style). Flat by design: it's a tank item and INT is the
+    tank dump stat (the old INT×0.35 dealt ~2 dmg). Flat ≈80 stays relevant as
+    chip + punishes fast multi-hit attackers."""
+    THORNS = 80.0
+
     def on_damaged(ctx: Any, ev: Any) -> None:
         if ev.target is not owner:
             return
         attacker = ev.attacker
         if attacker is None or not attacker.alive:
             return
-        # Melee: attack_range == 1
-        if attacker.stat("attack_range") > 1:
+        if attacker.stat("attack_range") > 1:   # melee only (range 1)
             return
-        dmg = owner.stat("intelligence") * 0.35
-        ctx.deal_damage(owner, attacker, dmg, SourceTag.ITEM_PROC)
+        ctx.deal_damage(owner, attacker, THORNS, SourceTag.ITEM_PROC)
 
     return EffectBundle(
         modifiers=[_armor_mod(1.28, "item:bramble_carapace")],
@@ -283,12 +277,13 @@ def bramble_carapace(owner: Any) -> EffectBundle:
 # --- Mistward Shroud (Wardpelt + Wardpelt) ---
 @register_item("mistward_shroud")
 def mistward_shroud(owner: Any) -> EffectBundle:
-    """Mistward Shroud — +28% Resistance; regenerates 1.5% max HP every second."""
+    """Mistward Shroud — +28% Resistance; regenerates 1% max HP every second
+    (self only). Mammoth Hide is the team-wide regen sibling."""
     def on_tick(ctx: Any, ev: Any) -> None:
         if not owner.alive:
             return
-        if ev.tick % 100 == 0:
-            ctx.heal(owner, owner, owner.max_hp * 0.015)
+        if ev.tick % 100 == 0:   # every 1 s
+            ctx.heal(owner, owner, owner.max_hp * 0.01)   # 1%/s self (was 1.5%/s ≈ unkillable)
 
     return EffectBundle(
         modifiers=[_res_mod(1.28, "item:mistward_shroud")],
@@ -407,13 +402,28 @@ def everbloom_staff(owner: Any) -> EffectBundle:
 # --- Witherbloom Censer (Heartseed + Old Hide) ---
 @register_item("witherbloom_censer")
 def witherbloom_censer(owner: Any) -> EffectBundle:
-    """Witherbloom Censer — +12% INT, +12% HP; basic attacks apply burn to the
-    target (150-tick / 1.5 s duration)."""
+    """Witherbloom Censer — +12% INT, +12% HP; basic attacks apply burn (3 s) AND
+    sunder the target's Resistance by 20% while it burns. The res-shred is the
+    scaling lever (amplifies the holder's INT autos/casts) since flat burn does
+    not scale; refreshed each hit, single instance (no stacking)."""
+    SHRED_TICKS = 300   # 3 s — matches the burn duration
+    RES_SHRED = "item:witherbloom_censer"
+
     def on_attack(ctx: Any, ev: Any) -> None:
-        if ev.attacker is not owner:
+        if ev.attacker is not owner or not ev.target.alive:
             return
-        if ev.target.alive:
-            ctx.apply_status(ev.target, "burn", 150)
+        target = ev.target
+        ctx.apply_status(target, "burn", 300)   # 3 s (was 1.5 s — too short vs cadence)
+        # Resistance sunder: single refreshing instance (drop the prior one so
+        # repeated hits refresh duration, not stack ×0.8 repeatedly).
+        target.modifiers = [
+            m for m in target.modifiers
+            if not (m.source_id == RES_SHRED and m.stat == "resistance")
+        ]
+        target.modifiers.append(Modifier(
+            "resistance", "mul", 0.80, Lifetime.TIMED, RES_SHRED,
+            expires_at_tick=ctx.current_tick + SHRED_TICKS,
+        ))
 
     return EffectBundle(
         modifiers=[
