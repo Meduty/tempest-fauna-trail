@@ -650,11 +650,11 @@ class TestHierarchBarrier:
         ctx.bus.fire("on_death", DeathEvent(victim=hierarch, killer=ally), ctx=ctx)
 
         # 50 + INT(100)*2.0 = 250 barrier on the surviving ally
-        assert ally.barrier_total == 338.0
+        assert ally.barrier_total == 367.0
         # Duration = 600 * level(1); not expired yet at tick 0
         ctx.current_tick = 599
         expire_modifiers(ctx, [ally])
-        assert ally.barrier_total == 338.0
+        assert ally.barrier_total == 367.0
         ctx.current_tick = 600
         expire_modifiers(ctx, [ally])
         assert ally.barrier_total == 0.0
@@ -688,7 +688,7 @@ class TestGladeHeronRework:
 
         ABILITY_REGISTRY["champ_glade_heron.active"](ctx, heron, [])
         # base 100 + INT(200)*1.15 = 330
-        assert heron.stat("attack_speed") == 330.0
+        assert heron.stat("attack_speed") == 352.0
 
     def test_active_refreshes_not_stacks(self):
         heron = self._heron(intelligence=200.0)
@@ -702,7 +702,7 @@ class TestGladeHeronRework:
         # Still a single haste modifier; AS not multiplied by recasts
         haste = [m for m in heron.modifiers if m.source_id == "ability:champ_glade_heron.haste"]
         assert len(haste) == 1
-        assert heron.stat("attack_speed") == 330.0
+        assert heron.stat("attack_speed") == 352.0
 
     def test_passive_applies_poison_per_auto(self):
         heron = self._heron()
@@ -737,7 +737,7 @@ class TestGladeHeronRework:
         ctx.bus.fire("on_attack_landed", AttackEvent(attacker=heron, target=target, amount=10.0), ctx=ctx)
         # burst = INT(200)*0.29 = 58, res=0 -> full
         assert target.status_stacks("poison") == 3
-        assert target.hp == 5000.0 - 58.0
+        assert target.hp == 5000.0 - 64.0
 
 
 class TestGladeHeronFlatStacks:

@@ -52,7 +52,7 @@ from src.game.targeting import (
 
 # --- Dawnwisp (T1, SUP-Heal) ---
 # Cast: knit a wound on the lowest-HP ally, INT-scaled heal.
-DAWNWISP_HEAL = ScalingTerm("heal", 40.0, "intelligence*3.6")
+DAWNWISP_HEAL = ScalingTerm("heal", 40.0, "intelligence*3.96")
 
 
 @register_active("champ_dawnwisp.active")
@@ -71,7 +71,7 @@ ABILITY_META["champ_dawnwisp.active"] = AbilityMeta(
 
 
 # Passive: heal-over-time ticks on heal target (periodic tick effect every 100 ticks)
-DAWNWISP_HOT = ScalingTerm("bonus", 0.0, "intelligence*0.43")
+DAWNWISP_HOT = ScalingTerm("bonus", 0.0, "intelligence*0.47")
 
 
 @register_passive("champ_dawnwisp.passive")
@@ -152,7 +152,7 @@ ABILITY_META["champ_veldt_pronghorn.active"] = AbilityMeta(
 
 # --- Ember Salamander (T3, APC-INT Mage) ---
 # Cast: line of kindling light, burns ground for several ticks.
-EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "intelligence*2.59")
+EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "intelligence*2.85")
 
 
 @register_active("champ_ember_salamander.active", priority=2)
@@ -173,7 +173,7 @@ ABILITY_META["champ_ember_salamander.active"] = AbilityMeta(
 
 
 # --- Ember Salamander — Magma Burst (INT splash) ---
-EMBER_MAGMA_BURST = ScalingTerm("damage", 60.0, "intelligence*2.59")
+EMBER_MAGMA_BURST = ScalingTerm("damage", 60.0, "intelligence*2.85")
 
 
 @register_active("champ_ember_salamander.active2")
@@ -193,7 +193,7 @@ ABILITY_META["champ_ember_salamander.active2"] = AbilityMeta(
 )
 
 
-EMBER_SALAMANDER_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.43")
+EMBER_SALAMANDER_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.47")
 
 
 @register_passive("champ_ember_salamander.passive")
@@ -221,7 +221,7 @@ ABILITY_META["champ_ember_salamander.passive"] = AbilityMeta(
 # --- Goldcrest Lark (T4, SUP-Buff) ---
 # Cast: allies gain damage and Attack Speed for one round (600 ticks).
 # T.35b: the STR buff scales with the lark's INT (V.47 dead-INT fix).
-GOLDCREST_LARK_BUFF = ScalingTerm("strength", 20.0, "intelligence*0.22")
+GOLDCREST_LARK_BUFF = ScalingTerm("strength", 20.0, "intelligence*0.24")
 
 
 @register_active("champ_goldcrest_lark.active")
@@ -391,7 +391,7 @@ ABILITY_META["champ_goldhide_rhino.passive"] = AbilityMeta(
 )
 
 
-GOLDHIDE_RHINO_DMG = ScalingTerm("damage", 60.0, "strength*1.2+intelligence*0.29")  # T.35b: +INT (V.47)
+GOLDHIDE_RHINO_DMG = ScalingTerm("damage", 60.0, "strength*1.2+intelligence*0.32")  # T.35b: +INT (V.47)
 _GOLDHIDE_ACTIVE_HEAL = PctResource("heal", 0.05)
 
 
@@ -419,7 +419,7 @@ ABILITY_META["champ_goldhide_rhino.active"] = AbilityMeta(
 # Cast: blink execute (bonus damage to low-HP targets).
 # Hybrid auto-int (T.29d): the on-auto INT passive carries DPS; the active is now
 # lighter damage + a grievous (antiheal) debuff — value from autos + utility cast.
-MIRAGE_CARACAL_DMG = ScalingTerm("damage", 50.0, "intelligence*1.87")
+MIRAGE_CARACAL_DMG = ScalingTerm("damage", 50.0, "intelligence*2.06")
 _CARACAL_EXECUTE_MULT = 1.5
 
 
@@ -445,7 +445,7 @@ ABILITY_META["champ_mirage_caracal.active"] = AbilityMeta(
 )
 
 
-MIRAGE_CARACAL_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.72")
+MIRAGE_CARACAL_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.79")
 
 
 @register_passive("champ_mirage_caracal.passive")
@@ -562,7 +562,7 @@ ABILITY_META["champ_aurion.passive"] = AbilityMeta(
 
 
 # Active: nova that disarms all enemies in radius 2
-AURION_DMG = ScalingTerm("damage", 100.0, "strength*1.2+intelligence*2.16")
+AURION_DMG = ScalingTerm("damage", 100.0, "strength*1.2+intelligence*2.38")
 
 
 @register_active("champ_aurion.active")
@@ -589,7 +589,7 @@ ABILITY_META["champ_aurion.active"] = AbilityMeta(
 
 # --- Springfrog (T1, SUP-Heal) ---
 # Cast: healing rain on lowest-HP ally, restoring health.
-SPRINGFROG_HEAL = ScalingTerm("heal", 30.0, "intelligence*2.88")
+SPRINGFROG_HEAL = ScalingTerm("heal", 30.0, "intelligence*3.17")
 
 
 @register_active("champ_springfrog.active")
@@ -607,7 +607,7 @@ ABILITY_META["champ_springfrog.active"] = AbilityMeta(
 )
 
 
-SPRINGFROG_HOT = ScalingTerm("heal", 0.0, "intelligence*0.58")
+SPRINGFROG_HOT = ScalingTerm("heal", 0.0, "intelligence*0.64")
 
 
 @register_passive("champ_springfrog.passive")
@@ -687,7 +687,7 @@ ABILITY_META["champ_reedbank_otter.active"] = AbilityMeta(
 
 # --- Torrent Heron (T3, APC-STR Mage) ---
 # Cast: three water-spears in a cone, STR-scaled.
-TORRENT_HERON_DMG = ScalingTerm("damage", 50.0, "strength*0.7+intelligence*1.0")
+TORRENT_HERON_DMG = ScalingTerm("damage", 50.0, "strength*0.7+intelligence*1.1")
 _TORRENT_SPLASH_MULT = 0.6
 
 
@@ -732,7 +732,7 @@ ABILITY_META["champ_torrent_heron.passive"] = AbilityMeta(
 
 # --- Grovekeeper Tapir (T4, Hybrid Bruiser-Mender) ---
 # Cast: vine snare + DoT
-GROVEKEEPER_TAPIR_DMG = ScalingTerm("damage", 40.0, "strength*0.8+intelligence*1.44")
+GROVEKEEPER_TAPIR_DMG = ScalingTerm("damage", 40.0, "strength*0.8+intelligence*1.58")
 
 
 @register_active("champ_grovekeeper_tapir.active")
@@ -834,7 +834,7 @@ ABILITY_META["champ_coral_colossus.active"] = AbilityMeta(
 
 # --- Marsh Thrush (T6, SUP-Buff) ---
 # Cast: team MS+AS buff — buff magnitude scales from INT
-MARSH_THRUSH_BUFF = ScalingTerm("haste", 8.0, "intelligence*0.2")
+MARSH_THRUSH_BUFF = ScalingTerm("haste", 8.0, "intelligence*0.22")
 
 
 @register_active("champ_marsh_thrush.active")
@@ -865,7 +865,7 @@ ABILITY_META["champ_marsh_thrush.active"] = AbilityMeta(
 # --- Marsh Thrush — Galecrash (ULTIMATE, T6) ---
 # Tier >= 5 multicaster secondary = ultimate: 2x default cost (600_000), ~2x
 # output (T.29d). Fires ~half as often as the primary at equal MR share.
-MARSH_GALECRASH = ScalingTerm("damage", 120.0, "intelligence*4.32")
+MARSH_GALECRASH = ScalingTerm("damage", 120.0, "intelligence*4.75")
 
 
 @register_active("champ_marsh_thrush.active2", mana_cost=600_000, priority=2)
@@ -887,7 +887,7 @@ ABILITY_META["champ_marsh_thrush.active2"] = AbilityMeta(
 )
 
 
-MARSH_THRUSH_PASSIVE_MS = ScalingTerm("speed", 5.0, "intelligence*0.14")
+MARSH_THRUSH_PASSIVE_MS = ScalingTerm("speed", 5.0, "intelligence*0.15")
 
 
 @register_passive("champ_marsh_thrush.passive")
@@ -908,7 +908,7 @@ ABILITY_META["champ_marsh_thrush.passive"] = AbilityMeta(
 
 # --- Mirewarden Toad (T7, Tank-Guardian) ---
 # Active: tongue pull (slow + damage)
-MIREWARDEN_TOAD_DMG = ScalingTerm("damage", 50.0, "intelligence*2.16")
+MIREWARDEN_TOAD_DMG = ScalingTerm("damage", 50.0, "intelligence*2.38")
 
 
 @register_active("champ_mirewarden_toad.active")
@@ -966,7 +966,7 @@ _HERON_HASTE_SOURCE = "ability:champ_glade_heron.haste"
 # The burst is the Heron's INT damage outlet (autos themselves barely scale on INT);
 # it does NOT consume stacks, so it reinforces the sustain loop rather than
 # fighting it. (Tuned to ~T8 peer DPS at L3 — see active.)
-GLADE_HERON_BURST = ScalingTerm("burst", 0.0, "intelligence*0.29")
+GLADE_HERON_BURST = ScalingTerm("burst", 0.0, "intelligence*0.32")
 
 
 @register_passive("champ_glade_heron.passive")
@@ -1000,7 +1000,7 @@ ABILITY_META["champ_glade_heron.passive"] = AbilityMeta(
 # plateau (stacks_eq ≈ apply_rate / frac) instead of running away — the build
 # scales with INT/AS/items, no hard cap. Coeff 0.8 lands L3 DPS at ~T8 peer level.
 # Refresh-replace (strip prior modifier first) so repeated casts never stack.
-GLADE_HERON_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.15")
+GLADE_HERON_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.26")
 
 
 @register_active("champ_glade_heron.active")
@@ -1063,7 +1063,7 @@ ABILITY_META["champ_riptide_caiman.passive"] = AbilityMeta(
 
 # --- Nerei (T10, Primordial — hybrid) ---
 # Passive: after casting, next 3 autos deal bonus INT damage
-NEREI_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.86")
+NEREI_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.95")
 
 
 @register_passive("champ_nerei.passive")
@@ -1096,7 +1096,7 @@ ABILITY_META["champ_nerei.passive"] = AbilityMeta(
 
 
 # Active: tidal wave — AOE INT damage
-NEREI_DMG = ScalingTerm("damage", 90.0, "intelligence*2.88")
+NEREI_DMG = ScalingTerm("damage", 90.0, "intelligence*3.17")
 _NEREI_AOE_MULT = 0.7
 
 
@@ -1172,7 +1172,7 @@ ABILITY_META["champ_snowpelt_cub.active"] = AbilityMeta(
 
 # --- Wintermoth (T2, SUP-Buff) ---
 # Active: grant ally AS buff
-WINTERMOTH_HEAL = ScalingTerm("heal", 20.0, "intelligence*1.44")
+WINTERMOTH_HEAL = ScalingTerm("heal", 20.0, "intelligence*1.58")
 
 
 @register_active("champ_wintermoth.active", priority=2)
@@ -1196,7 +1196,7 @@ ABILITY_META["champ_wintermoth.active"] = AbilityMeta(
 
 
 # --- Wintermoth — Frost Pollen (chill/slow enemies in radius) ---
-WINTERMOTH_FROST = ScalingTerm("damage", 30.0, "intelligence*1.44")
+WINTERMOTH_FROST = ScalingTerm("damage", 30.0, "intelligence*1.58")
 
 
 @register_active("champ_wintermoth.active2")
@@ -1271,7 +1271,7 @@ ABILITY_META["champ_permafrost_walrus.passive"] = AbilityMeta(
 
 # --- Hoarfrost Owl (T4, SUP-Shield) ---
 # Active: ally ice-shield (large armor buff) + chill burst on expiry
-HOARFROST_OWL_HEAL = ScalingTerm("heal", 30.0, "intelligence*2.16")
+HOARFROST_OWL_HEAL = ScalingTerm("heal", 30.0, "intelligence*2.38")
 
 
 @register_active("champ_hoarfrost_owl.active")
@@ -1360,7 +1360,7 @@ ABILITY_META["champ_frostplate_tortoise.active"] = AbilityMeta(
 
 # --- Iceclaw Lynx (T6, ADC-INT Warrior) ---
 # Passive: autos deal bonus INT-magic damage and briefly slow target.
-ICECLAW_LYNX_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.58")
+ICECLAW_LYNX_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.64")
 
 
 @register_passive("champ_iceclaw_lynx.passive")
@@ -1383,7 +1383,7 @@ ABILITY_META["champ_iceclaw_lynx.passive"] = AbilityMeta(
 )
 
 
-ICECLAW_LYNX_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.01")
+ICECLAW_LYNX_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.11")
 _ICECLAW_LYNX_HASTE_SRC = "ability:champ_iceclaw_lynx.active"
 
 
@@ -1441,7 +1441,7 @@ ABILITY_META["champ_glacierback_mammoth.passive"] = AbilityMeta(
 
 
 # Active: knockback stomp (STR damage + stun to neighbors)
-GLACIERBACK_MAMMOTH_DMG = ScalingTerm("damage", 80.0, "strength*1.6+intelligence*0.29")  # T.35b: +INT (V.47)
+GLACIERBACK_MAMMOTH_DMG = ScalingTerm("damage", 80.0, "strength*1.6+intelligence*0.32")  # T.35b: +INT (V.47)
 
 
 @register_active("champ_glacierback_mammoth.active")
@@ -1491,7 +1491,7 @@ ABILITY_META["champ_frostfang_wolverine.active"] = AbilityMeta(
 # Hybrid auto (T.29d, every-Nth-auto INT proc): STR autos hit hard, and every 3rd
 # auto detonates an INT frost burst — kit reads BOTH stats (V.47). Active stays the
 # STR crit leap (Frozen Leap).
-FROSTFANG_WOLVERINE_PROC = ScalingTerm("burst", 0.0, "intelligence*1.4")
+FROSTFANG_WOLVERINE_PROC = ScalingTerm("burst", 0.0, "intelligence*1.54")
 
 
 @register_passive("champ_frostfang_wolverine.passive")
@@ -1615,7 +1615,7 @@ ABILITY_META["champ_borealis.passive"] = AbilityMeta(
 
 
 # Active: blizzard — AOE INT+STR damage
-BOREALIS_DMG = ScalingTerm("damage", 80.0, "strength*0.96+intelligence*1.73")
+BOREALIS_DMG = ScalingTerm("damage", 80.0, "strength*0.96+intelligence*1.9")
 
 
 @register_active("champ_borealis.active")
@@ -1676,7 +1676,7 @@ ABILITY_META["champ_pebbleback_pangolin.active"] = AbilityMeta(
 # --- Dusk Bat (T2, Trickster) ---
 # Active: blind one enemy (reduce AS)
 # T.35b: blind strength scales with the bat's INT (V.47 dead-INT fix).
-DUSK_BAT_BLIND = ScalingTerm("blind", 30.0, "intelligence*0.22")
+DUSK_BAT_BLIND = ScalingTerm("blind", 30.0, "intelligence*0.24")
 
 
 @register_active("champ_dusk_bat.active")
@@ -1760,8 +1760,8 @@ ABILITY_META["champ_boulderhide_skink.passive"] = AbilityMeta(
 # --- Geode Beetle (T4, SUP-Shield) ---
 # Active: ally shield (large armor buff that blocks next big hit)
 # T.35b: shield magnitude scales with the beetle's INT (V.47 dead-INT fix).
-GEODE_BEETLE_ARMOR = ScalingTerm("armor", 80.0, "intelligence*0.5")
-GEODE_BEETLE_RES = ScalingTerm("resistance", 40.0, "intelligence*0.29")
+GEODE_BEETLE_ARMOR = ScalingTerm("armor", 80.0, "intelligence*0.55")
+GEODE_BEETLE_RES = ScalingTerm("resistance", 40.0, "intelligence*0.32")
 
 
 @register_active("champ_geode_beetle.active", priority=2)
@@ -1791,7 +1791,7 @@ ABILITY_META["champ_geode_beetle.active"] = AbilityMeta(
 
 
 # --- Geode Beetle — Crystal Lattice (shield lowest-HP ally) ---
-GEODE_SHIELD = ScalingTerm("shield", 80.0, "intelligence*2.88")
+GEODE_SHIELD = ScalingTerm("shield", 80.0, "intelligence*3.17")
 
 
 @register_active("champ_geode_beetle.active2")
@@ -1825,7 +1825,7 @@ ABILITY_META["champ_geode_beetle.passive"] = AbilityMeta(
 
 # --- Duskstep Marten (T5, INT Assassin) ---
 # Passive: shadow-step — every 4th auto, teleport behind target for bonus damage
-DUSKSTEP_MARTEN_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.86")
+DUSKSTEP_MARTEN_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.95")
 
 
 @register_passive("champ_duskstep_marten.passive")
@@ -1853,7 +1853,7 @@ ABILITY_META["champ_duskstep_marten.passive"] = AbilityMeta(
 
 # Auto-int carry (T.29d): early-game auto-int. Active = self attack-speed buff,
 # not a nuke; INT routes into the on-auto bonus passive via speed.
-DUSKSTEP_MARTEN_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.01")
+DUSKSTEP_MARTEN_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.11")
 _DUSKSTEP_MARTEN_HASTE_SRC = "ability:champ_duskstep_marten.active"
 
 
@@ -1909,7 +1909,7 @@ ABILITY_META["champ_granite_gorilla.passive"] = AbilityMeta(
 )
 
 
-GRANITE_GORILLA_DMG = ScalingTerm("damage", 70.0, "intelligence*2.59")
+GRANITE_GORILLA_DMG = ScalingTerm("damage", 70.0, "intelligence*2.85")
 
 
 @register_active("champ_granite_gorilla.active")
@@ -1932,7 +1932,7 @@ ABILITY_META["champ_granite_gorilla.active"] = AbilityMeta(
 
 # --- Eclipse Jaguar (T7, Hybrid Stalker) ---
 # Passive: autos alternate STR and INT damage
-ECLIPSE_JAGUAR_INT_BONUS = ScalingTerm("magic", 0.0, "intelligence*0.58")
+ECLIPSE_JAGUAR_INT_BONUS = ScalingTerm("magic", 0.0, "intelligence*0.64")
 ECLIPSE_JAGUAR_STR_BONUS = ScalingTerm("physical", 0.0, "strength*0.24")
 
 
@@ -1967,7 +1967,7 @@ ABILITY_META["champ_eclipse_jaguar.passive"] = AbilityMeta(
 
 # Active: twin strike — both STR and INT damage
 ECLIPSE_JAGUAR_STR_DMG = ScalingTerm("physical", 50.0, "strength*1.2")
-ECLIPSE_JAGUAR_INT_DMG = ScalingTerm("magic", 50.0, "intelligence*2.16")
+ECLIPSE_JAGUAR_INT_DMG = ScalingTerm("magic", 50.0, "intelligence*2.38")
 
 
 @register_active("champ_eclipse_jaguar.active")
@@ -1991,7 +1991,7 @@ ABILITY_META["champ_eclipse_jaguar.active"] = AbilityMeta(
 # Active: vanish → INT execute (bonus vs low HP)
 # Hybrid auto-int (T.29d): on-auto INT passive carries DPS; active is lighter
 # damage + a slow debuff (value from autos + utility cast).
-NIGHTGLASS_MANTIS_DMG = ScalingTerm("damage", 60.0, "intelligence*2.16")
+NIGHTGLASS_MANTIS_DMG = ScalingTerm("damage", 60.0, "intelligence*2.38")
 _MANTIS_EXECUTE_MULT = 1.6
 
 
@@ -2016,7 +2016,7 @@ ABILITY_META["champ_nightglass_mantis.active"] = AbilityMeta(
 )
 
 
-NIGHTGLASS_MANTIS_BONUS = ScalingTerm("bonus", 0.0, "intelligence*1.15")
+NIGHTGLASS_MANTIS_BONUS = ScalingTerm("bonus", 0.0, "intelligence*1.26")
 
 
 @register_passive("champ_nightglass_mantis.passive")
@@ -2078,7 +2078,7 @@ ABILITY_META["champ_cliffeyrie_eagle.passive"] = AbilityMeta(
 )
 
 
-CLIFFEYRIE_EAGLE_DMG = ScalingTerm("damage", 80.0, "strength*0.9+intelligence*1.1")
+CLIFFEYRIE_EAGLE_DMG = ScalingTerm("damage", 80.0, "strength*0.9+intelligence*1.21")
 
 
 @register_active("champ_cliffeyrie_eagle.active")
@@ -2100,7 +2100,7 @@ ABILITY_META["champ_cliffeyrie_eagle.active"] = AbilityMeta(
 
 # --- Umbra (T10, Primordial — Cloudy) ---
 # Passive: every 5th auto triggers a free cast
-UMBRA_CLONE_STRIKE = ScalingTerm("bonus", 0.0, "intelligence*2.16")
+UMBRA_CLONE_STRIKE = ScalingTerm("bonus", 0.0, "intelligence*2.38")
 
 
 @register_passive("champ_umbra.passive")
@@ -2139,7 +2139,7 @@ ABILITY_META["champ_umbra.active"] = AbilityMeta(
 _UMBRA_CLONE = SummonSpec(stats={
     "max_hp": PctResource("max_hp", 0.3),
     "strength": ScalingTerm("strength", 0.0, "strength*0.32"),
-    "intelligence": ScalingTerm("intelligence", 0.0, "intelligence*0.58"),
+    "intelligence": ScalingTerm("intelligence", 0.0, "intelligence*0.64"),
     "armor": ScalingTerm("armor", 0.0, "armor*0.3"),
     "resistance": ScalingTerm("resistance", 0.0, "resistance*0.3"),
     "attack_speed": ScalingTerm("attack_speed", 0.0, "attack_speed*1.0"),
@@ -2181,7 +2181,7 @@ def umbra_active(ctx: Any, actor: Any, targets: list) -> None:
 
 # --- Lostlight Wisp (T1, SUP-Heal) ---
 # Active: HoT wisp heal on ally
-LOSTLIGHT_WISP_HEAL = ScalingTerm("heal", 35.0, "intelligence*2.88")
+LOSTLIGHT_WISP_HEAL = ScalingTerm("heal", 35.0, "intelligence*3.17")
 
 
 @register_active("champ_lostlight_wisp.active")
@@ -2199,7 +2199,7 @@ ABILITY_META["champ_lostlight_wisp.active"] = AbilityMeta(
 )
 
 
-LOSTLIGHT_WISP_HOT = ScalingTerm("heal", 0.0, "intelligence*0.43")
+LOSTLIGHT_WISP_HOT = ScalingTerm("heal", 0.0, "intelligence*0.47")
 
 
 @register_passive("champ_lostlight_wisp.passive")
@@ -2230,7 +2230,7 @@ ABILITY_META["champ_lostlight_wisp.passive"] = AbilityMeta(
 # Active: conjure ally-auto double (grant ally bonus attack)
 # T.35b: haste scales with the fawn's INT (V.47 dead-INT fix). NB: authored as a
 # mage but ships a pure support kit — role mismatch flagged for a later content pass.
-WILL_O_FAWN_HASTE = ScalingTerm("haste", 40.0, "intelligence*0.29")
+WILL_O_FAWN_HASTE = ScalingTerm("haste", 40.0, "intelligence*0.32")
 
 
 @register_active("champ_will_o_fawn.active", priority=2)
@@ -2256,7 +2256,7 @@ ABILITY_META["champ_will_o_fawn.active"] = AbilityMeta(
 
 
 # --- Will-o-Fawn — Wisp Lure (INT dmg + threat drop, primary target) ---
-WILL_WISP_LURE = ScalingTerm("damage", 50.0, "intelligence*2.3")
+WILL_WISP_LURE = ScalingTerm("damage", 50.0, "intelligence*2.53")
 
 
 @register_active("champ_will_o_fawn.active2")
@@ -2293,7 +2293,7 @@ ABILITY_META["champ_will_o_fawn.passive"] = AbilityMeta(
 
 # --- Phantom Lynx (T3, APC-INT Assassin) ---
 # Cast: phases through target for INT damage, with penetration.
-PHANTOM_LYNX_DMG = ScalingTerm("damage", 90.0, "intelligence*3.17")
+PHANTOM_LYNX_DMG = ScalingTerm("damage", 90.0, "intelligence*3.49")
 
 
 @register_active("champ_phantom_lynx.active")
@@ -2360,7 +2360,7 @@ ABILITY_META["champ_hollow_elk.passive"] = AbilityMeta(
 )
 
 
-HOLLOW_ELK_DMG = ScalingTerm("damage", 60.0, "intelligence*2.59")
+HOLLOW_ELK_DMG = ScalingTerm("damage", 60.0, "intelligence*2.85")
 _HOLLOW_ELK_HEAL_SHARE = 0.3
 
 
@@ -2385,7 +2385,7 @@ ABILITY_META["champ_hollow_elk.active"] = AbilityMeta(
 
 # --- Fogveil Moth (T5, Trickster) ---
 # Active: shroud enemy (reduce their AS — simulates miss chance)
-FOGVEIL_MOTH_DMG = ScalingTerm("damage", 30.0, "strength*0.6+intelligence*1.0")
+FOGVEIL_MOTH_DMG = ScalingTerm("damage", 30.0, "strength*0.6+intelligence*1.1")
 
 
 @register_active("champ_fogveil_moth.active")
@@ -2447,7 +2447,7 @@ ABILITY_META["champ_wraithorn_stag.active"] = AbilityMeta(
 # Hybrid auto (T.29d, INT-buffs-autos): autos deal bonus INT magic damage; the
 # active is the STR burst (Spectral Gore) — kit reads BOTH stats (V.47). High STR
 # autos hit hard, INT rides along as on-hit magic (Volibear feel).
-WRAITHORN_STAG_ONHIT = ScalingTerm("bonus", 0.0, "intelligence*0.6")
+WRAITHORN_STAG_ONHIT = ScalingTerm("bonus", 0.0, "intelligence*0.66")
 
 
 @register_passive("champ_wraithorn_stag.passive")
@@ -2509,7 +2509,7 @@ ABILITY_META["champ_marshghast_boar.passive"] = AbilityMeta(
 )
 
 
-MARSHGHAST_BOAR_DMG = ScalingTerm("damage", 60.0, "strength*0.96+intelligence*1.73")
+MARSHGHAST_BOAR_DMG = ScalingTerm("damage", 60.0, "strength*0.96+intelligence*1.9")
 
 
 @register_active("champ_marshghast_boar.active")
@@ -2531,7 +2531,7 @@ ABILITY_META["champ_marshghast_boar.active"] = AbilityMeta(
 
 # --- Veilfang Wolf (T8, INT Skirmisher) ---
 # Passive: autos deal bonus INT + shred resistance
-VEILFANG_WOLF_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.5")
+VEILFANG_WOLF_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.55")
 
 
 @register_passive("champ_veilfang_wolf.passive")
@@ -2561,8 +2561,8 @@ ABILITY_META["champ_veilfang_wolf.passive"] = AbilityMeta(
 
 # Hybrid auto-int (T.29d): the on-auto INT/res-shred passive carries DPS; active
 # is lighter damage + a self attack-speed buff (value from autos + utility cast).
-VEILFANG_WOLF_DMG = ScalingTerm("damage", 50.0, "intelligence*1.87")
-VEILFANG_WOLF_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.58")
+VEILFANG_WOLF_DMG = ScalingTerm("damage", 50.0, "intelligence*2.06")
+VEILFANG_WOLF_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.64")
 _VEILFANG_WOLF_HASTE_SRC = "ability:champ_veilfang_wolf.active"
 
 
@@ -2590,7 +2590,7 @@ ABILITY_META["champ_veilfang_wolf.active"] = AbilityMeta(
 
 # --- Spectral Heron (T9, INT Hunter) ---
 # Passive: autos pierce (hit target + 1 behind)
-SPECTRAL_HERON_PIERCE = ScalingTerm("bonus", 0.0, "intelligence*0.43")
+SPECTRAL_HERON_PIERCE = ScalingTerm("bonus", 0.0, "intelligence*0.47")
 
 
 @register_passive("champ_spectral_heron.passive")
@@ -2618,7 +2618,7 @@ ABILITY_META["champ_spectral_heron.passive"] = AbilityMeta(
 
 # Auto-int carry (T.29d): INT routes into AUTOS (the on-auto pierce passive). The
 # active is a self attack-speed buff, NOT a nuke.
-SPECTRAL_HERON_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.15")
+SPECTRAL_HERON_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.26")
 _SPECTRAL_HERON_HASTE_SRC = "ability:champ_spectral_heron.active"
 
 
@@ -2670,7 +2670,7 @@ ABILITY_META["champ_mournhollow.passive"] = AbilityMeta(
 
 
 # Active: board fear — AOE fear enemies
-MOURNHOLLOW_DMG = ScalingTerm("damage", 80.0, "intelligence*2.59")
+MOURNHOLLOW_DMG = ScalingTerm("damage", 80.0, "intelligence*2.85")
 _MOURNHOLLOW_AOE_MULT = 0.6
 
 
@@ -2698,7 +2698,7 @@ ABILITY_META["champ_mournhollow.active"] = AbilityMeta(
 
 # --- Sparkfly (T1, Trickster) ---
 # Active: brief stun one enemy
-SPARKFLY_DMG = ScalingTerm("damage", 20.0, "intelligence*1.44")
+SPARKFLY_DMG = ScalingTerm("damage", 20.0, "intelligence*1.58")
 
 
 @register_active("champ_sparkfly.active")
@@ -2737,7 +2737,7 @@ ABILITY_META["champ_sparkfly.passive"] = AbilityMeta(
 # Hybrid auto (T.29d, AS-per-INT): INT fuels attack speed (more autos), STR makes
 # each auto hit — a Jax/Voli-style hybrid auto-carrier. Active stays STR (Thunder
 # Charge), passive routes INT → AS, so the kit reads BOTH stats (V.47).
-THUNDERHOOF_COLT_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.5")
+THUNDERHOOF_COLT_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.55")
 
 
 @register_passive("champ_thunderhoof_colt.passive")
@@ -2832,7 +2832,7 @@ ABILITY_META["champ_voltscale_mamba.passive"] = AbilityMeta(
 # --- Coppercrest Stork (T4, SUP-Shield) ---
 # Active: ally shield that reflects damage
 # T.35b: shield magnitude scales with the stork's INT (V.47 dead-INT fix).
-COPPERCREST_STORK_ARMOR = ScalingTerm("armor", 50.0, "intelligence*0.5")
+COPPERCREST_STORK_ARMOR = ScalingTerm("armor", 50.0, "intelligence*0.55")
 
 
 @register_active("champ_coppercrest_stork.active")
@@ -2922,7 +2922,7 @@ ABILITY_META["champ_thunderhide_bison.active"] = AbilityMeta(
 
 # --- Tempest Eel (T6, APC-INT Mage) ---
 # Cast: chain lightning, jumps to nearby enemies.
-TEMPEST_EEL_DMG = ScalingTerm("damage", 100.0, "intelligence*2.88")
+TEMPEST_EEL_DMG = ScalingTerm("damage", 100.0, "intelligence*3.17")
 _TEMPEST_EEL_CHAIN1_MULT = 0.6
 _TEMPEST_EEL_CHAIN2_MULT = 0.4
 
@@ -2955,7 +2955,7 @@ ABILITY_META["champ_tempest_eel.active"] = AbilityMeta(
 # --- Tempest Eel — Maelstrom (ULTIMATE, T6) ---
 # Tier >= 5 multicaster secondary = ultimate: 2x default cost (600_000), ~2x
 # output (T.29d). Full chain-lightning storm vs the single Voltaic Lash.
-TEMPEST_MAELSTROM = ScalingTerm("damage", 110.0, "intelligence*4.32")
+TEMPEST_MAELSTROM = ScalingTerm("damage", 110.0, "intelligence*4.75")
 
 
 @register_active("champ_tempest_eel.active2", mana_cost=600_000, priority=2)
@@ -3026,7 +3026,7 @@ ABILITY_META["champ_voltmane_jackal.passive"] = AbilityMeta(
 
 
 # Active: static discharge — both-scaling burst
-VOLTMANE_JACKAL_DMG = ScalingTerm("damage", 60.0, "strength*0.96+intelligence*1.73")
+VOLTMANE_JACKAL_DMG = ScalingTerm("damage", 60.0, "strength*0.96+intelligence*1.9")
 
 
 @register_active("champ_voltmane_jackal.active")
@@ -3084,7 +3084,7 @@ ABILITY_META["champ_thunderclap_gorilla.passive"] = AbilityMeta(
 
 # --- Storm Eagle (T9, INT Hunter) ---
 # Passive: every 3rd auto forks to 2 targets
-STORM_EAGLE_FORK = ScalingTerm("bonus", 0.0, "intelligence*0.58")
+STORM_EAGLE_FORK = ScalingTerm("bonus", 0.0, "intelligence*0.64")
 
 
 @register_passive("champ_storm_eagle.passive")
@@ -3116,7 +3116,7 @@ ABILITY_META["champ_storm_eagle.passive"] = AbilityMeta(
 
 # Auto-int carry (T.29d): INT routes into AUTOS (the on-auto fork passive). The
 # active is a self-haste, NOT a nuke — value comes from the empowered autos.
-STORM_EAGLE_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.15")
+STORM_EAGLE_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.26")
 _STORM_EAGLE_HASTE_SRC = "ability:champ_storm_eagle.active"
 
 
@@ -3141,7 +3141,7 @@ ABILITY_META["champ_storm_eagle.active"] = AbilityMeta(
 
 # --- Aerion (T10, Primordial — Thunder) ---
 # Passive: when mana is full, autos trigger free casts
-AERION_BONUS = ScalingTerm("bonus", 0.0, "intelligence*1.15")
+AERION_BONUS = ScalingTerm("bonus", 0.0, "intelligence*1.26")
 
 
 @register_passive("champ_aerion.passive")
@@ -3168,7 +3168,7 @@ ABILITY_META["champ_aerion.passive"] = AbilityMeta(
 
 
 # Active: board storm — massive AOE
-AERION_DMG = ScalingTerm("damage", 100.0, "strength*1.04+intelligence*1.87")
+AERION_DMG = ScalingTerm("damage", 100.0, "strength*1.04+intelligence*2.06")
 _AERION_AOE_MULT = 0.6
 
 

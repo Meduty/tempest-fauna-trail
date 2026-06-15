@@ -168,7 +168,7 @@ ABILITY_META["enemy_picket.active"] = AbilityMeta(
 
 
 # --- Stretcher-Hand (T1) --- small fixed heal lowest ally
-STRETCHER_HAND_HEAL = ScalingTerm("heal", 25.0, "intelligence*2.16")
+STRETCHER_HAND_HEAL = ScalingTerm("heal", 25.0, "intelligence*2.38")
 
 
 @register_active("enemy_stretcher_hand.active")
@@ -226,7 +226,7 @@ ABILITY_META["enemy_signal_drummer.passive"] = AbilityMeta(
 
 
 # T.35b: drum-roll haste scales with the drummer's INT (V.47 dead-INT fix).
-SIGNAL_DRUMMER_HASTE = ScalingTerm("haste", 15.0, "intelligence*0.17")
+SIGNAL_DRUMMER_HASTE = ScalingTerm("haste", 15.0, "intelligence*0.19")
 
 
 @register_active("enemy_signal_drummer.active")
@@ -338,7 +338,7 @@ ABILITY_META["enemy_crossbow_levy.passive"] = AbilityMeta(
 
 
 # --- Field Medic (T2) --- INT heal ally; self-regen
-FIELD_MEDIC_HEAL = ScalingTerm("heal", 30.0, "intelligence*2.88")
+FIELD_MEDIC_HEAL = ScalingTerm("heal", 30.0, "intelligence*3.17")
 
 
 @register_active("enemy_field_medic.active")
@@ -447,7 +447,7 @@ ABILITY_META["enemy_sergeant_at_arms.passive"] = AbilityMeta(
 )
 
 
-SERGEANT_AT_ARMS_DMG = ScalingTerm("damage", 50.0, "strength*1.28+intelligence*0.29")  # T.35b: +INT (V.47)
+SERGEANT_AT_ARMS_DMG = ScalingTerm("damage", 50.0, "strength*1.28+intelligence*0.32")  # T.35b: +INT (V.47)
 _SERGEANT_CLEAVE = 0.5
 
 
@@ -475,7 +475,7 @@ ABILITY_META["enemy_sergeant_at_arms.active"] = AbilityMeta(
 
 
 # --- Field Chaplain (T3) --- AOE heal around self
-FIELD_CHAPLAIN_HEAL = ScalingTerm("heal", 30.0, "intelligence*2.16")
+FIELD_CHAPLAIN_HEAL = ScalingTerm("heal", 30.0, "intelligence*2.38")
 
 
 @register_active("enemy_field_chaplain.active")
@@ -538,7 +538,7 @@ ABILITY_META["enemy_standard_bearer.passive"] = AbilityMeta(
 
 
 # T.35b: rally buff scales with the bearer's INT (V.47 dead-INT fix).
-STANDARD_BEARER_BUFF = ScalingTerm("buff", 12.0, "intelligence*0.17")
+STANDARD_BEARER_BUFF = ScalingTerm("buff", 12.0, "intelligence*0.19")
 
 
 @register_active("enemy_standard_bearer.active")
@@ -612,7 +612,7 @@ ABILITY_META["enemy_heavy_knight.active"] = AbilityMeta(
 _STEAM_TURRET = SummonSpec(stats={
     "max_hp": PctResource("max_hp", 0.25),
     "strength": 0,
-    "intelligence": ScalingTerm("intelligence", 0.0, "intelligence*0.72"),
+    "intelligence": ScalingTerm("intelligence", 0.0, "intelligence*0.79"),
     "armor": 20,
     "resistance": 20,
     "attack_speed": 80,
@@ -678,7 +678,7 @@ ABILITY_META["enemy_company_guard.passive"] = AbilityMeta(
 
 
 # T.35b: brace armor scales with the guard's INT (V.47 — hybrid tank, INT via kit).
-COMPANY_GUARD_ARMOR = ScalingTerm("armor", 40.0, "intelligence*0.29")
+COMPANY_GUARD_ARMOR = ScalingTerm("armor", 40.0, "intelligence*0.32")
 
 
 @register_active("enemy_company_guard.active")
@@ -705,7 +705,7 @@ ABILITY_META["enemy_company_guard.active"] = AbilityMeta(
 
 
 # --- Battlemage (T5) --- INT fireball splash
-BATTLEMAGE_DMG = ScalingTerm("damage", 70.0, "intelligence*2.88")
+BATTLEMAGE_DMG = ScalingTerm("damage", 70.0, "intelligence*3.17")
 _BATTLEMAGE_SPLASH = 0.5
 
 
@@ -731,7 +731,7 @@ ABILITY_META["enemy_battlemage.active"] = AbilityMeta(
 
 
 # --- Battlemage — Arcane Nova (AoE INT dmg) ---
-BATTLEMAGE_NOVA = ScalingTerm("damage", 45.0, "intelligence*2.02")
+BATTLEMAGE_NOVA = ScalingTerm("damage", 45.0, "intelligence*2.22")
 
 
 @register_active("enemy_battlemage.active2")
@@ -806,7 +806,7 @@ ABILITY_META["enemy_gunslinger.active"] = AbilityMeta(
 # --- Company Captain (T5) --- mark target → INT-scaled armor/resistance reduction
 # Shred magnitude is a positive ScalingTerm; the handler applies it as a negative
 # modifier (the scaling grammar has no negative-coeff form). A1/V.46.
-COMPANY_CAPTAIN_SHRED = ScalingTerm("shred", 8.0, "intelligence*0.22")
+COMPANY_CAPTAIN_SHRED = ScalingTerm("shred", 8.0, "intelligence*0.24")
 
 
 @register_active("enemy_company_captain.active")
@@ -841,7 +841,7 @@ ABILITY_META["enemy_company_captain.active"] = AbilityMeta(
 # a marked target trigger bonus INT magic damage from the captain.
 # Per-LEVEL INT rate is a ScalingTerm; the handler multiplies by level (the
 # coeff is level-dependent, which a static scaling string can't hold). A1/V.46.
-COMPANY_CAPTAIN_FOCUS_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.14")
+COMPANY_CAPTAIN_FOCUS_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.15")
 
 
 @register_passive("enemy_company_captain.passive")
@@ -1032,7 +1032,7 @@ ABILITY_META["enemy_inquisitor.passive"] = AbilityMeta(
 )
 
 
-INQUISITOR_DMG = ScalingTerm("damage", 55.0, "strength*0.96+intelligence*1.73")
+INQUISITOR_DMG = ScalingTerm("damage", 55.0, "strength*0.96+intelligence*1.9")
 
 
 @register_active("enemy_inquisitor.active")
@@ -1051,7 +1051,7 @@ ABILITY_META["enemy_inquisitor.active"] = AbilityMeta(
 
 
 # --- Hexblade Officer (T6) --- autos bonus INT; empower next autos after cast
-HEXBLADE_OFFICER_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.36")
+HEXBLADE_OFFICER_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.4")
 
 
 @register_passive("enemy_hexblade_officer.passive")
@@ -1074,7 +1074,7 @@ ABILITY_META["enemy_hexblade_officer.passive"] = AbilityMeta(
 )
 
 
-HEXBLADE_OFFICER_DMG = ScalingTerm("damage", 60.0, "intelligence*2.59")
+HEXBLADE_OFFICER_DMG = ScalingTerm("damage", 60.0, "intelligence*2.85")
 
 
 @register_active("enemy_hexblade_officer.active")
@@ -1136,7 +1136,7 @@ ABILITY_META["enemy_lord_commander.passive"] = AbilityMeta(
 
 # --- Iron Maiden (T7) --- +armor on hit; release AOE STR every 600 ticks
 # Spike release = STR*0.5 (ScalingTerm) + 5 per stored stack (SetByCaller, V.46).
-IRON_MAIDEN_SPIKE = ScalingTerm("spike", 0.0, "strength*0.4+intelligence*0.29")  # T.35b: +INT (V.47)
+IRON_MAIDEN_SPIKE = ScalingTerm("spike", 0.0, "strength*0.4+intelligence*0.32")  # T.35b: +INT (V.47)
 IRON_MAIDEN_PER_STACK = SetByCaller("per_stack", 0.0, 5.0, "stacks")
 
 
@@ -1253,7 +1253,7 @@ ABILITY_META["enemy_cannoneer.active"] = AbilityMeta(
 
 
 # --- Spymaster (T8) --- stealth → INT execute (simulated via massive first hit)
-SPYMASTER_DMG = ScalingTerm("damage", 100.0, "intelligence*3.6")
+SPYMASTER_DMG = ScalingTerm("damage", 100.0, "intelligence*3.96")
 _SPYMASTER_EXECUTE_MULT = 1.6
 
 
@@ -1277,7 +1277,7 @@ ABILITY_META["enemy_spymaster.active"] = AbilityMeta(
 )
 
 
-SPYMASTER_FIRST = ScalingTerm("bonus", 0.0, "intelligence*1.44")
+SPYMASTER_FIRST = ScalingTerm("bonus", 0.0, "intelligence*1.58")
 
 
 @register_passive("enemy_spymaster.passive")
@@ -1305,8 +1305,8 @@ ABILITY_META["enemy_spymaster.passive"] = AbilityMeta(
 
 # --- Hierarch (T8) --- shield whole enemy line (allies get INT-scaled armor buff)
 # INT-scaled armor/res buff → ScalingTerms the handler + clause both read (A1, V.46).
-HIERARCH_ARMOR = ScalingTerm("armor", 20.0, "intelligence*0.58")
-HIERARCH_RES = ScalingTerm("res", 10.0, "intelligence*0.29")
+HIERARCH_ARMOR = ScalingTerm("armor", 20.0, "intelligence*0.64")
+HIERARCH_RES = ScalingTerm("res", 10.0, "intelligence*0.32")
 
 
 @register_active("enemy_hierarch.active")
@@ -1340,7 +1340,7 @@ ABILITY_META["enemy_hierarch.active"] = AbilityMeta(
 # On-death: Last Rites — grant all surviving allies an INT-scaled barrier
 # (temp absorb pool, not armor) lasting 600·level ticks. Rewards killing the
 # Hierarch last; killing it early denies the team-wide barrier.
-HIERARCH_BARRIER = ScalingTerm("barrier", 50.0, "intelligence*2.88")
+HIERARCH_BARRIER = ScalingTerm("barrier", 50.0, "intelligence*3.17")
 
 
 @register_passive("enemy_hierarch.passive")
@@ -1369,7 +1369,7 @@ ABILITY_META["enemy_hierarch.passive"] = AbilityMeta(
 
 
 # --- Arcanist (T9) --- multi-bounce chain lightning with improved scaling
-ARCANIST_DMG = ScalingTerm("damage", 100.0, "intelligence*4.03")
+ARCANIST_DMG = ScalingTerm("damage", 100.0, "intelligence*4.43")
 
 
 @register_active("enemy_arcanist.active", priority=2)
@@ -1399,7 +1399,7 @@ ABILITY_META["enemy_arcanist.active"] = AbilityMeta(
 
 
 # --- Arcanist — Mana Burn (dmg + mana denial) ---
-ARCANIST_BURN = ScalingTerm("damage", 50.0, "intelligence*2.16")
+ARCANIST_BURN = ScalingTerm("damage", 50.0, "intelligence*2.38")
 
 
 @register_active("enemy_arcanist.active2")
@@ -1420,7 +1420,7 @@ ABILITY_META["enemy_arcanist.active2"] = AbilityMeta(
 )
 
 
-ARCANIST_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.5")
+ARCANIST_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.55")
 
 
 @register_passive("enemy_arcanist.passive")
@@ -1444,7 +1444,7 @@ ABILITY_META["enemy_arcanist.passive"] = AbilityMeta(
 
 
 # --- Archmagus Imperator (T9) --- STR/INT autos; both-scaling nuke
-ARCHMAGUS_INT_BONUS = ScalingTerm("magic", 0.0, "intelligence*0.5")
+ARCHMAGUS_INT_BONUS = ScalingTerm("magic", 0.0, "intelligence*0.55")
 ARCHMAGUS_STR_BONUS = ScalingTerm("physical", 0.0, "strength*0.24")
 
 
@@ -1475,7 +1475,7 @@ ABILITY_META["enemy_archmagus_imperator.passive"] = AbilityMeta(
 )
 
 
-ARCHMAGUS_DMG = ScalingTerm("damage", 80.0, "strength*1.2+intelligence*2.16")
+ARCHMAGUS_DMG = ScalingTerm("damage", 80.0, "strength*1.2+intelligence*2.38")
 
 
 @register_active("enemy_archmagus_imperator.active")
@@ -1596,7 +1596,7 @@ ABILITY_META["enemy_blight_lurker.active"] = AbilityMeta(
 
 
 # --- Drowned Siren (T4, Rain) --- AOE water → silence
-DROWNED_SIREN_DMG = ScalingTerm("damage", 50.0, "intelligence*2.59")
+DROWNED_SIREN_DMG = ScalingTerm("damage", 50.0, "intelligence*2.85")
 
 
 @register_active("enemy_drowned_siren.active", priority=2)
@@ -1617,7 +1617,7 @@ ABILITY_META["enemy_drowned_siren.active"] = AbilityMeta(
 
 
 # --- Drowned Siren — Siren Wail (AoE slow + DoT) ---
-SIREN_WAIL = ScalingTerm("damage", 30.0, "intelligence*1.44")
+SIREN_WAIL = ScalingTerm("damage", 30.0, "intelligence*1.58")
 
 
 @register_active("enemy_drowned_siren.active2")
@@ -1713,7 +1713,7 @@ ABILITY_META["enemy_dredge_hulk.passive"] = AbilityMeta(
 )
 
 
-DREDGE_HULK_DMG = ScalingTerm("damage", 60.0, "strength*1.2+intelligence*1.44")
+DREDGE_HULK_DMG = ScalingTerm("damage", 60.0, "strength*1.2+intelligence*1.58")
 
 
 @register_active("enemy_dredge_hulk.active")
@@ -1735,7 +1735,7 @@ ABILITY_META["enemy_dredge_hulk.active"] = AbilityMeta(
 
 
 # --- Maw of the Drowned (T9, Rain) --- empowered autos after cast; vortex pull
-MAW_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.72")
+MAW_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.79")
 
 
 @register_passive("enemy_maw_of_the_drowned.passive")
@@ -1767,7 +1767,7 @@ ABILITY_META["enemy_maw_of_the_drowned.passive"] = AbilityMeta(
 )
 
 
-MAW_DMG = ScalingTerm("damage", 80.0, "intelligence*2.88")
+MAW_DMG = ScalingTerm("damage", 80.0, "intelligence*3.17")
 _MAW_AOE = 0.6
 
 
@@ -1814,7 +1814,7 @@ ABILITY_META["enemy_flood_tyrant.passive"] = AbilityMeta(
 )
 
 
-FLOOD_TYRANT_DMG = ScalingTerm("damage", 90.0, "intelligence*3.17")
+FLOOD_TYRANT_DMG = ScalingTerm("damage", 90.0, "intelligence*3.49")
 _FLOOD_TYRANT_AOE = 0.6
 
 
@@ -2035,7 +2035,7 @@ ABILITY_META["enemy_riven_frost_wyrm.passive"] = AbilityMeta(
 )
 
 
-RIVEN_FROST_WYRM_DMG = ScalingTerm("damage", 80.0, "strength*1.04+intelligence*1.87")
+RIVEN_FROST_WYRM_DMG = ScalingTerm("damage", 80.0, "strength*1.04+intelligence*2.06")
 _RIVEN_CONE = 0.5
 
 
@@ -2085,7 +2085,7 @@ ABILITY_META["enemy_frost_sovereign.passive"] = AbilityMeta(
 )
 
 
-FROST_SOVEREIGN_DMG = ScalingTerm("damage", 90.0, "strength*0.96+intelligence*2.16")
+FROST_SOVEREIGN_DMG = ScalingTerm("damage", 90.0, "strength*0.96+intelligence*2.38")
 _FROST_SOVEREIGN_AOE = 0.6
 
 
@@ -2192,7 +2192,7 @@ ABILITY_META["enemy_slag_sentinel.active"] = AbilityMeta(
 
 
 # --- Shaftmaw (T5, Cloudy) --- blink INT burst
-SHAFTMAW_DMG = ScalingTerm("damage", 70.0, "intelligence*2.88")
+SHAFTMAW_DMG = ScalingTerm("damage", 70.0, "intelligence*3.17")
 
 
 @register_active("enemy_shaftmaw.active")
@@ -2253,7 +2253,7 @@ ABILITY_META["enemy_reaver_of_the_reach.passive"] = AbilityMeta(
 )
 
 
-REAVER_OF_THE_REACH_DMG = ScalingTerm("damage", 70.0, "strength*1.2+intelligence*1.44")
+REAVER_OF_THE_REACH_DMG = ScalingTerm("damage", 70.0, "strength*1.2+intelligence*1.58")
 
 
 @register_active("enemy_reaver_of_the_reach.active")
@@ -2295,7 +2295,7 @@ ABILITY_META["enemy_quarried_behemoth.passive"] = AbilityMeta(
 )
 
 
-QUARRIED_BEHEMOTH_DMG = ScalingTerm("damage", 80.0, "strength*1.76+intelligence*0.29")  # T.35b: +INT (V.47)
+QUARRIED_BEHEMOTH_DMG = ScalingTerm("damage", 80.0, "strength*1.76+intelligence*0.32")  # T.35b: +INT (V.47)
 
 
 @register_active("enemy_quarried_behemoth.active")
@@ -2340,7 +2340,7 @@ ABILITY_META["enemy_stone_warden.passive"] = AbilityMeta(
 )
 
 
-STONE_WARDEN_DMG = ScalingTerm("damage", 80.0, "strength*1.6+intelligence*0.29")  # T.35b: +INT (V.47)
+STONE_WARDEN_DMG = ScalingTerm("damage", 80.0, "strength*1.6+intelligence*0.32")  # T.35b: +INT (V.47)
 
 
 @register_active("enemy_stone_warden.active")
@@ -2364,7 +2364,7 @@ ABILITY_META["enemy_stone_warden.active"] = AbilityMeta(
 
 
 # --- Hollowed Wisp (T3, Mist) --- start with bonus INT; phase hit
-HOLLOWED_WISP_FIRST = ScalingTerm("bonus", 0.0, "intelligence*1.15")
+HOLLOWED_WISP_FIRST = ScalingTerm("bonus", 0.0, "intelligence*1.26")
 
 
 @register_passive("enemy_hollowed_wisp.passive")
@@ -2390,7 +2390,7 @@ ABILITY_META["enemy_hollowed_wisp.passive"] = AbilityMeta(
 )
 
 
-HOLLOWED_WISP_DMG = ScalingTerm("damage", 50.0, "intelligence*2.59")
+HOLLOWED_WISP_DMG = ScalingTerm("damage", 50.0, "intelligence*2.85")
 
 
 @register_active("enemy_hollowed_wisp.active")
@@ -2409,7 +2409,7 @@ ABILITY_META["enemy_hollowed_wisp.active"] = AbilityMeta(
 
 
 # --- Drained Stalker (T4, Mist) --- line-pierce autos
-DRAINED_STALKER_PIERCE = ScalingTerm("bonus", 0.0, "intelligence*0.36")
+DRAINED_STALKER_PIERCE = ScalingTerm("bonus", 0.0, "intelligence*0.4")
 
 
 @register_passive("enemy_drained_stalker.passive")
@@ -2434,7 +2434,7 @@ ABILITY_META["enemy_drained_stalker.passive"] = AbilityMeta(
 )
 
 
-DRAINED_STALKER_DMG = ScalingTerm("damage", 50.0, "intelligence*2.59")
+DRAINED_STALKER_DMG = ScalingTerm("damage", 50.0, "intelligence*2.85")
 
 
 @register_active("enemy_drained_stalker.active")
@@ -2453,7 +2453,7 @@ ABILITY_META["enemy_drained_stalker.active"] = AbilityMeta(
 
 
 # --- Caged Banshee (T5, Mist) --- AOE fear
-CAGED_BANSHEE_DMG = ScalingTerm("damage", 30.0, "intelligence*1.44")
+CAGED_BANSHEE_DMG = ScalingTerm("damage", 30.0, "intelligence*1.58")
 
 
 @register_active("enemy_caged_banshee.active")
@@ -2527,7 +2527,7 @@ ABILITY_META["enemy_shroud_killer.passive"] = AbilityMeta(
 
 
 # --- Sundered Lord (T9, Mist) --- STR/INT autos; AOE haunt
-SUNDERED_LORD_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.43")
+SUNDERED_LORD_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.47")
 
 
 @register_passive("enemy_sundered_lord.passive")
@@ -2554,7 +2554,7 @@ ABILITY_META["enemy_sundered_lord.passive"] = AbilityMeta(
 )
 
 
-SUNDERED_LORD_DMG = ScalingTerm("damage", 70.0, "strength*0.96+intelligence*1.73")
+SUNDERED_LORD_DMG = ScalingTerm("damage", 70.0, "strength*0.96+intelligence*1.9")
 _SUNDERED_LORD_AOE = 0.6
 
 
@@ -2600,7 +2600,7 @@ ABILITY_META["enemy_veil_lord.passive"] = AbilityMeta(
 )
 
 
-VEIL_LORD_DMG = ScalingTerm("damage", 80.0, "intelligence*2.88")
+VEIL_LORD_DMG = ScalingTerm("damage", 80.0, "intelligence*3.17")
 _VEIL_LORD_AOE = 0.6
 
 
@@ -2670,7 +2670,7 @@ ABILITY_META["enemy_capture_rig_wolf.active"] = AbilityMeta(
 
 
 # --- Stormhawk (T4, Thunder) --- autos chain to 2nd
-STORMHAWK_CHAIN = ScalingTerm("bonus", 0.0, "intelligence*0.43")
+STORMHAWK_CHAIN = ScalingTerm("bonus", 0.0, "intelligence*0.47")
 
 
 @register_passive("enemy_stormhawk.passive")
@@ -2695,7 +2695,7 @@ ABILITY_META["enemy_stormhawk.passive"] = AbilityMeta(
 )
 
 
-STORMHAWK_DMG = ScalingTerm("damage", 50.0, "intelligence*2.59")
+STORMHAWK_DMG = ScalingTerm("damage", 50.0, "intelligence*2.85")
 
 
 @register_active("enemy_stormhawk.active")
@@ -2714,7 +2714,7 @@ ABILITY_META["enemy_stormhawk.active"] = AbilityMeta(
 
 
 # --- Voltaic Diviner (T5, Thunder) --- chain lightning
-VOLTAIC_DIVINER_DMG = ScalingTerm("damage", 65.0, "intelligence*2.88")
+VOLTAIC_DIVINER_DMG = ScalingTerm("damage", 65.0, "intelligence*3.17")
 
 
 @register_active("enemy_voltaic_diviner.active")
@@ -2797,7 +2797,7 @@ ABILITY_META["enemy_thunder_bull.active"] = AbilityMeta(
 
 
 # --- Caged Storm-Drake (T9, Thunder) --- mana-full autos chain; dive AOE
-CAGED_STORM_DRAKE_CHAIN = ScalingTerm("bonus", 0.0, "intelligence*0.58")
+CAGED_STORM_DRAKE_CHAIN = ScalingTerm("bonus", 0.0, "intelligence*0.64")
 
 
 @register_passive("enemy_caged_storm_drake.passive")
@@ -2826,7 +2826,7 @@ ABILITY_META["enemy_caged_storm_drake.passive"] = AbilityMeta(
 )
 
 
-CAGED_STORM_DRAKE_DMG = ScalingTerm("damage", 80.0, "strength*1.04+intelligence*1.87")
+CAGED_STORM_DRAKE_DMG = ScalingTerm("damage", 80.0, "strength*1.04+intelligence*2.06")
 
 
 @register_active("enemy_caged_storm_drake.active")
@@ -2875,7 +2875,7 @@ ABILITY_META["enemy_storm_tyrant.passive"] = AbilityMeta(
 )
 
 
-STORM_TYRANT_DMG = ScalingTerm("damage", 90.0, "strength*1.04+intelligence*1.87")
+STORM_TYRANT_DMG = ScalingTerm("damage", 90.0, "strength*1.04+intelligence*2.06")
 _STORM_TYRANT_AOE = 0.6
 
 
