@@ -452,11 +452,6 @@ class CombatContext:
         for slot in actor.actives:
             slot.current_mana = min(float(slot.max_mana), slot.current_mana + amount)
 
-    def spend_mana(self, actor: Piece, slot_idx: int) -> None:
-        """Reset mana on a specific slot after casting."""
-        if slot_idx < len(actor.actives):
-            actor.actives[slot_idx].current_mana = 0.0
-
     def teleport(self, actor: Piece, dest_q: int, dest_r: int) -> None:
         """Move piece to destination instantly."""
         actor.position_q = dest_q

@@ -276,8 +276,9 @@ class TestSpringtearMana:
         return piece
 
     def test_springtear_grants_starting_mana(self) -> None:
+        # Flat 100_000 (≈1/3 of the 300_000 default cost); slot max_mana 600_000.
         piece = self._piece_with_slot(["springtear"])
-        assert piece.actives[0].current_mana == 200.0
+        assert piece.actives[0].current_mana == 100_000.0
 
     def test_springtear_keeps_cost_and_boosts_regen(self) -> None:
         # V.48: mana items NEVER reduce mana_cost; springtear grants mana_regen
@@ -289,9 +290,10 @@ class TestSpringtearMana:
             for m in piece.modifiers
         )
 
-    def test_deepwell_grants_double_mana(self) -> None:
+    def test_deepwell_grants_more_mana(self) -> None:
+        # Flat 200_000 (≈2/3 of default cost — two springtears).
         piece = self._piece_with_slot(["deepwell"])
-        assert piece.actives[0].current_mana == 400.0
+        assert piece.actives[0].current_mana == 200_000.0
 
     def test_deepwell_keeps_cost_and_boosts_regen(self) -> None:
         # V.48: deepwell grants mana_regen + starting mana, never cuts mana_cost.
@@ -306,7 +308,7 @@ class TestSpringtearMana:
         """Granted starting mana is clamped to max_mana (the universal cap, V.48)."""
         champ = _make_champ(items=["deepwell"], active_ability="x")
         piece = piece_from_champion(champ)
-        # Small cost ⇒ max_mana = 2*100 = 200; deepwell grants 400 → clamp to 200.
+        # Small cost ⇒ max_mana = 2*100 = 200; deepwell grants 200_000 → clamp to 200.
         piece.actives = [ActiveSlot(ability_id="x", mana_cost=100, current_mana=0.0)]
         bus = EventBus()
         factory = ITEM_REGISTRY["deepwell"]

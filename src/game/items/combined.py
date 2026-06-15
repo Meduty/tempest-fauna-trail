@@ -72,12 +72,14 @@ def _mr_mod(value: float, source: str) -> Modifier:
 
 
 def _grant_start_mana(owner: Any, amount: float) -> None:
-    """Grant starting mana to all active slots (V.48, T.29c).
+    """Grant a FLAT amount of starting mana to all active slots (V.48, T.29c).
 
-    Bumps `start_mana` (the record) and seeds `current_mana`, clamped to
-    `max_mana`. Mana items NEVER reduce `mana_cost` — they grant `mana_regen`
-    (Modifier) or `start_mana` (here). Called from an on_combat_start hook so it
-    runs after all bundles are applied but before the first tick.
+    Cost is ≈300_000, so a meaningful head-start is sized in that scale (≈1/3 of
+    default cost = 100_000), not a flat sip. The grant is a flat value (not a
+    pct of cost). Bumps `start_mana` (the record) and seeds `current_mana`,
+    clamped to `max_mana`. Mana items NEVER reduce `mana_cost` — they grant
+    `mana_regen` (Modifier) or `start_mana` (here). Runs from an on_combat_start
+    hook (after all bundles applied, before the first tick).
     """
     for slot in owner.actives:
         slot.start_mana += int(amount)
@@ -139,7 +141,7 @@ def springtear(owner: Any) -> EffectBundle:
     (Modifier) plus a head-start (`start_mana`). Never touches `mana_cost`.
     """
     def on_start(ctx: Any, ev: Any) -> None:
-        _grant_start_mana(owner, 200.0)
+        _grant_start_mana(owner, 100_000)  # flat ≈1/3 of default cost
 
     return EffectBundle(
         modifiers=[_mr_mod(1.15, "item:springtear")],
@@ -202,7 +204,7 @@ def deepwell(owner: Any) -> EffectBundle:
     state: dict[str, bool] = {"first_cast_done": False}
 
     def on_start(ctx: Any, ev: Any) -> None:
-        _grant_start_mana(owner, 400.0)
+        _grant_start_mana(owner, 200_000)  # flat ≈2/3 of default cost (two springtears)
 
     def on_cast(ctx: Any, ev: Any) -> None:
         if ev.caster is not owner:
@@ -379,7 +381,7 @@ def everbloom_staff(owner: Any) -> EffectBundle:
     """Everbloom Staff — +12% INT, +15% mana regen, +200 starting mana; INT grows
     steadily (+1% per 2 s) while the holder stays alive (V.48, T.29c)."""
     def on_start(ctx: Any, ev: Any) -> None:
-        _grant_start_mana(owner, 200.0)
+        _grant_start_mana(owner, 100_000)  # flat ≈1/3 of default cost
 
     def on_tick(ctx: Any, ev: Any) -> None:
         if not owner.alive:

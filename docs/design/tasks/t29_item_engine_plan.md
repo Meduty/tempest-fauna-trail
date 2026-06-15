@@ -135,6 +135,14 @@ start_mana)` **auto-bump are dropped** — `max_mana` is a deliberate, authored,
   - combat start (new) → `slot.current_mana = min(slot.max_mana, slot.start_mana)`.
   - ready check unchanged per-slot: `slot.current_mana >= slot.mana_cost` (engine.py:463,657)
     — selection among multiple ready is the unified-priority pick above.
+  - **`ctx.spend_mana` removed (2026-06-15):** it set `current_mana = 0.0` (a dead method
+    after the inline `-= mana_cost` cast paths, and its reset semantics now violate the
+    overflow-carry rule). Cast deduction lives only at the two cast sites.
+  - **Per-ability cost is fully supported** — `ABILITY_MANA[ability_id].mana_cost` is
+    authored per ability (e.g. `register_active("...", mana_cost=120_000)` or boss
+    registration), so two abilities (or two pieces) carry independent costs; only the
+    *default* (`300_000`) is shared. Different cost ⇒ different fill time ⇒ different cast
+    cadence (cheap = quick, heavy = slow), reinforced by the flat start-mana grant.
 - **Resources, not modifiers (V.43).** `mana_cost`/`max_mana`/`start_mana`/`current_mana`
   are **slot resource state** — mutated by **explicit, rare** ability/augment effects via
   **direct slot writes**, never `Modifier`s (V.43 codifies this). Only `mana_regen` (flow
@@ -161,6 +169,14 @@ start_mana)` **auto-bump are dropped** — `max_mana` is a deliberate, authored,
   seeds `current_mana = min(max_mana, start_mana)` at combat start — **no `max_mana`
   auto-bump**; if `start_mana > max_mana` it is simply clamped). One slot-writing path,
   carried on the bundle via `slot_mana_start` (§3.4).
+  - **Start-mana grant is a FLAT value, not a % of cost (decided 2026-06-15).** `S` is a
+    flat number sized in the cost scale — **baseline ≈ 1/3 of default cost = `100_000`**
+    (springtear `100_000`, deepwell `200_000` ≈ 2/3, everbloom `100_000`). **Why flat (not
+    pct):** a flat head-start makes **cheaper abilities cast quicker and heavy abilities
+    slower** (100k is 83% of a 120k spell but 21% of a 480k spell) — exactly the intended
+    cost↔speed coupling; a %-of-cost grant would erase that signal. Implemented in
+    `items/combined.py::_grant_start_mana(owner, amount)` (flat). 200 mana was a meaningless
+    sip vs the 300_000 scale (the original T.29a value) — corrected here.
 - **On-event mana gain** (T.29b) → `ctx.grant_mana(piece, amount)` clamped to `max_mana`.
   No mana-hook items in the 16-core cut → T.29a needs zero hook work here.
 - **UI requirement (note for the UI tasks T.8–T.15, not combat):** render **one mana bar per
