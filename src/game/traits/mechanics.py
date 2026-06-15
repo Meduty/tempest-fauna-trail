@@ -14,6 +14,8 @@ casts apply it in T.28c). The movement/targeting/death logic these arm lives in
 
 from __future__ import annotations
 
+from src.game.status import secs
+
 from typing import Any, Callable
 
 from src.game.effects import Hook, HookScope, Lifetime, Modifier, SourceTag
@@ -40,7 +42,7 @@ def _allies(ctx: Any, of: Piece) -> list[Piece]:
     return sorted(ctx.allies_of(of), key=lambda a: a.id)
 
 
-def second_wind(threshold: float = 0.6, shield_frac: float = 0.4, duration: int = 1200) -> HookBuilder:
+def second_wind(threshold: float = 0.6, shield_frac: float = 0.4, duration: int = secs(12)) -> HookBuilder:
     """On dropping below `threshold` HP, grant a decaying shield once per combat
     (Primordial second wind, V.37). Reuses the V.28 barrier pool — bursts can
     still kill through it (not a revive)."""
@@ -77,7 +79,7 @@ def tidal_hot(interval: int = 200, heal_frac: float = 0.02) -> HookBuilder:
     return build
 
 
-def enrage(threshold: float = 0.25, as_mul: float = 1.5, str_mul: float = 1.3, duration: int = 600) -> HookBuilder:
+def enrage(threshold: float = 0.25, as_mul: float = 1.5, str_mul: float = 1.3, duration: int = secs(6)) -> HookBuilder:
     """Below `threshold` HP, a one-shot burst of Attack Speed + Strength (Beast).
     Offense, not a save."""
     def build(owner: Piece, sid: str) -> list[Hook]:
@@ -183,7 +185,7 @@ def revive_first_ally(hp_frac: float = 0.3) -> HookBuilder:
     return build
 
 
-def hexproof_opener(duration: int = 150, trait: str = "") -> HookBuilder:
+def hexproof_opener(duration: int = secs(3), trait: str = "") -> HookBuilder:
     """Hexproof for the opening `duration` ticks (Spirit/Shrouded). The piece still
     acts; it can't be acquired as a single target (StatusGate.HEXPROOF, V.40) —
     AoE still hits. `trait` guards a TEAM_WIDE apply to carriers only (a signature
@@ -303,7 +305,7 @@ def start_shield(frac: float = 0.2, duration: int = 0) -> HookBuilder:
     return build
 
 
-def periodic_shield(interval: int = 600, frac: float = 0.15, duration: int = 600,
+def periodic_shield(interval: int = 600, frac: float = 0.15, duration: int = secs(6),
                     allies: bool = False) -> HookBuilder:
     """Re-shield the carrier (and adjacent allies if `allies`) every `interval`
     ticks (Guardian @6+ round-refresh). Reuses V.28 barriers."""
@@ -373,7 +375,7 @@ def mana_on_kill(frac_of_cost: float = 0.4) -> HookBuilder:
     return build
 
 
-def hexproof_after_kill(duration: int = 120) -> HookBuilder:
+def hexproof_after_kill(duration: int = secs(3)) -> HookBuilder:
     """Brief hexproof window after the carrier scores a takedown (Stalker @7)."""
     def build(owner: Piece, sid: str) -> list[Hook]:
         def hook(ctx: Any, event: Any) -> None:
@@ -460,7 +462,7 @@ def echo_cadence(every_n: int = 4, potency: float = 1.0) -> HookBuilder:
     return build
 
 
-def cast_shield_lowest(frac: float = 0.2, duration: int = 600) -> HookBuilder:
+def cast_shield_lowest(frac: float = 0.2, duration: int = secs(6)) -> HookBuilder:
     """On cast, shield the carrier's lowest-HP ally (Warden)."""
     def build(owner: Piece, sid: str) -> list[Hook]:
         def hook(ctx: Any, event: Any) -> None:
@@ -476,7 +478,7 @@ def cast_shield_lowest(frac: float = 0.2, duration: int = 600) -> HookBuilder:
     return build
 
 
-def slow_on_cast(duration: int = 300, stacks: int = 1, radius: int = 2) -> HookBuilder:
+def slow_on_cast(duration: int = secs(6), stacks: int = 1, radius: int = 2) -> HookBuilder:
     """The carrier's casts slow nearby enemies (Trickster)."""
     def build(owner: Piece, sid: str) -> list[Hook]:
         def hook(ctx: Any, event: Any) -> None:
@@ -491,7 +493,7 @@ def slow_on_cast(duration: int = 300, stacks: int = 1, radius: int = 2) -> HookB
     return build
 
 
-def taunt_on_cast(duration: int = 300) -> HookBuilder:
+def taunt_on_cast(duration: int = secs(6)) -> HookBuilder:
     """The carrier's casts taunt the nearest enemy onto the caster (Trickster @3+).
     Reuses the T.28b `taunt` status the engine already honors."""
     def build(owner: Piece, sid: str) -> list[Hook]:
@@ -554,7 +556,7 @@ def heal_splash(frac: float = 0.3) -> HookBuilder:
     return build
 
 
-def overheal_shield(frac: float = 0.3, duration: int = 600, threshold: float = 0.95) -> HookBuilder:
+def overheal_shield(frac: float = 0.3, duration: int = secs(6), threshold: float = 0.95) -> HookBuilder:
     """When the carrier heals a near-full ally (the heal would overheal), bank it
     as a barrier instead (Mender @4). Reuses V.28 barriers."""
     def build(owner: Piece, sid: str) -> list[Hook]:
@@ -635,7 +637,7 @@ def crit_arc(frac: float = 0.5) -> HookBuilder:
     return build
 
 
-def chill_attackers(duration: int = 200, stacks: int = 1) -> HookBuilder:
+def chill_attackers(duration: int = secs(4), stacks: int = 1) -> HookBuilder:
     """Whoever damages the carrier is slowed (Frostbound @10). Slow has no gate,
     so it lands even on cc_immune attackers; applies to the attacker, not self."""
     def build(owner: Piece, sid: str) -> list[Hook]:

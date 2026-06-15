@@ -8,6 +8,8 @@ Unregistered ability IDs gracefully no-op in the combat engine.
 
 from __future__ import annotations
 
+from src.game.status import secs
+
 from typing import Any
 
 from src.game.effects import (
@@ -159,7 +161,7 @@ def ember_salamander_active(ctx: Any, actor: Any, targets: list) -> None:
     if not target:
         return
     ctx.deal_damage(actor, target, EMBER_SALAMANDER_DMG.eval(actor), SourceTag.ABILITY)
-    ctx.apply_status(target, "burn", duration_ticks=300, source_id=actor.id)
+    ctx.apply_status(target, "burn", duration_ticks=secs(6), source_id=actor.id)
 
 
 ABILITY_META["champ_ember_salamander.active"] = AbilityMeta(
@@ -545,7 +547,7 @@ def aurion_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY)
-        ctx.apply_status(t, "disarm", duration_ticks=200, source_id=actor.id)
+        ctx.apply_status(t, "disarm", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["champ_aurion.active"] = AbilityMeta(
@@ -715,8 +717,8 @@ def grovekeeper_tapir_active(ctx: Any, actor: Any, targets: list) -> None:
     if not target:
         return
     ctx.deal_damage(actor, target, GROVEKEEPER_TAPIR_DMG.eval(actor), SourceTag.ABILITY)
-    ctx.apply_status(target, "root", duration_ticks=200, source_id=actor.id)
-    ctx.apply_status(target, "poison", duration_ticks=400, stacks=2, source_id=actor.id)
+    ctx.apply_status(target, "root", duration_ticks=secs(4), source_id=actor.id)
+    ctx.apply_status(target, "poison", duration_ticks=secs(4), stacks=2, source_id=actor.id)
 
 
 ABILITY_META["champ_grovekeeper_tapir.active"] = AbilityMeta(
@@ -866,8 +868,8 @@ def mirewarden_toad_active(ctx: Any, actor: Any, targets: list) -> None:
     if not target:
         return
     ctx.deal_damage(actor, target, MIREWARDEN_TOAD_DMG.eval(actor), SourceTag.ABILITY)
-    ctx.apply_status(target, "slow", duration_ticks=300, stacks=2, source_id=actor.id)
-    ctx.apply_status(target, "root", duration_ticks=150, source_id=actor.id)
+    ctx.apply_status(target, "slow", duration_ticks=secs(6), stacks=2, source_id=actor.id)
+    ctx.apply_status(target, "root", duration_ticks=secs(3), source_id=actor.id)
 
 
 ABILITY_META["champ_mirewarden_toad.active"] = AbilityMeta(
@@ -889,7 +891,7 @@ def mirewarden_toad_passive(owner: Any) -> EffectBundle:
             state["last_tick"] = ctx.current_tick
             enemies = enemies_in_radius(owner.position_q, owner.position_r, 2, owner, ctx)
             for e in enemies:
-                ctx.apply_status(e, "slow", duration_ticks=350, stacks=1, source_id=owner.id)
+                ctx.apply_status(e, "slow", duration_ticks=secs(3.5), stacks=1, source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
@@ -923,7 +925,7 @@ def glade_heron_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.attacker is not owner:
             return
-        ctx.apply_status(event.target, "poison", duration_ticks=400, stacks=1,
+        ctx.apply_status(event.target, "poison", duration_ticks=secs(4), stacks=1,
                         source_id=owner.id)
         # Poison burst: bonus magic damage once poison has ramped to 3+ stacks.
         if event.target.status_stacks("poison") >= 3:
@@ -1055,7 +1057,7 @@ def nerei_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount * _NEREI_AOE_MULT, SourceTag.ABILITY)
-    ctx.apply_status(actor, "charged", duration_ticks=300, source_id=actor.id)
+    ctx.apply_status(actor, "charged", duration_ticks=secs(6), source_id=actor.id)
 
 
 ABILITY_META["champ_nerei.active"] = AbilityMeta(
@@ -1108,7 +1110,7 @@ def snowpelt_cub_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     ctx.deal_damage(actor, target, SNOWPELT_CUB_DMG.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
-    ctx.apply_status(target, "slow", duration_ticks=200, stacks=1, source_id=actor.id)
+    ctx.apply_status(target, "slow", duration_ticks=secs(4), stacks=1, source_id=actor.id)
 
 
 ABILITY_META["champ_snowpelt_cub.active"] = AbilityMeta(
@@ -1278,7 +1280,7 @@ def frostplate_tortoise_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     ctx.deal_damage(actor, target, FROSTPLATE_TORTOISE_DMG.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
-    ctx.apply_status(target, "root", duration_ticks=200, source_id=actor.id)
+    ctx.apply_status(target, "root", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["champ_frostplate_tortoise.active"] = AbilityMeta(
@@ -1300,7 +1302,7 @@ def iceclaw_lynx_passive(owner: Any) -> EffectBundle:
         if event.attacker is not owner:
             return
         ctx.deal_damage(owner, event.target, ICECLAW_LYNX_BONUS.eval(owner), SourceTag.BASIC_ATTACK)
-        ctx.apply_status(event.target, "slow", duration_ticks=100, stacks=1, source_id=owner.id)
+        ctx.apply_status(event.target, "slow", duration_ticks=secs(2), stacks=1, source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
@@ -1324,7 +1326,7 @@ def iceclaw_lynx_active(ctx: Any, actor: Any, targets: list) -> None:
     if not target:
         return
     ctx.deal_damage(actor, target, ICECLAW_LYNX_DMG.eval(actor), SourceTag.ABILITY)
-    ctx.apply_status(target, "frozen", duration_ticks=150, source_id=actor.id)
+    ctx.apply_status(target, "frozen", duration_ticks=secs(3), source_id=actor.id)
 
 
 ABILITY_META["champ_iceclaw_lynx.active"] = AbilityMeta(
@@ -1374,7 +1376,7 @@ def glacierback_mammoth_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 1, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY, damage_type="physical")
-        ctx.apply_status(t, "stun", duration_ticks=100, source_id=actor.id)
+        ctx.apply_status(t, "stun", duration_ticks=secs(2), source_id=actor.id)
 
 
 ABILITY_META["champ_glacierback_mammoth.active"] = AbilityMeta(
@@ -1445,7 +1447,7 @@ def frostquill_porcupine_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.attacker is not owner:
             return
-        ctx.apply_status(event.target, "slow", duration_ticks=150, stacks=1, source_id=owner.id)
+        ctx.apply_status(event.target, "slow", duration_ticks=secs(3), stacks=1, source_id=owner.id)
         if event.target.has_status("slow"):
             ctx.deal_damage(owner, event.target, FROSTQUILL_PORCUPINE_BONUS.eval(owner),
                           SourceTag.BASIC_ATTACK, damage_type="physical")
@@ -1474,13 +1476,13 @@ def frostquill_porcupine_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     amount = FROSTQUILL_PORCUPINE_DMG.eval(actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
-    ctx.apply_status(target, "slow", duration_ticks=300, stacks=2, source_id=actor.id)
+    ctx.apply_status(target, "slow", duration_ticks=secs(6), stacks=2, source_id=actor.id)
     hit_count = 0
     for n in neighbors_of(target, ctx):
         if ctx.is_enemy(n, actor) and hit_count < 2:
             ctx.deal_damage(actor, n, amount * _PORCUPINE_SPLASH_MULT, SourceTag.ABILITY,
                             damage_type="physical")
-            ctx.apply_status(n, "slow", duration_ticks=300, stacks=1, source_id=actor.id)
+            ctx.apply_status(n, "slow", duration_ticks=secs(6), stacks=1, source_id=actor.id)
             hit_count += 1
 
 
@@ -1507,7 +1509,7 @@ def borealis_passive(owner: Any) -> EffectBundle:
             if enemies:
                 nearest = _closest_enemy(owner, enemies)
                 if nearest:
-                    ctx.apply_status(nearest, "frozen", duration_ticks=200, source_id=owner.id)
+                    ctx.apply_status(nearest, "frozen", duration_ticks=secs(4), source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
@@ -1531,7 +1533,7 @@ def borealis_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY)
-        ctx.apply_status(t, "slow", duration_ticks=300, stacks=2, source_id=actor.id)
+        ctx.apply_status(t, "slow", duration_ticks=secs(6), stacks=2, source_id=actor.id)
 
 
 ABILITY_META["champ_borealis.active"] = AbilityMeta(
@@ -1801,7 +1803,7 @@ def granite_gorilla_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 1, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY)
-        ctx.apply_status(t, "stun", duration_ticks=100, source_id=actor.id)
+        ctx.apply_status(t, "stun", duration_ticks=secs(2), source_id=actor.id)
 
 
 ABILITY_META["champ_granite_gorilla.active"] = AbilityMeta(
@@ -2521,7 +2523,7 @@ def mournhollow_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount * _MOURNHOLLOW_AOE_MULT, SourceTag.ABILITY)
-        ctx.apply_status(t, "fear", duration_ticks=200, source_id=actor.id)
+        ctx.apply_status(t, "fear", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["champ_mournhollow.active"] = AbilityMeta(
@@ -2548,7 +2550,7 @@ def sparkfly_active(ctx: Any, actor: Any, targets: list) -> None:
     if not target:
         return
     ctx.deal_damage(actor, target, SPARKFLY_DMG.eval(actor), SourceTag.ABILITY)
-    ctx.apply_status(target, "stun", duration_ticks=150, source_id=actor.id)
+    ctx.apply_status(target, "stun", duration_ticks=secs(3), source_id=actor.id)
 
 
 ABILITY_META["champ_sparkfly.active"] = AbilityMeta(
@@ -2631,7 +2633,7 @@ def voltscale_mamba_active(ctx: Any, actor: Any, targets: list) -> None:
     ctx.deal_damage(actor, target, VOLTSCALE_MAMBA_DMG.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
     # Electric trail: apply burn to target (represents trail damage)
-    ctx.apply_status(target, "burn", duration_ticks=200, source_id=actor.id)
+    ctx.apply_status(target, "burn", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["champ_voltscale_mamba.active"] = AbilityMeta(
@@ -2736,7 +2738,7 @@ def thunderhide_bison_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     ctx.deal_damage(actor, target, THUNDERHIDE_BISON_DMG.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
-    ctx.apply_status(target, "stun", duration_ticks=120, source_id=actor.id)
+    ctx.apply_status(target, "stun", duration_ticks=secs(2.4), source_id=actor.id)
 
 
 ABILITY_META["champ_thunderhide_bison.active"] = AbilityMeta(
@@ -2833,7 +2835,7 @@ def voltmane_jackal_active(ctx: Any, actor: Any, targets: list) -> None:
     if not target:
         return
     ctx.deal_damage(actor, target, VOLTMANE_JACKAL_DMG.eval(actor), SourceTag.ABILITY)
-    ctx.apply_status(target, "charged", duration_ticks=300, source_id=actor.id)
+    ctx.apply_status(target, "charged", duration_ticks=secs(6), source_id=actor.id)
 
 
 ABILITY_META["champ_voltmane_jackal.active"] = AbilityMeta(
@@ -2855,7 +2857,7 @@ def thunderclap_gorilla_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY, damage_type="physical")
-        ctx.apply_status(t, "stun", duration_ticks=150, source_id=actor.id)
+        ctx.apply_status(t, "stun", duration_ticks=secs(3), source_id=actor.id)
 
 
 ABILITY_META["champ_thunderclap_gorilla.active"] = AbilityMeta(
@@ -2981,7 +2983,7 @@ def aerion_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 4, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount * _AERION_AOE_MULT, SourceTag.ABILITY)
-        ctx.apply_status(t, "charged", duration_ticks=200, source_id=actor.id)
+        ctx.apply_status(t, "charged", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["champ_aerion.active"] = AbilityMeta(

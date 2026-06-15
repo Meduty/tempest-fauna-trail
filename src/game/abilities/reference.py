@@ -6,6 +6,8 @@ Covers: simple active, factory AOE, passive, phase hook, heal.
 
 from __future__ import annotations
 
+from src.game.status import secs
+
 from typing import Any
 
 from src.game.effects import (
@@ -87,7 +89,7 @@ def static_buildup(owner: Any) -> EffectBundle:
         if event.attacker is not owner:
             return
         if ctx.weather == WeatherState.THUNDER:
-            ctx.apply_status(event.target, "charged", duration_ticks=200, stacks=1, source_id=owner.id)
+            ctx.apply_status(event.target, "charged", duration_ticks=secs(4), stacks=1, source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),

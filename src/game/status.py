@@ -18,6 +18,18 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
+# Authoring sugar for durations. Tick = 10 ms (TICK_MS), so SECS = 100 ticks = 1 s.
+# `SECS` is the raw constant (use for tick *intervals*, e.g. `tick % (2 * SECS)`);
+# `secs(x)` converts seconds → integer ticks for *durations* and allows fractions
+# (`secs(3.5)` → 350). The STORED value is always real ticks — no hidden runtime
+# scaling, tick↔time stays honest.
+SECS = 100
+
+
+def secs(seconds: float) -> int:
+    """Seconds → integer ticks (`secs(3) == 300`, `secs(1.5) == 150`)."""
+    return int(round(seconds * SECS))
+
 
 class StackBehaviour(str, Enum):
     """How multiple applications of the same status interact."""

@@ -59,6 +59,12 @@ cadence is exact. Mana is per-slot: `mana_cost`/`max_mana` (default `2×cost`)/
 `start_mana`/`priority` are authored on the ability def (`ABILITY_MANA`), not a
 piece stat; a cast deducts `-= mana_cost` so overflow banks toward the next.
 
+**Status durations** are authored with `secs(x)` (seconds → ticks, fractions OK,
+e.g. `secs(3.5)`) — `SECS` (=100) for raw tick intervals. The stored value is
+always real ticks (no hidden runtime scaling; tick↔time stays honest). CC/DoT
+durations were re-tuned ~2× (1.5–3 s → ~3–6 s) so effects don't expire between
+the slow ~5 s action cadence (`60000/attack_speed`).
+
 - **Ordering** — within a tick, triggered meters resolve in the canonical
   side-independent total order `_event_sort_key = (-round(attack_speed×1000),
   champion_id, load_order, kind)` (V.34, T.29-pre): faster attack-speed first

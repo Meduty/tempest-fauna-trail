@@ -7,13 +7,18 @@ returned each call, so per-combat closure state resets automatically.
 Component magnitudes (§3.1, first-pass, tunable):
   Fang  +12% STR  · Talon +12% AS  · Heartseed +12% INT  · Old Hide +12% HP
   Stoneplate +14% Armor  · Wardpelt +14% RES  · Keen Claw +15% crit_chance (add)
-  Springtear: +200 mana start, −10% cast cost (via on_combat_start hook)
+  Springtear: +15% mana_regen + flat 100_000 start mana (V.48; never cuts cost)
+
+Durations use `secs(x)` (seconds → ticks, fractions OK); `SECS` for tick
+intervals. Readable + real-tick honest (no hidden runtime scaling).
 
 Combined items ≈ both component stats + the showcase mechanic.
 Stat magnitudes are first-pass; retune via sim sweep (plan §5).
 """
 
 from __future__ import annotations
+
+from src.game.status import SECS, secs
 
 from typing import Any
 
@@ -244,7 +249,7 @@ def mammoth_hide(owner: Any) -> EffectBundle:
     def on_tick(ctx: Any, ev: Any) -> None:
         if not owner.alive:
             return
-        if ev.tick == 0 or ev.tick % 200 != 0:   # every 200 ticks = 2 s
+        if ev.tick == 0 or ev.tick % (2*SECS) != 0:   # every 200 ticks = 2 s
             return
         from src.game.targeting import allies_in_radius
         # radius 1 = adjacent; allies_of includes self, so owner is covered.
@@ -275,7 +280,7 @@ def bramble_carapace(owner: Any) -> EffectBundle:
         if attacker.stat("attack_range") > 1:   # melee only (range 1)
             return
         ctx.deal_damage(owner, attacker, THORNS, SourceTag.ITEM_PROC)
-        ctx.apply_status(attacker, "grievous", 200)   # antiheal 2 s
+        ctx.apply_status(attacker, "grievous", secs(2))   # antiheal 2 s
 
     return EffectBundle(
         modifiers=[_armor_mod(1.28, "item:bramble_carapace")],
@@ -291,7 +296,7 @@ def mistward_shroud(owner: Any) -> EffectBundle:
     def on_tick(ctx: Any, ev: Any) -> None:
         if not owner.alive:
             return
-        if ev.tick % 100 == 0:   # every 1 s
+        if ev.tick % SECS == 0:   # every 1 s
             ctx.heal(owner, owner, owner.max_hp * 0.01)   # 1%/s self (was 1.5%/s ≈ unkillable)
 
     return EffectBundle(
@@ -391,7 +396,7 @@ def everbloom_staff(owner: Any) -> EffectBundle:
         if not owner.alive:
             return
         # +1% of current INT every 200 ticks (2 s).
-        if ev.tick % 200 != 0 or ev.tick == 0:
+        if ev.tick % (2*SECS) != 0 or ev.tick == 0:
             return
         bonus = owner.stat("intelligence") * 0.01
         ctx.apply_modifier(owner, Modifier("intelligence", "add", bonus, Lifetime.COMBAT, "item:everbloom_staff"))
@@ -416,15 +421,15 @@ def witherbloom_censer(owner: Any) -> EffectBundle:
     healing) — the 'withering rot'. Res-shred is the scaling lever (amplifies the
     holder's INT autos/casts) since flat burn doesn't scale; grievous restores the
     catalog's 'cuts target healing'. All refresh each hit, single instances."""
-    SHRED_TICKS = 300   # 3 s — matches the burn duration
+    SHRED_TICKS = secs(3)   # 3 s — matches the burn duration
     RES_SHRED = "item:witherbloom_censer"
 
     def on_attack(ctx: Any, ev: Any) -> None:
         if ev.attacker is not owner or not ev.target.alive:
             return
         target = ev.target
-        ctx.apply_status(target, "burn", 300)   # 3 s (was 1.5 s — too short vs cadence)
-        ctx.apply_status(target, "grievous", 300)   # antiheal while burning
+        ctx.apply_status(target, "burn", secs(3))   # 3 s (was 1.5 s — too short vs cadence)
+        ctx.apply_status(target, "grievous", secs(3))   # antiheal while burning
         # Resistance sunder: single refreshing instance (drop the prior one so
         # repeated hits refresh duration, not stack ×0.8 repeatedly).
         target.modifiers = [
@@ -532,7 +537,7 @@ def splitwind_talons(owner: Any) -> EffectBundle:
             return
         primary = ev.target
         if primary.alive:
-            ctx.apply_status(primary, "slow", 200)   # soft CC, 2 s
+            ctx.apply_status(primary, "slow", secs(2))   # soft CC, 2 s
         # Find the nearest second enemy (excluding the primary target)
         second: Any = None
         best_dist = 999
@@ -545,7 +550,7 @@ def splitwind_talons(owner: Any) -> EffectBundle:
                 second = e
         if second is not None:
             ctx.deal_damage(owner, second, ev.amount * 0.50, SourceTag.ITEM_PROC, crit=False)
-            ctx.apply_status(second, "slow", 200)
+            ctx.apply_status(second, "slow", secs(2))
 
     return EffectBundle(
         modifiers=[

@@ -5,6 +5,8 @@ Registered under full roster IDs: `{enemy_id}.active` / `{enemy_id}.passive`.
 
 from __future__ import annotations
 
+from src.game.status import secs
+
 from typing import Any
 
 from src.game.effects import (
@@ -1090,7 +1092,7 @@ def lord_commander_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY, damage_type="physical")
-        ctx.apply_status(t, "stun", duration_ticks=150, source_id=actor.id)
+        ctx.apply_status(t, "stun", duration_ticks=secs(3), source_id=actor.id)
 
 
 ABILITY_META["enemy_lord_commander.active"] = AbilityMeta(
@@ -1564,7 +1566,7 @@ def drowned_siren_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY)
-        ctx.apply_status(t, "silence", duration_ticks=200, source_id=actor.id)
+        ctx.apply_status(t, "silence", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["enemy_drowned_siren.active"] = AbilityMeta(
@@ -1639,7 +1641,7 @@ def dredge_hulk_passive(owner: Any) -> EffectBundle:
             state["last_tick"] = ctx.current_tick
             enemies = enemies_in_radius(owner.position_q, owner.position_r, 2, owner, ctx)
             for e in enemies:
-                ctx.apply_status(e, "slow", duration_ticks=350, stacks=1, source_id=owner.id)
+                ctx.apply_status(e, "slow", duration_ticks=secs(3.5), stacks=1, source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
@@ -1663,7 +1665,7 @@ def dredge_hulk_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     ctx.deal_damage(actor, target, DREDGE_HULK_DMG.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
-    ctx.apply_status(target, "slow", duration_ticks=400, stacks=2, source_id=actor.id)
+    ctx.apply_status(target, "slow", duration_ticks=secs(4), stacks=2, source_id=actor.id)
 
 
 ABILITY_META["enemy_dredge_hulk.active"] = AbilityMeta(
@@ -1718,7 +1720,7 @@ def maw_of_the_drowned_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount * _MAW_AOE, SourceTag.ABILITY)
-        ctx.apply_status(t, "root", duration_ticks=200, source_id=actor.id)
+        ctx.apply_status(t, "root", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["enemy_maw_of_the_drowned.active"] = AbilityMeta(
@@ -1784,7 +1786,7 @@ def iron_collared_hound_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.attacker is not owner:
             return
-        ctx.apply_status(event.target, "slow", duration_ticks=150, stacks=1, source_id=owner.id)
+        ctx.apply_status(event.target, "slow", duration_ticks=secs(3), stacks=1, source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
@@ -1808,7 +1810,7 @@ def iron_collared_hound_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     ctx.deal_damage(actor, target, IRON_COLLARED_HOUND_DMG.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
-    ctx.apply_status(target, "slow", duration_ticks=250, stacks=2, source_id=actor.id)
+    ctx.apply_status(target, "slow", duration_ticks=secs(5), stacks=2, source_id=actor.id)
 
 
 ABILITY_META["enemy_iron_collared_hound.active"] = AbilityMeta(
@@ -1849,7 +1851,7 @@ def cold_iron_yeti_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     ctx.deal_damage(actor, target, COLD_IRON_YETI_DMG.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
-    ctx.apply_status(target, "stun", duration_ticks=150, source_id=actor.id)
+    ctx.apply_status(target, "stun", duration_ticks=secs(3), source_id=actor.id)
 
 
 ABILITY_META["enemy_cold_iron_yeti.active"] = AbilityMeta(
@@ -1872,12 +1874,12 @@ def avalanche_engine_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     amount = AVALANCHE_ENGINE_DMG.eval(actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
-    ctx.apply_status(target, "slow", duration_ticks=300, stacks=2, source_id=actor.id)
+    ctx.apply_status(target, "slow", duration_ticks=secs(6), stacks=2, source_id=actor.id)
     for n in neighbors_of(target, ctx):
         if ctx.is_enemy(n, actor):
             ctx.deal_damage(actor, n, amount * _AVALANCHE_LINE, SourceTag.ABILITY,
                             damage_type="physical")
-            ctx.apply_status(n, "slow", duration_ticks=200, stacks=1, source_id=actor.id)
+            ctx.apply_status(n, "slow", duration_ticks=secs(4), stacks=1, source_id=actor.id)
             break
 
 
@@ -1961,7 +1963,7 @@ def riven_frost_wyrm_passive(owner: Any) -> EffectBundle:
             return
         state["count"] += 1
         if state["count"] % 4 == 0:
-            ctx.apply_status(event.target, "frozen", duration_ticks=150, source_id=owner.id)
+            ctx.apply_status(event.target, "frozen", duration_ticks=secs(3), source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
@@ -2035,7 +2037,7 @@ def frost_sovereign_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount * _FROST_SOVEREIGN_AOE, SourceTag.ABILITY)
-        ctx.apply_status(t, "frozen", duration_ticks=150, source_id=actor.id)
+        ctx.apply_status(t, "frozen", duration_ticks=secs(3), source_id=actor.id)
 
 
 ABILITY_META["enemy_frost_sovereign.active"] = AbilityMeta(
@@ -2120,7 +2122,7 @@ def slag_sentinel_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     ctx.deal_damage(actor, target, SLAG_SENTINEL_DMG.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
-    ctx.apply_status(target, "root", duration_ticks=250, source_id=actor.id)
+    ctx.apply_status(target, "root", duration_ticks=secs(5), source_id=actor.id)
 
 
 ABILITY_META["enemy_slag_sentinel.active"] = AbilityMeta(
@@ -2244,7 +2246,7 @@ def quarried_behemoth_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY, damage_type="physical")
-        ctx.apply_status(t, "stun", duration_ticks=100, source_id=actor.id)
+        ctx.apply_status(t, "stun", duration_ticks=secs(2), source_id=actor.id)
 
 
 ABILITY_META["enemy_quarried_behemoth.active"] = AbilityMeta(
@@ -2400,7 +2402,7 @@ CAGED_BANSHEE_DMG = ScalingTerm("damage", 30.0, "intelligence*1.0")
 def caged_banshee_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
-        ctx.apply_status(t, "fear", duration_ticks=200, source_id=actor.id)
+        ctx.apply_status(t, "fear", duration_ticks=secs(4), source_id=actor.id)
         ctx.deal_damage(actor, t, CAGED_BANSHEE_DMG.eval(actor), SourceTag.ABILITY)
 
 
@@ -2504,7 +2506,7 @@ def sundered_lord_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount * _SUNDERED_LORD_AOE, SourceTag.ABILITY)
-        ctx.apply_status(t, "fear", duration_ticks=150, source_id=actor.id)
+        ctx.apply_status(t, "fear", duration_ticks=secs(3), source_id=actor.id)
 
 
 ABILITY_META["enemy_sundered_lord.active"] = AbilityMeta(
@@ -2725,7 +2727,7 @@ def thunder_bull_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     ctx.deal_damage(actor, target, THUNDER_BULL_DMG.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
-    ctx.apply_status(target, "stun", duration_ticks=180, source_id=actor.id)
+    ctx.apply_status(target, "stun", duration_ticks=secs(3.6), source_id=actor.id)
 
 
 ABILITY_META["enemy_thunder_bull.active"] = AbilityMeta(
@@ -2775,7 +2777,7 @@ def caged_storm_drake_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY)
-        ctx.apply_status(t, "stun", duration_ticks=100, source_id=actor.id)
+        ctx.apply_status(t, "stun", duration_ticks=secs(2), source_id=actor.id)
 
 
 ABILITY_META["enemy_caged_storm_drake.active"] = AbilityMeta(
