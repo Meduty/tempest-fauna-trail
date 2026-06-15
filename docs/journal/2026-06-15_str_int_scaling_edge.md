@@ -150,3 +150,26 @@ terms) lifts the whole int/ability cell — both the 4 damage casters and the 14
 INT utility pieces (their heals/shields scale on INT too), partly addressing the
 D.26 support drag. Centers INT damage coeffs just above 3.7 — within the "casts
 are big nukes" design intent.
+
+## Closing reflection — knowing when "done" is, and isn't
+
+I called D.25 "done" **twice prematurely** and was wrong both times; the user's
+pushes were the value:
+1. After iters 1–2 I said "diminishing returns, stop — it's cadence." Wrong
+   *diagnosis* (cadence was a guess) — but also wrong to stop. The user pushed
+   "isolate damage INT and bump," which **separated the two hidden problems**
+   (damage casters vs utility supports) the composite cell had fused.
+2. I then said "settle here." The user pushed for the **analytical** check —
+   which revealed the empirical tuning had landed on the 3.7 equilibrium, turning
+   a "sim says ok" into a "math and sim agree." That's a categorically stronger
+   conclusion, and it produced the **reusable coeff rule** for all future kits.
+
+Two durable lessons: (a) a metric that "won't move" is often a *mixed* metric —
+slice it (here by `intent`) before blaming the lever; (b) close a balance pass
+with the **closed-form check**, not just the sim — convergence of the two is the
+real "done," and the formula outlives the tuning. Tooling postscript: the whole
+investigation rode one ~120-line analysis tool (`stat_edge.py`) + pure-Python
+DPS math — no new engine code — which is the right weight for a balance question.
+
+— End of the 2026-06-15 T.29 / balance arc. Suite green (1174); D.25 resolved
+analytically + empirically; D.26 + T.36 carry forward.
