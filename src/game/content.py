@@ -177,7 +177,11 @@ def classify_role(
     durability/playstyle/speed/intent (B.13).
     """
     tanky = durability in ("tanky_hp", "tanky_arm")
-    caster = (playstyle == "ability") or (stat == "int")
+    # "caster" = damage routed through casts, i.e. the ability playstyle. INT does
+    # NOT force caster: an INT auto-attacker (INT fuels autos via self-haste /
+    # on-hit-INT passive, e.g. glade_heron) is a marksman, not a mage. The old
+    # `stat=="int"` force made that archetype unrepresentable (role_code bug).
+    caster = (playstyle == "ability")
     if tanky:
         return "bruiser" if intent == "damage" else "tank"
     if intent == "utility":
@@ -529,7 +533,7 @@ _CHAMPION_DEFS: tuple[ChampionDef, ...] = (
     _champion_def("champ_coral_colossus", "Coral Colossus", WeatherState.RAIN, 5, "melee", ["Tidekin", "Guardian", "Mender"], stat="str", durability="tanky_hp", intent="utility", speed="leaden"),
     _champion_def("champ_marsh_thrush", "Marsh Thrush", WeatherState.RAIN, 6, "ranged", ["Skyborn", "Warden", "Mystic", "Multicaster"], stat="int", playstyle="ability", intent="utility", speed="brisk"),
     _champion_def("champ_mirewarden_toad", "Mirewarden Toad", WeatherState.RAIN, 7, "melee", ["Tidekin", "Guardian"], stat="int", durability="tanky_hp", playstyle="ability", intent="utility", speed="leaden"),
-    _champion_def("champ_glade_heron", "Glade Heron", WeatherState.RAIN, 8, "ranged", ["Skyborn", "Hunter", "Trickster"], stat="int", playstyle="ability", intent="damage", stat_overrides={"resistance": 40}, speed="steady"),
+    _champion_def("champ_glade_heron", "Glade Heron", WeatherState.RAIN, 8, "ranged", ["Skyborn", "Hunter", "Trickster"], stat="int", playstyle="auto", intent="damage", stat_overrides={"resistance": 40}, speed="steady"),
     _champion_def("champ_riptide_caiman", "Riptide Caiman", WeatherState.RAIN, 9, "melee", ["Scaled", "Stalker"], stat="str", durability="squishy", playstyle="auto", intent="damage", speed="speedy"),
     _champion_def("champ_nerei", "Nerei, the Floodmother", WeatherState.RAIN, 10, "ranged", ["Tidekin", "Primordial", "Channeler"], speed="hybrid"),
     _champion_def("champ_snowpelt_cub", "Snowpelt Cub", WeatherState.SNOW, 1, "melee", ["Beast", "Guardian", "Packmate"], stat="str", durability="tanky_hp", intent="utility", speed="heavy"),
