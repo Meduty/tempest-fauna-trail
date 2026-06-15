@@ -698,10 +698,13 @@ in their T-task plan docs; what remains here is genuinely undecided.
   −0.038** (gap +0.091). Same playstyle, swap STR→INT ≈ **7–9pp** win-rate drop —
   because the universal auto is `1.0·STR + 0.2·INT` (STR gets 5× the auto value). So
   **STR-as-coeff is strictly stronger than INT-as-coeff** (autos tag along free) → INT
-  needs ~+0.06 wr_delta to reach parity. **Two levers (sim-validate iteratively):**
-  (1) raise the engine auto INT term `0.2·INT` (e.g. →0.35) — global, helps all INT;
-  (2) raise INT ability `ScalingTerm` coeffs ~+20–30% — surgical, helps casters. Start
-  with (1) + measure, then top up casters with (2). Classification fix landed
+  needs ~+0.06 wr_delta to reach parity. **First iteration APPLIED (2026-06-15, commit
+  ceca46e):** (1) engine auto INT term `0.2·INT → 0.25·INT`; (2) all 125 ability
+  `intelligence*K` coeffs ×1.2 (per-term, not a global damage scale — STR coeffs/bases/
+  hybrid expressions untouched). Directional re-measure (n=600) closed the by-stat gap
+  ~0.058→0.024 (both stats near par). **Still open:** confirm on a big (n≥4000) sweep
+  and decide whether a 2nd iteration is needed; the per-term coeffs are now the tuning
+  surface. Classification fix landed
   (2026-06-15): `classify_role` no longer forces INT⇒caster, and 9 INT auto-carriers
   were re-axised (`glade_heron` + 4 full-converts → auto, 3 → hybrid) so the auto-INT
   archetype is representable + measurable (currently ~−0.03 wr_delta). (post T.29c/T.29d)
