@@ -690,6 +690,17 @@ in their T-task plan docs; what remains here is genuinely undecided.
   (and re-checking auto's `0.2·INT`), **sim-validated** — too large + balance-sensitive
   to bundle into the item work. Interlocks with the value of mana items (springtear/
   deepwell/everbloom) which only pay off if casts hit hard. (post T.29c)
+  **Evidence (`tools/simulation/stat_edge.py`, team sims, tier-stratified):** grouping
+  champions by stat×playstyle and reading `wr_delta` (win_rate − power-expected, so
+  tier-controlled), the **auto/STR** cell beats its power budget by **+0.107** while
+  **auto/INT −0.099** — a ~20pp gap in the *same* playstyle, differing only by stat,
+  because the universal auto is `1.0·STR + 0.2·INT` (STR gets 5× the auto value). So
+  **STR-as-coeff is strictly stronger than INT-as-coeff** (autos tag along free) →
+  INT coeffs (ability *and* on-hit/auto-INT) must be raised to parity. Also a
+  classification fix landed (2026-06-15): `classify_role` no longer forces INT⇒caster,
+  and 8 INT auto-carriers were re-axised (`glade_heron` + 4 full-converts → auto, 3 →
+  hybrid) so the auto-INT archetype is representable + measurable. The auto-INT pieces
+  currently sit at ~−0.10 wr_delta — D.25 is what makes them viable. (post T.29c/T.29d)
 
 ### Economy & Meta
 
