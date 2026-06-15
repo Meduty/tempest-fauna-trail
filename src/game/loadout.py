@@ -47,6 +47,26 @@ def make_slot(ability_id: str) -> ActiveSlot:
     return slot
 
 
+_HEARTWOOD_MULT = 1.5  # D.21 MVP: Glimmerdust upgrades an item's modifiers ×1.5
+
+
+def _heartwood_scale(bundle: EffectBundle) -> EffectBundle:
+    """Scale a bundle's stat modifiers for a Heartwood (Glimmerdust) upgrade —
+    `mul` bonus and `add` value ×1.5; hooks/procs/granted_traits untouched (D.21)."""
+    import dataclasses
+
+    scaled = []
+    for m in bundle.modifiers:
+        if m.op == "mul":
+            value = 1.0 + (m.value - 1.0) * _HEARTWOOD_MULT
+        elif m.op == "add":
+            value = m.value * _HEARTWOOD_MULT
+        else:
+            value = m.value
+        scaled.append(Modifier(m.stat, m.op, value, m.lifetime, m.source_id, m.expires_at_tick))
+    return dataclasses.replace(bundle, modifiers=scaled)
+
+
 def apply_bundle(
     target: Piece,
     bundle: EffectBundle,
@@ -276,12 +296,19 @@ def compile_loadout(
     # in piece_from_champion above; enemies carry no items (plan §scope).
     from src.game.registries import ITEM_REGISTRY
     import src.game.items  # noqa: F401 — side-effect: populates ITEM_REGISTRY
+    from src.game.items.special import HEARTWOOD_PREFIX
     for piece in pieces:
         for item_id in piece.items:
-            factory = ITEM_REGISTRY.get(item_id)
+            base_id = item_id
+            heartwood = item_id.startswith(HEARTWOOD_PREFIX)
+            if heartwood:
+                base_id = item_id[len(HEARTWOOD_PREFIX):]
+            factory = ITEM_REGISTRY.get(base_id)
             if factory is not None:
                 bundle = factory(piece)
                 if bundle is not None:
+                    if heartwood:
+                        bundle = _heartwood_scale(bundle)  # D.21 MVP: ×1.5 modifiers
                     apply_bundle(piece, bundle, bus)
 
     # 3. Resolve + apply synergy trait breakpoints (player team only — V.22).

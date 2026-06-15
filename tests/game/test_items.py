@@ -120,10 +120,14 @@ class TestCombine:
     def test_unknown_pair_returns_none(self) -> None:
         assert combine("fang", "unicorn_dust") is None
 
-    def test_spirit_gem_returns_none(self) -> None:
-        """Spirit-Gem → emblem branch is T.29b; returns None for now."""
-        assert combine(SPIRIT_GEM, "fang") is None
-        assert combine("fang", SPIRIT_GEM) is None
+    def test_spirit_gem_crafts_emblem(self) -> None:
+        """Spirit-Gem + mapped component → that Kinship's emblem (T.29b §3.5);
+        unmapped components (wardpelt/keen_claw) craft nothing."""
+        assert combine(SPIRIT_GEM, "fang") == "beast_emblem"
+        assert combine("fang", SPIRIT_GEM) == "beast_emblem"
+        assert combine(SPIRIT_GEM, "heartseed") == "spirit_emblem"
+        assert combine(SPIRIT_GEM, "wardpelt") is None
+        assert combine(SPIRIT_GEM, "keen_claw") is None
 
     def test_all_36_pairs_resolve(self) -> None:
         """Every RECIPE_MAP key resolves through combine()."""

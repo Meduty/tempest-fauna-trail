@@ -11,7 +11,7 @@ combine(a, b) is the public API:
 
 from __future__ import annotations
 
-from src.game.items.base import BASE_COMPONENTS, SPIRIT_GEM
+from src.game.items.base import BASE_COMPONENTS, SPIRIT_GEM, kinship_of
 
 # ---------------------------------------------------------------------------
 # Full 8×8 recipe matrix — 36 entries
@@ -74,8 +74,10 @@ def combine(a: str, b: str) -> str | None:
     key. Spirit-Gem emblem branch is not yet implemented (T.29b).
     """
     if SPIRIT_GEM in (a, b):
-        # T.29b: Spirit-Gem + base component → Kinship emblem.
-        return None
+        # T.29b: Spirit-Gem + base component → that component's Kinship emblem.
+        other = b if a == SPIRIT_GEM else a
+        kinship = kinship_of(other)
+        return f"{kinship.lower()}_emblem" if kinship else None
 
     # Check both inputs are base components (unknown inputs → None)
     if a not in BASE_COMPONENTS or b not in BASE_COMPONENTS:

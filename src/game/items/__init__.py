@@ -12,13 +12,17 @@ Public re-exports:
 
 from __future__ import annotations
 
-from src.game.items.base import BASE_COMPONENTS, SPIRIT_GEM
+from src.game.items.base import BASE_COMPONENTS, SPIRIT_GEM, KINSHIP_OF, kinship_of
 from src.game.items.recipes import RECIPE_MAP, combine
 import src.game.items.combined  # noqa: F401 — side-effect: populates ITEM_REGISTRY
+import src.game.items.emblems   # noqa: F401 — side-effect: registers 6 emblems
+import src.game.items.special   # noqa: F401 — side-effect: registers run-actions
 
 __all__ = [
     "BASE_COMPONENTS",
     "SPIRIT_GEM",
+    "KINSHIP_OF",
+    "kinship_of",
     "RECIPE_MAP",
     "combine",
 ]

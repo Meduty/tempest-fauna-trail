@@ -559,3 +559,360 @@ def splitwind_talons(owner: Any) -> EffectBundle:
         ],
         hooks=[Hook("on_attack_landed", on_attack, scope=HookScope.PER_HIT)],
     )
+
+
+# ===========================================================================
+# T.29b — remaining 20 combined items
+# ===========================================================================
+
+
+# --- Huntress Talon (Fang + Talon) ---
+@register_item("huntress_talon")
+def huntress_talon(owner: Any) -> EffectBundle:
+    """Huntress Talon — +12% STR, +12% AS; autos apply a stacking bleed (poison)."""
+    def on_attack(ctx: Any, ev: Any) -> None:
+        if ev.attacker is not owner or not ev.target.alive:
+            return
+        ctx.apply_status(ev.target, "poison", secs(3), stacks=1, source_id=owner.id)
+
+    return EffectBundle(
+        modifiers=[_str_mod(1.12, "item:huntress_talon"), *_as_mod(1.12, "item:huntress_talon")],
+        hooks=[Hook("on_attack_landed", on_attack, scope=HookScope.PER_HIT)],
+    )
+
+
+# --- Relentless Spear (Fang + Springtear) ---
+@register_item("relentless_spear")
+def relentless_spear(owner: Any) -> EffectBundle:
+    """Relentless Spear — +12% STR, +15% mana regen; each auto grants bonus mana
+    (≈10% of default cost) so an auto-attacker casts often."""
+    def on_attack(ctx: Any, ev: Any) -> None:
+        if ev.attacker is not owner:
+            return
+        ctx.gain_mana(owner, 30_000)
+
+    return EffectBundle(
+        modifiers=[_str_mod(1.12, "item:relentless_spear"), _mr_mod(1.15, "item:relentless_spear")],
+        hooks=[Hook("on_attack_landed", on_attack, scope=HookScope.PER_HIT)],
+    )
+
+
+# --- Titanbone Charm (Fang + Old Hide) ---
+@register_item("titanbone_charm")
+def titanbone_charm(owner: Any) -> EffectBundle:
+    """Titanbone Charm — +12% STR, +12% HP; stacks STR (+0.4% current) each time
+    the holder attacks or is attacked; at 12 stacks, once, gains a barrier (15%
+    max HP) — the defensive payoff at full stacks."""
+    state = {"stacks": 0, "paid": False}
+
+    def stack(ctx: Any) -> None:
+        state["stacks"] += 1
+        ctx.apply_modifier(owner, Modifier(
+            "strength", "add", owner.stat("strength") * 0.004, Lifetime.COMBAT, "item:titanbone_charm"))
+        if state["stacks"] >= 12 and not state["paid"]:
+            state["paid"] = True
+            ctx.grant_barrier(owner, owner.max_hp * 0.15)
+
+    def on_attack(ctx: Any, ev: Any) -> None:
+        if ev.attacker is owner:
+            stack(ctx)
+
+    def on_damaged(ctx: Any, ev: Any) -> None:
+        if ev.target is owner:
+            stack(ctx)
+
+    return EffectBundle(
+        modifiers=[_str_mod(1.12, "item:titanbone_charm"), _hp_mod(1.12, "item:titanbone_charm")],
+        hooks=[
+            Hook("on_attack_landed", on_attack, scope=HookScope.PER_HIT),
+            Hook("on_damage_taken", on_damaged, scope=HookScope.PER_HIT),
+        ],
+    )
+
+
+# --- Beastheart Gauntlet (Fang + Stoneplate) ---
+@register_item("beastheart_gauntlet")
+def beastheart_gauntlet(owner: Any) -> EffectBundle:
+    """Beastheart Gauntlet — +12% STR, +14% Armor; the first time the holder drops
+    below 35% HP, gains a large barrier (25% max HP)."""
+    state = {"paid": False}
+
+    def on_damaged(ctx: Any, ev: Any) -> None:
+        if ev.target is not owner or state["paid"]:
+            return
+        if owner.alive and owner.hp / owner.max_hp < 0.35:
+            state["paid"] = True
+            ctx.grant_barrier(owner, owner.max_hp * 0.25)
+
+    return EffectBundle(
+        modifiers=[_str_mod(1.12, "item:beastheart_gauntlet"), _armor_mod(1.14, "item:beastheart_gauntlet")],
+        hooks=[Hook("on_damage_taken", on_damaged, scope=HookScope.PER_HIT)],
+    )
+
+
+# --- Twinclaw Pact (Fang + Wardpelt) ---
+@register_item("twinclaw_pact")
+def twinclaw_pact(owner: Any) -> EffectBundle:
+    """Twinclaw Pact — +12% STR, +14% RES; the holder alternates — one strike deals
+    +50% bonus damage, the next heals it for 30% of the hit."""
+    state = {"n": 0}
+
+    def on_attack(ctx: Any, ev: Any) -> None:
+        if ev.attacker is not owner:
+            return
+        state["n"] += 1
+        if state["n"] % 2 == 1:
+            if ev.target.alive:
+                ctx.deal_damage(owner, ev.target, ev.amount * 0.50, SourceTag.ITEM_PROC, crit=False)
+        else:
+            ctx.heal(owner, owner, ev.amount * 0.30)
+
+    return EffectBundle(
+        modifiers=[_str_mod(1.12, "item:twinclaw_pact"), _res_mod(1.14, "item:twinclaw_pact")],
+        hooks=[Hook("on_attack_landed", on_attack, scope=HookScope.PER_HIT)],
+    )
+
+
+# --- Giantsbane (Fang + Keen Claw) ---
+@register_item("giantsbane")
+def giantsbane(owner: Any) -> EffectBundle:
+    """Giantsbane — +12% STR, +15% Crit; autos deal bonus magic damage = 4% of the
+    target's max HP (the anti-tank carry)."""
+    def on_attack(ctx: Any, ev: Any) -> None:
+        if ev.attacker is not owner or ev.tag == SourceTag.ITEM_PROC or not ev.target.alive:
+            return
+        ctx.deal_damage(owner, ev.target, ev.target.max_hp * 0.04, SourceTag.ITEM_PROC, crit=False)
+
+    return EffectBundle(
+        modifiers=[_str_mod(1.12, "item:giantsbane"), _crit_add(0.15, "item:giantsbane")],
+        hooks=[Hook("on_attack_landed", on_attack, scope=HookScope.PER_HIT)],
+    )
+
+
+# --- Stormscale Quiver (Talon + Springtear) ---
+@register_item("stormscale_quiver")
+def stormscale_quiver(owner: Any) -> EffectBundle:
+    """Stormscale Quiver — +12% AS, +15% mana regen; every 4th auto discharges a
+    chain of lightning to up to 3 enemies near the target (INT/STR-scaled)."""
+    state = {"n": 0}
+
+    def on_attack(ctx: Any, ev: Any) -> None:
+        if ev.attacker is not owner:
+            return
+        state["n"] += 1
+        if state["n"] % 4 != 0:
+            return
+        from src.game.targeting import enemies_in_radius
+        bolt = 0.6 * max(owner.stat("strength"), owner.stat("intelligence"))
+        hit = 0
+        for e in enemies_in_radius(ev.target.position_q, ev.target.position_r, 3, owner, ctx):
+            if hit >= 3:
+                break
+            ctx.deal_damage(owner, e, bolt, SourceTag.ITEM_PROC, crit=False, damage_type="magical")
+            hit += 1
+
+    return EffectBundle(
+        modifiers=[*_as_mod(1.12, "item:stormscale_quiver"), _mr_mod(1.15, "item:stormscale_quiver")],
+        hooks=[Hook("on_attack_landed", on_attack, scope=HookScope.PER_HIT)],
+    )
+
+
+# --- Quickpelt Harness (Talon + Old Hide) ---
+@register_item("quickpelt_harness")
+def quickpelt_harness(owner: Any) -> EffectBundle:
+    """Quickpelt Harness — +12% AS, +12% HP; the first time the holder is hard-CC'd,
+    it cleanses and is briefly (3 s) CC-immune."""
+    _CC = ("stun", "root", "frozen", "fear", "silence", "disarm")
+    state = {"used": False, "release": -1}
+
+    def on_tick(ctx: Any, ev: Any) -> None:
+        if not owner.alive:
+            return
+        if not state["used"] and any(owner.has_status(s) for s in _CC):
+            state["used"] = True
+            for s in _CC:
+                if owner.has_status(s):
+                    ctx.remove_status(owner, s)
+            owner.cc_immune = True
+            state["release"] = ev.tick + secs(3)
+        elif state["release"] >= 0 and ev.tick >= state["release"]:
+            owner.cc_immune = False
+            state["release"] = -1
+
+    return EffectBundle(
+        modifiers=[*_as_mod(1.12, "item:quickpelt_harness"), _hp_mod(1.12, "item:quickpelt_harness")],
+        hooks=[Hook("on_tick", on_tick, scope=HookScope.PER_HIT)],
+    )
+
+
+# --- Sundertalon (Talon + Stoneplate) ---
+@register_item("sundertalon")
+def sundertalon(owner: Any) -> EffectBundle:
+    """Sundertalon — +12% AS, +14% Armor; the holder's autos shred the target's
+    Armor by 18% (single refreshing TIMED mod, 3 s)."""
+    SRC = "item:sundertalon"
+
+    def on_attack(ctx: Any, ev: Any) -> None:
+        if ev.attacker is not owner or not ev.target.alive:
+            return
+        t = ev.target
+        t.modifiers = [m for m in t.modifiers if not (m.source_id == SRC and m.stat == "armor")]
+        t.modifiers.append(Modifier(
+            "armor", "mul", 0.82, Lifetime.TIMED, SRC, expires_at_tick=ctx.current_tick + secs(3)))
+
+    return EffectBundle(
+        modifiers=[*_as_mod(1.12, "item:sundertalon"), _armor_mod(1.14, "item:sundertalon")],
+        hooks=[Hook("on_attack_landed", on_attack, scope=HookScope.PER_HIT)],
+    )
+
+
+# --- Stalkerclaw (Talon + Keen Claw) ---
+@register_item("stalkerclaw")
+def stalkerclaw(owner: Any) -> EffectBundle:
+    """Stalkerclaw — +14% AS, +15% Crit (the clean auto-attack crit stat stick)."""
+    return EffectBundle(modifiers=[*_as_mod(1.14, "item:stalkerclaw"), _crit_add(0.15, "item:stalkerclaw")])
+
+
+# --- Stoneward Idol (Heartseed + Stoneplate) ---
+@register_item("stoneward_idol")
+def stoneward_idol(owner: Any) -> EffectBundle:
+    """Stoneward Idol — +14% INT, +16% Armor (the durable backline-caster anchor)."""
+    return EffectBundle(modifiers=[_int_mod(1.14, "item:stoneward_idol"), _armor_mod(1.16, "item:stoneward_idol")])
+
+
+# --- Sapwood Aegis (Springtear + Old Hide) ---
+@register_item("sapwood_aegis")
+def sapwood_aegis(owner: Any) -> EffectBundle:
+    """Sapwood Aegis — +15% mana regen, +12% HP; shields the holder at combat start
+    (20% max HP); when that shield breaks, releases an INT-scaled burst to nearby
+    enemies."""
+    state = {"shielded": False, "burst": False}
+
+    def on_start(ctx: Any, ev: Any) -> None:
+        ctx.grant_barrier(owner, owner.max_hp * 0.20)
+        state["shielded"] = True
+
+    def on_tick(ctx: Any, ev: Any) -> None:
+        if not owner.alive or state["burst"] or not state["shielded"]:
+            return
+        if owner.barrier_total <= 0.0:
+            state["burst"] = True
+            from src.game.targeting import enemies_in_radius
+            dmg = 2.0 * owner.stat("intelligence")
+            for e in enemies_in_radius(owner.position_q, owner.position_r, 2, owner, ctx):
+                ctx.deal_damage(owner, e, dmg, SourceTag.ITEM_PROC, crit=False, damage_type="magical")
+
+    return EffectBundle(
+        modifiers=[_mr_mod(1.15, "item:sapwood_aegis"), _hp_mod(1.12, "item:sapwood_aegis")],
+        hooks=[
+            Hook("on_combat_start", on_start, scope=HookScope.PER_HIT),
+            Hook("on_tick", on_tick, scope=HookScope.PER_HIT),
+        ],
+    )
+
+
+# --- Warden's Dewstone (Springtear + Stoneplate) ---
+@register_item("wardens_dewstone")
+def wardens_dewstone(owner: Any) -> EffectBundle:
+    """Warden's Dewstone — +15% mana regen, +14% Armor; at combat start grants
+    adjacent allies +15% mana regen (the defensive support-caster anchor)."""
+    def on_start(ctx: Any, ev: Any) -> None:
+        if ctx is None:
+            return
+        from src.game.targeting import allies_in_radius
+        for ally in allies_in_radius(owner.position_q, owner.position_r, 1, owner, ctx):
+            if ally is owner:
+                continue
+            ctx.apply_modifier(ally, Modifier("mana_regen", "mul", 1.15, Lifetime.COMBAT, "item:wardens_dewstone"))
+
+    return EffectBundle(
+        modifiers=[_mr_mod(1.15, "item:wardens_dewstone"), _armor_mod(1.14, "item:wardens_dewstone")],
+        hooks=[Hook("on_combat_start", on_start, scope=HookScope.PER_HIT)],
+    )
+
+
+# --- Seasonward Charm (Springtear + Wardpelt) ---
+@register_item("seasonward_charm")
+def seasonward_charm(owner: Any) -> EffectBundle:
+    """Seasonward Charm — +15% mana regen, +14% RES; adapts — every 2 s it bolsters
+    the defense (Armor vs physical / Resistance vs magic) matching whichever damage
+    type has hurt the holder most recently."""
+    dmg = {"physical": 0.0, "magical": 0.0}
+    SRC = "item:seasonward_charm"
+
+    def on_damaged(ctx: Any, ev: Any) -> None:
+        if ev.target is owner:
+            dmg[getattr(ev, "damage_type", "physical")] = dmg.get(getattr(ev, "damage_type", "physical"), 0.0) + (ev.amount or 0.0)
+
+    def on_tick(ctx: Any, ev: Any) -> None:
+        if not owner.alive or ev.tick == 0 or ev.tick % (2 * SECS) != 0:
+            return
+        if dmg["physical"] <= 0.0 and dmg["magical"] <= 0.0:
+            return
+        stat = "armor" if dmg["physical"] >= dmg["magical"] else "resistance"
+        owner.modifiers = [m for m in owner.modifiers if m.source_id != SRC]
+        owner.modifiers.append(Modifier(stat, "mul", 1.20, Lifetime.TIMED, SRC, expires_at_tick=ev.tick + 3 * SECS))
+        dmg["physical"] = dmg["magical"] = 0.0
+
+    return EffectBundle(
+        modifiers=[_mr_mod(1.15, "item:seasonward_charm"), _res_mod(1.14, "item:seasonward_charm")],
+        hooks=[
+            Hook("on_damage_taken", on_damaged, scope=HookScope.PER_HIT),
+            Hook("on_tick", on_tick, scope=HookScope.PER_HIT),
+        ],
+    )
+
+
+# --- Dewclaw Fetish (Springtear + Keen Claw) ---
+@register_item("dewclaw_fetish")
+def dewclaw_fetish(owner: Any) -> EffectBundle:
+    """Dewclaw Fetish — +15% mana regen, +15% Crit (a crit item for a cast-cycling carry)."""
+    return EffectBundle(modifiers=[_mr_mod(1.15, "item:dewclaw_fetish"), _crit_add(0.15, "item:dewclaw_fetish")])
+
+
+# --- Spiritbark Hide (Old Hide + Wardpelt) ---
+@register_item("spiritbark_hide")
+def spiritbark_hide(owner: Any) -> EffectBundle:
+    """Spiritbark Hide — +12% HP, +16% RES (the anti-magic frontline brick)."""
+    return EffectBundle(modifiers=[_hp_mod(1.12, "item:spiritbark_hide"), _res_mod(1.16, "item:spiritbark_hide")])
+
+
+# --- Gorehide Wrap (Old Hide + Keen Claw) ---
+@register_item("gorehide_wrap")
+def gorehide_wrap(owner: Any) -> EffectBundle:
+    """Gorehide Wrap — +14% HP, +15% Crit (lets a fragile crit-carry survive the frontline)."""
+    return EffectBundle(modifiers=[_hp_mod(1.14, "item:gorehide_wrap"), _crit_add(0.15, "item:gorehide_wrap")])
+
+
+# --- Greatward Carapace (Stoneplate + Wardpelt) ---
+@register_item("greatward_carapace")
+def greatward_carapace(owner: Any) -> EffectBundle:
+    """Greatward Carapace — +14% Armor, +14% RES; at combat start the holder's
+    defenses scale with the enemy count (+4% Armor & RES per living enemy)."""
+    def on_start(ctx: Any, ev: Any) -> None:
+        if ctx is None:
+            return
+        n = sum(1 for e in ctx.enemies_of(owner) if e.alive)
+        if n <= 0:
+            return
+        owner.modifiers.append(Modifier("armor", "mul", 1.0 + 0.04 * n, Lifetime.COMBAT, "item:greatward_carapace"))
+        owner.modifiers.append(Modifier("resistance", "mul", 1.0 + 0.04 * n, Lifetime.COMBAT, "item:greatward_carapace"))
+
+    return EffectBundle(
+        modifiers=[_armor_mod(1.14, "item:greatward_carapace"), _res_mod(1.14, "item:greatward_carapace")],
+        hooks=[Hook("on_combat_start", on_start, scope=HookScope.PER_HIT)],
+    )
+
+
+# --- Edge of Stone (Stoneplate + Keen Claw) ---
+@register_item("edge_of_stone")
+def edge_of_stone(owner: Any) -> EffectBundle:
+    """Edge of Stone — +16% Armor, +15% Crit (a bruiser-carry hybrid stat stick)."""
+    return EffectBundle(modifiers=[_armor_mod(1.16, "item:edge_of_stone"), _crit_add(0.15, "item:edge_of_stone")])
+
+
+# --- Hexward Claw (Wardpelt + Keen Claw) ---
+@register_item("hexward_claw")
+def hexward_claw(owner: Any) -> EffectBundle:
+    """Hexward Claw — +16% RES, +15% Crit (a crit item that survives magic burst)."""
+    return EffectBundle(modifiers=[_res_mod(1.16, "item:hexward_claw"), _crit_add(0.15, "item:hexward_claw")])

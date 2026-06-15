@@ -14,7 +14,7 @@ casts apply it in T.28c). The movement/targeting/death logic these arm lives in
 
 from __future__ import annotations
 
-from src.game.status import secs
+from src.game.status import SECS, secs
 
 from typing import Any, Callable
 
@@ -305,7 +305,7 @@ def start_shield(frac: float = 0.2, duration: int = 0) -> HookBuilder:
     return build
 
 
-def periodic_shield(interval: int = 600, frac: float = 0.15, duration: int = secs(6),
+def periodic_shield(interval: int = 6 * SECS, frac: float = 0.15, duration: int = secs(6),
                     allies: bool = False) -> HookBuilder:
     """Re-shield the carrier (and adjacent allies if `allies`) every `interval`
     ticks (Guardian @6+ round-refresh). Reuses V.28 barriers."""

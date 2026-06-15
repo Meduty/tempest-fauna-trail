@@ -27,3 +27,21 @@ BASE_COMPONENTS: frozenset[str] = frozenset({
 # Spirit Gem — special item that combines with a base component to craft an
 # emblem (T.29b).  Not a base component itself.
 SPIRIT_GEM: str = "spirit_gem"
+
+# Component → Kinship granted when crafted with a Spirit Gem into an emblem
+# (T.29b §3.5). Six of the eight components map (one per Kinship); the small stat
+# the emblem grants is flavoured by that component. `wardpelt`/`keen_claw` craft
+# no emblem (combine → None). The crafted item id is f"{kinship.lower()}_emblem".
+KINSHIP_OF: dict[str, str] = {
+    "fang": "Beast",
+    "talon": "Skyborn",
+    "stoneplate": "Scaled",
+    "springtear": "Tidekin",
+    "old_hide": "Swarm",
+    "heartseed": "Spirit",
+}
+
+
+def kinship_of(component: str) -> str | None:
+    """Kinship an emblem grants when `component` is fused with a Spirit Gem."""
+    return KINSHIP_OF.get(component)

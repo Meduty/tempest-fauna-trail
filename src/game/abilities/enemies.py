@@ -829,7 +829,7 @@ COMPANY_CAPTAIN_FOCUS_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.1")
 
 @register_passive("enemy_company_captain.passive")
 def company_captain_passive(owner: Any) -> EffectBundle:
-    FOCUS_FIRE_DURATION = 600
+    FOCUS_FIRE_DURATION = secs(6)
     # Conservative INT scaling with a modest per-level bump:
     # original L1 0.12·INT, L2 0.15·INT, L3 0.18·INT per ally hit on a marked target.
     level = getattr(owner, "level", 1)
@@ -1332,7 +1332,7 @@ def hierarch_passive(owner: Any) -> EffectBundle:
         if event.victim is not owner:
             return
         barrier = HIERARCH_BARRIER.eval(owner)
-        duration = 600 * owner.level
+        duration = secs(6) * owner.level
         for ally in ctx.allies_of(owner):
             if ally is owner or not ally.alive:
                 continue

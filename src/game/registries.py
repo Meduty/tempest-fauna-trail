@@ -26,6 +26,11 @@ PASSIVE_REGISTRY: dict[str, Callable] = {}
 # Item factories: id -> factory(owner) -> EffectBundle
 ITEM_REGISTRY: dict[str, Callable] = {}
 
+# Special-item run-actions (T.29b §8.4) — operate on `Run` state ONLY, never
+# enter combat (V.24). `id -> fn(run, *args) -> None`. Kept separate from
+# ITEM_REGISTRY so `game/combat/` never sees them.
+RUN_ACTION_REGISTRY: dict[str, Callable] = {}
+
 # Trait factories: id -> factory() -> list[TraitBreakpoint]
 TRAIT_REGISTRY: dict[str, Callable] = {}
 
@@ -109,6 +114,21 @@ def register_active(
                 start_mana=start_mana,
                 priority=priority,
             )
+        return fn
+    return decorator
+
+
+def register_run_action(item_id: str) -> Callable:
+    """Decorator to register a special-item run-action (T.29b, V.24).
+
+    The function operates on `Run` state only (inventory/bench/amber/roster) and
+    is never referenced from `game/combat/`. Usage:
+
+        @register_run_action("reforger")
+        def reforger(run, item_id): ...
+    """
+    def decorator(fn: Callable) -> Callable:
+        RUN_ACTION_REGISTRY[item_id] = fn
         return fn
     return decorator
 

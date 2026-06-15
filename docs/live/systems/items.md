@@ -44,7 +44,8 @@ recipes) of component IDs to the combined item ID.
 - Same-component recipes use a **single-element frozenset** because
   `frozenset({"fang", "fang"}) == frozenset({"fang"})`.
 - `spirit_gem` is **not** in `BASE_COMPONENTS`; it is a separate special-item.
-  `combine()` short-circuits on `spirit_gem` and returns `None` (T.29b stub).
+  `combine("spirit_gem", c)` returns `c`'s emblem (`base.KINSHIP_OF`) — 6 mapped
+  components craft emblems; `wardpelt`/`keen_claw` → `None` (T.29b).
 
 ```python
 def combine(a: str, b: str) -> str | None:
@@ -158,9 +159,65 @@ Deterministic drop table (derives from `(run_seed, node_index, CH_REWARD)`):
 
 All item IDs returned are guaranteed members of `BASE_COMPONENTS ∪ ITEM_REGISTRY`.
 
-## T.29b stubs (not yet implemented)
+## Combined items (remaining 20 — T.29b)
 
-- `spirit_gem` outbound recipes (`combine("spirit_gem", x)`) return `None`.
-- Emblems (`granted_traits`) — T.29b.
-- `RUN_ACTION_REGISTRY` special items — T.29b.
-- Remaining 20 combined items — T.29b.
+`combined.py` (T.29b block). Hook items use the closure/cadence/`secs()` patterns;
+all magnitudes first-pass, judged against combat scale (autos ~5 s, HP 600–1500).
+
+| ID | Components | Key effects |
+|---|---|---|
+| `huntress_talon` | fang + talon | +12% STR/AS; autos apply stacking poison (3 s) |
+| `relentless_spear` | fang + springtear | +12% STR, +15% MR; +30k mana per auto |
+| `titanbone_charm` | fang + old_hide | +12% STR/HP; +0.4% STR per attack/hit, barrier (15% HP) at 12 stacks |
+| `beastheart_gauntlet` | fang + stoneplate | +12% STR, +14% Armor; barrier (25% HP) first time below 35% |
+| `twinclaw_pact` | fang + wardpelt | +12% STR, +14% RES; alternates +50% bonus hit / 30% heal |
+| `giantsbane` | fang + keen_claw | +12% STR, +15% Crit; autos +4% target max HP magic (anti-tank) |
+| `stormscale_quiver` | talon + springtear | +12% AS, +15% MR; every 4th auto chains lightning to ≤3 enemies |
+| `quickpelt_harness` | talon + old_hide | +12% AS/HP; first hard-CC → cleanse + 3 s CC-immune |
+| `sundertalon` | talon + stoneplate | +12% AS, +14% Armor; autos shred target Armor ×0.82 (3 s) |
+| `stalkerclaw` | talon + keen_claw | +14% AS, +15% Crit (clean crit stat stick) |
+| `stoneward_idol` | heartseed + stoneplate | +14% INT, +16% Armor (durable backline caster) |
+| `sapwood_aegis` | springtear + old_hide | +15% MR, +12% HP; start shield (20% HP) → INT burst on break |
+| `wardens_dewstone` | springtear + stoneplate | +15% MR, +14% Armor; +15% MR aura to adjacent allies |
+| `seasonward_charm` | springtear + wardpelt | +15% MR, +14% RES; adaptive +20% Armor/RES vs recent damage type |
+| `dewclaw_fetish` | springtear + keen_claw | +15% MR, +15% Crit (cast-cycling crit carry) |
+| `spiritbark_hide` | old_hide + wardpelt | +12% HP, +16% RES (anti-magic brick) |
+| `gorehide_wrap` | old_hide + keen_claw | +14% HP, +15% Crit (fragile crit carry survivability) |
+| `greatward_carapace` | stoneplate + wardpelt | +14% Armor/RES; +4% Armor & RES per living enemy at start |
+| `edge_of_stone` | stoneplate + keen_claw | +16% Armor, +15% Crit (bruiser-carry hybrid) |
+| `hexward_claw` | wardpelt + keen_claw | +16% RES, +15% Crit (crit that survives magic burst) |
+
+## Emblems (6 — emblems.py, T.29b)
+
+Each carries `granted_traits=["<Kinship>"]` + an 8% flavour stat; applied at the
+item step (§10.1 step 2.5) **before** `_resolve_traits`, so the wearer counts
+toward that Kinship breakpoint. Crafted via `combine(spirit_gem, component)`.
+
+| Emblem | Kinship | Stat | Crafted from |
+|---|---|---|---|
+| `beast_emblem` | Beast | +8% STR | spirit_gem + fang |
+| `skyborn_emblem` | Skyborn | +8% AS | spirit_gem + talon |
+| `scaled_emblem` | Scaled | +8% Armor | spirit_gem + stoneplate |
+| `tidekin_emblem` | Tidekin | +8% MR | spirit_gem + springtear |
+| `swarm_emblem` | Swarm | +8% HP | spirit_gem + old_hide |
+| `spirit_emblem` | Spirit | +8% INT | spirit_gem + heartseed |
+
+## Special items — run-actions (special.py, T.29b)
+
+Never enter combat (V.24) — `RUN_ACTION_REGISTRY`, operate on `Run` only. Spirit
+Gem is the 6th special, handled inline by `combine()` (crafting, not a run-action).
+
+| Run-action | id | Effect on `Run` |
+|---|---|---|
+| Wildwood Reforging Stone | `reforger` | Swap one component of a combined item (deterministic next) + recombine |
+| Unbinding Totem | `unbinding_totem` | Strip a champ's items → bench inventory, decomposed to components |
+| Echo Acorn | `echo_acorn` | Add a bench copy of a champion (+`champion_copies`, T.22 levelling) |
+| Glimmerdust | `glimmerdust` | Upgrade item → `heartwood:` version (D.21 MVP: ×1.5 modifiers at equip) |
+| Reclaimer's Cache | `reclaimers_cache` | Salvage base components → 10 Amber each |
+
+Heartwood (`heartwood:<id>`) is scaled at equip by `loadout._heartwood_scale`
+(mul/add modifiers ×1.5; hooks/procs untouched — D.21 MVP). `decompose()` reverses
+any item to base components (used by unbind/reforge).
+
+**CLI:** `sim_run --interactive` opens a prep shell (`combine`/`equip`/`reforge`/
+`unbind`/`echo`/`glimmer`/`salvage`) over a Run before the route walk.
