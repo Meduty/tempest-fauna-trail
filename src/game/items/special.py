@@ -72,9 +72,11 @@ def decompose(item_id: str) -> list[str]:
 def reforger(run: Any, item_id: str) -> None:
     """Wildwood Reforging Stone — swap one component of a combined item for a
     different one (deterministic: the lexicographically-next base component) and
-    recombine. No-op if the item isn't a recombinable combined item in inventory."""
+    recombine. No-op if the item isn't a recombinable combined item in inventory.
+    Same-component recipes (1-element tuple, e.g. apex_fang) have no second
+    component to keep, so they are treated as non-reforgeable (no-op)."""
     comps = _REVERSE_RECIPE.get(item_id)
-    if comps is None or run.inventory.get(item_id, 0) <= 0:
+    if comps is None or len(comps) < 2 or run.inventory.get(item_id, 0) <= 0:
         return
     keep = comps[1]                       # keep the second, reforge the first
     ordered = sorted(BASE_COMPONENTS)

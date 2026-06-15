@@ -162,8 +162,11 @@ def _interactive_prep(run, team: list[Champion]) -> None:
                 run.inventory[a[0]] = run.inventory.get(a[0], 0) + (int(a[1]) if len(a) > 1 else 1)
             elif cmd == "combine":
                 out = combine(a[0], a[1])
+                need = {a[0]: a.count(a[0]), a[1]: a.count(a[1])}
                 if out is None:
                     print("  no recipe")
+                elif any(run.inventory.get(c, 0) < q for c, q in need.items()):
+                    print("  components not in inventory")
                 else:
                     _dec(a[0]); _dec(a[1])
                     run.inventory[out] = run.inventory.get(out, 0) + 1

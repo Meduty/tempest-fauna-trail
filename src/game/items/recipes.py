@@ -6,7 +6,7 @@ frozenset because ``frozenset({"fang","fang"}) == frozenset({"fang"})``.
 
 combine(a, b) is the public API:
   - Returns the combined-item id for two components, or None if unknown.
-  - Spirit-Gem → emblem branch is stubbed here (T.29b).
+  - Spirit-Gem + base component → that component's Kinship emblem (T.29b).
 """
 
 from __future__ import annotations
@@ -71,7 +71,8 @@ def combine(a: str, b: str) -> str | None:
     """Return the combined-item id for two components, or None if unknown.
 
     Same-component pairs (a == b) resolve via the single-element frozenset
-    key. Spirit-Gem emblem branch is not yet implemented (T.29b).
+    key. A Spirit Gem paired with a base component returns that component's
+    Kinship emblem (T.29b).
     """
     if SPIRIT_GEM in (a, b):
         # T.29b: Spirit-Gem + base component → that component's Kinship emblem.

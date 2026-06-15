@@ -61,6 +61,14 @@ def test_reforger_recombines():
     assert sum(run.inventory.values()) == 1  # one new combined item exists
 
 
+def test_reforger_noop_on_same_component_item():
+    # apex_fang crafts from fang+fang → 1-element reverse-recipe tuple; reforging
+    # has no second component to keep, so it must no-op (not IndexError).
+    run = _run(apex_fang=1)
+    RUN_ACTION_REGISTRY["reforger"](run, "apex_fang")
+    assert run.inventory == {"apex_fang": 1}
+
+
 def test_unbinding_totem_strips_to_components():
     champ = get_champion("champ_dawnwisp")
     champ.items = ["huntress_talon", "fang"]

@@ -2,8 +2,8 @@
 
 Hypothesis under test
 ---------------------
-The universal auto-attack is `1.0*STR + 0.2*INT` (`combat/context.py`): STR
-gets a **5x** auto multiplier vs INT. So a piece that scales its kit on STR
+The universal auto-attack is `1.0*STR + 0.25*INT` (`combat/context.py`): STR
+gets a **4x** auto multiplier vs INT. So a piece that scales its kit on STR
 gets the auto damage **for free** alongside its ability damage, while an INT
 caster's autos are near-dead weight. If ability INT-coeffs are sized the same
 as STR-coeffs, STR pieces should systematically out-perform — and INT coeffs
@@ -27,7 +27,7 @@ users under-perform — the size of the gap is the INT-coeff correction needed.
 Usage
 -----
     python -m tools.simulation.stat_edge                 # default 3v3, 4000 battles, all weathers
-    python -m tools.simulation.stat_edge --team-size 4 --n 6000 --weather clear
+    python -m tools.simulation.stat_edge --team-sizes 4 --n 6000 --weather clear
     python -m tools.simulation.stat_edge --csv results/stat_edge.csv
 
 Enemies are excluded from the grouping (the STR/INT design lever is the
@@ -50,7 +50,6 @@ from src.game.models import WeatherState
 
 from tools.simulation.matchup import (
     _pool_initializer,
-    base_of,
     configure_sim_max_ticks,
     parse_piece_id,
     run_matchup,
