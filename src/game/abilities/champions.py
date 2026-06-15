@@ -417,7 +417,9 @@ ABILITY_META["champ_goldhide_rhino.active"] = AbilityMeta(
 
 # --- Mirage Caracal (T8, APC-INT Assassin) ---
 # Cast: blink execute (bonus damage to low-HP targets).
-MIRAGE_CARACAL_DMG = ScalingTerm("damage", 80.0, "intelligence*2.2")
+# Hybrid auto-int (T.29d): the on-auto INT passive carries DPS; the active is now
+# lighter damage + a grievous (antiheal) debuff — value from autos + utility cast.
+MIRAGE_CARACAL_DMG = ScalingTerm("damage", 50.0, "intelligence*1.3")
 _CARACAL_EXECUTE_MULT = 1.5
 
 
@@ -431,14 +433,15 @@ def mirage_caracal_active(ctx: Any, actor: Any, targets: list) -> None:
     if target.hp_pct < 0.3:
         amount *= _CARACAL_EXECUTE_MULT
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    ctx.apply_status(target, "grievous", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["champ_mirage_caracal.active"] = AbilityMeta(
-    name="Blink Execute", kind="active",
-    blurb="Blink to the lowest-HP enemy for {damage} magic damage.",
+    name="Blink Mark", kind="active",
+    blurb="Blink to the lowest-HP enemy for {damage} magic damage and inflict grievous wounds.",
     terms=(MIRAGE_CARACAL_DMG,),
-    clauses=(Clause(f"Deals +{int((_CARACAL_EXECUTE_MULT - 1) * 100)}% to targets below 30% HP."),),
-    tags=("magic", "execute"),
+    clauses=(Clause(f"Deals +{int((_CARACAL_EXECUTE_MULT - 1) * 100)}% to targets below 30% HP; halves their healing for 4s."),),
+    tags=("magic", "execute", "antiheal"),
 )
 
 
@@ -1380,24 +1383,31 @@ ABILITY_META["champ_iceclaw_lynx.passive"] = AbilityMeta(
 )
 
 
-ICECLAW_LYNX_DMG = ScalingTerm("damage", 80.0, "intelligence*2.0")
+ICECLAW_LYNX_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.7")
+_ICECLAW_LYNX_HASTE_SRC = "ability:champ_iceclaw_lynx.active"
 
 
 @register_active("champ_iceclaw_lynx.active")
 def iceclaw_lynx_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Frost pounce: INT burst + freeze
+    # Frost Vigor: self attack-speed buff (auto-int) + freeze the primary target
+    # (utility, no nuke). INT fuels the on-auto chill/burst passive via speed.
+    as_bonus = ICECLAW_LYNX_HASTE.eval(actor)
+    actor.modifiers = [m for m in actor.modifiers if m.source_id != _ICECLAW_LYNX_HASTE_SRC]
+    ctx.apply_modifier(actor, Modifier(
+        "attack_speed", "add", as_bonus, Lifetime.TIMED,
+        _ICECLAW_LYNX_HASTE_SRC, expires_at_tick=ctx.current_tick + 2500,
+    ))
     target = primary_target(actor, ctx)
-    if not target:
-        return
-    ctx.deal_damage(actor, target, ICECLAW_LYNX_DMG.eval(actor), SourceTag.ABILITY)
-    ctx.apply_status(target, "frozen", duration_ticks=secs(3), source_id=actor.id)
+    if target:
+        ctx.apply_status(target, "frozen", duration_ticks=secs(2), source_id=actor.id)
 
 
 ABILITY_META["champ_iceclaw_lynx.active"] = AbilityMeta(
-    name="Frost Pounce", kind="active",
-    blurb="Pounce the primary target for {damage} magic damage.",
-    terms=(ICECLAW_LYNX_DMG,),
-    clauses=(Clause("Freezes for 1.5s."),), tags=("magic", "freeze"),
+    name="Frost Vigor", kind="active",
+    blurb="Gain a self attack-speed buff scaling on Intelligence ({haste}) and "
+          "freeze the primary target.",
+    terms=(ICECLAW_LYNX_HASTE,),
+    clauses=(Clause("Freezes for 2s."),), tags=("buff", "haste", "freeze"),
 )
 
 
@@ -1824,22 +1834,28 @@ ABILITY_META["champ_duskstep_marten.passive"] = AbilityMeta(
 )
 
 
-DUSKSTEP_MARTEN_DMG = ScalingTerm("damage", 70.0, "intelligence*2.0")
+# Auto-int carry (T.29d): early-game auto-int. Active = self attack-speed buff,
+# not a nuke; INT routes into the on-auto bonus passive via speed.
+DUSKSTEP_MARTEN_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.7")
+_DUSKSTEP_MARTEN_HASTE_SRC = "ability:champ_duskstep_marten.active"
 
 
 @register_active("champ_duskstep_marten.active")
 def duskstep_marten_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Shadow strike: INT burst
-    target = lowest_hp_enemy(actor, ctx)
-    if not target:
-        return
-    ctx.deal_damage(actor, target, DUSKSTEP_MARTEN_DMG.eval(actor), SourceTag.ABILITY)
+    # Shadowstep: self attack-speed buff — INT fuels the auto bonus via speed.
+    as_bonus = DUSKSTEP_MARTEN_HASTE.eval(actor)
+    actor.modifiers = [m for m in actor.modifiers if m.source_id != _DUSKSTEP_MARTEN_HASTE_SRC]
+    ctx.apply_modifier(actor, Modifier(
+        "attack_speed", "add", as_bonus, Lifetime.TIMED,
+        _DUSKSTEP_MARTEN_HASTE_SRC, expires_at_tick=ctx.current_tick + 2500,
+    ))
 
 
 ABILITY_META["champ_duskstep_marten.active"] = AbilityMeta(
-    name="Shadow Strike", kind="active",
-    blurb="Strike the lowest-HP enemy for {damage} magic damage.",
-    terms=(DUSKSTEP_MARTEN_DMG,), tags=("magic",),
+    name="Shadowstep", kind="active",
+    blurb="Gain a self attack-speed buff scaling on Intelligence ({haste}), "
+          "powering the shadow-laced autos.",
+    terms=(DUSKSTEP_MARTEN_HASTE,), tags=("buff", "haste"),
 )
 
 
@@ -1956,7 +1972,9 @@ ABILITY_META["champ_eclipse_jaguar.active"] = AbilityMeta(
 
 # --- Nightglass Mantis (T8, INT Assassin) ---
 # Active: vanish → INT execute (bonus vs low HP)
-NIGHTGLASS_MANTIS_DMG = ScalingTerm("damage", 100.0, "intelligence*2.5")
+# Hybrid auto-int (T.29d): on-auto INT passive carries DPS; active is lighter
+# damage + a slow debuff (value from autos + utility cast).
+NIGHTGLASS_MANTIS_DMG = ScalingTerm("damage", 60.0, "intelligence*1.5")
 _MANTIS_EXECUTE_MULT = 1.6
 
 
@@ -1969,14 +1987,15 @@ def nightglass_mantis_active(ctx: Any, actor: Any, targets: list) -> None:
     if target.hp_pct < 0.3:
         amount *= _MANTIS_EXECUTE_MULT
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    ctx.apply_status(target, "slow", duration_ticks=secs(3), stacks=2, source_id=actor.id)
 
 
 ABILITY_META["champ_nightglass_mantis.active"] = AbilityMeta(
-    name="Vanishing Execute", kind="active",
-    blurb="Vanish and strike the lowest-HP enemy for {damage} magic damage.",
+    name="Vanishing Cut", kind="active",
+    blurb="Vanish and strike the lowest-HP enemy for {damage} magic damage, slowing it.",
     terms=(NIGHTGLASS_MANTIS_DMG,),
-    clauses=(Clause(f"Deals +{int((_MANTIS_EXECUTE_MULT - 1) * 100)}% to targets below 30% HP."),),
-    tags=("magic", "execute"),
+    clauses=(Clause(f"Deals +{int((_MANTIS_EXECUTE_MULT - 1) * 100)}% to targets below 30% HP; slows for 3s."),),
+    tags=("magic", "execute", "slow"),
 )
 
 
@@ -2516,22 +2535,32 @@ ABILITY_META["champ_veilfang_wolf.passive"] = AbilityMeta(
 )
 
 
-VEILFANG_WOLF_DMG = ScalingTerm("damage", 80.0, "intelligence*2.2")
+# Hybrid auto-int (T.29d): the on-auto INT/res-shred passive carries DPS; active
+# is lighter damage + a self attack-speed buff (value from autos + utility cast).
+VEILFANG_WOLF_DMG = ScalingTerm("damage", 50.0, "intelligence*1.3")
+VEILFANG_WOLF_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.4")
+_VEILFANG_WOLF_HASTE_SRC = "ability:champ_veilfang_wolf.active"
 
 
 @register_active("champ_veilfang_wolf.active")
 def veilfang_wolf_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Fang rush: INT damage
+    # Fang Rush: light hit + a self attack-speed buff that powers the shred autos.
     target = primary_target(actor, ctx)
-    if not target:
-        return
-    ctx.deal_damage(actor, target, VEILFANG_WOLF_DMG.eval(actor), SourceTag.ABILITY)
+    if target:
+        ctx.deal_damage(actor, target, VEILFANG_WOLF_DMG.eval(actor), SourceTag.ABILITY)
+    as_bonus = VEILFANG_WOLF_HASTE.eval(actor)
+    actor.modifiers = [m for m in actor.modifiers if m.source_id != _VEILFANG_WOLF_HASTE_SRC]
+    ctx.apply_modifier(actor, Modifier(
+        "attack_speed", "add", as_bonus, Lifetime.TIMED,
+        _VEILFANG_WOLF_HASTE_SRC, expires_at_tick=ctx.current_tick + 2500,
+    ))
 
 
 ABILITY_META["champ_veilfang_wolf.active"] = AbilityMeta(
     name="Fang Rush", kind="active",
-    blurb="Rush the primary target for {damage} magic damage.",
-    terms=(VEILFANG_WOLF_DMG,), tags=("magic",),
+    blurb="Hit the primary target for {damage} magic damage and gain a self "
+          "attack-speed buff ({haste}) to fuel the rending autos.",
+    terms=(VEILFANG_WOLF_DMG, VEILFANG_WOLF_HASTE), tags=("magic", "buff", "haste"),
 )
 
 
@@ -2563,29 +2592,28 @@ ABILITY_META["champ_spectral_heron.passive"] = AbilityMeta(
 )
 
 
-SPECTRAL_HERON_DMG = ScalingTerm("damage", 80.0, "intelligence*2.0")
-_SPECTRAL_HERON_LINE_MULT = 0.6
+# Auto-int carry (T.29d): INT routes into AUTOS (the on-auto pierce passive). The
+# active is a self attack-speed buff, NOT a nuke.
+SPECTRAL_HERON_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.8")
+_SPECTRAL_HERON_HASTE_SRC = "ability:champ_spectral_heron.active"
 
 
 @register_active("champ_spectral_heron.active")
 def spectral_heron_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Spectral beam: line damage
-    target = primary_target(actor, ctx)
-    if not target:
-        return
-    amount = SPECTRAL_HERON_DMG.eval(actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
-    for n in neighbors_of(target, ctx):
-        if ctx.is_enemy(n, actor):
-            ctx.deal_damage(actor, n, amount * _SPECTRAL_HERON_LINE_MULT, SourceTag.ABILITY)
+    # Spirit Focus: self attack-speed buff — speeds the piercing autos.
+    as_bonus = SPECTRAL_HERON_HASTE.eval(actor)
+    actor.modifiers = [m for m in actor.modifiers if m.source_id != _SPECTRAL_HERON_HASTE_SRC]
+    ctx.apply_modifier(actor, Modifier(
+        "attack_speed", "add", as_bonus, Lifetime.TIMED,
+        _SPECTRAL_HERON_HASTE_SRC, expires_at_tick=ctx.current_tick + 2500,
+    ))
 
 
 ABILITY_META["champ_spectral_heron.active"] = AbilityMeta(
-    name="Spectral Beam", kind="active",
-    blurb="Fire a beam through the primary target for {damage} magic damage.",
-    terms=(SPECTRAL_HERON_DMG,),
-    clauses=(Clause(f"Enemies in the line take {int(_SPECTRAL_HERON_LINE_MULT * 100)}% damage."),),
-    tags=("magic", "aoe"),
+    name="Spirit Focus", kind="active",
+    blurb="Focus into a self attack-speed buff scaling on Intelligence ({haste}), "
+          "speeding the piercing autos.",
+    terms=(SPECTRAL_HERON_HASTE,), tags=("buff", "haste"),
 )
 
 
@@ -3048,33 +3076,28 @@ ABILITY_META["champ_storm_eagle.passive"] = AbilityMeta(
 )
 
 
-STORM_EAGLE_DMG = ScalingTerm("damage", 100.0, "intelligence*2.8")
-_STORM_EAGLE_CHAIN_MULT = 0.5
+# Auto-int carry (T.29d): INT routes into AUTOS (the on-auto fork passive). The
+# active is a self-haste, NOT a nuke — value comes from the empowered autos.
+STORM_EAGLE_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.8")
+_STORM_EAGLE_HASTE_SRC = "ability:champ_storm_eagle.active"
 
 
 @register_active("champ_storm_eagle.active")
 def storm_eagle_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Lightning dive: INT damage to primary + chain to 2 neighbors
-    target = primary_target(actor, ctx)
-    if not target:
-        return
-    # Buffed scaling for T9 mage damage dealer + chain bounce at 50%
-    amount = STORM_EAGLE_DMG.eval(actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
-    # Chain to 2 neighbors at 50% damage
-    hit_count = 0
-    for n in neighbors_of(target, ctx):
-        if ctx.is_enemy(n, actor) and n is not target and hit_count < 2:
-            ctx.deal_damage(actor, n, amount * _STORM_EAGLE_CHAIN_MULT, SourceTag.ABILITY)
-            hit_count += 1
+    # Tailwind: self attack-speed buff — INT fuels the auto-fork DPS via speed.
+    as_bonus = STORM_EAGLE_HASTE.eval(actor)
+    actor.modifiers = [m for m in actor.modifiers if m.source_id != _STORM_EAGLE_HASTE_SRC]
+    ctx.apply_modifier(actor, Modifier(
+        "attack_speed", "add", as_bonus, Lifetime.TIMED,
+        _STORM_EAGLE_HASTE_SRC, expires_at_tick=ctx.current_tick + 2500,
+    ))
 
 
 ABILITY_META["champ_storm_eagle.active"] = AbilityMeta(
-    name="Lightning Dive", kind="active",
-    blurb="Dive the primary target for {damage} magic damage.",
-    terms=(STORM_EAGLE_DMG,),
-    clauses=(Clause(f"Chains to 2 nearby enemies for {int(_STORM_EAGLE_CHAIN_MULT * 100)}% damage."),),
-    tags=("magic", "aoe"),
+    name="Tailwind", kind="active",
+    blurb="Surge with a self attack-speed buff scaling on Intelligence ({haste}), "
+          "accelerating the lightning-fork autos.",
+    terms=(STORM_EAGLE_HASTE,), tags=("buff", "haste"),
 )
 
 
