@@ -34,20 +34,81 @@ AUGMENT_REGISTRY: dict[str, Any] = {}
 
 
 # ---------------------------------------------------------------------------
+# Mana cost-meta (T.29c, V.48) — per-ability mana fields authored on the
+# ability def. Replaces the deprecated per-piece `ability_cost` stat. An
+# ability without an entry uses the dataclass defaults (mana_cost=300_000,
+# i.e. the old baseline). `loadout` seeds each `ActiveSlot` from here.
+# ---------------------------------------------------------------------------
+
+DEFAULT_MANA_COST: int = 300_000  # former `_ABILITY_COST` baseline (V.35)
+
+
+@dataclass(frozen=True)
+class AbilityMana:
+    """Per-ability mana statline (V.48). `max_mana=0` ⇒ `2 * mana_cost`."""
+
+    mana_cost: int = DEFAULT_MANA_COST
+    max_mana: int = 0          # 0 ⇒ ActiveSlot normalizes to 2 * mana_cost
+    start_mana: int = 0
+    priority: int = 1
+
+
+# id -> AbilityMana, keyed by the same ability-id strings as ABILITY_REGISTRY.
+ABILITY_MANA: dict[str, AbilityMana] = {}
+
+_DEFAULT_ABILITY_MANA = AbilityMana()
+
+
+def ability_mana(ability_id: str) -> AbilityMana:
+    """Resolve the mana statline for an ability id (defaults if unregistered)."""
+    return ABILITY_MANA.get(ability_id, _DEFAULT_ABILITY_MANA)
+
+
+def register_ability_mana(
+    ability_id: str,
+    *,
+    mana_cost: int = DEFAULT_MANA_COST,
+    max_mana: int = 0,
+    start_mana: int = 0,
+    priority: int = 1,
+) -> None:
+    """Author an ability's mana statline (V.48). Cost lives on the ability def."""
+    ABILITY_MANA[ability_id] = AbilityMana(mana_cost, max_mana, start_mana, priority)
+
+
+# ---------------------------------------------------------------------------
 # Decorators
 # ---------------------------------------------------------------------------
 
 
-def register_active(ability_id: str) -> Callable:
+def register_active(
+    ability_id: str,
+    *,
+    mana_cost: int | None = None,
+    max_mana: int = 0,
+    start_mana: int = 0,
+    priority: int = 1,
+) -> Callable:
     """Decorator to register an active ability handler.
 
-    Usage:
-        @register_active("storm_surge")
+    Optional mana kwargs author the ability's `AbilityMana` statline (V.48,
+    T.29c) — the per-ability cost knob. Omit them to use the defaults
+    (mana_cost=300_000). Usage:
+
+        @register_active("storm_surge", mana_cost=450_000, priority=1)
         def storm_surge(ctx, actor, targets):
             ...
     """
     def decorator(fn: Callable) -> Callable:
         ABILITY_REGISTRY[ability_id] = fn
+        if mana_cost is not None or max_mana or start_mana or priority != 1:
+            register_ability_mana(
+                ability_id,
+                mana_cost=DEFAULT_MANA_COST if mana_cost is None else mana_cost,
+                max_mana=max_mana,
+                start_mana=start_mana,
+                priority=priority,
+            )
         return fn
     return decorator
 

@@ -111,7 +111,7 @@ def holloway_phase_hook(owner: Any) -> EffectBundle:
             from src.game.piece import ActiveSlot
             owner.actives = [ActiveSlot(
                 ability_id="holloway.magma_heave",
-                cost=owner.actives[0].cost if owner.actives else 420_000,
+                mana_cost=owner.actives[0].mana_cost if owner.actives else 420_000,
             )]
             # Apply phase 2 passive
             bundle = holloway_cinder_husk(owner)
@@ -281,7 +281,7 @@ def vance_phase_hook(owner: Any) -> EffectBundle:
             from src.game.piece import ActiveSlot
             owner.actives = [ActiveSlot(
                 ability_id="vance.sunflare_pounce",
-                cost=owner.actives[0].cost if owner.actives else 440_000,
+                mana_cost=owner.actives[0].mana_cost if owner.actives else 440_000,
             )]
             bundle = vance_drought_aura(owner)
             ctx.register_bundle(owner, bundle)
@@ -449,7 +449,7 @@ def strand_phase_hook(owner: Any) -> EffectBundle:
             from src.game.piece import ActiveSlot
             owner.actives = [ActiveSlot(
                 ability_id="strand.thunderhead",
-                cost=owner.actives[0].cost if owner.actives else 380_000,
+                mana_cost=owner.actives[0].mana_cost if owner.actives else 380_000,
             )]
             bundle = strand_stormform(owner)
             ctx.register_bundle(owner, bundle)
@@ -618,7 +618,7 @@ def vossberg_phase_hook(owner: Any) -> EffectBundle:
             from src.game.piece import ActiveSlot
             owner.actives = [ActiveSlot(
                 ability_id="vossberg.wildfire_leap",
-                cost=owner.actives[0].cost if owner.actives else 400_000,
+                mana_cost=owner.actives[0].mana_cost if owner.actives else 400_000,
             )]
             bundle = vossberg_feeding_frenzy(owner)
             ctx.register_bundle(owner, bundle)
@@ -783,7 +783,7 @@ def crege_phase_hook(owner: Any) -> EffectBundle:
             from src.game.piece import ActiveSlot
             owner.actives = [ActiveSlot(
                 ability_id="crege.maelstrom_jaws",
-                cost=owner.actives[0].cost if owner.actives else 460_000,
+                mana_cost=owner.actives[0].mana_cost if owner.actives else 460_000,
             )]
             bundle = crege_drowning_tide(owner)
             ctx.register_bundle(owner, bundle)
@@ -963,7 +963,7 @@ def iron_emperor_phase_hook(owner: Any) -> EffectBundle:
             from src.game.piece import ActiveSlot
             owner.actives = [ActiveSlot(
                 ability_id="iron_emperor.reclamation",
-                cost=owner.actives[0].cost if owner.actives else 520_000,
+                mana_cost=owner.actives[0].mana_cost if owner.actives else 520_000,
             )]
             bundle = iron_emperor_the_wound_spreads(owner)
             ctx.register_bundle(owner, bundle)

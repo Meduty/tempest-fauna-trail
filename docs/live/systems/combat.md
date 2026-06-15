@@ -50,9 +50,14 @@ also spelled out by hand there — keep the two in sync.
 Time = **10 ms ticks** (`TICK_MS`); 1 round = 600 ticks (`ROUND_TICKS`, a
 presentation unit only). Each living piece accrues three meters per tick from
 its int stats: `action_energy += attack_speed`, `movement_energy += move_speed`,
-and per-slot mana `+= mana_regen`. A meter fires at `ENERGY_THRESHOLD` (60 000)
-and **carries overflow** (it subtracts the threshold, not resets) so cadence is
-exact.
+and mana via the **weighted-rank charge cycle** (T.29c, V.48): one slot is
+charged the full `mana_regen` per tick, cycle length `sum(slot.priority)`, each
+slot occupying `priority` positions (skip slots at `max_mana`) → mana throughput
+= `mana_regen`/tick regardless of slot count. A meter fires at `ENERGY_THRESHOLD`
+(60 000) and **carries overflow** (it subtracts the threshold, not resets) so
+cadence is exact. Mana is per-slot: `mana_cost`/`max_mana` (default `2×cost`)/
+`start_mana`/`priority` are authored on the ability def (`ABILITY_MANA`), not a
+piece stat; a cast deducts `-= mana_cost` so overflow banks toward the next.
 
 - **Ordering** — within a tick, triggered meters resolve in the canonical
   side-independent total order `_event_sort_key = (-round(attack_speed×1000),
@@ -69,7 +74,9 @@ exact.
 - **Action** — `_resolve_action`: cast an *unregistered* ability if mana full
   (fallback path), else auto-attack if an enemy is in range
   (`ctx.trigger_basic_attack`), else idle-hold. Registered abilities cast
-  separately via `process_casts` → `ctx.cast_ability`. Gated by
+  separately via `process_casts` → `ctx.cast_ability` — **at most one cast per
+  window** (V.48 T4): among ready slots the highest `priority` casts (tie →
+  lowest slot index), the rest stay ready for later windows. Gated by
   `BLOCKS_ACTION`/`BLOCKS_ATTACK`/`BLOCKS_CAST`.
 - **Per-tick upkeep** — `_process_board_state` (slow tiles), `process_statuses`
   (DOT + decay on each status's cadence, then expiry), `expire_modifiers`,

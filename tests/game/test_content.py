@@ -159,8 +159,8 @@ class TestStatMonotonicity:
                 ), f"{hi.id} primary < {lo.id}"
 
     def test_flat_stats_same_across_tiers(self) -> None:
-        """Only FLAT_STATS (attack_range, ability_cost) are tier-invariant for a
-        shared archetype; speeds now scale with tier (SECONDARY, V.34)."""
+        """Only FLAT_STATS (attack_range) are tier-invariant for a shared
+        archetype; speeds now scale with tier (SECONDARY, V.34)."""
         from src.game.content import _CHAMPION_DEFS
 
         by_archetype: dict[tuple, list] = {}
@@ -177,9 +177,6 @@ class TestStatMonotonicity:
             for prev, cur in zip(champs, champs[1:]):
                 assert cur.attack_range == prev.attack_range, (
                     f"{cur.id} range != {prev.id} range"
-                )
-                assert cur.ability_cost == prev.ability_cost, (
-                    f"{cur.id} cost != {prev.id} cost"
                 )
                 # attack_speed scales with tier (V.34): higher tier ⇒ ≥ AS.
                 assert cur.attack_speed >= prev.attack_speed, (
@@ -247,7 +244,7 @@ class TestComposeStats:
         expected_keys = {
             "max_hp", "strength", "intelligence", "armor", "resistance",
             "attack_speed", "mana_regen", "move_speed", "threat",
-            "attack_range", "ability_cost",
+            "attack_range",
         }
         assert expected_keys.issubset(result.keys())
 

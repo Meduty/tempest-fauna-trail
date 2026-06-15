@@ -95,10 +95,12 @@ via `@register_item(item_id)`. A factory returns an `EffectBundle` containing:
 | `stoneplate` | +14% Armor |
 | `old_hide` | +12% HP |
 | `heartseed` | +12% INT |
-| `springtear` | `on_combat_start` hook: +200 starting mana, −10% cast cost (`slot.cost *= 0.9`) |
+| `springtear` | ×1.15 `mana_regen` (Modifier) + `on_combat_start` hook: +200 starting mana (V.48) |
 
-`springtear` uses `on_combat_start` (not a stat modifier) because mana lives on
-`ActiveSlot.cost`, not in `Piece.base_stats`.
+`springtear` grants `mana_regen` (the cast-rate knob) plus `start_mana` via an
+`on_combat_start` hook (mana is per-`ActiveSlot`, not in `Piece.base_stats`).
+**Mana items NEVER reduce `mana_cost`** (V.48, T.29c — kills negative-cost
+stacking, B.21); they grant `mana_regen` or `start_mana` only.
 
 All modifiers use `"mul"` (multiplicative) or `"add"` (additive) operation via
 `Modifier(stat, op, delta, Lifetime.COMBAT, source)`. The multipliers in the
@@ -111,14 +113,14 @@ factories represent the scale factor (e.g. `1.12` = ×1.12 the base stat).
 | `apex_fang` | fang + fang | ×1.24 STR; on-kill grants +5% of current STR (compounding add) |
 | `tempest_talons` | talon + talon | ×1.24 AS; each auto-hit adds +0.5% of current AS (compounding ramp) |
 | `worldroot_bloom` | heartseed + heartseed | ×1.30 INT (pure stat stick) |
-| `deepwell` | springtear + springtear | +400 mana, −20% cast cost; after first cast, refunds 50% of slot cost on every subsequent cast |
+| `deepwell` | springtear + springtear | ×1.30 `mana_regen` + +400 starting mana; after first cast, refunds 50% of `mana_cost` (clamped to `max_mana`) on every subsequent cast (V.48) |
 | `mammoth_hide` | old_hide + old_hide | ×1.24 HP; regenerates 2% max HP every 1.5 s while not recently damaged (2 s window) |
 | `bramble_carapace` | stoneplate + stoneplate | ×1.28 Armor; when struck by a melee attacker, retaliates INT×0.35 magic damage (ITEM_PROC) |
 | `mistward_shroud` | wardpelt + wardpelt | ×1.28 RES; regenerates 1.5% max HP every second |
 | `perfect_predator` | keen_claw + keen_claw | +30% crit chance; critical hits deal +25% bonus damage (ITEM_PROC) |
 | `bloodthorn_briar` | fang + heartseed | ×1.12 STR, ×1.12 INT; heals holder for 18% of all damage dealt |
 | `wildfury_lash` | talon + heartseed | ×1.12 AS, ×1.12 INT; each auto adds +1% current AS; every 5th auto triggers a free cast |
-| `everbloom_staff` | heartseed + springtear | ×1.12 INT, +200 mana/−10% cost; INT grows +1% per 2 s while alive |
+| `everbloom_staff` | heartseed + springtear | ×1.12 INT, ×1.15 `mana_regen`, +200 starting mana; INT grows +1% per 2 s while alive (V.48) |
 | `witherbloom_censer` | heartseed + old_hide | ×1.12 INT, ×1.12 HP; basic attacks apply burn (150 ticks) to the target |
 | `stormglass_totem` | heartseed + wardpelt | ×1.12 INT, ×1.14 RES; when a nearby enemy casts (radius 5), zaps them for INT×0.50 magic damage |
 | `spellfang_crown` | heartseed + keen_claw | ×1.12 INT, +15% crit chance; abilities can crit (`ability_can_crit` set on `on_combat_start`) |

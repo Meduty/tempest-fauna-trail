@@ -56,7 +56,6 @@ def _make_champ(**kwargs: Any) -> Champion:
         "attack_range": 1,
         "active_ability": "",
         "passive_ability": "",
-        "ability_cost": 300_000,
         "traits": ["Beast"],
     }
     defaults.update(kwargs)
@@ -263,7 +262,7 @@ class TestSpringtearMana:
         """Build a piece with an active slot and apply item bundles + on_combat_start."""
         champ = _make_champ(items=item_ids, active_ability="test_ability")
         piece = piece_from_champion(champ)
-        piece.actives = [ActiveSlot(ability_id="test_ability", cost=300_000, current_mana=0.0)]
+        piece.actives = [ActiveSlot(ability_id="test_ability", mana_cost=300_000, current_mana=0.0)]
         bus = EventBus()
         for iid in piece.items:
             factory = ITEM_REGISTRY.get(iid)
@@ -280,32 +279,42 @@ class TestSpringtearMana:
         piece = self._piece_with_slot(["springtear"])
         assert piece.actives[0].current_mana == 200.0
 
-    def test_springtear_reduces_cost(self) -> None:
+    def test_springtear_keeps_cost_and_boosts_regen(self) -> None:
+        # V.48: mana items NEVER reduce mana_cost; springtear grants mana_regen
+        # (Modifier) + starting mana instead.
         piece = self._piece_with_slot(["springtear"])
-        expected_cost = max(1, round(300_000 * 0.90))
-        assert piece.actives[0].cost == expected_cost
+        assert piece.actives[0].mana_cost == 300_000
+        assert any(
+            m.stat == "mana_regen" and m.source_id == "item:springtear"
+            for m in piece.modifiers
+        )
 
     def test_deepwell_grants_double_mana(self) -> None:
         piece = self._piece_with_slot(["deepwell"])
         assert piece.actives[0].current_mana == 400.0
 
-    def test_deepwell_reduces_cost_more(self) -> None:
+    def test_deepwell_keeps_cost_and_boosts_regen(self) -> None:
+        # V.48: deepwell grants mana_regen + starting mana, never cuts mana_cost.
         piece = self._piece_with_slot(["deepwell"])
-        expected_cost = max(1, round(300_000 * 0.80))
-        assert piece.actives[0].cost == expected_cost
+        assert piece.actives[0].mana_cost == 300_000
+        assert any(
+            m.stat == "mana_regen" and m.source_id == "item:deepwell"
+            for m in piece.modifiers
+        )
 
-    def test_mana_cap_at_slot_cost(self) -> None:
-        """Starting mana should never exceed the slot cost."""
+    def test_mana_cap_at_max_mana(self) -> None:
+        """Granted starting mana is clamped to max_mana (the universal cap, V.48)."""
         champ = _make_champ(items=["deepwell"], active_ability="x")
         piece = piece_from_champion(champ)
-        # Small cost so starting mana > cost without the cap
-        piece.actives = [ActiveSlot(ability_id="x", cost=100, current_mana=0.0)]
+        # Small cost ⇒ max_mana = 2*100 = 200; deepwell grants 400 → clamp to 200.
+        piece.actives = [ActiveSlot(ability_id="x", mana_cost=100, current_mana=0.0)]
         bus = EventBus()
         factory = ITEM_REGISTRY["deepwell"]
         apply_bundle(piece, factory(piece), bus)
         from src.game.events import CombatStartEvent
         bus.fire("on_combat_start", CombatStartEvent(), ctx=None)
-        assert piece.actives[0].current_mana <= float(piece.actives[0].cost)
+        assert piece.actives[0].current_mana <= float(piece.actives[0].max_mana)
+        assert piece.actives[0].current_mana == 200.0
 
 
 # ---------------------------------------------------------------------------
@@ -383,7 +392,6 @@ class TestCompileLoadoutItems:
             attack_range=1,
             active_ability="",
             passive_ability="",
-            ability_cost=300_000,
         )
 
     def test_fang_stat_applied_in_compile_loadout(self) -> None:

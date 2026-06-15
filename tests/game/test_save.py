@@ -76,7 +76,6 @@ def _make_roster() -> list[Champion]:
             attack_range=1,
             active_ability="Solar Pounce",
             passive_ability="Kindled Claws",
-            ability_cost=100,
             traits=["Mammal", "Hunter"],
         )
     ]

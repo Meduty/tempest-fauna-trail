@@ -112,7 +112,7 @@ def phase_hook_test(owner: Any) -> EffectBundle:
         from src.game.piece import ActiveSlot
         owner.actives.append(ActiveSlot(
             ability_id="smash",
-            cost=36_000,
+            mana_cost=36_000,
             priority=10,
         ))
 

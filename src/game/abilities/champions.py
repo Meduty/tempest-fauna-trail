@@ -996,7 +996,7 @@ def riptide_caiman_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.killer is not owner:
             return
-        ctx.gain_mana(owner, owner.actives[0].cost * 0.4 if owner.actives else 0)
+        ctx.gain_mana(owner, owner.actives[0].mana_cost * 0.4 if owner.actives else 0)
 
     return EffectBundle(hooks=[
         Hook("on_kill", hook, scope=HookScope.PER_HIT),
@@ -2026,7 +2026,6 @@ _UMBRA_CLONE = SummonSpec(stats={
     "move_speed": ScalingTerm("move_speed", 0.0, "move_speed*1.0"),
     "threat": 20,
     "attack_range": ScalingTerm("attack_range", 0.0, "attack_range*1.0"),
-    "ability_cost": 999_999,
     "crit_chance": 0.0,
     "penetration": 0,
     "penetration_pct": 0.0,
@@ -2345,7 +2344,7 @@ def marshghast_boar_passive(owner: Any) -> EffectBundle:
                 "armor", "add", 40.0, Lifetime.COMBAT,
                 "passive:champ_marshghast_boar.ghost",
             ))
-            ctx.gain_mana(owner, owner.actives[0].cost * 0.5 if owner.actives else 0)
+            ctx.gain_mana(owner, owner.actives[0].mana_cost * 0.5 if owner.actives else 0)
 
     return EffectBundle(hooks=[
         Hook("on_damage_taken", hook, scope=HookScope.PER_HIT),
@@ -2956,7 +2955,7 @@ def aerion_passive(owner: Any) -> EffectBundle:
         # If mana is near-full, grant bonus damage (simulates free cast)
         if owner.actives:
             slot = owner.actives[0]
-            if slot.current_mana >= slot.cost * 0.9:
+            if slot.current_mana >= slot.mana_cost * 0.9:
                 ctx.deal_damage(owner, event.target, AERION_BONUS.eval(owner), SourceTag.ABILITY)
 
     return EffectBundle(hooks=[

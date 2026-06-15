@@ -22,7 +22,6 @@ from src.game.content import (
     ALL_STAT_KEYS,
     INTENT_VALUES,
     ROLE_TITLES,
-    _ABILITY_COST,
     _apply_stat_overrides,
     _build_champion,
     _champion_def,
@@ -232,10 +231,6 @@ class TestComposerFullCompose:
         speedy = compose_stats("str", "melee", "hybrid", "auto", "speedy", "hybrid", 1)
         heavy = compose_stats("str", "melee", "hybrid", "auto", "heavy", "hybrid", 1)
         assert speedy["move_speed"] > heavy["move_speed"]
-
-    def test_ability_cost_is_constant(self) -> None:
-        for c in _all_combos():
-            assert compose_stats(*c[:5], c[5], 1)["ability_cost"] == _ABILITY_COST
 
     def test_dead_def_fields_removed(self) -> None:
         d = _champion_def("champ_x", "X", _CHAMPION_DEFS[0].affinity, 1, "melee", ["Beast"])

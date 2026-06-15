@@ -366,7 +366,7 @@ def mana_on_kill(frac_of_cost: float = 0.4) -> HookBuilder:
         def hook(ctx: Any, event: Any) -> None:
             if event.killer is not owner or not owner.alive or not owner.actives:
                 return
-            ctx.gain_mana(owner, frac_of_cost * owner.actives[0].cost)
+            ctx.gain_mana(owner, frac_of_cost * owner.actives[0].mana_cost)
 
         return [Hook("on_kill", hook, scope=HookScope.PER_HIT)]
 
@@ -399,7 +399,7 @@ def free_cast(every_n: int = 3) -> HookBuilder:
                 return
             state["n"] += 1
             if state["n"] % every_n == 0:
-                ctx.gain_mana(owner, owner.actives[0].cost)
+                ctx.gain_mana(owner, owner.actives[0].mana_cost)
 
         return [Hook("on_cast_complete", hook, scope=HookScope.PER_HIT)]
 

@@ -66,16 +66,22 @@ def _crit_add(value: float, source: str) -> Modifier:
     return Modifier("crit_chance", "add", value, Lifetime.COMBAT, source)
 
 
-def _apply_mana_to_slots(owner: Any, starting_mana: float, cost_mult: float) -> None:
-    """Grant starting mana and reduce cast cost on all active slots.
+def _mr_mod(value: float, source: str) -> Modifier:
+    """Mana-regen modifier — the cast-rate knob (V.48). Multiplicative."""
+    return Modifier("mana_regen", "mul", value, Lifetime.COMBAT, source)
 
-    Called from an on_combat_start hook so it runs after all bundles are
-    applied but before the first tick.  ``cost_mult < 1.0`` reduces cost;
-    minimum cost is 1.
+
+def _grant_start_mana(owner: Any, amount: float) -> None:
+    """Grant starting mana to all active slots (V.48, T.29c).
+
+    Bumps `start_mana` (the record) and seeds `current_mana`, clamped to
+    `max_mana`. Mana items NEVER reduce `mana_cost` — they grant `mana_regen`
+    (Modifier) or `start_mana` (here). Called from an on_combat_start hook so it
+    runs after all bundles are applied but before the first tick.
     """
     for slot in owner.actives:
-        slot.cost = max(1, round(slot.cost * cost_mult))
-        slot.current_mana = min(float(slot.cost), slot.current_mana + starting_mana)
+        slot.start_mana += int(amount)
+        slot.current_mana = min(float(slot.max_mana), slot.current_mana + amount)
 
 
 # ---------------------------------------------------------------------------
@@ -127,15 +133,18 @@ def keen_claw(owner: Any) -> EffectBundle:
 
 @register_item("springtear")
 def springtear(owner: Any) -> EffectBundle:
-    """Springtear — +200 starting mana, −10% cast cost.
+    """Springtear — +15% mana regen and +200 starting mana (V.48, T.29c).
 
-    Mana lives on ActiveSlot, not in base_stats, so applied via
-    an on_combat_start hook rather than a Modifier.
+    The mana component: faster casting via the `mana_regen` cast-rate knob
+    (Modifier) plus a head-start (`start_mana`). Never touches `mana_cost`.
     """
     def on_start(ctx: Any, ev: Any) -> None:
-        _apply_mana_to_slots(owner, 200.0, 0.90)
+        _grant_start_mana(owner, 200.0)
 
-    return EffectBundle(hooks=[Hook("on_combat_start", on_start, scope=HookScope.PER_HIT)])
+    return EffectBundle(
+        modifiers=[_mr_mod(1.15, "item:springtear")],
+        hooks=[Hook("on_combat_start", on_start, scope=HookScope.PER_HIT)],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -186,12 +195,14 @@ def worldroot_bloom(owner: Any) -> EffectBundle:
 # --- Deepwell (Springtear + Springtear) ---
 @register_item("deepwell")
 def deepwell(owner: Any) -> EffectBundle:
-    """Deepwell — +400 mana, −20% cast cost; after the first cast, refunds 50%
-    of cost on every subsequent cast."""
+    """Deepwell — +30% mana regen and +400 starting mana; after the first cast,
+    refunds 50% of `mana_cost` on every subsequent cast (V.48, T.29c).
+
+    Never reduces `mana_cost`; the refund grants mana (clamped to `max_mana`)."""
     state: dict[str, bool] = {"first_cast_done": False}
 
     def on_start(ctx: Any, ev: Any) -> None:
-        _apply_mana_to_slots(owner, 400.0, 0.80)
+        _grant_start_mana(owner, 400.0)
 
     def on_cast(ctx: Any, ev: Any) -> None:
         if ev.caster is not owner:
@@ -199,16 +210,19 @@ def deepwell(owner: Any) -> EffectBundle:
         if not state["first_cast_done"]:
             state["first_cast_done"] = True
             return
-        # Refund 50% of the slot cost to current_mana (soft cap at cost).
+        # Refund 50% of the slot's mana_cost into current_mana (clamp max_mana).
         for slot in owner.actives:
             if slot.ability_id == ev.ability_id:
-                refund = slot.cost * 0.50
-                slot.current_mana = min(float(slot.cost), slot.current_mana + refund)
+                refund = slot.mana_cost * 0.50
+                slot.current_mana = min(float(slot.max_mana), slot.current_mana + refund)
 
-    return EffectBundle(hooks=[
-        Hook("on_combat_start", on_start, scope=HookScope.PER_HIT),
-        Hook("on_cast", on_cast, scope=HookScope.ONCE_PER_CAST),
-    ])
+    return EffectBundle(
+        modifiers=[_mr_mod(1.30, "item:deepwell")],
+        hooks=[
+            Hook("on_combat_start", on_start, scope=HookScope.PER_HIT),
+            Hook("on_cast", on_cast, scope=HookScope.ONCE_PER_CAST),
+        ],
+    )
 
 
 # --- Mammoth Hide (Old Hide + Old Hide) ---
@@ -345,9 +359,9 @@ def wildfury_lash(owner: Any) -> EffectBundle:
         if counter[0] >= THRESHOLD:
             counter[0] = 0
             if owner.actives:
-                # Fill mana fully for a free cast, then cast
+                # Free cast: top each slot to its mana_cost, then cast slot 0.
                 for slot in owner.actives:
-                    slot.current_mana = float(slot.cost)
+                    slot.current_mana = float(slot.mana_cost)
                 ctx.cast_ability(owner, 0)
 
     return EffectBundle(
@@ -362,10 +376,10 @@ def wildfury_lash(owner: Any) -> EffectBundle:
 # --- Everbloom Staff (Heartseed + Springtear) ---
 @register_item("everbloom_staff")
 def everbloom_staff(owner: Any) -> EffectBundle:
-    """Everbloom Staff — +12% INT, +200 mana/−10% cost; INT grows steadily
-    (+1% per 2 s) while the holder stays alive."""
+    """Everbloom Staff — +12% INT, +15% mana regen, +200 starting mana; INT grows
+    steadily (+1% per 2 s) while the holder stays alive (V.48, T.29c)."""
     def on_start(ctx: Any, ev: Any) -> None:
-        _apply_mana_to_slots(owner, 200.0, 0.90)
+        _grant_start_mana(owner, 200.0)
 
     def on_tick(ctx: Any, ev: Any) -> None:
         if not owner.alive:
@@ -377,7 +391,10 @@ def everbloom_staff(owner: Any) -> EffectBundle:
         ctx.apply_modifier(owner, Modifier("intelligence", "add", bonus, Lifetime.COMBAT, "item:everbloom_staff"))
 
     return EffectBundle(
-        modifiers=[_int_mod(1.12, "item:everbloom_staff")],
+        modifiers=[
+            _int_mod(1.12, "item:everbloom_staff"),
+            _mr_mod(1.15, "item:everbloom_staff"),
+        ],
         hooks=[
             Hook("on_combat_start", on_start, scope=HookScope.PER_HIT),
             Hook("on_tick", on_tick, scope=HookScope.PER_HIT),

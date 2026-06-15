@@ -18,14 +18,33 @@ from typing import Any
 from src.game.effects import EffectBundle, EventBus, Hook, Modifier, Lifetime
 from src.game.models import Champion, Enemy, WeatherState
 from src.game.piece import ActiveSlot, Piece
-from src.game.registries import ABILITY_REGISTRY, PASSIVE_REGISTRY
+from src.game.registries import (
+    ABILITY_REGISTRY,
+    PASSIVE_REGISTRY,
+    ability_mana,
+)
 from src.game.rng import SeededRng
 from src.game.status import StatusInstance
 from src.game.weather_effects import CombatModifier, WEATHER_BUFF_BASE, combat_modifier
 from src.game import abilities as _abilities  # noqa: F401 — triggers @register decorators
 
-# Matches content._ABILITY_COST (T.33: 36_000→300_000 alongside mana_regen 10→100).
-DEFAULT_ABILITY_COST = 300_000
+
+def make_slot(ability_id: str) -> ActiveSlot:
+    """Build an `ActiveSlot` seeded from the ability's `ABILITY_MANA` statline
+    (V.48, T.29c). Cost/cap/start/priority are authored on the ability def, not
+    the piece. `current_mana` is seeded from `start_mana` at combat start."""
+    m = ability_mana(ability_id)
+    slot = ActiveSlot(
+        ability_id=ability_id,
+        mana_cost=m.mana_cost,
+        max_mana=m.max_mana,
+        start_mana=m.start_mana,
+        priority=m.priority,
+    )
+    # Combat-start fill (V.48). Start-mana items (T.29d) bump start_mana then
+    # re-seed; default start_mana=0 ⇒ current_mana=0 (byte-identical anchor).
+    slot.current_mana = float(min(slot.max_mana, slot.start_mana))
+    return slot
 
 
 def apply_bundle(
@@ -56,11 +75,7 @@ def apply_bundle(
             ))
 
     for ability_id in bundle.granted_abilities:
-        # Look up cost from registry meta if available
-        target.actives.append(ActiveSlot(
-            ability_id=ability_id,
-            cost=DEFAULT_ABILITY_COST,
-        ))
+        target.actives.append(make_slot(ability_id))
 
     for hook in bundle.hooks:
         bus.subscribe(hook)
@@ -92,13 +107,9 @@ def piece_from_champion(champion: Champion) -> Piece:
         passives=[champion.passive_ability] if champion.passive_ability else [],
         items=list(champion.items),
     )
-    # Set up active ability slot (0 starting mana by default)
+    # Set up active ability slot — mana statline from the ability def (V.48).
     if champion.active_ability:
-        piece.actives.append(ActiveSlot(
-            ability_id=champion.active_ability,
-            cost=champion.ability_cost,
-            current_mana=0.0,
-        ))
+        piece.actives.append(make_slot(champion.active_ability))
     # Set HP
     piece.hp = float(champion.max_hp)
     piece.max_hp = float(champion.max_hp)
@@ -130,13 +141,9 @@ def piece_from_enemy(enemy: Enemy) -> Piece:
         level=enemy.level,
         passives=[enemy.passive_ability] if enemy.passive_ability else [],
     )
-    # Set up active ability slot
+    # Set up active ability slot — mana statline from the ability def (V.48).
     if enemy.active_ability:
-        piece.actives.append(ActiveSlot(
-            ability_id=enemy.active_ability,
-            cost=enemy.ability_cost,
-            current_mana=0.0,
-        ))
+        piece.actives.append(make_slot(enemy.active_ability))
     # Set HP
     piece.hp = float(enemy.max_hp)
     piece.max_hp = float(enemy.max_hp)

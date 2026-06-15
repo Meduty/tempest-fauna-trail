@@ -618,7 +618,6 @@ _STEAM_TURRET = SummonSpec(stats={
     "move_speed": 0,
     "threat": 10,
     "attack_range": 3,
-    "ability_cost": 999_999,
     "crit_chance": 0.0,
     "penetration": 0,
     "penetration_pct": 0.0,
@@ -2453,7 +2452,7 @@ def shroud_killer_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.killer is not owner:
             return
-        ctx.gain_mana(owner, owner.actives[0].cost * 0.5 if owner.actives else 0)
+        ctx.gain_mana(owner, owner.actives[0].mana_cost * 0.5 if owner.actives else 0)
 
     return EffectBundle(hooks=[
         Hook("on_kill", hook, scope=HookScope.PER_HIT),
@@ -2748,7 +2747,7 @@ def caged_storm_drake_passive(owner: Any) -> EffectBundle:
             return
         if owner.actives:
             slot = owner.actives[0]
-            if slot.current_mana >= slot.cost * 0.8:
+            if slot.current_mana >= slot.mana_cost * 0.8:
                 for n in neighbors_of(event.target, ctx):
                     if ctx.is_enemy(n, owner) and n is not event.target:
                         ctx.deal_damage(owner, n, CAGED_STORM_DRAKE_CHAIN.eval(owner),

@@ -15,6 +15,12 @@ from src.game.models import (
     WeatherState,
 )
 from src.game.piece import Piece
+from src.game.registries import register_ability_mana
+
+# Test ability "zap" is unregistered; author its mana cost low (T.29c/V.48:
+# cost lives on the ability def, default 300_000 — too high to fill in these
+# short fights). Matches the pre-T.29c per-piece ability_cost=100 these used.
+register_ability_mana("zap", mana_cost=100)
 
 # --- Factories ---------------------------------------------------------------
 
@@ -37,7 +43,6 @@ _CHAMP_DEFAULTS = dict(
     attack_range=1,
     active_ability="zap",
     passive_ability="none",
-    ability_cost=100,
 )
 
 
@@ -350,7 +355,6 @@ def test_cast_path_consumes_mana_and_deals_magic_damage():
             attack_range=12,
             attack_speed=60_000,
             mana_regen=1,
-            ability_cost=6,
             intelligence=20,
             strength=0,
         )

@@ -445,9 +445,12 @@ class CombatContext:
         self._current_cast_id = old_cast_id
 
     def gain_mana(self, actor: Piece, amount: float) -> None:
-        """Add mana to ALL of actor's active slots (separate pools)."""
+        """Add mana to ALL of actor's active slots (separate pools).
+
+        Clamps to `max_mana` (the universal cap, V.48) so granted mana can bank
+        into the overload headroom, not just to `mana_cost`."""
         for slot in actor.actives:
-            slot.current_mana = min(slot.cost, slot.current_mana + amount)
+            slot.current_mana = min(float(slot.max_mana), slot.current_mana + amount)
 
     def spend_mana(self, actor: Piece, slot_idx: int) -> None:
         """Reset mana on a specific slot after casting."""

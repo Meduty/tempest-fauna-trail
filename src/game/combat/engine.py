@@ -460,7 +460,7 @@ def _resolve_action(
     has_unregistered_cast = False
     if piece.actives and not piece.is_gated(StatusGate.BLOCKS_CAST):
         slot = piece.actives[0]
-        if slot.current_mana >= slot.cost and slot.ability_id not in ABILITY_REGISTRY:
+        if slot.current_mana >= slot.mana_cost and slot.ability_id not in ABILITY_REGISTRY:
             has_unregistered_cast = True
 
     if has_unregistered_cast:
@@ -483,7 +483,7 @@ def _resolve_action(
             )
             if recorder:
                 recorder.record_cast(piece.id, target.id, tick, int(final), DMG_MAGICAL, False)
-            slot.current_mana = 0.0
+            slot.current_mana -= slot.mana_cost  # overflow carries (V.48)
             piece.action_energy -= ENERGY_THRESHOLD
             return
 
@@ -638,8 +638,44 @@ def expire_modifiers(ctx: CombatContext, pieces: list[Piece]) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _charge_mana(piece: Piece, mr_val: int) -> None:
+    """Route one regen tick to a single slot (T.29c, V.48 T3 weighted-rank cycle).
+
+    Single slot: charge it every tick (the common, byte-clean case). Multi-slot:
+    expand a deterministic cycle where each slot occupies `priority` positions,
+    and charge the next non-full slot from `mana_charge_cursor`. Total throughput
+    = mana_regen/tick regardless of slot count. RNG-free cadence (V.2/V.14).
+    """
+    slots = piece.actives
+    if len(slots) == 1:
+        s = slots[0]
+        if s.current_mana < s.max_mana:
+            s.current_mana = min(float(s.max_mana), s.current_mana + mr_val)
+        return
+
+    order: list[int] = []
+    for idx, s in enumerate(slots):
+        order.extend([idx] * max(1, s.priority))
+    cycle_len = len(order)
+    for step in range(cycle_len):
+        pos = (piece.mana_charge_cursor + step) % cycle_len
+        slot = slots[order[pos]]
+        if slot.current_mana < slot.max_mana:
+            slot.current_mana = min(float(slot.max_mana), slot.current_mana + mr_val)
+            piece.mana_charge_cursor = (pos + 1) % cycle_len
+            return
+    # All slots full — advance one position to keep the cadence deterministic.
+    piece.mana_charge_cursor = (piece.mana_charge_cursor + 1) % cycle_len
+
+
 def process_casts(ctx: CombatContext, piece: Piece) -> None:
-    """Check if any ability slots are ready to cast. Multi-slot support."""
+    """Cast at most ONE ability per action window (T.29c, V.48 T4).
+
+    Among slots with `current_mana >= mana_cost` (and a registered handler), the
+    highest-`priority` slot casts; ties break to the lowest slot index (stable
+    sort). Other ready slots stay ready for later windows — no multi-cast burst.
+    Mana is spent as `-= mana_cost` so overflow carries (banking, V.48).
+    """
     from src.game.registries import ABILITY_REGISTRY
 
     if piece.is_gated(StatusGate.BLOCKS_CAST):
@@ -647,24 +683,22 @@ def process_casts(ctx: CombatContext, piece: Piece) -> None:
     if not piece.alive:
         return
 
-    # Iterate slots by descending priority
+    # Unified priority: highest priority first, tie → lowest index (stable sort).
     sorted_indices = sorted(
         range(len(piece.actives)),
         key=lambda i: -piece.actives[i].priority,
     )
     for slot_idx in sorted_indices:
         slot = piece.actives[slot_idx]
-        if slot.current_mana < slot.cost:
+        if slot.current_mana < slot.mana_cost:
             continue
         # Skip unregistered abilities without spending mana
         if slot.ability_id not in ABILITY_REGISTRY:
             continue
-        # Spend mana and cast
-        slot.current_mana = 0.0
+        # Spend mana (overflow carries) and cast — exactly one cast per window.
+        slot.current_mana -= slot.mana_cost
         ctx.cast_ability(piece, slot_idx=slot_idx)
-        # If piece got silenced or killed by the cast/hooks, stop
-        if piece.is_gated(StatusGate.BLOCKS_CAST) or not piece.alive:
-            return
+        return
 
 
 # ---------------------------------------------------------------------------
@@ -825,10 +859,13 @@ def run(ctx: CombatContext, recorder: BattleResultRecorder | None = None) -> str
             piece.action_energy += as_val
             piece.movement_energy += ms_val
 
-            # Mana regen — to all ability slots
-            if mr_val > 0:
-                for slot in piece.actives:
-                    slot.current_mana = min(slot.cost, slot.current_mana + mr_val)
+            # Mana regen — weighted-rank charge cycle (T.29c, V.48). One slot
+            # is charged per tick with the full mana_regen; over a cycle of
+            # length sum(priority) each slot gets `priority` ticks → total
+            # throughput = mana_regen/tick regardless of slot count. Skip a
+            # slot already at max_mana. Deterministic cadence, RNG-free.
+            if mr_val > 0 and piece.actives:
+                _charge_mana(piece, mr_val)
 
         # Step 2: collect triggered meters.
         triggered: list[tuple[Piece, str]] = []

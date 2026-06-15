@@ -47,6 +47,13 @@ def _format_event(
             killer = f" by {event.target_id}"
         return f"{event.actor_id} is defeated{killer}"
 
+    # Ability-framework casts (T.29c): amount 0, note = ability_id, possibly no
+    # target → render the activation cleanly without a fake "0 damage" suffix.
+    if event.event_type == EVENT_CAST and not event.amount:
+        if event.target_id:
+            return f"{event.actor_id} casts {event.note} at {event.target_id}"
+        return f"{event.actor_id} casts {event.note}"
+
     if event.event_type in (EVENT_ATTACK, EVENT_CAST):
         verb = "attacks" if event.event_type == EVENT_ATTACK else "casts at"
         line = (

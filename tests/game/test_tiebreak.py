@@ -85,12 +85,16 @@ class TestBaselineParity:
         assert _BASE_STATS["move_speed"] == 100
         assert _BASE_STATS["mana_regen"] == 100
 
-    def test_ability_cost_lifted(self):
-        from src.game.content import _ABILITY_COST, get_champion
-        from src.game.loadout import DEFAULT_ABILITY_COST
-        assert _ABILITY_COST == 300_000
-        assert DEFAULT_ABILITY_COST == 300_000
-        assert get_champion("champ_dawnwisp").ability_cost == 300_000
+    def test_default_mana_cost_on_slot(self):
+        # T.29c/V.48: cost lives on the ability def (ABILITY_MANA), default
+        # 300_000; a built piece's slot carries it (+ max_mana = 2× default).
+        from src.game.registries import DEFAULT_MANA_COST
+        from src.game.content import get_champion
+        from src.game.loadout import piece_from_champion
+        assert DEFAULT_MANA_COST == 300_000
+        piece = piece_from_champion(get_champion("champ_dawnwisp"))
+        assert piece.actives[0].mana_cost == 300_000
+        assert piece.actives[0].max_mana == 600_000
 
 
 class TestFloatAttackSpeedOrder:

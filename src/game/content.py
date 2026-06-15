@@ -24,7 +24,6 @@ _BASE_STATS: dict[str, Any] = {
     "move_speed": 100,
     "threat": 60,
     "attack_range": 2,
-    "ability_cost": 300_000,  # overwritten by _ABILITY_COST in compose; kept in sync (T.33)
     "crit_chance": 0.0,
     "penetration": 0,
     "penetration_pct": 0.0,
@@ -144,7 +143,6 @@ _INTENT: dict[str, dict[str, float]] = {
 # Ability cost is uniform — demoted from a per-unit Def field to a constant (T.32).
 # T.33: lifted 36_000→300_000 alongside mana_regen 10→100 (V.35 baseline parity).
 # 300_000 (vs cadence-neutral 360_000) bakes a ~20% mage buff. FLAT (never scaled).
-_ABILITY_COST = 300_000
 # Valid override targets — every base stat key, incl. premium crit/penetration (V.33).
 ALL_STAT_KEYS = frozenset(_BASE_STATS)
 INTENT_VALUES = frozenset(_INTENT)
@@ -319,7 +317,6 @@ def compose_stats(
     for k, v in _INTENT[intent].items():
         stats[k] = stats[k] * v
 
-    stats["ability_cost"] = _ABILITY_COST
 
     # PRIMARY: sqrt(power) tier-scale, rounded to int.
     sp = stat_multiplier(tier, 1)
@@ -384,7 +381,6 @@ def _build_champion(d: ChampionDef, level: int = 1) -> Champion:
         move_speed=round(base["move_speed"]),
         threat=round(base["threat"]),
         attack_range=base["attack_range"],
-        ability_cost=base["ability_cost"],
         traits=d.traits,
         active_ability=d.active_ability,
         passive_ability=d.passive_ability,
@@ -420,7 +416,6 @@ def _build_enemy(d: EnemyDef, level: int = 1) -> Enemy:
         move_speed=round(base["move_speed"]),
         threat=round(base["threat"]),
         attack_range=base["attack_range"],
-        ability_cost=base["ability_cost"],
         active_ability=d.active_ability,
         passive_ability=d.passive_ability,
         crit_chance=base["crit_chance"],

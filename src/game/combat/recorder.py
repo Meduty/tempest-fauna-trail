@@ -171,10 +171,23 @@ class BattleResultRecorder:
         ))
 
     def _on_cast(self, ctx: Any, event: CastEvent) -> None:
-        """Record ability cast event (for bus-driven casts from ability framework)."""
-        # Cast recording for ability-framework casts will be extended
-        # when abilities produce damage through their own handlers
-        pass
+        """Record an ability-framework cast (T.29c fix).
+
+        Fires on `on_cast` from `ctx.cast_ability`, so registered abilities now
+        appear in the event stream (previously a no-op → registered casts were
+        invisible, B.21). The cast's damage/heal is attributed separately via
+        `_on_damage_dealt`/heal totals; this event marks the activation. Target
+        is the caster's current target (may be None for self/AoE casts)."""
+        tick = ctx.current_tick if ctx else 0
+        caster = event.caster
+        self._events.append(BattleEvent(
+            tick=tick,
+            actor_id=caster.id,
+            target_id=getattr(caster, "target_id", None),
+            event_type=EVENT_CAST,
+            amount=0,
+            note=event.ability_id,
+        ))
 
     def _on_combat_end(self, ctx: Any, event: CombatEndEvent) -> None:
         """Record combat end."""

@@ -57,7 +57,6 @@ SECONDARY_SCALABLE_STATS: tuple[str, ...] = (
 )
 FLAT_STATS: tuple[str, ...] = (
     "attack_range",
-    "ability_cost",
 )
 
 # sqrt(power) for PRIMARY; a dampened exponent for SECONDARY (≈ +2%/tier).

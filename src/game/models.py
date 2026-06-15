@@ -113,7 +113,6 @@ class Champion:
     attack_range: int
     active_ability: str
     passive_ability: str
-    ability_cost: int
     traits: list[str] = field(default_factory=list)
     intent: str = "hybrid"
     role_code: str = ""
@@ -136,7 +135,6 @@ class Champion:
         _require_non_negative_int(self.armor, "Champion armor")
         _require_non_negative_int(self.resistance, "Champion resistance")
         _require_positive_int(self.attack_range, "Champion attack_range")
-        _require_positive_int(self.ability_cost, "Champion ability_cost")
         _require_unit_float(self.crit_chance, "Champion crit_chance")
         _require_non_negative_int(self.penetration, "Champion penetration")
         _require_unit_float(self.penetration_pct, "Champion penetration_pct")
@@ -189,7 +187,6 @@ class Champion:
             "attack_range": self.attack_range,
             "active_ability": self.active_ability,
             "passive_ability": self.passive_ability,
-            "ability_cost": self.ability_cost,
             "crit_chance": self.crit_chance,
             "penetration": self.penetration,
             "penetration_pct": self.penetration_pct,
@@ -220,7 +217,6 @@ class Champion:
             attack_range=payload["attack_range"],
             active_ability=payload["active_ability"],
             passive_ability=payload["passive_ability"],
-            ability_cost=payload["ability_cost"],
             crit_chance=payload.get("crit_chance", 0.0),
             penetration=payload.get("penetration", 0),
             penetration_pct=payload.get("penetration_pct", 0.0),
@@ -249,7 +245,6 @@ class Enemy:
     attack_range: int
     active_ability: str
     passive_ability: str
-    ability_cost: int
     intent: str = "hybrid"
     role_code: str = ""
     crit_chance: float = 0.0
@@ -269,7 +264,6 @@ class Enemy:
         _require_non_negative_int(self.armor, "Enemy armor")
         _require_non_negative_int(self.resistance, "Enemy resistance")
         _require_positive_int(self.attack_range, "Enemy attack_range")
-        _require_positive_int(self.ability_cost, "Enemy ability_cost")
         _require_unit_float(self.crit_chance, "Enemy crit_chance")
         _require_non_negative_int(self.penetration, "Enemy penetration")
         _require_unit_float(self.penetration_pct, "Enemy penetration_pct")
@@ -309,7 +303,6 @@ class Enemy:
             "attack_range": self.attack_range,
             "active_ability": self.active_ability,
             "passive_ability": self.passive_ability,
-            "ability_cost": self.ability_cost,
             "crit_chance": self.crit_chance,
             "penetration": self.penetration,
             "penetration_pct": self.penetration_pct,
@@ -338,7 +331,6 @@ class Enemy:
             attack_range=payload["attack_range"],
             active_ability=payload["active_ability"],
             passive_ability=payload["passive_ability"],
-            ability_cost=payload["ability_cost"],
             crit_chance=payload.get("crit_chance", 0.0),
             penetration=payload.get("penetration", 0),
             penetration_pct=payload.get("penetration_pct", 0.0),

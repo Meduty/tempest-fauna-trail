@@ -49,7 +49,6 @@ def _make_piece(
         "move_speed": 90,
         "threat": 60,
         "attack_range": attack_range,
-        "ability_cost": 36_000,
         "crit_chance": 0.0,
         "penetration": 0,
         "penetration_pct": 0.0,
@@ -65,7 +64,7 @@ def _make_piece(
         position_r=3,
     )
     if active_id:
-        piece.actives = [ActiveSlot(ability_id=active_id, cost=36_000)]
+        piece.actives = [ActiveSlot(ability_id=active_id, mana_cost=36_000)]
     if passive_id:
         piece.passives = [passive_id]
     return piece
