@@ -98,10 +98,20 @@ Levers applied: auto INT term `0.2→0.25`; INT ability coeffs ×1.58 cumulative
 (iters 1.2 · 1.2 · 1.1); STR ability coeffs ×0.8. str + hybrid land dead-on
 parity; int within noise.
 
-**iter3 found the wall.** ×1.1 INT moved int only −0.021→−0.018 and left
-**int/ability −0.028**. That cell lags from cast *rarity* (rare-but-big caster),
-not per-cast damage — so coeffs are the wrong lever for the last 3pp. The real
-lever is **cast frequency** (mana cadence / mana items), and over-pumping coeffs
-would make the rare casts oppressive. Left as the intended caster feast/famine.
-**Lesson:** know when a lever is exhausted — diminishing returns + a structural
-(cadence) cause means stop tuning coeffs, don't chase the metric to 0.
+**The real cause — intent slice (user's "isolate damage" instinct cracked it).**
+The int/ability cell (n=18) is **14 utility + 4 damage**. Slicing by intent:
+*among `intent=damage` pieces* the axes are already at parity — **str +0.029 /
+int −0.010 / hybrid −0.003**. The scary "int −0.021 by-stat" was **the 14 INT
+utility/support pieces (−0.025)** dragging the average, NOT damage casters. Every
+damage-coeff bump "bounced off" because it reached only 4 of 18 pieces in that
+cell. So:
+- **INT-as-damage-coeff is fair** (a focused damage-only ×1.2 lifts the 4
+  int-ability-damage casters that sat at −0.037; the rest of int-damage was −0.010).
+- The residual is **support-value balance** (D.26) — a different axis stat_edge
+  can't measure (it scores damage-budget conversion, not healing/CC value).
+
+**Lesson:** when a targeted lever bounces off a cell, the cell is probably
+*mixed* — slice by another dimension (here `intent`) before concluding the lever
+is wrong or exhausted. My first read ("cadence/rarity") was a guess; the intent
+slice was the evidence. A composite metric (cell averaging damage + utility
+pieces) hid two unrelated problems.

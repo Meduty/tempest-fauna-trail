@@ -681,14 +681,23 @@ in their T-task plan docs; what remains here is genuinely undecided.
 - D.24 Expand multi-slot beyond the 9 showcase pieces — **post-MVP**. Once the
   V.48 rank cycle / one-cast gate prove out, more champs/enemies can gain 2nd (and
   3rd) abilities as content; sized as a content pass, not engine work. (T.29d)
-- D.25 **RESOLVED [2026-06-15] — STR/INT coeff parity reached; residual is cadence, not coeffs.** Three
-  iterations (auto INT `0.2→0.25`; INT ability coeffs ×1.58 cumulative; STR ability ×0.8) brought the
-  stat marginals to parity: final n=4000 multisize `wr_delta` **str +0.000 / int −0.018 / hybrid −0.002**
-  (was str +0.024 / int −0.034 pre-tune). iter3 (×1.1) confirmed the **coeff lever is exhausted** — it
-  moved int −0.021→−0.018 and left **int/ability −0.028**: that cell lags from cast *rarity* (rare-but-big
-  caster identity), not per-cast damage, so the real future lever is **cast frequency (mana cadence /
-  items)**, not coeffs — pushing coeffs further would make rare casts oppressive. Left as the intended
-  caster feast/famine. Original analysis below. (resolved via `tools/simulation/stat_edge.py`)
+- D.25 **RESOLVED [2026-06-15] — STR/INT *damage* parity reached; the residual is a SUPPORT-balance
+  artifact, not a damage-coeff issue.** Levers: auto INT `0.2→0.25`; INT ability coeffs ×1.58 cumulative
+  (global); **STR ability ×0.8**; then a final **damage-only** INT ×1.2 (only `ScalingTerm("damage",…)`
+  intelligence coeffs — leaves heals/shields/haste/on-hit-burst untouched). **Key finding (intent slice):
+  among `intent=damage` pieces the axes are at parity — str +0.029 / int −0.010 / hybrid −0.003** (n=4000,
+  pre damage-only bump; the bump lifts the 4 lagging int-ability-*damage* casters that sat at −0.037). The
+  alarming "int −0.021 by-stat" was **dragged down by the 14 INT *utility* pieces (−0.025)** crowding the
+  int/ability cell (18 = 14 utility + 4 damage) — a **support-value** question (see D.26), which the
+  damage lever can't and shouldn't touch. So INT-as-damage-coeff is fair (math: auto is `1·STR + 0.25·INT`
+  → INT ability coeffs run ~3–5× STR's and stay fair); the headline deficit is support balance. (resolved
+  via `tools/simulation/stat_edge.py`, intent-sliced)
+- D.26 **INT utility/support pieces sit ~−0.025 wr_delta** (the 14 int/ability/utility champs — healers,
+  shielders, debuffers). Surfaced while resolving D.25 (intent slice). **Not a damage-coeff issue** —
+  it's whether support *value* (healing/shielding/CC) pays its power budget. `stat_edge` measures
+  damage-budget conversion, so it can't judge this; needs a support-aware metric (e.g. ally-survival /
+  damage-prevented vs power). Low priority — supports being slightly under their *raw-WR* budget is
+  partly expected (their value is teamwide, not self-WR). Revisit with a survivability sim. (post D.25)
 - D.25 (orig) **Cast-power balance pass — INT ability coeffs ≪ intended.** Design intent
   (2026-06-15): casts are rare (every 25–50 s) so each should be a **big INT nuke,
   INT coeff ≫ STR/autos**. Measured today: pure INT casters land ~3–7× their auto
