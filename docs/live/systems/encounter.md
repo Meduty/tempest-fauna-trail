@@ -25,7 +25,10 @@ RNG is Python `Random` seeded from that derived value; no global randomness.
   `_is_tanky`/`_is_support`/`_is_dps`), via `_weighted_pick` over a
   `filter_pool` of `EnemyDef`s. Builds `Enemy` instances with `_instantiate_enemy`.
 - `generate_fight(...)` — a standard fight encounter.
-- `generate_reward(...)` — reward-node contents.
+- `generate_reward(...)` — reward-node contents (enemy squad / supplies).
+- `generate_reward_loot(run_seed, node_index) -> RewardLoot` — seed-deterministic
+  item drop for REWARD nodes; uses channel `CH_REWARD = 8`. 60% one component,
+  25% one core item, 15% two components. Added in T.29a. See [items.md](items.md).
 - `generate_challenge(...)` — challenge nodes; can pull champion-derived enemies
   (`_champion_def_to_enemy`) and yields a `ChallengeReward`.
 - `generate_boss_encounter(run_seed, node_index, stage) -> BossEncounterResult`

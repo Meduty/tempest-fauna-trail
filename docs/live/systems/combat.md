@@ -50,16 +50,38 @@ also spelled out by hand there — keep the two in sync.
 Time = **10 ms ticks** (`TICK_MS`); 1 round = 600 ticks (`ROUND_TICKS`, a
 presentation unit only). Each living piece accrues three meters per tick from
 its int stats: `action_energy += attack_speed`, `movement_energy += move_speed`,
-and per-slot mana `+= mana_regen`. A meter fires at `ENERGY_THRESHOLD` (60 000)
-and **carries overflow** (it subtracts the threshold, not resets) so cadence is
-exact.
+and mana via the **weighted-rank charge cycle** (T.29c, V.48): one slot is
+charged the full `mana_regen` per tick, cycle length `sum(slot.priority)`, each
+slot occupying `priority` positions (skip slots at `max_mana`) → mana throughput
+= `mana_regen`/tick regardless of slot count. A meter fires at `ENERGY_THRESHOLD`
+(60 000) and **carries overflow** (it subtracts the threshold, not resets) so
+cadence is exact. Mana is per-slot: `mana_cost`/`max_mana` (default `2×cost`)/
+`start_mana`/`priority` are authored on the ability def (`ABILITY_MANA`), not a
+piece stat; a cast deducts `-= mana_cost` so overflow banks toward the next.
+
+**Multi-slot pieces (T.29d, V.49):** a piece carries `active_abilities: list[str]`
+— one `ActiveSlot` per id (single/null/multi are just list lengths; empty = a
+stat-stick with no mana bar). Roster ids are **discovered by convention**
+(`content.discover_abilities`: `{id}.active`, `{id}.active2`, … sorted) unless a
+def sets `abilities=` explicitly (bosses' named kits, or `[]`). A multicaster's
+slots must differ in cost **or** priority (no lockstep simul-cast); the default is
+same cost + unique priorities (primary dominant), with high-tier **Ultimate**
+secondaries diverging by cost (2×) + priority ∝ cost.
+
+**Status durations** are authored with `secs(x)` (seconds → ticks, fractions OK,
+e.g. `secs(3.5)`) — `SECS` (=100) for raw tick intervals. The stored value is
+always real ticks (no hidden runtime scaling; tick↔time stays honest). CC/DoT
+durations were re-tuned ~2× (1.5–3 s → ~3–6 s) so effects don't expire between
+the slow ~5 s action cadence (`60000/attack_speed`).
 
 - **Ordering** — within a tick, triggered meters resolve in the canonical
-  side-independent total order `_event_sort_key = (-AS_int, -milli_AS,
-  champion_id, load_order, kind)` (V.34): faster attack-speed first, then
-  sub-integer speed (`milli_AS`), then identity, then the seeded `load_order`
-  (never team-then-enemy → no side-A bias, B.14), then movement before action.
-  No RNG in the loop; `load_order` is a one-time seeded permutation (V.2/V.14).
+  side-independent total order `_event_sort_key = (-round(attack_speed×1000),
+  champion_id, load_order, kind)` (V.34, T.29-pre): faster attack-speed first
+  (the quantized float key carries both whole + sub-integer speed in one term —
+  no separate `milli_AS`), then identity, then the seeded `load_order` (never
+  team-then-enemy → no side-A bias, B.14), then movement before action. Cadence
+  reads `int(attack_speed)`. No RNG in the loop; `load_order` is a one-time
+  seeded permutation (V.2/V.14).
 - **Movement** — `_resolve_movement`: hold at threshold if in range or no
   enemies; else one BFS step toward the nearest in-range cell
   (`_next_step_toward`), carrying overflow; hold if no path. Gated by
@@ -67,7 +89,9 @@ exact.
 - **Action** — `_resolve_action`: cast an *unregistered* ability if mana full
   (fallback path), else auto-attack if an enemy is in range
   (`ctx.trigger_basic_attack`), else idle-hold. Registered abilities cast
-  separately via `process_casts` → `ctx.cast_ability`. Gated by
+  separately via `process_casts` → `ctx.cast_ability` — **at most one cast per
+  window** (V.48 T4): among ready slots the highest `priority` casts (tie →
+  lowest slot index), the rest stay ready for later windows. Gated by
   `BLOCKS_ACTION`/`BLOCKS_ATTACK`/`BLOCKS_CAST`.
 - **Per-tick upkeep** — `_process_board_state` (slow tiles), `process_statuses`
   (DOT + decay on each status's cadence, then expiry), `expire_modifiers`,

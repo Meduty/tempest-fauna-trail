@@ -73,7 +73,6 @@ def _make_enemy_def(
         intent=intent,
         speed="hybrid",
         tags=frozenset({"human"}),
-        active_ability="",
         passive_ability="",
     )
 

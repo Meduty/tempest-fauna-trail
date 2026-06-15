@@ -15,8 +15,10 @@ def test_export_counts() -> None:
 def test_every_unit_has_rendered_abilities() -> None:
     data = build_export(level=1, include_bosses=False)
     for unit in data["champions"] + data["enemies"]:
-        for slot in ("active", "passive"):
-            block = unit[slot]
+        # T.29d: "actives" is a list (one block per slot) + a single "passive".
+        blocks = [(f"active[{i}]", b) for i, b in enumerate(unit["actives"])]
+        blocks.append(("passive", unit["passive"]))
+        for slot, block in blocks:
             assert not block.get("missing_meta"), f"{unit['id']} {slot} has no meta"
             assert block["name"] and block["text"]
             assert "{" not in block["text"], f"{unit['id']} {slot} left a token"

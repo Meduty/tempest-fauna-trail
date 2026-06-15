@@ -5,6 +5,11 @@ from src.game.combat_log import (
     render_combat_log,
 )
 from src.game.models import Champion, Enemy, WeatherState
+from src.game.registries import register_ability_mana
+
+# "zap" is unregistered; author a low mana cost (T.29c/V.48 — cost on the
+# ability def, default 300_000 won't fill in these short fights).
+register_ability_mana("zap", mana_cost=100)
 
 _DEFAULTS = dict(
     id="champ",
@@ -23,9 +28,8 @@ _DEFAULTS = dict(
     armor=0,
     resistance=0,
     attack_range=1,
-    active_ability="zap",
+    active_abilities=["zap"],
     passive_ability="none",
-    ability_cost=100,
 )
 
 
@@ -105,7 +109,6 @@ def test_cast_and_move_lines_render():
             attack_speed=60_000,
             move_speed=60_000,
             mana_regen=1,
-            ability_cost=6,
             intelligence=20,
             strength=0,
         )

@@ -14,6 +14,7 @@ from src.game.content import (
     ENEMY_TAGS,
     ENEMY_TAGS_MAP,
     KINSHIP_TAGS,
+    discover_abilities,
     champions_by_affinity,
     compose_stats,
     enemies_by_affinity,
@@ -159,8 +160,8 @@ class TestStatMonotonicity:
                 ), f"{hi.id} primary < {lo.id}"
 
     def test_flat_stats_same_across_tiers(self) -> None:
-        """Only FLAT_STATS (attack_range, ability_cost) are tier-invariant for a
-        shared archetype; speeds now scale with tier (SECONDARY, V.34)."""
+        """Only FLAT_STATS (attack_range) are tier-invariant for a shared
+        archetype; speeds now scale with tier (SECONDARY, V.34)."""
         from src.game.content import _CHAMPION_DEFS
 
         by_archetype: dict[tuple, list] = {}
@@ -177,9 +178,6 @@ class TestStatMonotonicity:
             for prev, cur in zip(champs, champs[1:]):
                 assert cur.attack_range == prev.attack_range, (
                     f"{cur.id} range != {prev.id} range"
-                )
-                assert cur.ability_cost == prev.ability_cost, (
-                    f"{cur.id} cost != {prev.id} cost"
                 )
                 # attack_speed scales with tier (V.34): higher tier ⇒ ≥ AS.
                 assert cur.attack_speed >= prev.attack_speed, (
@@ -247,7 +245,7 @@ class TestComposeStats:
         expected_keys = {
             "max_hp", "strength", "intelligence", "armor", "resistance",
             "attack_speed", "mana_regen", "move_speed", "threat",
-            "attack_range", "ability_cost",
+            "attack_range",
         }
         assert expected_keys.issubset(result.keys())
 
@@ -305,3 +303,88 @@ class TestComposeStats:
     def test_invalid_playstyle_axis_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Unknown playstyle axis value"):
             compose_stats("str", "melee", "hybrid", "burst", "hybrid", "hybrid", 1)
+
+
+# --------------------------------------------------------------------------- #
+# V.47 — axis ↔ scaling alignment (T.35b, B.20)
+# --------------------------------------------------------------------------- #
+#
+# A unit whose `stat` axis is INT-heavy must actually *read* INT in its kit, or
+# the INT-heavy statline is dead weight (#42 Finding B). The universal auto-attack
+# (1.0·STR + 0.2·INT) counts for STR, so `str` units are auto-satisfied; `int` and
+# `hybrid` units must reference INT via a Magnitude on their active/passive meta.
+
+
+def _meta_references_int(ability_id: str) -> bool:
+    """True if any Magnitude on this ability's meta scales from intelligence."""
+    from src.game.registries import (
+        ABILITY_META,
+        MaxOfTerm,
+        ScalingTerm,
+    )
+
+    meta = ABILITY_META.get(ability_id)
+    if meta is None:
+        return False
+    terms = list(meta.terms)
+    for clause in meta.clauses:
+        terms.extend(clause.terms)
+    for t in terms:
+        if isinstance(t, ScalingTerm):
+            s = t.scaling
+            if "intelligence" in s or re.search(r"\bint\b", s):
+                return True
+        elif isinstance(t, MaxOfTerm):
+            if any(st in ("intelligence", "int") for st in t.stats):
+                return True
+    return False
+
+
+# INT flows through a non-meta channel (a summon's SummonSpec stat-fraction), so a
+# meta-only scan can't see it — but the INT is NOT dead. Allowlisted with reason.
+_V47_SUMMON_INT_ALLOWLIST: dict[str, str] = {
+    "enemy_steam_engineer": "INT sizes the turret statline via _STEAM_TURRET SummonSpec (intelligence*0.5), not a meta outlet",
+}
+
+
+class TestAxisScalingAlignment:
+    """V.47: int/hybrid units must read INT in their kit (no dead INT)."""
+
+    def _defs(self):
+        import src.game.abilities  # noqa: F401  (registers ABILITY_META)
+        from src.game.content import _CHAMPION_DEFS, _ENEMY_DEFS
+
+        return list(_CHAMPION_DEFS) + list(_ENEMY_DEFS)
+
+    def test_int_and_hybrid_units_reference_int(self) -> None:
+        offenders = []
+        for d in self._defs():
+            if d.stat not in ("int", "hybrid"):
+                continue  # str auto-satisfied via the auto-attack (1.0 STR + 0.2 INT)
+            if d.id in _V47_SUMMON_INT_ALLOWLIST:
+                continue
+            # T.29d: a piece may have multiple discovered actives — INT may be
+            # referenced in any active or the passive.
+            active_ids = d.abilities if d.abilities is not None else discover_abilities(d.id)
+            if not (
+                any(_meta_references_int(aid) for aid in active_ids)
+                or _meta_references_int(d.passive_ability)
+            ):
+                offenders.append(f"{d.id} (stat={d.stat})")
+        assert not offenders, (
+            "V.47: these int/hybrid units never read INT in their kit (dead INT):\n"
+            + "\n".join(sorted(offenders))
+        )
+
+    def test_guard_detects_a_dead_int_meta(self) -> None:
+        # Negative control: a meta with no INT magnitude must read as non-referencing.
+        from src.game.registries import ABILITY_META, AbilityMeta, ScalingTerm
+
+        ABILITY_META["__test_dead_int__"] = AbilityMeta(
+            name="Dead", kind="active", blurb="x",
+            terms=(ScalingTerm("damage", 10.0, "strength*1.0"),),
+        )
+        try:
+            assert _meta_references_int("__test_dead_int__") is False
+        finally:
+            del ABILITY_META["__test_dead_int__"]

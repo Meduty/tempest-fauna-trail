@@ -12,6 +12,8 @@ Round semantics: periodic tick effects every 600 ticks, no round abstraction (G8
 
 from __future__ import annotations
 
+from src.game.status import secs
+
 from typing import Any
 
 from src.game.effects import (
@@ -27,6 +29,7 @@ from src.game.registries import (
     ABILITY_META,
     AbilityMeta,
     Clause,
+    PctResource,
     ScalingTerm,
     register_active,
     register_passive,
@@ -48,7 +51,7 @@ from src.game.targeting import (
 
 
 # Phase 1 Active: Pressure Vent — STR cone damage + burn
-HOLLOWAY_PRESSURE_VENT = ScalingTerm("damage", 100.0, "strength*2.5")
+HOLLOWAY_PRESSURE_VENT = ScalingTerm("damage", 100.0, "strength*2")
 
 
 @register_active("holloway.pressure_vent")
@@ -57,7 +60,7 @@ def holloway_pressure_vent(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY, damage_type="physical")
-        ctx.apply_status(t, "burn", duration_ticks=400, source_id=actor.id)
+        ctx.apply_status(t, "burn", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["holloway.pressure_vent"] = AbilityMeta(
@@ -110,7 +113,7 @@ def holloway_phase_hook(owner: Any) -> EffectBundle:
             from src.game.piece import ActiveSlot
             owner.actives = [ActiveSlot(
                 ability_id="holloway.magma_heave",
-                cost=owner.actives[0].cost if owner.actives else 420_000,
+                mana_cost=owner.actives[0].mana_cost if owner.actives else 420_000,
             )]
             # Apply phase 2 passive
             bundle = holloway_cinder_husk(owner)
@@ -120,7 +123,7 @@ def holloway_phase_hook(owner: Any) -> EffectBundle:
             # Map effect intensification: burn all enemies
             enemies = list(ctx.enemies_of(owner))
             for e in enemies:
-                ctx.apply_status(e, "burn", duration_ticks=200, source_id=owner.id)
+                ctx.apply_status(e, "burn", duration_ticks=secs(4), source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_damage_taken", hook, scope=HookScope.PER_HIT),
@@ -135,7 +138,7 @@ ABILITY_META["holloway.phase_hook"] = AbilityMeta(
 
 
 # Phase 2 Active: Magma Heave — massive STR AOE + ground burn
-HOLLOWAY_MAGMA_HEAVE = ScalingTerm("damage", 140.0, "strength*3.0")
+HOLLOWAY_MAGMA_HEAVE = ScalingTerm("damage", 140.0, "strength*2.4")
 _HOLLOWAY_MAGMA_AOE = 0.7
 
 
@@ -146,7 +149,7 @@ def holloway_magma_heave(ctx: Any, actor: Any, targets: list) -> None:
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount * _HOLLOWAY_MAGMA_AOE, SourceTag.ABILITY,
                         damage_type="physical")
-        ctx.apply_status(t, "burn", duration_ticks=500, source_id=actor.id)
+        ctx.apply_status(t, "burn", duration_ticks=secs(5), source_id=actor.id)
 
 
 ABILITY_META["holloway.magma_heave"] = AbilityMeta(
@@ -221,7 +224,7 @@ ABILITY_META["holloway.boiler_burst"] = AbilityMeta(
 
 
 # Phase 1 Active: Focusing Lens — high INT single target nuke
-VANCE_FOCUSING_LENS = ScalingTerm("damage", 120.0, "intelligence*2.8")
+VANCE_FOCUSING_LENS = ScalingTerm("damage", 120.0, "intelligence*5.32")
 
 
 @register_active("vance.focusing_lens")
@@ -280,7 +283,7 @@ def vance_phase_hook(owner: Any) -> EffectBundle:
             from src.game.piece import ActiveSlot
             owner.actives = [ActiveSlot(
                 ability_id="vance.sunflare_pounce",
-                cost=owner.actives[0].cost if owner.actives else 440_000,
+                mana_cost=owner.actives[0].mana_cost if owner.actives else 440_000,
             )]
             bundle = vance_drought_aura(owner)
             ctx.register_bundle(owner, bundle)
@@ -288,7 +291,7 @@ def vance_phase_hook(owner: Any) -> EffectBundle:
             # Phase transition effect: silence all enemies briefly
             enemies = list(ctx.enemies_of(owner))
             for e in enemies:
-                ctx.apply_status(e, "silence", duration_ticks=200, source_id=owner.id)
+                ctx.apply_status(e, "silence", duration_ticks=secs(4), source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_damage_taken", hook, scope=HookScope.PER_HIT),
@@ -303,7 +306,7 @@ ABILITY_META["vance.phase_hook"] = AbilityMeta(
 
 
 # Phase 2 Active: Sunflare Pounce — INT burst + fear
-VANCE_SUNFLARE_POUNCE = ScalingTerm("damage", 150.0, "intelligence*3.0")
+VANCE_SUNFLARE_POUNCE = ScalingTerm("damage", 150.0, "intelligence*5.7")
 
 
 @register_active("vance.sunflare_pounce")
@@ -312,7 +315,7 @@ def vance_sunflare_pounce(ctx: Any, actor: Any, targets: list) -> None:
     if not target:
         return
     ctx.deal_damage(actor, target, VANCE_SUNFLARE_POUNCE.eval(actor), SourceTag.ABILITY)
-    ctx.apply_status(target, "fear", duration_ticks=250, source_id=actor.id)
+    ctx.apply_status(target, "fear", duration_ticks=secs(5), source_id=actor.id)
 
 
 ABILITY_META["vance.sunflare_pounce"] = AbilityMeta(
@@ -364,7 +367,7 @@ def vance_sun_husk_collapse(owner: Any) -> EffectBundle:
         for e in enemies:
             if e.alive:
                 ctx.deal_damage(owner, e, VANCE_SUN_HUSK_COLLAPSE.eval(owner), SourceTag.TRUE)
-                ctx.apply_status(e, "burn", duration_ticks=300, source_id=owner.id)
+                ctx.apply_status(e, "burn", duration_ticks=secs(6), source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_death", hook, scope=HookScope.PER_HIT),
@@ -384,7 +387,7 @@ ABILITY_META["vance.sun_husk_collapse"] = AbilityMeta(
 
 
 # Phase 1 Active: Arc Cascade — chain lightning
-STRAND_ARC_CASCADE = ScalingTerm("damage", 110.0, "intelligence*2.5")
+STRAND_ARC_CASCADE = ScalingTerm("damage", 110.0, "intelligence*4.75")
 
 
 @register_active("strand.arc_cascade")
@@ -448,7 +451,7 @@ def strand_phase_hook(owner: Any) -> EffectBundle:
             from src.game.piece import ActiveSlot
             owner.actives = [ActiveSlot(
                 ability_id="strand.thunderhead",
-                cost=owner.actives[0].cost if owner.actives else 380_000,
+                mana_cost=owner.actives[0].mana_cost if owner.actives else 380_000,
             )]
             bundle = strand_stormform(owner)
             ctx.register_bundle(owner, bundle)
@@ -456,7 +459,7 @@ def strand_phase_hook(owner: Any) -> EffectBundle:
             # Transition: stun all enemies briefly
             enemies = list(ctx.enemies_of(owner))
             for e in enemies:
-                ctx.apply_status(e, "stun", duration_ticks=150, source_id=owner.id)
+                ctx.apply_status(e, "stun", duration_ticks=secs(3), source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_damage_taken", hook, scope=HookScope.PER_HIT),
@@ -471,7 +474,7 @@ ABILITY_META["strand.phase_hook"] = AbilityMeta(
 
 
 # Phase 2 Active: Thunderhead — massive AOE + charged status
-STRAND_THUNDERHEAD = ScalingTerm("damage", 130.0, "intelligence*3.0")
+STRAND_THUNDERHEAD = ScalingTerm("damage", 130.0, "intelligence*5.7")
 _STRAND_THUNDERHEAD_AOE = 0.6
 
 
@@ -481,7 +484,7 @@ def strand_thunderhead(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 4, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount * _STRAND_THUNDERHEAD_AOE, SourceTag.ABILITY)
-        ctx.apply_status(t, "charged", duration_ticks=300, source_id=actor.id)
+        ctx.apply_status(t, "charged", duration_ticks=secs(6), source_id=actor.id)
 
 
 ABILITY_META["strand.thunderhead"] = AbilityMeta(
@@ -493,7 +496,7 @@ ABILITY_META["strand.thunderhead"] = AbilityMeta(
 
 
 # Phase 2 Passive: Stormform — bonus damage to charged enemies
-STRAND_STORMFORM = ScalingTerm("bonus", 0.0, "intelligence*0.4")
+STRAND_STORMFORM = ScalingTerm("bonus", 0.0, "intelligence*0.64")
 
 
 @register_passive("strand.stormform")
@@ -529,7 +532,7 @@ def strand_lightning_strike(owner: Any) -> EffectBundle:
         for e in enemies:
             if e.alive:
                 ctx.deal_damage(owner, e, STRAND_LIGHTNING_STRIKE.eval(owner), SourceTag.TRUE)
-                ctx.apply_status(e, "stun", duration_ticks=100, source_id=owner.id)
+                ctx.apply_status(e, "stun", duration_ticks=secs(2), source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_death", hook, scope=HookScope.PER_HIT),
@@ -549,7 +552,7 @@ ABILITY_META["strand.lightning_strike"] = AbilityMeta(
 
 
 # Phase 1 Active: Scorched Advance — STR charge + burn
-VOSSBERG_SCORCHED_ADVANCE = ScalingTerm("damage", 130.0, "strength*2.8")
+VOSSBERG_SCORCHED_ADVANCE = ScalingTerm("damage", 130.0, "strength*2.24")
 _VOSSBERG_SCORCHED_SPLASH = 0.4
 
 
@@ -560,7 +563,7 @@ def vossberg_scorched_advance(ctx: Any, actor: Any, targets: list) -> None:
         return
     amount = VOSSBERG_SCORCHED_ADVANCE.eval(actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
-    ctx.apply_status(target, "burn", duration_ticks=300, source_id=actor.id)
+    ctx.apply_status(target, "burn", duration_ticks=secs(6), source_id=actor.id)
     # Hit neighbors
     for n in neighbors_of(target, ctx):
         if ctx.is_enemy(n, actor):
@@ -617,7 +620,7 @@ def vossberg_phase_hook(owner: Any) -> EffectBundle:
             from src.game.piece import ActiveSlot
             owner.actives = [ActiveSlot(
                 ability_id="vossberg.wildfire_leap",
-                cost=owner.actives[0].cost if owner.actives else 400_000,
+                mana_cost=owner.actives[0].mana_cost if owner.actives else 400_000,
             )]
             bundle = vossberg_feeding_frenzy(owner)
             ctx.register_bundle(owner, bundle)
@@ -641,7 +644,7 @@ ABILITY_META["vossberg.phase_hook"] = AbilityMeta(
 
 
 # Phase 2 Active: Wildfire Leap — massive STR AOE
-VOSSBERG_WILDFIRE_LEAP = ScalingTerm("damage", 160.0, "strength*3.2")
+VOSSBERG_WILDFIRE_LEAP = ScalingTerm("damage", 160.0, "strength*2.56")
 _VOSSBERG_WILDFIRE_AOE = 0.8
 
 
@@ -652,7 +655,7 @@ def vossberg_wildfire_leap(ctx: Any, actor: Any, targets: list) -> None:
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount * _VOSSBERG_WILDFIRE_AOE, SourceTag.ABILITY,
                         damage_type="physical")
-        ctx.apply_status(t, "burn", duration_ticks=400, source_id=actor.id)
+        ctx.apply_status(t, "burn", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["vossberg.wildfire_leap"] = AbilityMeta(
@@ -663,8 +666,8 @@ ABILITY_META["vossberg.wildfire_leap"] = AbilityMeta(
 )
 
 
-# Phase 2 Passive: Feeding Frenzy — heal on kill (%-of-max-HP stays inline)
-_VOSSBERG_FRENZY_HEAL_PCT = 0.1
+# Phase 2 Passive: Feeding Frenzy — heal on kill (PctResource, V.46)
+_VOSSBERG_FRENZY_HEAL = PctResource("heal", 0.1)
 
 
 @register_passive("vossberg.feeding_frenzy")
@@ -672,7 +675,7 @@ def vossberg_feeding_frenzy(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.killer is not owner:
             return
-        ctx.heal(owner, owner, owner.max_hp * _VOSSBERG_FRENZY_HEAL_PCT)
+        ctx.heal(owner, owner, _VOSSBERG_FRENZY_HEAL.eval(owner))
 
     return EffectBundle(hooks=[
         Hook("on_kill", hook, scope=HookScope.PER_HIT),
@@ -681,7 +684,8 @@ def vossberg_feeding_frenzy(owner: Any) -> EffectBundle:
 
 ABILITY_META["vossberg.feeding_frenzy"] = AbilityMeta(
     name="Feeding Frenzy", kind="passive",
-    blurb="Killing an enemy heals for 10% of max HP.",
+    blurb="Killing an enemy heals you.",
+    clauses=(Clause(template="Heals {heal} HP per kill.", terms=(_VOSSBERG_FRENZY_HEAL,)),),
     tags=("heal",),
 )
 
@@ -718,7 +722,7 @@ ABILITY_META["vossberg.fire_gutters_out"] = AbilityMeta(
 
 
 # Phase 1 Active: Harpoon Winch — pull + damage + root
-CREGE_HARPOON_WINCH = ScalingTerm("damage", 100.0, "strength*2.0+intelligence*1.0")
+CREGE_HARPOON_WINCH = ScalingTerm("damage", 100.0, "strength*1.6+intelligence*1.9")
 
 
 @register_active("crege.harpoon_winch")
@@ -728,7 +732,7 @@ def crege_harpoon_winch(ctx: Any, actor: Any, targets: list) -> None:
         return
     ctx.deal_damage(actor, target, CREGE_HARPOON_WINCH.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
-    ctx.apply_status(target, "root", duration_ticks=250, source_id=actor.id)
+    ctx.apply_status(target, "root", duration_ticks=secs(5), source_id=actor.id)
     # Simulate pull via teleport toward boss
     if abs(target.position_q - actor.position_q) > 1:
         step_q = 1 if target.position_q < actor.position_q else -1
@@ -754,7 +758,7 @@ def crege_dredged_depths(owner: Any) -> EffectBundle:
             state["last_tick"] = ctx.current_tick
             enemies = enemies_in_radius(owner.position_q, owner.position_r, 3, owner, ctx)
             for e in enemies:
-                ctx.apply_status(e, "slow", duration_ticks=350, stacks=1, source_id=owner.id)
+                ctx.apply_status(e, "slow", duration_ticks=secs(3.5), stacks=1, source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
@@ -781,7 +785,7 @@ def crege_phase_hook(owner: Any) -> EffectBundle:
             from src.game.piece import ActiveSlot
             owner.actives = [ActiveSlot(
                 ability_id="crege.maelstrom_jaws",
-                cost=owner.actives[0].cost if owner.actives else 460_000,
+                mana_cost=owner.actives[0].mana_cost if owner.actives else 460_000,
             )]
             bundle = crege_drowning_tide(owner)
             ctx.register_bundle(owner, bundle)
@@ -789,7 +793,7 @@ def crege_phase_hook(owner: Any) -> EffectBundle:
             # Transition: root all enemies
             enemies = list(ctx.enemies_of(owner))
             for e in enemies:
-                ctx.apply_status(e, "root", duration_ticks=200, source_id=owner.id)
+                ctx.apply_status(e, "root", duration_ticks=secs(4), source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_damage_taken", hook, scope=HookScope.PER_HIT),
@@ -804,7 +808,7 @@ ABILITY_META["crege.phase_hook"] = AbilityMeta(
 
 
 # Phase 2 Active: Maelstrom Jaws — massive AOE + slow
-CREGE_MAELSTROM_JAWS = ScalingTerm("damage", 120.0, "strength*2.5+intelligence*1.5")
+CREGE_MAELSTROM_JAWS = ScalingTerm("damage", 120.0, "strength*2+intelligence*2.86")
 _CREGE_MAELSTROM_AOE = 0.7
 
 
@@ -815,7 +819,7 @@ def crege_maelstrom_jaws(ctx: Any, actor: Any, targets: list) -> None:
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount * _CREGE_MAELSTROM_AOE, SourceTag.ABILITY,
                         damage_type="physical")
-        ctx.apply_status(t, "slow", duration_ticks=400, stacks=2, source_id=actor.id)
+        ctx.apply_status(t, "slow", duration_ticks=secs(4), stacks=2, source_id=actor.id)
 
 
 ABILITY_META["crege.maelstrom_jaws"] = AbilityMeta(
@@ -885,7 +889,7 @@ ABILITY_META["crege.silt_drains"] = AbilityMeta(
 
 
 # Phase 1 Active: Decree of Iron — mark target for +damage taken
-IRON_EMPEROR_DECREE = ScalingTerm("damage", 100.0, "strength*1.5+intelligence*1.5")
+IRON_EMPEROR_DECREE = ScalingTerm("damage", 100.0, "strength*1.2+intelligence*2.86")
 
 
 @register_active("iron_emperor.decree_of_iron")
@@ -961,7 +965,7 @@ def iron_emperor_phase_hook(owner: Any) -> EffectBundle:
             from src.game.piece import ActiveSlot
             owner.actives = [ActiveSlot(
                 ability_id="iron_emperor.reclamation",
-                cost=owner.actives[0].cost if owner.actives else 520_000,
+                mana_cost=owner.actives[0].mana_cost if owner.actives else 520_000,
             )]
             bundle = iron_emperor_the_wound_spreads(owner)
             ctx.register_bundle(owner, bundle)
@@ -977,7 +981,7 @@ def iron_emperor_phase_hook(owner: Any) -> EffectBundle:
             ))
             enemies = list(ctx.enemies_of(owner))
             for e in enemies:
-                ctx.apply_status(e, "frozen", duration_ticks=200, source_id=owner.id)
+                ctx.apply_status(e, "frozen", duration_ticks=secs(4), source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_damage_taken", hook, scope=HookScope.PER_HIT),
@@ -992,7 +996,7 @@ ABILITY_META["iron_emperor.phase_hook"] = AbilityMeta(
 
 
 # Phase 2 Active: Reclamation — channel finisher (massive damage)
-IRON_EMPEROR_RECLAMATION = ScalingTerm("damage", 150.0, "strength*2.0+intelligence*2.0")
+IRON_EMPEROR_RECLAMATION = ScalingTerm("damage", 150.0, "strength*1.6+intelligence*3.8")
 _IRON_EMPEROR_RECLAMATION_AOE = 0.5
 
 
@@ -1002,7 +1006,7 @@ def iron_emperor_reclamation(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 4, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount * _IRON_EMPEROR_RECLAMATION_AOE, SourceTag.ABILITY)
-        ctx.apply_status(t, "slow", duration_ticks=400, stacks=3, source_id=actor.id)
+        ctx.apply_status(t, "slow", duration_ticks=secs(4), stacks=3, source_id=actor.id)
 
 
 ABILITY_META["iron_emperor.reclamation"] = AbilityMeta(
@@ -1026,7 +1030,7 @@ def iron_emperor_the_wound_spreads(owner: Any) -> EffectBundle:
             for e in enemies:
                 if e.alive:
                     ctx.deal_damage(owner, e, 3.0 * state["intensity"], SourceTag.DOT)
-                    ctx.apply_status(e, "slow", duration_ticks=350, stacks=1,
+                    ctx.apply_status(e, "slow", duration_ticks=secs(3.5), stacks=1,
                                     source_id=owner.id)
 
     return EffectBundle(hooks=[

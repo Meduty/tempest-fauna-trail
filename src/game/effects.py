@@ -58,25 +58,21 @@ class Modifier:
     expires_at_tick: int | None = None
 
 
-def compute_stat(piece: Any, stat: str) -> float:
-    """Compute effective stat value from base + modifiers.
+# Per-stat lower clamps applied at the tail of compute_stat (V.43). `attack_range`
+# must never drop below 1 — restores the floor the old inline weather fold did
+# (`max(1, …)`) now that weather range deltas are `add` modifiers (T.29-pre).
+_STAT_FLOORS: dict[str, float] = {"attack_range": 1.0}
 
-    Order: (base + sum(adds)) * prod(muls). 'set' overrides everything.
+
+def _fold(base: float, mods_for_stat: Any, floor: float | None) -> float:
+    """Fold a stat: `(base + Σadds) × Πmuls`, last `set` wins, then clamp to `floor`.
+
+    `mods_for_stat` is an iterable of `Modifier`s already filtered to one stat.
     """
-    base = piece.base_stats.get(stat, 0.0)
-    mods = piece.modifiers
-    # Fast path: the overwhelmingly common case is a piece with no modifiers
-    # (weather is folded into base_stats; only passives/abilities add modifiers).
-    # Skip the temp-list allocations and the scan entirely.
-    if not mods:
-        return base
-
     adds = 0.0
     mul = 1.0
-    setter: float | None = None  # last 'set' wins, matching the previous setters[-1]
-    for m in mods:
-        if m.stat != stat:
-            continue
+    setter: float | None = None  # last 'set' wins
+    for m in mods_for_stat:
         op = m.op
         if op == "add":
             adds += m.value
@@ -84,10 +80,69 @@ def compute_stat(piece: Any, stat: str) -> float:
             mul *= m.value
         else:  # "set"
             setter = m.value
+    value = setter if setter is not None else (base + adds) * mul
+    return max(floor, value) if floor is not None else value
 
-    if setter is not None:
-        return setter
-    return (base + adds) * mul
+
+def compute_stat(piece: Any, stat: str) -> float:
+    """Compute effective stat value from base + modifiers.
+
+    Order: (base + sum(adds)) * prod(muls). 'set' overrides everything. A trailing
+    `_STAT_FLOORS` clamp guarantees per-stat minimums (e.g. `attack_range ≥ 1`, V.43).
+    """
+    base = piece.base_stats.get(stat, 0.0)
+    mods = piece.modifiers
+    floor = _STAT_FLOORS.get(stat)
+    # Fast path: a piece with no modifiers. Weather and every other source now add
+    # modifiers (T.29-pre), so this is less common than before but still cheap.
+    if not mods:
+        return max(floor, base) if floor is not None else base
+    return _fold(base, (m for m in mods if m.stat == stat), floor)
+
+
+def _source_prefix(source_id: str) -> str:
+    """The `<prefix>:` group of a `Modifier.source_id` (V.45), or the whole id."""
+    return source_id.split(":", 1)[0] if ":" in source_id else (source_id or "other")
+
+
+# Canonical source order for the breakdown (V.45). Matches the compose intuition
+# base → equipment → run-buffs → kit → environment; unknown prefixes sort last.
+_SOURCE_ORDER: tuple[str, ...] = ("item", "augment", "passive", "trait", "weather")
+
+
+def stat_breakdown(piece: Any) -> list[tuple[str, dict[str, float]]]:
+    """Group a piece's modifiers by `source:` prefix into per-stat deltas (V.45).
+
+    Returns `[("base", {stat: base_value, …}), ("<prefix>", {stat: delta, …}), …]`
+    in the canonical `_SOURCE_ORDER`. The decomposition is **telescoping**: each
+    row's delta is `fold(sources≤here) − fold(sources<here)` over the cumulative
+    subset, so for a stat with no per-stat floor the rows **sum exactly** to the
+    effective total (`base + Σdeltas == piece.stat(s)`) — the property a breakdown
+    UI needs — while still honouring `(base+Σadds)×Πmuls` order (V.43). Pure (no
+    Flet, V.1); for the prep-view breakdown (T.34/T.23 consume it).
+    """
+    base_row = {k: float(v) for k, v in piece.base_stats.items()}
+    mods = list(piece.modifiers)
+    present = {_source_prefix(m.source_id) for m in mods}
+    ordered = [p for p in _SOURCE_ORDER if p in present] + sorted(present - set(_SOURCE_ORDER))
+    touched = {m.stat for m in mods}
+
+    out: list[tuple[str, dict[str, float]]] = [("base", base_row)]
+    for i, prefix in enumerate(ordered):
+        cumulative = set(ordered[: i + 1])
+        prev = set(ordered[:i])
+        deltas: dict[str, float] = {}
+        for s in touched:
+            floor = _STAT_FLOORS.get(s)
+            base_s = base_row.get(s, 0.0)
+            now = _fold(base_s, (m for m in mods if m.stat == s and _source_prefix(m.source_id) in cumulative), floor)
+            before = _fold(base_s, (m for m in mods if m.stat == s and _source_prefix(m.source_id) in prev), floor)
+            d = now - before
+            if d:
+                deltas[s] = d
+        if deltas:
+            out.append((prefix, deltas))
+    return out
 
 
 # ---------------------------------------------------------------------------

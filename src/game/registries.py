@@ -7,8 +7,8 @@ loadout compiler look up abilities by string id from these dicts.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Callable
+from dataclasses import dataclass, field
+from typing import Any, Callable, Protocol, runtime_checkable
 
 from src.game.effects import EffectBundle, SourceTag
 
@@ -26,6 +26,11 @@ PASSIVE_REGISTRY: dict[str, Callable] = {}
 # Item factories: id -> factory(owner) -> EffectBundle
 ITEM_REGISTRY: dict[str, Callable] = {}
 
+# Special-item run-actions (T.29b §8.4) — operate on `Run` state ONLY, never
+# enter combat (V.24). `id -> fn(run, *args) -> None`. Kept separate from
+# ITEM_REGISTRY so `game/combat/` never sees them.
+RUN_ACTION_REGISTRY: dict[str, Callable] = {}
+
 # Trait factories: id -> factory() -> list[TraitBreakpoint]
 TRAIT_REGISTRY: dict[str, Callable] = {}
 
@@ -34,20 +39,96 @@ AUGMENT_REGISTRY: dict[str, Any] = {}
 
 
 # ---------------------------------------------------------------------------
+# Mana cost-meta (T.29c, V.48) — per-ability mana fields authored on the
+# ability def. Replaces the deprecated per-piece `ability_cost` stat. An
+# ability without an entry uses the dataclass defaults (mana_cost=300_000,
+# i.e. the old baseline). `loadout` seeds each `ActiveSlot` from here.
+# ---------------------------------------------------------------------------
+
+DEFAULT_MANA_COST: int = 300_000  # former `_ABILITY_COST` baseline (V.35)
+
+
+@dataclass(frozen=True)
+class AbilityMana:
+    """Per-ability mana statline (V.48). `max_mana=0` ⇒ `2 * mana_cost`."""
+
+    mana_cost: int = DEFAULT_MANA_COST
+    max_mana: int = 0          # 0 ⇒ ActiveSlot normalizes to 2 * mana_cost
+    start_mana: int = 0
+    priority: int = 1
+
+
+# id -> AbilityMana, keyed by the same ability-id strings as ABILITY_REGISTRY.
+ABILITY_MANA: dict[str, AbilityMana] = {}
+
+_DEFAULT_ABILITY_MANA = AbilityMana()
+
+
+def ability_mana(ability_id: str) -> AbilityMana:
+    """Resolve the mana statline for an ability id (defaults if unregistered)."""
+    return ABILITY_MANA.get(ability_id, _DEFAULT_ABILITY_MANA)
+
+
+def register_ability_mana(
+    ability_id: str,
+    *,
+    mana_cost: int = DEFAULT_MANA_COST,
+    max_mana: int = 0,
+    start_mana: int = 0,
+    priority: int = 1,
+) -> None:
+    """Author an ability's mana statline (V.48). Cost lives on the ability def."""
+    ABILITY_MANA[ability_id] = AbilityMana(mana_cost, max_mana, start_mana, priority)
+
+
+# ---------------------------------------------------------------------------
 # Decorators
 # ---------------------------------------------------------------------------
 
 
-def register_active(ability_id: str) -> Callable:
+def register_active(
+    ability_id: str,
+    *,
+    mana_cost: int | None = None,
+    max_mana: int = 0,
+    start_mana: int = 0,
+    priority: int = 1,
+) -> Callable:
     """Decorator to register an active ability handler.
 
-    Usage:
-        @register_active("storm_surge")
+    Optional mana kwargs author the ability's `AbilityMana` statline (V.48,
+    T.29c) — the per-ability cost knob. Omit them to use the defaults
+    (mana_cost=300_000). Usage:
+
+        @register_active("storm_surge", mana_cost=450_000, priority=1)
         def storm_surge(ctx, actor, targets):
             ...
     """
     def decorator(fn: Callable) -> Callable:
         ABILITY_REGISTRY[ability_id] = fn
+        if mana_cost is not None or max_mana or start_mana or priority != 1:
+            register_ability_mana(
+                ability_id,
+                mana_cost=DEFAULT_MANA_COST if mana_cost is None else mana_cost,
+                max_mana=max_mana,
+                start_mana=start_mana,
+                priority=priority,
+            )
+        return fn
+    return decorator
+
+
+def register_run_action(item_id: str) -> Callable:
+    """Decorator to register a special-item run-action (T.29b, V.24).
+
+    The function operates on `Run` state only (inventory/bench/amber/roster) and
+    is never referenced from `game/combat/`. Usage:
+
+        @register_run_action("reforger")
+        def reforger(run, item_id): ...
+    """
+    def decorator(fn: Callable) -> Callable:
+        RUN_ACTION_REGISTRY[item_id] = fn
         return fn
     return decorator
 
@@ -126,6 +207,41 @@ def register_active_simple(ability_id: str, spec: SimpleActive) -> None:
     ABILITY_REGISTRY[ability_id] = handler
 
 
+# Short-hand → canonical stat name mapping (shared by _eval_scaling + _short).
+_STAT_ALIASES: dict[str, str] = {
+    "str": "strength",
+    "int": "intelligence",
+    "atk": "attack_speed",
+    "spd": "move_speed",
+    "mr": "mana_regen",
+    "arm": "armor",
+    "res": "resistance",
+    "pen": "penetration",
+}
+
+# Canonical stat name -> short UPPER label for formula pretty-printing (V.46;
+# moved here from ability_text so each Magnitude self-renders without a cycle).
+_STAT_SHORT: dict[str, str] = {
+    "strength": "STR",
+    "intelligence": "INT",
+    "attack_speed": "AS",
+    "move_speed": "MS",
+    "mana_regen": "MR",
+    "armor": "ARM",
+    "resistance": "RES",
+    "penetration": "PEN",
+    "penetration_pct": "PEN%",
+    "max_hp": "HP",
+    "attack_range": "RNG",
+    "crit_chance": "CRIT",
+}
+
+
+def _short(stat_name: str) -> str:
+    canon = _STAT_ALIASES.get(stat_name, stat_name)
+    return _STAT_SHORT.get(canon, canon.upper())
+
+
 def _eval_scaling(base: float, scaling: str, actor: Any) -> float:
     """Evaluate a scaling expression like 'strength*1.5' or 'intelligence*2.0+100'.
 
@@ -134,18 +250,6 @@ def _eval_scaling(base: float, scaling: str, actor: Any) -> float:
     that typos are silent no-ops rather than exceptions; they will be flagged as
     a ValueError if strict validation is ever required.
     """
-    # Short-hand → canonical stat name mapping
-    _STAT_ALIASES: dict[str, str] = {
-        "str": "strength",
-        "int": "intelligence",
-        "atk": "attack_speed",
-        "spd": "move_speed",
-        "mr": "mana_regen",
-        "arm": "armor",
-        "res": "resistance",
-        "pen": "penetration",
-    }
-
     if not scaling:
         return base
 
@@ -183,13 +287,54 @@ def _eval_scaling(base: float, scaling: str, actor: Any) -> float:
 # a literal into a term is byte-identical to the inline call (V.2/V.14).
 
 
+@runtime_checkable
+class Magnitude(Protocol):
+    """A single stat-scaled numeric outlet, GAS-modeled (V.46).
+
+    The **closed** family — ``ScalingTerm`` (linear), ``PctResource``
+    (%-of-resource), ``MaxOfTerm`` (max-of-stats), ``SetByCaller`` (runtime
+    value) — shares this Protocol so a handler reads the number via
+    ``eval(...)`` and the tooltip renders the *same* object (source-of-truth B,
+    V.38): the two can never drift. Every kind is pure + RNG-free (V.2/V.14) and
+    **self-describing** so ``ability_text.render`` is pure per-kind dispatch.
+    """
+
+    label: str
+    def eval(self, source: Any, target: Any = None, caller: Any = None) -> float: ...
+    def render_formula(self, source: Any) -> str: ...
+    def render_inline(self, source: Any) -> str: ...
+    def render_token(self, source: Any) -> str: ...   # the {label} substitution string
+
+
+def _parse_scaling(scaling: str, source: Any) -> list[tuple[str, float, float]]:
+    """Decompose a linear expr into ``(short, coeff, value)`` per stat term.
+
+    Mirrors ``_eval_scaling``'s grammar (split on ``+``, ``*`` per part) — shared
+    by ``ScalingTerm``'s formula + inline renderers so both read the same coeffs.
+    """
+    scales: list[tuple[str, float, float]] = []
+    expr = scaling.replace("-", "+-") if scaling else ""
+    for part in expr.split("+"):
+        part = part.strip()
+        if not part or "*" not in part:
+            continue
+        stat_name, coeff = part.split("*", 1)
+        stat_name = stat_name.strip()
+        short = _short(stat_name)
+        canon = _STAT_ALIASES.get(stat_name, stat_name)
+        val = source.stat(canon) if hasattr(source, "stat") else 0.0
+        scales.append((short, float(coeff.strip()), float(val)))
+    return scales
+
+
 @dataclass(frozen=True)
 class ScalingTerm:
-    """A single damage/heal/shield outlet: ``base [+ stat*coeff ...]``.
+    """A linear outlet: ``base [+ stat*coeff ...]`` (GAS AttributeBased+ScalableFloat).
 
-    ``label`` is the ``{token}`` it fills in an ``AbilityMeta.blurb``.
-    ``eval(source)`` reuses the engine's ``_eval_scaling`` so the rendered
-    number equals the number the handler computes.
+    ``label`` is the ``{token}`` it fills in an ``AbilityMeta.blurb`` / clause
+    template. ``eval`` reuses the engine's ``_eval_scaling`` so the rendered
+    number equals the number the handler computes. ``target``/``caller`` are
+    accepted (Protocol parity) but unused — keeps the linear kind byte-identical.
     """
 
     label: str          # "damage" | "heal" | "shield" | "bonus" ...
@@ -197,15 +342,159 @@ class ScalingTerm:
     scaling: str = ""   # _eval_scaling expr, e.g. "intelligence*2.5"
     note: str = ""      # optional ("per hit", "to each enemy in radius 2")
 
-    def eval(self, source: Any) -> float:
+    def eval(self, source: Any, target: Any = None, caller: Any = None) -> float:
         return _eval_scaling(self.base, self.scaling, source)
+
+    def render_formula(self, source: Any) -> str:
+        scales = _parse_scaling(self.scaling, source)
+        pieces: list[str] = []
+        stat_notes: list[str] = []
+        if self.base:
+            pieces.append(f"{self.base:g}")
+        for short, coeff, val in scales:
+            pieces.append(f"{coeff * 100:g}% {short}")
+            stat_notes.append(f"{short} {coeff:g}×{val:g}")
+        rhs = " + ".join(pieces) if pieces else "0"
+        note = f"  ({', '.join(stat_notes)})" if stat_notes else ""
+        return f"{round(self.eval(source))} = {rhs}{note}"
+
+    def render_inline(self, source: Any) -> str:
+        scales = _parse_scaling(self.scaling, source)
+        if not scales:
+            return ""
+        parts = [f"{self.base:g}"] if self.base else []
+        parts += [f"+{coeff * 100:g}% {short}" for short, coeff, _val in scales]
+        return " ".join(parts)
+
+    def render_token(self, source: Any) -> str:
+        return str(round(self.eval(source)))
+
+
+@dataclass(frozen=True)
+class PctResource:
+    """A ``%-of-resource`` outlet (GAS AttributeBased, resource-typed).
+
+    Reads ``.max_hp`` (or another resource attribute) **directly** — not via
+    ``.stat()`` — because ``Piece.stat("max_hp")`` is ``0`` in combat (max_hp is a
+    Piece attribute, not a ``base_stats`` key; see ``effects.compute_stat``).
+    ``of="target"`` reads the target's resource (cross-entity); falls back to
+    ``source`` when no target is supplied (render time).
+    """
+
+    label: str
+    pct: float                 # 0.08 == 8%
+    of: str = "self"           # "self" | "target"
+    resource: str = "max_hp"
+    note: str = ""
+
+    def _obj(self, source: Any, target: Any) -> Any:
+        return target if (self.of == "target" and target is not None) else source
+
+    def eval(self, source: Any, target: Any = None, caller: Any = None) -> float:
+        return float(getattr(self._obj(source, target), self.resource, 0.0)) * self.pct
+
+    def render_formula(self, source: Any) -> str:
+        who = "target " if self.of == "target" else ""
+        base_val = float(getattr(source, self.resource, 0.0))
+        return (
+            f"{round(self.eval(source))} = {self.pct * 100:g}% {who}"
+            f"{_short(self.resource)}  ({_short(self.resource)} {base_val:g})"
+        )
+
+    def render_inline(self, source: Any) -> str:
+        who = "target " if self.of == "target" else ""
+        return f"{self.pct * 100:g}% {who}{_short(self.resource)}"
+
+    def render_token(self, source: Any) -> str:
+        return str(round(self.eval(source)))
+
+
+@dataclass(frozen=True)
+class MaxOfTerm:
+    """``base + max(stat...) * coeff`` (GAS CustomCalculationClass).
+
+    Non-linear: the grammar of ``ScalingTerm`` (``+``/``*`` only) cannot express
+    ``max()``, so this is its own kind.
+    """
+
+    label: str
+    coeff: float
+    stats: tuple[str, ...] = ("strength", "intelligence")
+    base: float = 0.0
+    note: str = ""
+
+    def _vals(self, source: Any) -> list[float]:
+        return [
+            float(source.stat(_STAT_ALIASES.get(s, s))) if hasattr(source, "stat") else 0.0
+            for s in self.stats
+        ]
+
+    def eval(self, source: Any, target: Any = None, caller: Any = None) -> float:
+        vals = self._vals(source)
+        return self.base + (max(vals) if vals else 0.0) * self.coeff
+
+    def render_formula(self, source: Any) -> str:
+        shorts = "/".join(_short(s) for s in self.stats)
+        notes = ", ".join(
+            f"{_short(s)} {v:g}" for s, v in zip(self.stats, self._vals(source))
+        )
+        base_p = f"{self.base:g} + " if self.base else ""
+        note = f"  ({notes})" if notes else ""
+        return f"{round(self.eval(source))} = {base_p}{self.coeff * 100:g}% higher of {shorts}{note}"
+
+    def render_inline(self, source: Any) -> str:
+        shorts = "/".join(_short(s) for s in self.stats)
+        return f"{self.coeff * 100:g}% higher of {shorts}"
+
+    def render_token(self, source: Any) -> str:
+        return str(round(self.eval(source)))
+
+
+@dataclass(frozen=True)
+class SetByCaller:
+    """``base + caller[key] * coeff`` — a runtime value the handler injects (GAS SetByCaller).
+
+    The runtime quantity (e.g. a live stack count) has no pre-combat value, so
+    the renderer shows the **rate**, not a total. The handler passes
+    ``caller={key: n}`` to ``eval``.
+    """
+
+    label: str
+    base: float = 0.0
+    coeff: float = 1.0
+    key: str = "stacks"
+    note: str = ""
+
+    def eval(self, source: Any, target: Any = None, caller: Any = None) -> float:
+        v = float((caller or {}).get(self.key, 0.0))
+        return self.base + v * self.coeff
+
+    def render_formula(self, source: Any) -> str:
+        base_p = f"{self.base:g} + " if self.base else ""
+        return f"{base_p}{self.coeff:g} per {self.key}"
+
+    def render_inline(self, source: Any) -> str:
+        base_p = f"{self.base:g} " if self.base else ""
+        return f"{base_p}+{self.coeff:g}/{self.key}"
+
+    def render_token(self, source: Any) -> str:
+        # Runtime quantity has no pre-combat total — the token shows the rate.
+        base_p = f"{self.base:g} + " if self.base else ""
+        return f"{base_p}{self.coeff:g}"
 
 
 @dataclass(frozen=True)
 class Clause:
-    """A static/conditional prose line — e.g. ``+50% vs targets below 30% HP``."""
+    """A static/conditional prose line — e.g. ``+50% vs targets below 30% HP``.
 
-    text: str
+    Either plain ``text``, **or** a ``{token}`` ``template`` filled live from
+    ``terms`` (A1, V.46) so a Tier-B scaler's prose number cannot drift from the
+    handler's (the handler reads the same ``terms``).
+    """
+
+    text: str = ""
+    template: str = ""
+    terms: tuple[Magnitude, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -213,17 +502,39 @@ class AbilityMeta:
     """Presentation metadata for one roster ability id.
 
     ``blurb`` is prose with ``{label}`` slots filled by the matching
-    ``ScalingTerm`` rounded against a render source. ``clauses`` are extra
-    sentences (conditionals, cadences, status durations). ``tags`` are
-    UI-iconography labels owned by this layer (not the trait/role vocab).
+    ``Magnitude`` rounded against a render source. ``clauses`` are extra
+    sentences (conditionals, cadences, status durations) that may carry their own
+    ``terms``. ``tags`` are UI-iconography labels owned by this layer (not the
+    trait/role vocab).
     """
 
     name: str
     kind: str                                   # "active" | "passive"
     blurb: str
-    terms: tuple[ScalingTerm, ...] = ()
+    terms: tuple[Magnitude, ...] = ()
     clauses: tuple[Clause, ...] = ()
     tags: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class SummonSpec:
+    """Declarative summon statline (GAS-style): flat literals + ``Magnitude`` fractions.
+
+    Keeps summon stat-fractions introspectable + drift-safe (they reuse the
+    Magnitude family) instead of inline ``actor.stat(...)`` math in the handler.
+    ``eval(owner)`` resolves every entry to a concrete ``base_stats`` value.
+    """
+
+    stats: dict[str, Any] = field(default_factory=dict)  # key -> number | Magnitude
+    note: str = ""
+
+    def eval(self, source: Any) -> dict[str, Any]:
+        # Magnitudes resolve against `source`; flat literals pass through verbatim
+        # (int stays int) so a built statline is byte-identical to inline (V.2/V.14).
+        return {
+            k: (v.eval(source) if hasattr(v, "eval") else v)
+            for k, v in self.stats.items()
+        }
 
 
 # id -> AbilityMeta, keyed by the same roster ability-id strings as the

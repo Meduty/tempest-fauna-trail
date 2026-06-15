@@ -17,6 +17,7 @@ from src.game.weather_effects import (
     ring_relation,
     shop_weight,
 )
+from src.game.effects import EventBus
 from src.game.loadout import (
     _apply_weather_to_piece,
     piece_from_champion,
@@ -44,9 +45,8 @@ def _make_champion(affinity: WeatherState) -> Champion:
         armor=10,
         resistance=10,
         attack_range=2,
-        active_ability="Test Cast",
+        active_abilities=["Test Cast"],
         passive_ability="Test Passive",
-        ability_cost=100,
         traits=["Mammal", "Hunter"],
     )
 
@@ -69,9 +69,8 @@ def _make_enemy(affinity: WeatherState) -> Enemy:
         armor=8,
         resistance=8,
         attack_range=1,
-        active_ability="Test Cast",
+        active_abilities=["Test Cast"],
         passive_ability="Test Passive",
-        ability_cost=100,
     )
 
 
@@ -261,17 +260,20 @@ def test_shop_weight_neutral_when_clear_involved() -> None:
 
 # --- Weather Favor applied to combat Pieces (live loadout path) --------------
 # These exercise the ONE weather-application path used in real combat:
-# loadout._apply_weather_to_piece mutating a compiled Piece's base_stats.
+# loadout._apply_weather_to_piece applying source="weather:<state>" modifiers to a
+# compiled Piece (T.29-pre, V.42) — composed via compute_stat, no base_stats fold,
+# so values are unrounded floats and resources reconcile from stat("hp").
 
 
 def test_weather_clear_leaves_stats_unscaled_and_keeps_affinity() -> None:
     champion = _make_champion(WeatherState.RAIN)
     piece = piece_from_champion(champion)
-    _apply_weather_to_piece(piece, WeatherState.CLEAR)
+    _apply_weather_to_piece(piece, WeatherState.CLEAR, EventBus())
 
     assert piece.id == champion.id
     assert piece.is_enemy is False
     assert piece.affinity == WeatherState.RAIN
+    assert piece.modifiers == []  # CLEAR is inert — no weather modifiers
     assert piece.max_hp == champion.max_hp
     assert piece.hp == champion.max_hp
     assert piece.stat("strength") == champion.strength
@@ -281,12 +283,14 @@ def test_weather_clear_leaves_stats_unscaled_and_keeps_affinity() -> None:
 def test_weather_self_buff_scales_strong_tier() -> None:
     champion = _make_champion(WeatherState.THUNDER)
     piece = piece_from_champion(champion)
-    _apply_weather_to_piece(piece, WeatherState.THUNDER)
+    _apply_weather_to_piece(piece, WeatherState.THUNDER, EventBus())
 
-    # SELF tier = full magnitude 0.3 -> x1.3.
-    assert piece.stat("strength") == round(champion.strength * 1.3)
-    assert piece.stat("attack_speed") == round(champion.attack_speed * 1.3)
+    # SELF tier = full magnitude 0.3 -> x1.3. Now an unrounded float mul (V.42/V.43).
+    assert piece.stat("strength") == pytest.approx(champion.strength * 1.3)
+    assert piece.stat("attack_speed") == pytest.approx(champion.attack_speed * 1.3)
     assert piece.stat("intelligence") == champion.intelligence
+    # weather modifiers carry the source tag (V.45)
+    assert all(m.source_id == "weather:thunder" for m in piece.modifiers)
     assert piece.affinity == WeatherState.THUNDER
 
 
@@ -294,24 +298,25 @@ def test_weather_mist_debuff_drops_attack_range_with_floor() -> None:
     # THUNDER is MIST's primary prey -> medium debuff -> range -1.
     champion = _make_champion(WeatherState.THUNDER)
     piece = piece_from_champion(champion)
-    _apply_weather_to_piece(piece, WeatherState.MIST)
+    _apply_weather_to_piece(piece, WeatherState.MIST, EventBus())
     assert piece.stat("attack_range") == champion.attack_range - 1
 
+    # Melee (range 1) -> the -1 add underflows; the _STAT_FLOORS clamp holds it at 1.
     melee = replace(_make_champion(WeatherState.THUNDER), attack_range=1)
     melee_piece = piece_from_champion(melee)
-    _apply_weather_to_piece(melee_piece, WeatherState.MIST)
+    _apply_weather_to_piece(melee_piece, WeatherState.MIST, EventBus())
     assert melee_piece.stat("attack_range") == 1
 
 
 def test_weather_applies_to_enemy_and_flags_is_enemy() -> None:
     enemy = _make_enemy(WeatherState.MIST)
     piece = piece_from_enemy(enemy)
-    _apply_weather_to_piece(piece, WeatherState.MIST)
+    _apply_weather_to_piece(piece, WeatherState.MIST, EventBus())
 
     assert piece.is_enemy is True
     assert piece.affinity == WeatherState.MIST
-    assert piece.stat("move_speed") == round(enemy.move_speed * 1.3)
-    assert piece.stat("threat") == round(enemy.threat * 1.3)
+    assert piece.stat("move_speed") == pytest.approx(enemy.move_speed * 1.3)
+    assert piece.stat("threat") == pytest.approx(enemy.threat * 1.3)
 
 
 # --- OpenWeather id mapping --------------------------------------------------

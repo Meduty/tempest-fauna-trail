@@ -13,10 +13,18 @@ summed**:
 "Does the node weather suit my affinity?" A 5-tier stat buff/debuff
 (`combat_modifier(affinity, weather) -> CombatModifier`) driven by the
 directional predator/prey ring. Applied **once at combat init**, in exactly one
-place: `loadout._apply_weather_to_piece` mutates the `Piece.base_stats`
-(integer-scaled, `round(value × mult)`, `attack_range` clamped ≥ 1). There is no
-other application path — the old `weather_effects.apply_weather` snapshot and
-the `CombatPieceState` model it built were removed (one source of truth).
+place: `loadout._apply_weather_to_piece`. As of **T.29-pre (V.42)** it no longer
+folds into `base_stats` — it emits `source="weather:<state>"` **`Modifier`s**
+(`*_mult≠1.0 → ("<stat>","mul",mult)`, `attack_range_delta → ("attack_range","add",delta)`)
+applied via `apply_bundle`, so weather composes through `compute_stat`
+`(base+Σadds)×Πmuls` like every other source — uniformly attributable
+(`stat_breakdown`, V.45) and it scales item/augment adds. Values are now
+**unrounded floats** (not `round(value×mult)`); `attack_range` underflow is held
+≥ 1 by the `_STAT_FLOORS` clamp in `compute_stat` (V.43); HP is reconciled
+(`max_hp = hp = stat("hp")`) afterwards since resources are never `Modifier`'d
+directly. There is no other application path — the old
+`weather_effects.apply_weather` snapshot and the `CombatPieceState` model it
+built were removed (one source of truth).
 
 ## 2. Affinity Clash — `damage_modifier`
 

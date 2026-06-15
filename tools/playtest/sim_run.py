@@ -83,7 +83,117 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Suppress per-node stdout lines; print only the final summary.",
     )
+    parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Drop into a prep shell (craft/equip/special run-actions) before walking.",
+    )
     return parser
+
+
+# ---------------------------------------------------------------------------
+# Interactive prep shell (T.29b — special run-actions + crafting + equip)
+# ---------------------------------------------------------------------------
+
+_PREP_HELP = """\
+prep commands:
+  show                      list team, inventory, amber, bench
+  give <id> [n]             add n of an item/component to inventory (debug)
+  combine <a> <b>           craft two components / Spirit Gem → item or emblem
+  equip <team#> <item>      move an inventory item onto a team champion (<=3)
+  reforge <item>            Wildwood Reforging Stone
+  unbind <team#>            Unbinding Totem — strip a champ's items to components
+  echo <champ_id>           Echo Acorn — add a bench copy
+  glimmer <item>            Glimmerdust — upgrade item to Heartwood
+  salvage <comp> [comp...]  Reclaimer's Cache — components -> Amber
+  run                       finish prep and walk the route
+  help                      this list
+"""
+
+
+def _new_prep_run(run_seed: int, team: list[Champion]):
+    """Minimal Run for the prep shell (route + the team as roster)."""
+    from src.game.models import Run, RunStatus, NodeState
+    from src.game.route import build_route
+    route = build_route()
+    for node in route:
+        node.state = NodeState.CURRENT if node.index == 1 else NodeState.UPCOMING
+    return Run(
+        run_id=f"simrun_{run_seed}", schema_version=1, seed=run_seed,
+        status=RunStatus.IN_PROGRESS, roster=team, bench=[], route=route,
+        current_node_index=1,
+    )
+
+
+def _interactive_prep(run, team: list[Champion]) -> None:
+    """Prep shell over a Run; crafting + special run-actions + equip onto `team`.
+    Mutates `team[i].items` and `run` in place; the walk then uses the team."""
+    from src.game.registries import RUN_ACTION_REGISTRY
+    from src.game.items import combine
+
+    def _dec(item: str) -> None:
+        run.inventory[item] = run.inventory.get(item, 0) - 1
+        if run.inventory[item] <= 0:
+            run.inventory.pop(item, None)
+
+    def show() -> None:
+        print("team:", ", ".join(f"{i}:{c.id}[{','.join(c.items) or '-'}]" for i, c in enumerate(team)))
+        print("inventory:", dict(run.inventory) or "(empty)", "| amber:", run.amber,
+              "| bench:", [c.id for c in run.bench])
+
+    print(_PREP_HELP)
+    show()
+    while True:
+        try:
+            parts = input("prep> ").strip().split()
+        except EOFError:
+            break
+        if not parts:
+            continue
+        cmd, a = parts[0], parts[1:]
+        try:
+            if cmd in ("run", "go", "done", "q", "quit"):
+                break
+            elif cmd == "help":
+                print(_PREP_HELP)
+            elif cmd == "show":
+                show()
+            elif cmd == "give":
+                run.inventory[a[0]] = run.inventory.get(a[0], 0) + (int(a[1]) if len(a) > 1 else 1)
+            elif cmd == "combine":
+                out = combine(a[0], a[1])
+                need = {a[0]: a.count(a[0]), a[1]: a.count(a[1])}
+                if out is None:
+                    print("  no recipe")
+                elif any(run.inventory.get(c, 0) < q for c, q in need.items()):
+                    print("  components not in inventory")
+                else:
+                    _dec(a[0]); _dec(a[1])
+                    run.inventory[out] = run.inventory.get(out, 0) + 1
+                    print(f"  crafted {out}")
+            elif cmd == "equip":
+                champ = team[int(a[0])]
+                if run.inventory.get(a[1], 0) <= 0:
+                    print("  not in inventory")
+                elif len(champ.items) >= 3:
+                    print("  3 items already")
+                else:
+                    champ.items.append(a[1]); _dec(a[1])
+                    print(f"  equipped {a[1]} on {champ.id}")
+            elif cmd == "reforge":
+                RUN_ACTION_REGISTRY["reforger"](run, a[0])
+            elif cmd == "unbind":
+                RUN_ACTION_REGISTRY["unbinding_totem"](run, team[int(a[0])].id)
+            elif cmd == "echo":
+                RUN_ACTION_REGISTRY["echo_acorn"](run, a[0])
+            elif cmd == "glimmer":
+                RUN_ACTION_REGISTRY["glimmerdust"](run, a[0])
+            elif cmd == "salvage":
+                RUN_ACTION_REGISTRY["reclaimers_cache"](run, a)
+            else:
+                print("  unknown command (try 'help')")
+        except (IndexError, ValueError, KeyError) as exc:
+            print(f"  error: {exc}")
 
 
 def _pick_weather(strategy: str, stage_idx: int, city_id: str) -> WeatherState:
@@ -151,6 +261,10 @@ def main(argv: list[str] | None = None) -> int:
     if not team:
         print("error: empty team", file=sys.stderr)
         return 2
+
+    if args.interactive:
+        run = _new_prep_run(args.run_seed, team)
+        _interactive_prep(run, team)
 
     rows: list[dict[str, object]] = []
     cleared = 0

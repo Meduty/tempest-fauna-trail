@@ -57,7 +57,6 @@ SECONDARY_SCALABLE_STATS: tuple[str, ...] = (
 )
 FLAT_STATS: tuple[str, ...] = (
     "attack_range",
-    "ability_cost",
 )
 
 # sqrt(power) for PRIMARY; a dampened exponent for SECONDARY (≈ +2%/tier).
@@ -113,9 +112,10 @@ def stat_multiplier(tier: int, level: int, exponent: float = PRIMARY_EXPONENT) -
 def level_scale_stats(stats: dict, tier: int, level: int) -> None:
     """In-place level-scale a composed stat dict (T.33).
 
-    PRIMARY stats scale on `sqrt(power)`; SECONDARY stats (+ the derived `milli_AS`
-    ordering field) scale on the gentle `SECONDARY_EXPONENT` curve. FLAT stats and
-    non-scalable keys (crit/penetration/range/cost) are untouched. No-op at L1.
+    PRIMARY stats scale on `sqrt(power)`; SECONDARY stats scale on the gentle
+    `SECONDARY_EXPONENT` curve (`attack_speed` stays float, T.29-pre; others round
+    to int). FLAT stats and non-scalable keys (crit/penetration/range/cost) are
+    untouched. No-op at L1.
     """
     if level <= 1:
         return
@@ -129,9 +129,8 @@ def level_scale_stats(stats: dict, tier: int, level: int) -> None:
             stats[k] = round(stats[k] * pscale)
     for k in SECONDARY_SCALABLE_STATS:
         if k in stats:
-            stats[k] = round(stats[k] * sscale)
-    if "milli_AS" in stats:
-        stats["milli_AS"] = round(stats["milli_AS"] * sscale)
+            # attack_speed stays FLOAT (T.29-pre, V.34); other speeds store int.
+            stats[k] = stats[k] * sscale if k == "attack_speed" else round(stats[k] * sscale)
 
 
 def scale_stat(base: int, tier: int, level: int) -> int:

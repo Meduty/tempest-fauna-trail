@@ -23,6 +23,7 @@ from random import Random
 from typing import Final
 
 from src.game.models import Enemy, WeatherState
+from src.game.registries import register_ability_mana
 
 
 # ---------------------------------------------------------------------------
@@ -117,8 +118,7 @@ class BossDef:
             move_speed=self.move_speed,
             threat=self.threat,
             attack_range=self.attack_range,
-            ability_cost=self.ability_cost,
-            active_ability=self.phase1_active,
+            active_abilities=[self.phase1_active] if self.phase1_active else [],
             passive_ability=self.phase1_passive,
         )
 
@@ -425,6 +425,16 @@ BOSS_DEFS: Final[dict[int, BossDef]] = {
     5: _CREGE,
     6: _IRON_EMPEROR,
 }
+
+
+# Author each boss's per-ability mana cost on the ability def (V.48, T.29c).
+# `BossDef.ability_cost` stays the authoring knob; the deprecated per-piece
+# `ability_cost` stat is gone, so the value is registered into ABILITY_MANA for
+# the boss's phase-1 and phase-2 actives (phase-2 swaps inherit the same cost).
+for _boss in BOSS_DEFS.values():
+    for _abid in (_boss.phase1_active, _boss.phase2_active):
+        if _abid:
+            register_ability_mana(_abid, mana_cost=_boss.ability_cost)
 
 
 def get_boss_def(stage_index: int) -> BossDef:

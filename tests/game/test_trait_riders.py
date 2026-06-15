@@ -173,7 +173,7 @@ def test_free_cast_refunds_every_nth():
         h.handler(ctx, CastEvent(caster=owner, ability_id="x", cast_id=1))
         assert owner.actives[0].current_mana == 0.0
     h.handler(ctx, CastEvent(caster=owner, ability_id="x", cast_id=1))
-    assert owner.actives[0].current_mana == owner.actives[0].cost
+    assert owner.actives[0].current_mana == owner.actives[0].mana_cost
 
 
 def test_mana_on_kill_refunds():

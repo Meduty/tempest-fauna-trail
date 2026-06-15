@@ -12,6 +12,17 @@ from src.game.scaling import (
     level_scale_stats,
     stat_multiplier,
 )
+from src.game.registries import ABILITY_REGISTRY
+import src.game.abilities as _abilities  # noqa: F401 — populate ABILITY_REGISTRY before roster build (discovery)
+
+
+def discover_abilities(piece_id: str) -> list[str]:
+    """Auto-discover a piece's active abilities by convention (T.29d, V.49):
+    every registered `{piece_id}.active`, `{piece_id}.active2`, … in sorted order
+    (`.active` < `.active2` < …). Empty if none registered. Defs may override via
+    the explicit `abilities=` kwarg (named kits / bosses / null stat-sticks)."""
+    pat = re.compile(rf"{re.escape(piece_id)}\.active\d*$")
+    return sorted(k for k in ABILITY_REGISTRY if pat.fullmatch(k))
 
 _BASE_STATS: dict[str, Any] = {
     "max_hp": 600,
@@ -24,7 +35,6 @@ _BASE_STATS: dict[str, Any] = {
     "move_speed": 100,
     "threat": 60,
     "attack_range": 2,
-    "ability_cost": 300_000,  # overwritten by _ABILITY_COST in compose; kept in sync (T.33)
     "crit_chance": 0.0,
     "penetration": 0,
     "penetration_pct": 0.0,
@@ -74,16 +84,16 @@ _DURABILITY: dict[str, dict[str, float]] = {
         "max_hp": 1.8,
         "armor": 0.8,
         "resistance": 0.8,
-        "strength": 0.55,
-        "intelligence": 0.55,
+        "strength": 0.42,  # T.35b (B.20): tanky STR/INT 0.55→0.42 — a primary-stat
+        "intelligence": 0.42,  # tank no longer rivals an assassin's primary (1.8×0.42=0.76)
         "threat": 1.4,
     },
     "tanky_arm": {
         "max_hp": 0.9,
         "armor": 2.0,
         "resistance": 2.0,
-        "strength": 0.55,
-        "intelligence": 0.55,
+        "strength": 0.42,  # T.35b (B.20): see tanky_hp
+        "intelligence": 0.42,
         "threat": 1.4,
     },
 }
@@ -114,24 +124,27 @@ _SPEED: dict[str, dict[str, float]] = {
 # before the tier round()). `hybrid` is identity → byte-identical to pre-change.
 # Keeps the HP·DPS power proxy within ±10% (re-flavour, not stealth buff);
 # `threat` is off the power budget by design (B.6).
+# T.35b (B.20): widened STR/INT bias (damage 1.08→1.14, utility 0.94→0.87) with
+# matching defensive compensation so the proxy stays in band (damage 1.075,
+# utility 0.947) — verified by `test_role_intent.py::test_hp_dps_proxy_within_10pct`.
 _INTENT: dict[str, dict[str, float]] = {
     "damage": {
-        "strength": 1.08,
-        "intelligence": 1.08,
-        "attack_speed": 1.05,
-        "max_hp": 0.96,
-        "armor": 0.97,
-        "resistance": 0.97,
+        "strength": 1.14,
+        "intelligence": 1.14,
+        "attack_speed": 1.04,
+        "max_hp": 0.93,
+        "armor": 0.94,
+        "resistance": 0.94,
         "mana_regen": 0.97,
         "threat": 0.92,
     },
     "utility": {
-        "strength": 0.94,
-        "intelligence": 0.94,
-        "attack_speed": 0.96,
-        "max_hp": 1.08,
-        "armor": 1.05,
-        "resistance": 1.05,
+        "strength": 0.87,
+        "intelligence": 0.87,
+        "attack_speed": 0.97,
+        "max_hp": 1.12,
+        "armor": 1.06,
+        "resistance": 1.06,
         "mana_regen": 1.08,
         "threat": 1.10,
     },
@@ -141,7 +154,6 @@ _INTENT: dict[str, dict[str, float]] = {
 # Ability cost is uniform — demoted from a per-unit Def field to a constant (T.32).
 # T.33: lifted 36_000→300_000 alongside mana_regen 10→100 (V.35 baseline parity).
 # 300_000 (vs cadence-neutral 360_000) bakes a ~20% mage buff. FLAT (never scaled).
-_ABILITY_COST = 300_000
 # Valid override targets — every base stat key, incl. premium crit/penetration (V.33).
 ALL_STAT_KEYS = frozenset(_BASE_STATS)
 INTENT_VALUES = frozenset(_INTENT)
@@ -165,7 +177,11 @@ def classify_role(
     durability/playstyle/speed/intent (B.13).
     """
     tanky = durability in ("tanky_hp", "tanky_arm")
-    caster = (playstyle == "ability") or (stat == "int")
+    # "caster" = damage routed through casts, i.e. the ability playstyle. INT does
+    # NOT force caster: an INT auto-attacker (INT fuels autos via self-haste /
+    # on-hit-INT passive, e.g. glade_heron) is a marksman, not a mage. The old
+    # `stat=="int"` force made that archetype unrepresentable (role_code bug).
+    caster = (playstyle == "ability")
     if tanky:
         return "bruiser" if intent == "damage" else "tank"
     if intent == "utility":
@@ -209,6 +225,7 @@ CALLING_TAGS = frozenset(
         "Stalker",
         "Trickster",
         "Channeler",
+        "Multicaster",  # T.29d — quick-caster synergy on multi-slot champs
     }
 )
 ALL_TRAIT_TAGS = KINSHIP_TAGS | CALLING_TAGS
@@ -229,8 +246,11 @@ class ChampionDef:
     intent: str
     speed: str
     traits: list[str]
-    active_ability: str
     passive_ability: str
+    # Active abilities (T.29d, V.49): None ⇒ auto-discover `{id}.active*` from
+    # ABILITY_REGISTRY (convention default); explicit list ⇒ named kit or `[]`
+    # for a deliberately ability-less stat-stick piece.
+    abilities: list[str] | None = None
     stat_overrides: dict[str, int] = field(default_factory=dict)
 
 
@@ -247,8 +267,8 @@ class EnemyDef:
     intent: str
     speed: str
     tags: frozenset[str]
-    active_ability: str
     passive_ability: str
+    abilities: list[str] | None = None  # T.29d — None ⇒ discover `{id}.active*`
     stat_overrides: dict[str, int] = field(default_factory=dict)
 
 
@@ -316,20 +336,20 @@ def compose_stats(
     for k, v in _INTENT[intent].items():
         stats[k] = stats[k] * v
 
-    stats["ability_cost"] = _ABILITY_COST
 
     # PRIMARY: sqrt(power) tier-scale, rounded to int.
     sp = stat_multiplier(tier, 1)
     for k in PRIMARY_SCALABLE_STATS:
         stats[k] = round(stats[k] * sp)
-    # SECONDARY: gentle tier-scale. milli_AS captures sub-integer attack_speed for
-    # the canonical sort order (V.34) BEFORE rounding; all speeds then stored int.
+    # SECONDARY: gentle tier-scale. attack_speed stays FLOAT (T.29-pre, V.34) —
+    # cadence reads int(attack_speed); sub-integer sort order derives from
+    # round(attack_speed×1000). The other speeds store int.
     ss = stat_multiplier(tier, 1, SECONDARY_EXPONENT)
     for k in SECONDARY_SCALABLE_STATS:
         stats[k] = stats[k] * ss
-    stats["milli_AS"] = round(stats["attack_speed"] * 1000)
     for k in SECONDARY_SCALABLE_STATS:
-        stats[k] = round(stats[k])
+        if k != "attack_speed":
+            stats[k] = round(stats[k])
 
     return stats
 
@@ -375,15 +395,13 @@ def _build_champion(d: ChampionDef, level: int = 1) -> Champion:
         intelligence=max(0, base["intelligence"]),
         armor=max(0, base["armor"]),
         resistance=max(0, base["resistance"]),
-        attack_speed=round(base["attack_speed"]),
-        milli_AS=round(base["milli_AS"]),
+        attack_speed=base["attack_speed"],
         mana_regen=round(base["mana_regen"]),
         move_speed=round(base["move_speed"]),
         threat=round(base["threat"]),
         attack_range=base["attack_range"],
-        ability_cost=base["ability_cost"],
         traits=d.traits,
-        active_ability=d.active_ability,
+        active_abilities=(d.abilities if d.abilities is not None else discover_abilities(d.id)),
         passive_ability=d.passive_ability,
         crit_chance=base["crit_chance"],
         penetration=base["penetration"],
@@ -412,14 +430,12 @@ def _build_enemy(d: EnemyDef, level: int = 1) -> Enemy:
         intelligence=max(0, base["intelligence"]),
         armor=max(0, base["armor"]),
         resistance=max(0, base["resistance"]),
-        attack_speed=round(base["attack_speed"]),
-        milli_AS=round(base["milli_AS"]),
+        attack_speed=base["attack_speed"],
         mana_regen=round(base["mana_regen"]),
         move_speed=round(base["move_speed"]),
         threat=round(base["threat"]),
         attack_range=base["attack_range"],
-        ability_cost=base["ability_cost"],
-        active_ability=d.active_ability,
+        active_abilities=(d.abilities if d.abilities is not None else discover_abilities(d.id)),
         passive_ability=d.passive_ability,
         crit_chance=base["crit_chance"],
         penetration=base["penetration"],
@@ -440,6 +456,7 @@ def _champion_def(
     playstyle: str = "hybrid",
     intent: str = "hybrid",
     speed: str = "hybrid",
+    abilities: list[str] | None = None,
     stat_overrides: dict[str, int] | None = None,
 ) -> ChampionDef:
     # Every identity axis defaults to `hybrid` here (the factory is the sole home
@@ -458,8 +475,8 @@ def _champion_def(
         intent=intent,
         speed=speed,
         traits=traits,
-        active_ability=f"{id}.active",
         passive_ability=f"{id}.passive",
+        abilities=abilities,
         stat_overrides=stat_overrides or {},
     )
 
@@ -477,6 +494,7 @@ def _enemy_def(
     playstyle: str = "hybrid",
     intent: str = "hybrid",
     speed: str = "hybrid",
+    abilities: list[str] | None = None,
     stat_overrides: dict[str, int] | None = None,
 ) -> EnemyDef:
     return EnemyDef(
@@ -491,8 +509,8 @@ def _enemy_def(
         intent=intent,
         speed=speed,
         tags=tags,
-        active_ability=f"{id}.active",
         passive_ability=f"{id}.passive",
+        abilities=abilities,
         stat_overrides=stat_overrides or {},
     )
 
@@ -500,63 +518,63 @@ def _enemy_def(
 _CHAMPION_DEFS: tuple[ChampionDef, ...] = (
     _champion_def("champ_dawnwisp", "Dawnwisp", WeatherState.CLEAR, 1, "ranged", ["Spirit", "Mender"], stat="int", playstyle="ability", intent="utility", speed="hybrid"),
     _champion_def("champ_veldt_pronghorn", "Veldt Pronghorn", WeatherState.CLEAR, 2, "melee", ["Beast", "Skirmisher", "Packmate"], stat="str", playstyle="auto", intent="damage", speed="brisk"),
-    _champion_def("champ_ember_salamander", "Ember Salamander", WeatherState.CLEAR, 3, "ranged", ["Scaled", "Mystic"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="steady"),
+    _champion_def("champ_ember_salamander", "Ember Salamander", WeatherState.CLEAR, 3, "ranged", ["Scaled", "Mystic", "Multicaster"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="steady"),
     _champion_def("champ_goldcrest_lark", "Goldcrest Lark", WeatherState.CLEAR, 4, "ranged", ["Skyborn", "Warden"], stat="int", playstyle="ability", intent="utility", speed="hybrid"),
     _champion_def("champ_aegis_tortoise", "Aegis Tortoise", WeatherState.CLEAR, 5, "melee", ["Scaled", "Guardian"], stat="str", durability="tanky_arm", intent="utility", speed="leaden"),
     _champion_def("champ_sunmane_lion", "Sunmane Lion", WeatherState.CLEAR, 6, "melee", ["Beast", "Bruiser"], stat="str", playstyle="auto", intent="utility", speed="heavy"),
     _champion_def("champ_goldhide_rhino", "Goldhide Rhino", WeatherState.CLEAR, 7, "melee", ["Scaled", "Bruiser", "Mender"], durability="tanky_hp", speed="heavy"),
-    _champion_def("champ_mirage_caracal", "Mirage Caracal", WeatherState.CLEAR, 8, "melee", ["Spirit", "Stalker"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="blinding"),
+    _champion_def("champ_mirage_caracal", "Mirage Caracal", WeatherState.CLEAR, 8, "melee", ["Spirit", "Stalker"], stat="int", durability="squishy", playstyle="hybrid", intent="damage", speed="blinding"),
     _champion_def("champ_sunspear_falcon", "Sunspear Falcon", WeatherState.CLEAR, 9, "ranged", ["Skyborn", "Hunter"], stat="str", playstyle="auto", intent="damage", speed="blinding"),
     _champion_def("champ_aurion", "Aurion, the First Dawn", WeatherState.CLEAR, 10, "ranged", ["Spirit", "Primordial", "Channeler"], speed="steady"),
     _champion_def("champ_springfrog", "Springfrog", WeatherState.RAIN, 1, "ranged", ["Tidekin", "Mender", "Packmate"], stat="int", playstyle="ability", intent="utility", speed="steady"),
     _champion_def("champ_reedbank_otter", "Reedbank Otter", WeatherState.RAIN, 2, "melee", ["Tidekin", "Skirmisher"], stat="str", playstyle="auto", intent="damage", speed="speedy"),
-    _champion_def("champ_torrent_heron", "Torrent Heron", WeatherState.RAIN, 3, "ranged", ["Tidekin", "Mystic"], stat="str", durability="squishy", playstyle="ability", intent="damage", speed="hybrid"),
+    _champion_def("champ_torrent_heron", "Torrent Heron", WeatherState.RAIN, 3, "ranged", ["Tidekin", "Mystic"], stat="hybrid", durability="squishy", playstyle="ability", intent="damage", speed="hybrid"),
     _champion_def("champ_grovekeeper_tapir", "Grovekeeper Tapir", WeatherState.RAIN, 4, "melee", ["Tidekin", "Bruiser", "Mender"], durability="tanky_hp", speed="leaden"),
     _champion_def("champ_coral_colossus", "Coral Colossus", WeatherState.RAIN, 5, "melee", ["Tidekin", "Guardian", "Mender"], stat="str", durability="tanky_hp", intent="utility", speed="leaden"),
-    _champion_def("champ_marsh_thrush", "Marsh Thrush", WeatherState.RAIN, 6, "ranged", ["Skyborn", "Warden", "Mystic"], stat="int", playstyle="ability", intent="utility", speed="brisk"),
+    _champion_def("champ_marsh_thrush", "Marsh Thrush", WeatherState.RAIN, 6, "ranged", ["Skyborn", "Warden", "Mystic", "Multicaster"], stat="int", playstyle="ability", intent="utility", speed="brisk"),
     _champion_def("champ_mirewarden_toad", "Mirewarden Toad", WeatherState.RAIN, 7, "melee", ["Tidekin", "Guardian"], stat="int", durability="tanky_hp", playstyle="ability", intent="utility", speed="leaden"),
-    _champion_def("champ_glade_heron", "Glade Heron", WeatherState.RAIN, 8, "ranged", ["Skyborn", "Hunter", "Trickster"], stat="int", playstyle="ability", intent="damage", stat_overrides={"resistance": 40}, speed="steady"),
+    _champion_def("champ_glade_heron", "Glade Heron", WeatherState.RAIN, 8, "ranged", ["Skyborn", "Hunter", "Trickster"], stat="int", playstyle="auto", intent="damage", stat_overrides={"resistance": 40}, speed="steady"),
     _champion_def("champ_riptide_caiman", "Riptide Caiman", WeatherState.RAIN, 9, "melee", ["Scaled", "Stalker"], stat="str", durability="squishy", playstyle="auto", intent="damage", speed="speedy"),
     _champion_def("champ_nerei", "Nerei, the Floodmother", WeatherState.RAIN, 10, "ranged", ["Tidekin", "Primordial", "Channeler"], speed="hybrid"),
     _champion_def("champ_snowpelt_cub", "Snowpelt Cub", WeatherState.SNOW, 1, "melee", ["Beast", "Guardian", "Packmate"], stat="str", durability="tanky_hp", intent="utility", speed="heavy"),
-    _champion_def("champ_wintermoth", "Wintermoth", WeatherState.SNOW, 2, "ranged", ["Swarm", "Warden"], stat="int", playstyle="ability", intent="utility", speed="steady"),
+    _champion_def("champ_wintermoth", "Wintermoth", WeatherState.SNOW, 2, "ranged", ["Swarm", "Warden", "Multicaster"], stat="int", playstyle="ability", intent="utility", speed="steady"),
     _champion_def("champ_permafrost_walrus", "Permafrost Walrus", WeatherState.SNOW, 3, "ranged", ["Tidekin", "Mystic"], stat="str", durability="squishy", playstyle="ability", intent="damage", speed="leaden"),
     _champion_def("champ_hoarfrost_owl", "Hoarfrost Owl", WeatherState.SNOW, 4, "ranged", ["Skyborn", "Warden"], stat="int", playstyle="ability", intent="utility", speed="brisk"),
     _champion_def("champ_frostplate_tortoise", "Frostplate Tortoise", WeatherState.SNOW, 5, "melee", ["Scaled", "Guardian"], stat="str", durability="tanky_arm", intent="utility", speed="heavy"),
-    _champion_def("champ_iceclaw_lynx", "Iceclaw Lynx", WeatherState.SNOW, 6, "melee", ["Beast", "Skirmisher", "Trickster"], stat="int", playstyle="ability", intent="damage", speed="blinding"),
+    _champion_def("champ_iceclaw_lynx", "Iceclaw Lynx", WeatherState.SNOW, 6, "melee", ["Beast", "Skirmisher", "Trickster"], stat="int", playstyle="auto", intent="damage", speed="blinding"),
     _champion_def("champ_glacierback_mammoth", "Glacierback Mammoth", WeatherState.SNOW, 7, "melee", ["Beast", "Bruiser"], durability="tanky_hp", speed="heavy"),
-    _champion_def("champ_frostfang_wolverine", "Frostfang Wolverine", WeatherState.SNOW, 8, "melee", ["Beast", "Stalker"], stat="str", durability="squishy", playstyle="auto", intent="damage", speed="blinding"),
+    _champion_def("champ_frostfang_wolverine", "Frostfang Wolverine", WeatherState.SNOW, 8, "melee", ["Beast", "Stalker"], stat="hybrid", durability="squishy", playstyle="auto", intent="damage", speed="blinding"),
     _champion_def("champ_frostquill_porcupine", "Frostquill Porcupine", WeatherState.SNOW, 9, "ranged", ["Swarm", "Hunter", "Trickster"], stat="str", playstyle="auto", intent="damage", speed="brisk"),
     _champion_def("champ_borealis", "Borealis, the Pale Aurora", WeatherState.SNOW, 10, "ranged", ["Swarm", "Primordial", "Mystic"], speed="heavy"),
     _champion_def("champ_pebbleback_pangolin", "Pebbleback Pangolin", WeatherState.CLOUDY, 1, "melee", ["Scaled", "Guardian", "Packmate"], stat="str", durability="tanky_hp", intent="utility", speed="leaden"),
     _champion_def("champ_dusk_bat", "Dusk Bat", WeatherState.CLOUDY, 2, "ranged", ["Swarm", "Trickster", "Hunter"], stat="int", playstyle="ability", intent="utility", speed="blinding"),
     _champion_def("champ_boulderhide_skink", "Boulderhide Skink", WeatherState.CLOUDY, 3, "ranged", ["Scaled", "Mystic", "Packmate"], stat="str", durability="squishy", playstyle="ability", intent="damage", speed="heavy"),
-    _champion_def("champ_geode_beetle", "Geode Beetle", WeatherState.CLOUDY, 4, "ranged", ["Swarm", "Warden"], stat="int", playstyle="ability", intent="utility", speed="heavy"),
-    _champion_def("champ_duskstep_marten", "Duskstep Marten", WeatherState.CLOUDY, 5, "melee", ["Beast", "Skirmisher"], stat="int", playstyle="ability", intent="damage", speed="blinding"),
+    _champion_def("champ_geode_beetle", "Geode Beetle", WeatherState.CLOUDY, 4, "ranged", ["Swarm", "Warden", "Multicaster"], stat="int", playstyle="ability", intent="utility", speed="heavy"),
+    _champion_def("champ_duskstep_marten", "Duskstep Marten", WeatherState.CLOUDY, 5, "melee", ["Beast", "Skirmisher"], stat="int", playstyle="auto", intent="damage", speed="blinding"),
     _champion_def("champ_granite_gorilla", "Granite Gorilla", WeatherState.CLOUDY, 6, "melee", ["Beast", "Guardian"], stat="int", durability="tanky_hp", playstyle="ability", intent="utility", speed="leaden"),
     _champion_def("champ_eclipse_jaguar", "Eclipse Jaguar", WeatherState.CLOUDY, 7, "ranged", ["Beast", "Channeler"], speed="blinding"),
-    _champion_def("champ_nightglass_mantis", "Nightglass Mantis", WeatherState.CLOUDY, 8, "melee", ["Swarm", "Stalker"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="speedy"),
-    _champion_def("champ_cliffeyrie_eagle", "Cliffeyrie Eagle", WeatherState.CLOUDY, 9, "ranged", ["Skyborn", "Hunter"], stat="str", playstyle="auto", intent="damage", speed="speedy"),
+    _champion_def("champ_nightglass_mantis", "Nightglass Mantis", WeatherState.CLOUDY, 8, "melee", ["Swarm", "Stalker"], stat="int", durability="squishy", playstyle="hybrid", intent="damage", speed="speedy"),
+    _champion_def("champ_cliffeyrie_eagle", "Cliffeyrie Eagle", WeatherState.CLOUDY, 9, "ranged", ["Skyborn", "Hunter"], stat="hybrid", playstyle="ability", intent="damage", speed="speedy"),
     _champion_def("champ_umbra", "Umbra, the Mountain's Shadow", WeatherState.CLOUDY, 10, "ranged", ["Scaled", "Primordial", "Stalker"], speed="steady"),
     _champion_def("champ_lostlight_wisp", "Lostlight Wisp", WeatherState.MIST, 1, "ranged", ["Spirit", "Mender"], stat="int", playstyle="ability", intent="utility", speed="brisk"),
-    _champion_def("champ_will_o_fawn", "Will-o-Fawn", WeatherState.MIST, 2, "ranged", ["Spirit", "Mystic"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="hybrid"),
+    _champion_def("champ_will_o_fawn", "Will-o-Fawn", WeatherState.MIST, 2, "ranged", ["Spirit", "Mystic", "Multicaster"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="hybrid"),
     _champion_def("champ_phantom_lynx", "Phantom Lynx", WeatherState.MIST, 3, "melee", ["Spirit", "Stalker", "Packmate"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="speedy"),
     _champion_def("champ_hollow_elk", "Hollow Elk", WeatherState.MIST, 4, "melee", ["Spirit", "Guardian", "Channeler"], stat="int", durability="tanky_hp", playstyle="ability", intent="utility", speed="steady"),
-    _champion_def("champ_fogveil_moth", "Fogveil Moth", WeatherState.MIST, 5, "ranged", ["Swarm", "Trickster"], stat="int", playstyle="ability", intent="utility", speed="hybrid"),
-    _champion_def("champ_wraithorn_stag", "Wraithorn Stag", WeatherState.MIST, 6, "melee", ["Spirit", "Bruiser", "Skirmisher"], stat="str", playstyle="auto", intent="utility", speed="steady"),
+    _champion_def("champ_fogveil_moth", "Fogveil Moth", WeatherState.MIST, 5, "ranged", ["Swarm", "Trickster"], stat="hybrid", playstyle="ability", intent="utility", speed="hybrid"),
+    _champion_def("champ_wraithorn_stag", "Wraithorn Stag", WeatherState.MIST, 6, "melee", ["Spirit", "Bruiser", "Skirmisher"], stat="hybrid", playstyle="auto", intent="utility", speed="steady"),
     _champion_def("champ_marshghast_boar", "Marshghast Boar", WeatherState.MIST, 7, "melee", ["Spirit", "Bruiser"], durability="tanky_hp", speed="steady"),
-    _champion_def("champ_veilfang_wolf", "Veilfang Wolf", WeatherState.MIST, 8, "melee", ["Spirit", "Skirmisher"], stat="int", playstyle="ability", intent="damage", speed="brisk"),
-    _champion_def("champ_spectral_heron", "Spectral Heron", WeatherState.MIST, 9, "ranged", ["Spirit", "Hunter"], stat="int", playstyle="ability", intent="damage", speed="steady"),
+    _champion_def("champ_veilfang_wolf", "Veilfang Wolf", WeatherState.MIST, 8, "melee", ["Spirit", "Skirmisher"], stat="int", playstyle="hybrid", intent="damage", speed="brisk"),
+    _champion_def("champ_spectral_heron", "Spectral Heron", WeatherState.MIST, 9, "ranged", ["Spirit", "Hunter"], stat="int", playstyle="auto", intent="damage", speed="steady"),
     _champion_def("champ_mournhollow", "Mournhollow, the Pale Stag", WeatherState.MIST, 10, "ranged", ["Beast", "Primordial", "Channeler"], speed="hybrid"),
     _champion_def("champ_sparkfly", "Sparkfly", WeatherState.THUNDER, 1, "ranged", ["Swarm", "Trickster", "Packmate"], stat="int", playstyle="ability", intent="utility", speed="blinding"),
-    _champion_def("champ_thunderhoof_colt", "Thunderhoof Colt", WeatherState.THUNDER, 2, "melee", ["Beast", "Skirmisher", "Packmate"], stat="str", playstyle="auto", intent="damage", speed="speedy"),
+    _champion_def("champ_thunderhoof_colt", "Thunderhoof Colt", WeatherState.THUNDER, 2, "melee", ["Beast", "Skirmisher", "Packmate"], stat="hybrid", playstyle="auto", intent="damage", speed="speedy"),
     _champion_def("champ_voltscale_mamba", "Voltscale Mamba", WeatherState.THUNDER, 3, "melee", ["Scaled", "Stalker"], stat="str", durability="squishy", playstyle="auto", intent="damage", speed="blinding"),
     _champion_def("champ_coppercrest_stork", "Coppercrest Stork", WeatherState.THUNDER, 4, "ranged", ["Skyborn", "Warden"], stat="int", playstyle="ability", intent="utility", speed="speedy"),
     _champion_def("champ_thunderhide_bison", "Thunderhide Bison", WeatherState.THUNDER, 5, "melee", ["Beast", "Guardian", "Bruiser"], stat="str", durability="tanky_arm", intent="utility", speed="heavy"),
-    _champion_def("champ_tempest_eel", "Tempest Eel", WeatherState.THUNDER, 6, "ranged", ["Tidekin", "Mystic"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="speedy"),
+    _champion_def("champ_tempest_eel", "Tempest Eel", WeatherState.THUNDER, 6, "ranged", ["Tidekin", "Mystic", "Multicaster"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="speedy"),
     _champion_def("champ_voltmane_jackal", "Voltmane Jackal", WeatherState.THUNDER, 7, "ranged", ["Beast", "Skirmisher", "Channeler"], speed="brisk"),
     _champion_def("champ_thunderclap_gorilla", "Thunderclap Gorilla", WeatherState.THUNDER, 8, "melee", ["Beast", "Bruiser"], stat="str", playstyle="auto", intent="utility", speed="heavy"),
-    _champion_def("champ_storm_eagle", "Storm Eagle", WeatherState.THUNDER, 9, "ranged", ["Skyborn", "Hunter", "Channeler"], stat="int", playstyle="ability", intent="damage", speed="brisk"),
+    _champion_def("champ_storm_eagle", "Storm Eagle", WeatherState.THUNDER, 9, "ranged", ["Skyborn", "Hunter", "Channeler"], stat="int", playstyle="auto", intent="damage", speed="brisk"),
     _champion_def("champ_aerion", "Aerion, the Skybreaker", WeatherState.THUNDER, 10, "ranged", ["Skyborn", "Primordial", "Hunter"], speed="brisk"),
 )
 
@@ -571,7 +589,7 @@ _ENEMY_DEFS: tuple[EnemyDef, ...] = (
     _enemy_def("enemy_crossbow_levy", "Crossbow Levy", WeatherState.CLEAR, 2, "ranged", frozenset({"human"}), stat="str", playstyle="auto", intent="damage", speed="brisk"),
     _enemy_def("enemy_field_medic", "Field Medic", WeatherState.CLEAR, 2, "ranged", frozenset({"human"}), stat="int", playstyle="ability", intent="utility", speed="hybrid"),
     _enemy_def("enemy_powder_sapper", "Powder Sapper", WeatherState.CLEAR, 2, "ranged", frozenset({"human"}), stat="str", durability="squishy", playstyle="ability", intent="damage", speed="speedy"),
-    _enemy_def("enemy_sergeant_at_arms", "Sergeant-at-Arms", WeatherState.CLEAR, 3, "melee", frozenset({"human"}), durability="tanky_hp", speed="heavy"),
+    _enemy_def("enemy_sergeant_at_arms", "Sergeant-at-Arms", WeatherState.CLEAR, 3, "melee", frozenset({"human"}), durability="tanky_hp", playstyle="auto", speed="heavy"),
     _enemy_def("enemy_field_chaplain", "Field Chaplain", WeatherState.CLEAR, 3, "ranged", frozenset({"human"}), stat="int", playstyle="ability", intent="utility", speed="steady"),
     _enemy_def("enemy_standard_bearer", "Standard Bearer", WeatherState.CLEAR, 3, "ranged", frozenset({"human"}), stat="int", playstyle="ability", intent="utility", speed="hybrid"),
     _enemy_def("enemy_heavy_knight", "Heavy Knight", WeatherState.CLEAR, 4, "melee", frozenset({"human"}), stat="str", durability="tanky_hp", intent="utility", speed="leaden"),
@@ -607,7 +625,7 @@ _ENEMY_DEFS: tuple[EnemyDef, ...] = (
     _enemy_def("enemy_quarry_crawler", "Quarry Crawler", WeatherState.CLOUDY, 3, "melee", frozenset({"corrupted", "beast"}), stat="str", playstyle="auto", intent="utility", speed="steady"),
     _enemy_def("enemy_slag_sentinel", "Slag Sentinel", WeatherState.CLOUDY, 4, "melee", frozenset({"corrupted", "machine"}), stat="str", durability="tanky_arm", intent="utility", speed="leaden"),
     _enemy_def("enemy_shaftmaw", "Shaftmaw", WeatherState.CLOUDY, 5, "melee", frozenset({"corrupted", "beast"}), stat="int", durability="squishy", playstyle="ability", intent="damage", speed="brisk"),
-    _enemy_def("enemy_reaver_of_the_reach", "Reaver of the Reach", WeatherState.CLOUDY, 7, "ranged", frozenset({"corrupted", "beast"}), speed="brisk"),
+    _enemy_def("enemy_reaver_of_the_reach", "Reaver of the Reach", WeatherState.CLOUDY, 7, "ranged", frozenset({"corrupted", "beast"}), playstyle="ability", speed="brisk"),
     _enemy_def("enemy_quarried_behemoth", "Quarried Behemoth", WeatherState.CLOUDY, 9, "melee", frozenset({"corrupted", "machine"}), durability="tanky_hp", speed="leaden"),
     _enemy_def("enemy_stone_warden", "Stone Warden", WeatherState.CLOUDY, 10, "melee", frozenset({"corrupted", "machine"}), durability="tanky_hp", speed="leaden"),
     _enemy_def("enemy_hollowed_wisp", "Hollowed Wisp", WeatherState.MIST, 3, "melee", frozenset({"corrupted", "spirit"}), stat="int", durability="squishy", playstyle="ability", intent="damage", speed="brisk"),

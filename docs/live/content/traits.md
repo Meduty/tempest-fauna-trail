@@ -29,8 +29,9 @@
   `TraitBreakpoint(count, scope, bundle_factory)`, `DynamicThreshold`
   (`callable(team, board_cap) -> int`).
 - `game/traits/_packs.py` — `stat_pack_bundle` (mul/add `Modifier`s; an
-  `attack_speed` mul rides `milli_AS` for tie-order, V.34) + `define_trait`
-  shorthand (registers a trait from `(count, scope, muls, adds)` rungs).
+  `attack_speed` mul moves tie-order on its own now that AS is a float, V.34 /
+  T.29-pre — no `milli_AS` rider) + `define_trait` shorthand (registers a trait
+  from `(count, scope, muls, adds)` rungs).
 - `game/traits/{affinities,kinships,callings}.py` — the 24 trait factories
   (declarative stat-pack rungs). Imported by `traits/__init__`, which registers
   them into `TRAIT_REGISTRY` as a side effect.
@@ -44,8 +45,10 @@
 - **6 Kinships** (`KINSHIP_TAGS`): Beast, Spirit, Skyborn, Scaled, Tidekin, Swarm.
 - **6 Affinities** (derived from `affinity`, never stored): Sunlit/Overcast/
   Shrouded/Stormfed/Frostbound/Galvanized = Clear/Cloudy/Mist/Rain/Snow/Thunder.
-- **12 Callings** (`CALLING_TAGS`): Hunter, Guardian, Mystic, Warden, Stalker,
-  Bruiser, Skirmisher, Channeler, Mender, Trickster, Packmate, Primordial.
+- **13 Callings** (`CALLING_TAGS`): Hunter, Guardian, Mystic, Warden, Stalker,
+  Bruiser, Skirmisher, Channeler, Mender, Trickster, Packmate, Primordial,
+  **Multicaster** (T.29d — quick-caster on multi-slot champs; @2/3/4 per-trait,
+  `cast_momentum` stacks `attack_speed`+`mana_regen` per cast; ~6-carrier pool).
 
 ## Resolution (in `compile_loadout`, step 3)
 1. After weather (step 2), before passives (step 7).
@@ -151,6 +154,9 @@ Recast/heal-splash guard re-entry with `ctx._in_recast` / `ctx._in_heal_splash`.
 - Swarm: `on_death_spawn` — a dying Swarm leaves a stat-fraction chitin via the
   existing summon pattern (`Piece`+summon flags+`ctx.spawn`); `trait`-guarded.
 - Packmate `@full-board`: the flat stat pack IS the apex payoff (no rider).
+- Multicaster (T.29d): `cast_momentum` (`on_cast_complete` → each cast stacks
+  `+per` `attack_speed` mul + `+mr_per` `mana_regen` mul, capped) — the
+  quick-caster snowball for multi-slot champs.
 
 Cast-triggered riders only fire for **registered** abilities (the unregistered
 fast-path in `_resolve_action` deals damage without firing `on_cast`).

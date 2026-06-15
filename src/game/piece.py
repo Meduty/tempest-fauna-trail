@@ -17,11 +17,28 @@ from src.game.status import StatusGate, StatusInstance, STATUS_DEFS, StackBehavi
 
 @dataclass
 class ActiveSlot:
-    """One ability slot on a piece. Mana is per-slot (separate pools)."""
+    """One ability slot on a piece. Mana is per-slot (separate pools).
+
+    Mana primitive (T.29c, V.48): `mana_cost` is the cast threshold + amount
+    deducted per cast (base authored on the ability def via `ABILITY_MANA`).
+    `max_mana` is the universal pool cap (regen/start/grant clamp to it);
+    defaults to `2 * mana_cost` when authored as `0`/unset (overload headroom).
+    `start_mana` seeds `current_mana` at combat start (clamped to `max_mana`).
+    `priority` is the unified rank — drives both the weighted-rank charge cycle
+    and the <=1-cast-per-window cast pick; normalized to >=1.
+    """
     ability_id: str
-    cost: int
-    current_mana: float = 0.0  # 0 starting mana by default
-    priority: int = 0  # Higher priority casts first when multiple slots ready
+    mana_cost: int
+    max_mana: int = 0  # 0 ⇒ normalized to 2 * mana_cost in __post_init__
+    start_mana: int = 0
+    current_mana: float = 0.0  # runtime pool; seeded from start_mana at combat start
+    priority: int = 1  # unified rank (V.48); >=1, higher casts first
+
+    def __post_init__(self) -> None:
+        if self.priority < 1:
+            self.priority = 1
+        if self.max_mana <= 0:
+            self.max_mana = 2 * self.mana_cost
 
 
 @dataclass
@@ -65,6 +82,10 @@ class Piece:
     load_order: int = 0  # seeded side-independent permutation → final tie-break (V.34)
     action_energy: int = 0
     movement_energy: int = 0
+    # Weighted-rank mana charge cursor (T.29c, V.48): advances once per regen
+    # tick; selects which slot receives the full mana_regen this tick. Cycle
+    # length = sum(slot.priority); deterministic cadence, RNG-free (V.2/V.14).
+    mana_charge_cursor: int = 0
 
     # Trait movement/targeting behaviour flags (T.28b) — set by trait hooks at
     # on_combat_start; read by the engine. Pieces are rebuilt per combat so these

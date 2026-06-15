@@ -101,46 +101,52 @@ class Champion:
     max_hp: int
     strength: int
     intelligence: int
-    attack_speed: int
+    # attack_speed is a FLOAT (T.29-pre, amends V.34): cadence reads
+    # int(attack_speed); sub-integer sort order derives from round(attack_speed×1000).
+    # The old separate int `milli_AS` field is gone — the float is the single source.
+    attack_speed: float
     move_speed: int
     mana_regen: int
     threat: int
     armor: int
     resistance: int
     attack_range: int
-    active_ability: str
     passive_ability: str
-    ability_cost: int
+    # Multi-slot abilities (T.29d, V.49): one ActiveSlot per id. A one-element
+    # list is the common single-ability case (byte-identical, V.2). Empty = no
+    # active. `active_ability` (below) is a back-compat read of the first entry.
+    active_abilities: list[str] = field(default_factory=list)
     traits: list[str] = field(default_factory=list)
     intent: str = "hybrid"
     role_code: str = ""
     crit_chance: float = 0.0
     penetration: int = 0
     penetration_pct: float = 0.0
-    # Sub-integer attack_speed (×1000), int, for the canonical sort order (V.34).
-    # Defaults to attack_speed×1000 when not supplied (hand-built pieces).
-    milli_AS: int = 0
+    # Persistent equipped items — up to 3 item IDs (V.23, T.29a).
+    items: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
-        if self.milli_AS == 0:
-            self.milli_AS = self.attack_speed * 1000
         _require_range(self.tier, "Champion tier", 1, 10)
         _require_range(self.level, "Champion level", 1, 3)
         _require_positive_int(self.max_hp, "Champion max_hp")
         _require_non_negative_int(self.strength, "Champion strength")
         _require_non_negative_int(self.intelligence, "Champion intelligence")
         _require_non_negative_int(self.attack_speed, "Champion attack_speed")
-        _require_non_negative_int(self.milli_AS, "Champion milli_AS")
         _require_non_negative_int(self.move_speed, "Champion move_speed")
         _require_non_negative_int(self.mana_regen, "Champion mana_regen")
         _require_non_negative_int(self.threat, "Champion threat")
         _require_non_negative_int(self.armor, "Champion armor")
         _require_non_negative_int(self.resistance, "Champion resistance")
         _require_positive_int(self.attack_range, "Champion attack_range")
-        _require_positive_int(self.ability_cost, "Champion ability_cost")
         _require_unit_float(self.crit_chance, "Champion crit_chance")
         _require_non_negative_int(self.penetration, "Champion penetration")
         _require_unit_float(self.penetration_pct, "Champion penetration_pct")
+
+        self.active_abilities = list(self.active_abilities)
+        if any(not isinstance(a, str) or not a for a in self.active_abilities):
+            raise ValueError("Champion active_abilities must be non-empty strings.")
+        if len(set(self.active_abilities)) != len(self.active_abilities):
+            raise ValueError("Champion active_abilities must be unique.")
 
         self.traits = list(self.traits)
         if any(not isinstance(t, str) or not t for t in self.traits):
@@ -151,6 +157,12 @@ class Champion:
             raise ValueError(
                 f"Champion intent must be one of damage/hybrid/utility, got {self.intent!r}."
             )
+
+        self.items = list(self.items)
+        if len(self.items) > 3:
+            raise ValueError(f"Champion may equip at most 3 items, got {len(self.items)}.")
+        if any(not isinstance(i, str) or not i for i in self.items):
+            raise ValueError("Champion item IDs must be non-empty strings.")
 
     def stat(self, stat_name: str) -> float:
         """Base level-1 sheet value for ability-text rendering (T.34, V.38).
@@ -176,19 +188,18 @@ class Champion:
             "strength": self.strength,
             "intelligence": self.intelligence,
             "attack_speed": self.attack_speed,
-            "milli_AS": self.milli_AS,
             "move_speed": self.move_speed,
             "mana_regen": self.mana_regen,
             "threat": self.threat,
             "armor": self.armor,
             "resistance": self.resistance,
             "attack_range": self.attack_range,
-            "active_ability": self.active_ability,
+            "active_abilities": list(self.active_abilities),
             "passive_ability": self.passive_ability,
-            "ability_cost": self.ability_cost,
             "crit_chance": self.crit_chance,
             "penetration": self.penetration,
             "penetration_pct": self.penetration_pct,
+            "items": list(self.items),
         }
 
     @classmethod
@@ -206,20 +217,19 @@ class Champion:
             max_hp=payload["max_hp"],
             strength=payload["strength"],
             intelligence=payload["intelligence"],
-            attack_speed=payload["attack_speed"],
-            milli_AS=payload.get("milli_AS", 0),
+            attack_speed=float(payload["attack_speed"]),
             move_speed=payload["move_speed"],
             mana_regen=payload["mana_regen"],
             threat=payload["threat"],
             armor=payload["armor"],
             resistance=payload["resistance"],
             attack_range=payload["attack_range"],
-            active_ability=payload["active_ability"],
+            active_abilities=payload.get("active_abilities") or ([payload["active_ability"]] if payload.get("active_ability") else []),
             passive_ability=payload["passive_ability"],
-            ability_cost=payload["ability_cost"],
             crit_chance=payload.get("crit_chance", 0.0),
             penetration=payload.get("penetration", 0),
             penetration_pct=payload.get("penetration_pct", 0.0),
+            items=list(payload.get("items", [])),
         )
 
 
@@ -234,44 +244,45 @@ class Enemy:
     max_hp: int
     strength: int
     intelligence: int
-    attack_speed: int
+    # attack_speed is a FLOAT (T.29-pre, amends V.34) — see Champion.attack_speed.
+    attack_speed: float
     move_speed: int
     mana_regen: int
     threat: int
     armor: int
     resistance: int
     attack_range: int
-    active_ability: str
     passive_ability: str
-    ability_cost: int
+    # Multi-slot abilities (T.29d, V.49). Enemies may field >1 slot but never
+    # light up Callings (V.22). `active_ability` property = first entry.
+    active_abilities: list[str] = field(default_factory=list)
     intent: str = "hybrid"
     role_code: str = ""
     crit_chance: float = 0.0
     penetration: int = 0
     penetration_pct: float = 0.0
-    # Sub-integer attack_speed (×1000), int, for the canonical sort order (V.34).
-    milli_AS: int = 0
 
     def __post_init__(self) -> None:
-        if self.milli_AS == 0:
-            self.milli_AS = self.attack_speed * 1000
         _require_range(self.tier, "Enemy tier", 1, 10)
         _require_range(self.level, "Enemy level", 1, 3)
         _require_positive_int(self.max_hp, "Enemy max_hp")
         _require_non_negative_int(self.strength, "Enemy strength")
         _require_non_negative_int(self.intelligence, "Enemy intelligence")
         _require_non_negative_int(self.attack_speed, "Enemy attack_speed")
-        _require_non_negative_int(self.milli_AS, "Enemy milli_AS")
         _require_non_negative_int(self.move_speed, "Enemy move_speed")
         _require_non_negative_int(self.mana_regen, "Enemy mana_regen")
         _require_non_negative_int(self.threat, "Enemy threat")
         _require_non_negative_int(self.armor, "Enemy armor")
         _require_non_negative_int(self.resistance, "Enemy resistance")
         _require_positive_int(self.attack_range, "Enemy attack_range")
-        _require_positive_int(self.ability_cost, "Enemy ability_cost")
         _require_unit_float(self.crit_chance, "Enemy crit_chance")
         _require_non_negative_int(self.penetration, "Enemy penetration")
         _require_unit_float(self.penetration_pct, "Enemy penetration_pct")
+        self.active_abilities = list(self.active_abilities)
+        if any(not isinstance(a, str) or not a for a in self.active_abilities):
+            raise ValueError("Enemy active_abilities must be non-empty strings.")
+        if len(set(self.active_abilities)) != len(self.active_abilities):
+            raise ValueError("Enemy active_abilities must be unique.")
         if self.intent not in ("damage", "hybrid", "utility"):
             raise ValueError(
                 f"Enemy intent must be one of damage/hybrid/utility, got {self.intent!r}."
@@ -300,16 +311,14 @@ class Enemy:
             "strength": self.strength,
             "intelligence": self.intelligence,
             "attack_speed": self.attack_speed,
-            "milli_AS": self.milli_AS,
             "move_speed": self.move_speed,
             "mana_regen": self.mana_regen,
             "threat": self.threat,
             "armor": self.armor,
             "resistance": self.resistance,
             "attack_range": self.attack_range,
-            "active_ability": self.active_ability,
+            "active_abilities": list(self.active_abilities),
             "passive_ability": self.passive_ability,
-            "ability_cost": self.ability_cost,
             "crit_chance": self.crit_chance,
             "penetration": self.penetration,
             "penetration_pct": self.penetration_pct,
@@ -329,17 +338,15 @@ class Enemy:
             max_hp=payload["max_hp"],
             strength=payload["strength"],
             intelligence=payload["intelligence"],
-            attack_speed=payload["attack_speed"],
-            milli_AS=payload.get("milli_AS", 0),
+            attack_speed=float(payload["attack_speed"]),
             move_speed=payload["move_speed"],
             mana_regen=payload["mana_regen"],
             threat=payload["threat"],
             armor=payload["armor"],
             resistance=payload["resistance"],
             attack_range=payload["attack_range"],
-            active_ability=payload["active_ability"],
+            active_abilities=payload.get("active_abilities") or ([payload["active_ability"]] if payload.get("active_ability") else []),
             passive_ability=payload["passive_ability"],
-            ability_cost=payload["ability_cost"],
             crit_chance=payload.get("crit_chance", 0.0),
             penetration=payload.get("penetration", 0),
             penetration_pct=payload.get("penetration_pct", 0.0),

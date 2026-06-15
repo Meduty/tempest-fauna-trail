@@ -22,7 +22,6 @@ from src.game.content import (
     ALL_STAT_KEYS,
     INTENT_VALUES,
     ROLE_TITLES,
-    _ABILITY_COST,
     _apply_stat_overrides,
     _build_champion,
     _champion_def,
@@ -93,13 +92,20 @@ class TestClassifyRole:
         assert classify_role(*base, "utility") == "tank"
         assert classify_role(*base, "hybrid") == "tank"
 
-    def test_caster_is_ability_or_int(self) -> None:
-        # int auto melee → assassin (int makes it a caster even without ability)
-        assert classify_role("int", "melee", "squishy", "auto", "hybrid", "damage") == "assassin"
+    def test_caster_is_ability_playstyle_only(self) -> None:
+        # T.29d fix: caster = ability playstyle ONLY. INT no longer forces caster —
+        # an INT auto-attacker (INT fuels autos, e.g. glade_heron) is a marksman/
+        # swashbuckler, not a mage/assassin (the role_code bug).
+        # int auto melee → swashbuckler (auto, not a caster despite INT)
+        assert classify_role("int", "melee", "squishy", "auto", "hybrid", "damage") == "swashbuckler"
+        # int ability melee → assassin (ability makes it a caster)
+        assert classify_role("int", "melee", "squishy", "ability", "hybrid", "damage") == "assassin"
         # str ability melee → assassin (ability makes it a caster even without int)
         assert classify_role("str", "melee", "squishy", "ability", "hybrid", "damage") == "assassin"
-        # str auto melee → swashbuckler (neither → not a caster)
+        # str auto melee → swashbuckler (not a caster)
         assert classify_role("str", "melee", "squishy", "auto", "hybrid", "damage") == "swashbuckler"
+        # int auto ranged → marksman (the glade_heron archetype)
+        assert classify_role("int", "ranged", "squishy", "auto", "hybrid", "damage") == "marksman"
 
     def test_pure_function_idempotent(self) -> None:
         for c in _all_combos():
@@ -232,10 +238,6 @@ class TestComposerFullCompose:
         speedy = compose_stats("str", "melee", "hybrid", "auto", "speedy", "hybrid", 1)
         heavy = compose_stats("str", "melee", "hybrid", "auto", "heavy", "hybrid", 1)
         assert speedy["move_speed"] > heavy["move_speed"]
-
-    def test_ability_cost_is_constant(self) -> None:
-        for c in _all_combos():
-            assert compose_stats(*c[:5], c[5], 1)["ability_cost"] == _ABILITY_COST
 
     def test_dead_def_fields_removed(self) -> None:
         d = _champion_def("champ_x", "X", _CHAMPION_DEFS[0].affinity, 1, "melee", ["Beast"])

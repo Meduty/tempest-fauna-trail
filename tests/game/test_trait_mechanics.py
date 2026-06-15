@@ -102,9 +102,9 @@ def test_enrage_bursts_once_below_threshold():
     assert ctx.mods == []  # above threshold
     owner.hp = 0.2 * owner.max_hp
     hook.handler(ctx, _dmg_event(owner))
-    assert len(ctx.mods) == 3  # attack_speed, milli_AS, strength
+    assert len(ctx.mods) == 2  # attack_speed, strength (no milli_AS rider — T.29-pre)
     hook.handler(ctx, _dmg_event(owner))
-    assert len(ctx.mods) == 3  # once only
+    assert len(ctx.mods) == 2  # once only
 
 
 def test_time_ramp_stacks_to_cap():
@@ -113,10 +113,10 @@ def test_time_ramp_stacks_to_cap():
     [hook] = m.time_ramp(interval=2, per=0.03, cap=3)(owner, "trait:Skirmisher@2")
     for _ in range(20):
         hook.handler(ctx, SimpleNamespace())
-    # 3 stacks × (attack_speed + milli_AS) = 6 modifiers, capped.
-    assert len(ctx.mods) == 6
+    # 3 stacks × attack_speed = 3 modifiers, capped (no milli_AS rider — T.29-pre).
+    assert len(ctx.mods) == 3
     stats = {mod.stat for _t, mod in ctx.mods}
-    assert stats == {"attack_speed", "milli_AS"}
+    assert stats == {"attack_speed"}
 
 
 def test_dodge_negates_every_nth_basic_attack():

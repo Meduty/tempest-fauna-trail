@@ -8,6 +8,8 @@ Unregistered ability IDs gracefully no-op in the combat engine.
 
 from __future__ import annotations
 
+from src.game.status import secs
+
 from typing import Any
 
 from src.game.effects import (
@@ -24,7 +26,10 @@ from src.game.registries import (
     ABILITY_REGISTRY,
     AbilityMeta,
     Clause,
+    MaxOfTerm,
+    PctResource,
     ScalingTerm,
+    SummonSpec,
     register_active,
     register_passive,
 )
@@ -47,7 +52,7 @@ from src.game.targeting import (
 
 # --- Dawnwisp (T1, SUP-Heal) ---
 # Cast: knit a wound on the lowest-HP ally, INT-scaled heal.
-DAWNWISP_HEAL = ScalingTerm("heal", 40.0, "intelligence*2.5")
+DAWNWISP_HEAL = ScalingTerm("heal", 40.0, "intelligence*4.55")
 
 
 @register_active("champ_dawnwisp.active")
@@ -66,7 +71,7 @@ ABILITY_META["champ_dawnwisp.active"] = AbilityMeta(
 
 
 # Passive: heal-over-time ticks on heal target (periodic tick effect every 100 ticks)
-DAWNWISP_HOT = ScalingTerm("bonus", 0.0, "intelligence*0.3")
+DAWNWISP_HOT = ScalingTerm("bonus", 0.0, "intelligence*0.47")
 
 
 @register_passive("champ_dawnwisp.passive")
@@ -126,7 +131,7 @@ ABILITY_META["champ_veldt_pronghorn.passive"] = AbilityMeta(
 
 
 # Active: lunging charge — STR-scaled single target
-VELDT_PRONGHORN_DMG = ScalingTerm("damage", 50.0, "strength*1.8")
+VELDT_PRONGHORN_DMG = ScalingTerm("damage", 50.0, "strength*1.44")
 
 
 @register_active("champ_veldt_pronghorn.active")
@@ -147,16 +152,16 @@ ABILITY_META["champ_veldt_pronghorn.active"] = AbilityMeta(
 
 # --- Ember Salamander (T3, APC-INT Mage) ---
 # Cast: line of kindling light, burns ground for several ticks.
-EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "intelligence*1.8")
+EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "intelligence*3.93")
 
 
-@register_active("champ_ember_salamander.active")
+@register_active("champ_ember_salamander.active", priority=2)
 def ember_salamander_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
     ctx.deal_damage(actor, target, EMBER_SALAMANDER_DMG.eval(actor), SourceTag.ABILITY)
-    ctx.apply_status(target, "burn", duration_ticks=300, source_id=actor.id)
+    ctx.apply_status(target, "burn", duration_ticks=secs(6), source_id=actor.id)
 
 
 ABILITY_META["champ_ember_salamander.active"] = AbilityMeta(
@@ -167,7 +172,28 @@ ABILITY_META["champ_ember_salamander.active"] = AbilityMeta(
 )
 
 
-EMBER_SALAMANDER_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.3")
+# --- Ember Salamander — Magma Burst (INT splash) ---
+EMBER_MAGMA_BURST = ScalingTerm("damage", 60.0, "intelligence*3.93")
+
+
+@register_active("champ_ember_salamander.active2")
+def ember_salamander_active2(ctx: Any, actor: Any, targets: list) -> None:
+    target = primary_target(actor, ctx)
+    if not target:
+        return
+    dmg = EMBER_MAGMA_BURST.eval(actor)
+    for e in enemies_in_radius(target.position_q, target.position_r, 2, actor, ctx):
+        ctx.deal_damage(actor, e, dmg, SourceTag.ABILITY, damage_type="magical")
+
+
+ABILITY_META["champ_ember_salamander.active2"] = AbilityMeta(
+    name="Magma Burst", kind="active",
+    blurb="Erupt molten rock for {damage} magic damage to all enemies within 2 hexes of the target.",
+    terms=(EMBER_MAGMA_BURST,), tags=("magic", "aoe"),
+)
+
+
+EMBER_SALAMANDER_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.47")
 
 
 @register_passive("champ_ember_salamander.passive")
@@ -194,12 +220,17 @@ ABILITY_META["champ_ember_salamander.passive"] = AbilityMeta(
 
 # --- Goldcrest Lark (T4, SUP-Buff) ---
 # Cast: allies gain damage and Attack Speed for one round (600 ticks).
+# T.35b: the STR buff scales with the lark's INT (V.47 dead-INT fix).
+GOLDCREST_LARK_BUFF = ScalingTerm("strength", 20.0, "intelligence*0.24")
+
+
 @register_active("champ_goldcrest_lark.active")
 def goldcrest_lark_active(ctx: Any, actor: Any, targets: list) -> None:
     allies = list(ctx.allies_of(actor))
+    buff = GOLDCREST_LARK_BUFF.eval(actor)
     for ally in allies:
         ctx.apply_modifier(ally, Modifier(
-            "strength", "add", 20.0, Lifetime.TIMED,
+            "strength", "add", buff, Lifetime.TIMED,
             "ability:champ_goldcrest_lark.active",
             expires_at_tick=ctx.current_tick + 600,
         ))
@@ -213,7 +244,8 @@ def goldcrest_lark_active(ctx: Any, actor: Any, targets: list) -> None:
 ABILITY_META["champ_goldcrest_lark.active"] = AbilityMeta(
     name="Rallying Song", kind="active",
     blurb="Empower the whole team for 6s.",
-    clauses=(Clause("Allies gain +20 Strength and +20% Attack Speed."),),
+    clauses=(Clause(template="Allies gain +{strength} Strength and +20% Attack Speed.",
+                    terms=(GOLDCREST_LARK_BUFF,)),),
     tags=("buff", "team"),
 )
 
@@ -285,7 +317,7 @@ ABILITY_META["champ_aegis_tortoise.active"] = AbilityMeta(
 
 # --- Sunmane Lion (T6, Tank-STR) ---
 # Cast: STR-scaled cleave; self-heal for a share of damage dealt.
-SUNMANE_LION_DMG = ScalingTerm("damage", 80.0, "strength*2.0")
+SUNMANE_LION_DMG = ScalingTerm("damage", 80.0, "strength*1.6")
 _LION_HEAL_SHARE = 0.3
 
 
@@ -335,11 +367,8 @@ ABILITY_META["champ_sunmane_lion.passive"] = AbilityMeta(
 
 
 # --- Goldhide Rhino (T7, Tank-Heal) ---
-# Passive: heals on auto-attack, scaling with max HP.
-# NB: max HP is a Piece attribute, not a base_stats key, so it can't be a
-# ScalingTerm (stat("max_hp") == 0). The %-of-max-HP heal stays inline; the
-# tooltip describes it as a clause. The hoisted constant is the single home.
-_GOLDHIDE_PASSIVE_HEAL_PCT = 0.03
+# Passive: heals on auto-attack, scaling with max HP (PctResource, V.46).
+_GOLDHIDE_PASSIVE_HEAL = PctResource("heal", 0.03)
 
 
 @register_passive("champ_goldhide_rhino.passive")
@@ -347,7 +376,7 @@ def goldhide_rhino_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.attacker is not owner:
             return
-        ctx.heal(owner, owner, owner.max_hp * _GOLDHIDE_PASSIVE_HEAL_PCT)
+        ctx.heal(owner, owner, _GOLDHIDE_PASSIVE_HEAL.eval(owner))
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
@@ -357,13 +386,13 @@ def goldhide_rhino_passive(owner: Any) -> EffectBundle:
 ABILITY_META["champ_goldhide_rhino.passive"] = AbilityMeta(
     name="Thick Hide", kind="passive",
     blurb="Each auto-attack heals you.",
-    clauses=(Clause(f"Restores {_GOLDHIDE_PASSIVE_HEAL_PCT * 100:g}% of max HP per hit."),),
+    clauses=(Clause(template="Restores {heal} HP per hit.", terms=(_GOLDHIDE_PASSIVE_HEAL,)),),
     tags=("heal",),
 )
 
 
-GOLDHIDE_RHINO_DMG = ScalingTerm("damage", 60.0, "strength*1.5")
-_GOLDHIDE_ACTIVE_HEAL_PCT = 0.05
+GOLDHIDE_RHINO_DMG = ScalingTerm("damage", 60.0, "strength*1.2+intelligence*0.38")  # T.35b: +INT (V.47)
+_GOLDHIDE_ACTIVE_HEAL = PctResource("heal", 0.05)
 
 
 @register_active("champ_goldhide_rhino.active")
@@ -374,21 +403,23 @@ def goldhide_rhino_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     ctx.deal_damage(actor, target, GOLDHIDE_RHINO_DMG.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
-    ctx.heal(actor, actor, actor.max_hp * _GOLDHIDE_ACTIVE_HEAL_PCT)
+    ctx.heal(actor, actor, _GOLDHIDE_ACTIVE_HEAL.eval(actor))
 
 
 ABILITY_META["champ_goldhide_rhino.active"] = AbilityMeta(
     name="Stampede", kind="active",
     blurb="Gore the primary target for {damage} physical damage.",
     terms=(GOLDHIDE_RHINO_DMG,),
-    clauses=(Clause(f"Heals you for {_GOLDHIDE_ACTIVE_HEAL_PCT * 100:g}% of max HP."),),
+    clauses=(Clause(template="Heals you for {heal} HP.", terms=(_GOLDHIDE_ACTIVE_HEAL,)),),
     tags=("physical", "heal"),
 )
 
 
 # --- Mirage Caracal (T8, APC-INT Assassin) ---
 # Cast: blink execute (bonus damage to low-HP targets).
-MIRAGE_CARACAL_DMG = ScalingTerm("damage", 80.0, "intelligence*2.2")
+# Hybrid auto-int (T.29d): the on-auto INT passive carries DPS; the active is now
+# lighter damage + a grievous (antiheal) debuff — value from autos + utility cast.
+MIRAGE_CARACAL_DMG = ScalingTerm("damage", 50.0, "intelligence*2.47")
 _CARACAL_EXECUTE_MULT = 1.5
 
 
@@ -402,18 +433,19 @@ def mirage_caracal_active(ctx: Any, actor: Any, targets: list) -> None:
     if target.hp_pct < 0.3:
         amount *= _CARACAL_EXECUTE_MULT
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    ctx.apply_status(target, "grievous", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["champ_mirage_caracal.active"] = AbilityMeta(
-    name="Blink Execute", kind="active",
-    blurb="Blink to the lowest-HP enemy for {damage} magic damage.",
+    name="Blink Mark", kind="active",
+    blurb="Blink to the lowest-HP enemy for {damage} magic damage and inflict grievous wounds.",
     terms=(MIRAGE_CARACAL_DMG,),
-    clauses=(Clause(f"Deals +{int((_CARACAL_EXECUTE_MULT - 1) * 100)}% to targets below 30% HP."),),
-    tags=("magic", "execute"),
+    clauses=(Clause(f"Deals +{int((_CARACAL_EXECUTE_MULT - 1) * 100)}% to targets below 30% HP; halves their healing for 4s."),),
+    tags=("magic", "execute", "antiheal"),
 )
 
 
-MIRAGE_CARACAL_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.5")
+MIRAGE_CARACAL_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.79")
 
 
 @register_passive("champ_mirage_caracal.passive")
@@ -448,7 +480,7 @@ ABILITY_META["champ_mirage_caracal.passive"] = AbilityMeta(
 
 # --- Sunspear Falcon (T9, ADC-STR Marksman) ---
 # Passive: sun-mark on target after first auto; bonus damage on subsequent autos.
-SUNSPEAR_FALCON_BONUS = ScalingTerm("bonus", 0.0, "strength*0.35")
+SUNSPEAR_FALCON_BONUS = ScalingTerm("bonus", 0.0, "strength*0.28")
 
 
 @register_passive("champ_sunspear_falcon.passive")
@@ -478,7 +510,7 @@ ABILITY_META["champ_sunspear_falcon.passive"] = AbilityMeta(
 )
 
 
-SUNSPEAR_FALCON_DMG = ScalingTerm("damage", 70.0, "strength*2.0")
+SUNSPEAR_FALCON_DMG = ScalingTerm("damage", 70.0, "strength*1.6")
 
 
 @register_active("champ_sunspear_falcon.active")
@@ -530,7 +562,7 @@ ABILITY_META["champ_aurion.passive"] = AbilityMeta(
 
 
 # Active: nova that disarms all enemies in radius 2
-AURION_DMG = ScalingTerm("damage", 100.0, "strength*1.5+intelligence*1.5")
+AURION_DMG = ScalingTerm("damage", 100.0, "strength*1.2+intelligence*2.86")
 
 
 @register_active("champ_aurion.active")
@@ -539,7 +571,7 @@ def aurion_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY)
-        ctx.apply_status(t, "disarm", duration_ticks=200, source_id=actor.id)
+        ctx.apply_status(t, "disarm", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["champ_aurion.active"] = AbilityMeta(
@@ -557,7 +589,7 @@ ABILITY_META["champ_aurion.active"] = AbilityMeta(
 
 # --- Springfrog (T1, SUP-Heal) ---
 # Cast: healing rain on lowest-HP ally, restoring health.
-SPRINGFROG_HEAL = ScalingTerm("heal", 30.0, "intelligence*2.0")
+SPRINGFROG_HEAL = ScalingTerm("heal", 30.0, "intelligence*3.65")
 
 
 @register_active("champ_springfrog.active")
@@ -575,7 +607,7 @@ ABILITY_META["champ_springfrog.active"] = AbilityMeta(
 )
 
 
-SPRINGFROG_HOT = ScalingTerm("heal", 0.0, "intelligence*0.4")
+SPRINGFROG_HOT = ScalingTerm("heal", 0.0, "intelligence*0.74")
 
 
 @register_passive("champ_springfrog.passive")
@@ -627,7 +659,7 @@ ABILITY_META["champ_reedbank_otter.passive"] = AbilityMeta(
 )
 
 
-REEDBANK_OTTER_DMG = ScalingTerm("damage", 40.0, "strength*1.6")
+REEDBANK_OTTER_DMG = ScalingTerm("damage", 40.0, "strength*1.28")
 
 
 @register_active("champ_reedbank_otter.active")
@@ -655,7 +687,7 @@ ABILITY_META["champ_reedbank_otter.active"] = AbilityMeta(
 
 # --- Torrent Heron (T3, APC-STR Mage) ---
 # Cast: three water-spears in a cone, STR-scaled.
-TORRENT_HERON_DMG = ScalingTerm("damage", 50.0, "strength*1.6")
+TORRENT_HERON_DMG = ScalingTerm("damage", 50.0, "strength*0.7+intelligence*1.52")
 _TORRENT_SPLASH_MULT = 0.6
 
 
@@ -700,7 +732,7 @@ ABILITY_META["champ_torrent_heron.passive"] = AbilityMeta(
 
 # --- Grovekeeper Tapir (T4, Hybrid Bruiser-Mender) ---
 # Cast: vine snare + DoT
-GROVEKEEPER_TAPIR_DMG = ScalingTerm("damage", 40.0, "strength*1.0+intelligence*1.0")
+GROVEKEEPER_TAPIR_DMG = ScalingTerm("damage", 40.0, "strength*0.8+intelligence*1.9")
 
 
 @register_active("champ_grovekeeper_tapir.active")
@@ -709,8 +741,8 @@ def grovekeeper_tapir_active(ctx: Any, actor: Any, targets: list) -> None:
     if not target:
         return
     ctx.deal_damage(actor, target, GROVEKEEPER_TAPIR_DMG.eval(actor), SourceTag.ABILITY)
-    ctx.apply_status(target, "root", duration_ticks=200, source_id=actor.id)
-    ctx.apply_status(target, "poison", duration_ticks=400, stacks=2, source_id=actor.id)
+    ctx.apply_status(target, "root", duration_ticks=secs(4), source_id=actor.id)
+    ctx.apply_status(target, "poison", duration_ticks=secs(4), stacks=2, source_id=actor.id)
 
 
 ABILITY_META["champ_grovekeeper_tapir.active"] = AbilityMeta(
@@ -722,8 +754,8 @@ ABILITY_META["champ_grovekeeper_tapir.active"] = AbilityMeta(
 )
 
 
-# Regen: %-of-max-HP, so stays inline (max_hp is not a base_stats key).
-_GROVEKEEPER_REGEN_PCT = 0.02
+# Regen: %-of-max-HP (PctResource, V.46).
+_GROVEKEEPER_REGEN = PctResource("heal", 0.02)
 
 
 @register_passive("champ_grovekeeper_tapir.passive")
@@ -734,7 +766,7 @@ def grovekeeper_tapir_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if ctx.current_tick - state["last_tick"] >= 300:
             state["last_tick"] = ctx.current_tick
-            ctx.heal(owner, owner, owner.max_hp * _GROVEKEEPER_REGEN_PCT)
+            ctx.heal(owner, owner, _GROVEKEEPER_REGEN.eval(owner))
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
@@ -744,14 +776,14 @@ def grovekeeper_tapir_passive(owner: Any) -> EffectBundle:
 ABILITY_META["champ_grovekeeper_tapir.passive"] = AbilityMeta(
     name="Verdant Renewal", kind="passive",
     blurb="Regenerates health over time.",
-    clauses=(Clause(f"Heals {_GROVEKEEPER_REGEN_PCT * 100:g}% of max HP every 3s."),),
+    clauses=(Clause(template="Heals {heal} HP every 3s.", terms=(_GROVEKEEPER_REGEN,)),),
     tags=("heal",),
 )
 
 
 # --- Coral Colossus (T5, Tank-Guardian) ---
-# Passive: regen when below 40% HP (%-of-max-HP stays inline)
-_CORAL_REGEN_PCT = 0.04
+# Passive: regen when below 40% HP (PctResource, V.46)
+_CORAL_REGEN = PctResource("heal", 0.04)
 
 
 @register_passive("champ_coral_colossus.passive")
@@ -762,7 +794,7 @@ def coral_colossus_passive(owner: Any) -> EffectBundle:
         if ctx.current_tick - state["last_tick"] >= 200:
             state["last_tick"] = ctx.current_tick
             if owner.hp_pct < 0.4:
-                ctx.heal(owner, owner, owner.max_hp * _CORAL_REGEN_PCT)
+                ctx.heal(owner, owner, _CORAL_REGEN.eval(owner))
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
@@ -772,7 +804,7 @@ def coral_colossus_passive(owner: Any) -> EffectBundle:
 ABILITY_META["champ_coral_colossus.passive"] = AbilityMeta(
     name="Coral Mend", kind="passive",
     blurb="Regenerates rapidly while wounded.",
-    clauses=(Clause(f"Below 40% HP, heals {_CORAL_REGEN_PCT * 100:g}% of max HP every 2s."),),
+    clauses=(Clause(template="Below 40% HP, heals {heal} HP every 2s.", terms=(_CORAL_REGEN,)),),
     tags=("heal",),
 )
 
@@ -802,7 +834,7 @@ ABILITY_META["champ_coral_colossus.active"] = AbilityMeta(
 
 # --- Marsh Thrush (T6, SUP-Buff) ---
 # Cast: team MS+AS buff — buff magnitude scales from INT
-MARSH_THRUSH_BUFF = ScalingTerm("haste", 8.0, "intelligence*0.14")
+MARSH_THRUSH_BUFF = ScalingTerm("haste", 8.0, "intelligence*0.25")
 
 
 @register_active("champ_marsh_thrush.active")
@@ -830,7 +862,32 @@ ABILITY_META["champ_marsh_thrush.active"] = AbilityMeta(
 )
 
 
-MARSH_THRUSH_PASSIVE_MS = ScalingTerm("speed", 5.0, "intelligence*0.1")
+# --- Marsh Thrush — Galecrash (ULTIMATE, T6) ---
+# Tier >= 5 multicaster secondary = ultimate: 2x default cost (600_000), ~2x
+# output (T.29d). Fires ~half as often as the primary at equal MR share.
+MARSH_GALECRASH = ScalingTerm("damage", 120.0, "intelligence*6.55")
+
+
+@register_active("champ_marsh_thrush.active2", mana_cost=600_000, priority=2)
+def marsh_thrush_active2(ctx: Any, actor: Any, targets: list) -> None:
+    # Stormfront: heavy AoE around the furthest enemy + team-wide slow.
+    anchor = furthest_enemy(actor, ctx) or primary_target(actor, ctx)
+    if not anchor:
+        return
+    dmg = MARSH_GALECRASH.eval(actor)
+    for e in enemies_in_radius(anchor.position_q, anchor.position_r, 3, actor, ctx):
+        ctx.deal_damage(actor, e, dmg, SourceTag.ABILITY, damage_type="magical")
+        ctx.apply_status(e, "slow", duration_ticks=secs(4), stacks=2, source_id=actor.id)
+
+
+ABILITY_META["champ_marsh_thrush.active2"] = AbilityMeta(
+    name="Galecrash", kind="active",
+    blurb="ULTIMATE: a stormfront deals {damage} magic damage and heavily slows all enemies within 3 hexes of the furthest target.",
+    terms=(MARSH_GALECRASH,), clauses=(Clause("Slows for 4s."),), tags=("magic", "aoe", "slow", "ultimate"),
+)
+
+
+MARSH_THRUSH_PASSIVE_MS = ScalingTerm("speed", 5.0, "intelligence*0.17")
 
 
 @register_passive("champ_marsh_thrush.passive")
@@ -851,7 +908,7 @@ ABILITY_META["champ_marsh_thrush.passive"] = AbilityMeta(
 
 # --- Mirewarden Toad (T7, Tank-Guardian) ---
 # Active: tongue pull (slow + damage)
-MIREWARDEN_TOAD_DMG = ScalingTerm("damage", 50.0, "intelligence*1.5")
+MIREWARDEN_TOAD_DMG = ScalingTerm("damage", 50.0, "intelligence*3.29")
 
 
 @register_active("champ_mirewarden_toad.active")
@@ -860,8 +917,8 @@ def mirewarden_toad_active(ctx: Any, actor: Any, targets: list) -> None:
     if not target:
         return
     ctx.deal_damage(actor, target, MIREWARDEN_TOAD_DMG.eval(actor), SourceTag.ABILITY)
-    ctx.apply_status(target, "slow", duration_ticks=300, stacks=2, source_id=actor.id)
-    ctx.apply_status(target, "root", duration_ticks=150, source_id=actor.id)
+    ctx.apply_status(target, "slow", duration_ticks=secs(6), stacks=2, source_id=actor.id)
+    ctx.apply_status(target, "root", duration_ticks=secs(3), source_id=actor.id)
 
 
 ABILITY_META["champ_mirewarden_toad.active"] = AbilityMeta(
@@ -883,7 +940,7 @@ def mirewarden_toad_passive(owner: Any) -> EffectBundle:
             state["last_tick"] = ctx.current_tick
             enemies = enemies_in_radius(owner.position_q, owner.position_r, 2, owner, ctx)
             for e in enemies:
-                ctx.apply_status(e, "slow", duration_ticks=350, stacks=1, source_id=owner.id)
+                ctx.apply_status(e, "slow", duration_ticks=secs(3.5), stacks=1, source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
@@ -909,7 +966,7 @@ _HERON_HASTE_SOURCE = "ability:champ_glade_heron.haste"
 # The burst is the Heron's INT damage outlet (autos themselves barely scale on INT);
 # it does NOT consume stacks, so it reinforces the sustain loop rather than
 # fighting it. (Tuned to ~T8 peer DPS at L3 — see active.)
-GLADE_HERON_BURST = ScalingTerm("burst", 0.0, "intelligence*0.2")
+GLADE_HERON_BURST = ScalingTerm("burst", 0.0, "intelligence*0.32")
 
 
 @register_passive("champ_glade_heron.passive")
@@ -917,7 +974,7 @@ def glade_heron_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.attacker is not owner:
             return
-        ctx.apply_status(event.target, "poison", duration_ticks=400, stacks=1,
+        ctx.apply_status(event.target, "poison", duration_ticks=secs(4), stacks=1,
                         source_id=owner.id)
         # Poison burst: bonus magic damage once poison has ramped to 3+ stacks.
         if event.target.status_stacks("poison") >= 3:
@@ -943,7 +1000,7 @@ ABILITY_META["champ_glade_heron.passive"] = AbilityMeta(
 # plateau (stacks_eq ≈ apply_rate / frac) instead of running away — the build
 # scales with INT/AS/items, no hard cap. Coeff 0.8 lands L3 DPS at ~T8 peer level.
 # Refresh-replace (strip prior modifier first) so repeated casts never stack.
-GLADE_HERON_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.8")
+GLADE_HERON_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.26")
 
 
 @register_active("champ_glade_heron.active")
@@ -965,7 +1022,7 @@ ABILITY_META["champ_glade_heron.active"] = AbilityMeta(
 
 # --- Riptide Caiman (T9, ADC-STR Stalker) ---
 # Active: death-roll dash, bonus mana on kill
-RIPTIDE_CAIMAN_DMG = ScalingTerm("damage", 100.0, "strength*2.5")
+RIPTIDE_CAIMAN_DMG = ScalingTerm("damage", 100.0, "strength*2")
 
 
 @register_active("champ_riptide_caiman.active")
@@ -990,7 +1047,7 @@ def riptide_caiman_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.killer is not owner:
             return
-        ctx.gain_mana(owner, owner.actives[0].cost * 0.4 if owner.actives else 0)
+        ctx.gain_mana(owner, owner.actives[0].mana_cost * 0.4 if owner.actives else 0)
 
     return EffectBundle(hooks=[
         Hook("on_kill", hook, scope=HookScope.PER_HIT),
@@ -1006,7 +1063,7 @@ ABILITY_META["champ_riptide_caiman.passive"] = AbilityMeta(
 
 # --- Nerei (T10, Primordial — hybrid) ---
 # Passive: after casting, next 3 autos deal bonus INT damage
-NEREI_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.6")
+NEREI_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.95")
 
 
 @register_passive("champ_nerei.passive")
@@ -1039,7 +1096,7 @@ ABILITY_META["champ_nerei.passive"] = AbilityMeta(
 
 
 # Active: tidal wave — AOE INT damage
-NEREI_DMG = ScalingTerm("damage", 90.0, "intelligence*2.0")
+NEREI_DMG = ScalingTerm("damage", 90.0, "intelligence*3.8")
 _NEREI_AOE_MULT = 0.7
 
 
@@ -1049,7 +1106,7 @@ def nerei_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount * _NEREI_AOE_MULT, SourceTag.ABILITY)
-    ctx.apply_status(actor, "charged", duration_ticks=300, source_id=actor.id)
+    ctx.apply_status(actor, "charged", duration_ticks=secs(6), source_id=actor.id)
 
 
 ABILITY_META["champ_nerei.active"] = AbilityMeta(
@@ -1091,7 +1148,7 @@ ABILITY_META["champ_snowpelt_cub.passive"] = AbilityMeta(
 )
 
 
-SNOWPELT_CUB_DMG = ScalingTerm("damage", 25.0, "strength*1.2")
+SNOWPELT_CUB_DMG = ScalingTerm("damage", 25.0, "strength*0.96")
 
 
 @register_active("champ_snowpelt_cub.active")
@@ -1102,7 +1159,7 @@ def snowpelt_cub_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     ctx.deal_damage(actor, target, SNOWPELT_CUB_DMG.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
-    ctx.apply_status(target, "slow", duration_ticks=200, stacks=1, source_id=actor.id)
+    ctx.apply_status(target, "slow", duration_ticks=secs(4), stacks=1, source_id=actor.id)
 
 
 ABILITY_META["champ_snowpelt_cub.active"] = AbilityMeta(
@@ -1115,10 +1172,10 @@ ABILITY_META["champ_snowpelt_cub.active"] = AbilityMeta(
 
 # --- Wintermoth (T2, SUP-Buff) ---
 # Active: grant ally AS buff
-WINTERMOTH_HEAL = ScalingTerm("heal", 20.0, "intelligence*1.0")
+WINTERMOTH_HEAL = ScalingTerm("heal", 20.0, "intelligence*1.82")
 
 
-@register_active("champ_wintermoth.active")
+@register_active("champ_wintermoth.active", priority=2)
 def wintermoth_active(ctx: Any, actor: Any, targets: list) -> None:
     ally = lowest_hp_ally(actor, ctx)
     if not ally:
@@ -1138,6 +1195,24 @@ ABILITY_META["champ_wintermoth.active"] = AbilityMeta(
 )
 
 
+# --- Wintermoth — Frost Pollen (chill/slow enemies in radius) ---
+WINTERMOTH_FROST = ScalingTerm("damage", 30.0, "intelligence*2.18")
+
+
+@register_active("champ_wintermoth.active2")
+def wintermoth_active2(ctx: Any, actor: Any, targets: list) -> None:
+    for e in enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx):
+        ctx.deal_damage(actor, e, WINTERMOTH_FROST.eval(actor), SourceTag.ABILITY, damage_type="magical")
+        ctx.apply_status(e, "slow", duration_ticks=secs(4), stacks=1, source_id=actor.id)
+
+
+ABILITY_META["champ_wintermoth.active2"] = AbilityMeta(
+    name="Frost Pollen", kind="active",
+    blurb="Scatter chilling spores for {damage} magic damage, slowing all enemies within 3 hexes.",
+    terms=(WINTERMOTH_FROST,), clauses=(Clause("Slows for 4s."),), tags=("magic", "aoe", "slow"),
+)
+
+
 @register_passive("champ_wintermoth.passive")
 def wintermoth_passive(owner: Any) -> EffectBundle:
     return EffectBundle(modifiers=[
@@ -1154,7 +1229,7 @@ ABILITY_META["champ_wintermoth.passive"] = AbilityMeta(
 
 # --- Permafrost Walrus (T3, APC-STR Mage) ---
 # Cast: ice-boulder, STR-scaled impact + small splash.
-PERMAFROST_WALRUS_DMG = ScalingTerm("damage", 70.0, "strength*1.8")
+PERMAFROST_WALRUS_DMG = ScalingTerm("damage", 70.0, "strength*1.44")
 _WALRUS_SPLASH_MULT = 0.4
 
 
@@ -1196,7 +1271,7 @@ ABILITY_META["champ_permafrost_walrus.passive"] = AbilityMeta(
 
 # --- Hoarfrost Owl (T4, SUP-Shield) ---
 # Active: ally ice-shield (large armor buff) + chill burst on expiry
-HOARFROST_OWL_HEAL = ScalingTerm("heal", 30.0, "intelligence*1.5")
+HOARFROST_OWL_HEAL = ScalingTerm("heal", 30.0, "intelligence*2.74")
 
 
 @register_active("champ_hoarfrost_owl.active")
@@ -1261,7 +1336,7 @@ ABILITY_META["champ_frostplate_tortoise.passive"] = AbilityMeta(
 )
 
 
-FROSTPLATE_TORTOISE_DMG = ScalingTerm("damage", 60.0, "strength*1.6")
+FROSTPLATE_TORTOISE_DMG = ScalingTerm("damage", 60.0, "strength*1.28")
 
 
 @register_active("champ_frostplate_tortoise.active")
@@ -1272,7 +1347,7 @@ def frostplate_tortoise_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     ctx.deal_damage(actor, target, FROSTPLATE_TORTOISE_DMG.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
-    ctx.apply_status(target, "root", duration_ticks=200, source_id=actor.id)
+    ctx.apply_status(target, "root", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["champ_frostplate_tortoise.active"] = AbilityMeta(
@@ -1285,7 +1360,7 @@ ABILITY_META["champ_frostplate_tortoise.active"] = AbilityMeta(
 
 # --- Iceclaw Lynx (T6, ADC-INT Warrior) ---
 # Passive: autos deal bonus INT-magic damage and briefly slow target.
-ICECLAW_LYNX_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.4")
+ICECLAW_LYNX_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.64")
 
 
 @register_passive("champ_iceclaw_lynx.passive")
@@ -1294,7 +1369,7 @@ def iceclaw_lynx_passive(owner: Any) -> EffectBundle:
         if event.attacker is not owner:
             return
         ctx.deal_damage(owner, event.target, ICECLAW_LYNX_BONUS.eval(owner), SourceTag.BASIC_ATTACK)
-        ctx.apply_status(event.target, "slow", duration_ticks=100, stacks=1, source_id=owner.id)
+        ctx.apply_status(event.target, "slow", duration_ticks=secs(2), stacks=1, source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
@@ -1308,24 +1383,31 @@ ABILITY_META["champ_iceclaw_lynx.passive"] = AbilityMeta(
 )
 
 
-ICECLAW_LYNX_DMG = ScalingTerm("damage", 80.0, "intelligence*2.0")
+ICECLAW_LYNX_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.11")
+_ICECLAW_LYNX_HASTE_SRC = "ability:champ_iceclaw_lynx.active"
 
 
 @register_active("champ_iceclaw_lynx.active")
 def iceclaw_lynx_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Frost pounce: INT burst + freeze
+    # Frost Vigor: self attack-speed buff (auto-int) + freeze the primary target
+    # (utility, no nuke). INT fuels the on-auto chill/burst passive via speed.
+    as_bonus = ICECLAW_LYNX_HASTE.eval(actor)
+    actor.modifiers = [m for m in actor.modifiers if m.source_id != _ICECLAW_LYNX_HASTE_SRC]
+    ctx.apply_modifier(actor, Modifier(
+        "attack_speed", "add", as_bonus, Lifetime.TIMED,
+        _ICECLAW_LYNX_HASTE_SRC, expires_at_tick=ctx.current_tick + 2500,
+    ))
     target = primary_target(actor, ctx)
-    if not target:
-        return
-    ctx.deal_damage(actor, target, ICECLAW_LYNX_DMG.eval(actor), SourceTag.ABILITY)
-    ctx.apply_status(target, "frozen", duration_ticks=150, source_id=actor.id)
+    if target:
+        ctx.apply_status(target, "frozen", duration_ticks=secs(2), source_id=actor.id)
 
 
 ABILITY_META["champ_iceclaw_lynx.active"] = AbilityMeta(
-    name="Frost Pounce", kind="active",
-    blurb="Pounce the primary target for {damage} magic damage.",
-    terms=(ICECLAW_LYNX_DMG,),
-    clauses=(Clause("Freezes for 1.5s."),), tags=("magic", "freeze"),
+    name="Frost Vigor", kind="active",
+    blurb="Gain a self attack-speed buff scaling on Intelligence ({haste}) and "
+          "freeze the primary target.",
+    terms=(ICECLAW_LYNX_HASTE,),
+    clauses=(Clause("Freezes for 2s."),), tags=("buff", "haste", "freeze"),
 )
 
 
@@ -1359,7 +1441,7 @@ ABILITY_META["champ_glacierback_mammoth.passive"] = AbilityMeta(
 
 
 # Active: knockback stomp (STR damage + stun to neighbors)
-GLACIERBACK_MAMMOTH_DMG = ScalingTerm("damage", 80.0, "strength*2.0")
+GLACIERBACK_MAMMOTH_DMG = ScalingTerm("damage", 80.0, "strength*1.6+intelligence*0.38")  # T.35b: +INT (V.47)
 
 
 @register_active("champ_glacierback_mammoth.active")
@@ -1368,7 +1450,7 @@ def glacierback_mammoth_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 1, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY, damage_type="physical")
-        ctx.apply_status(t, "stun", duration_ticks=100, source_id=actor.id)
+        ctx.apply_status(t, "stun", duration_ticks=secs(2), source_id=actor.id)
 
 
 ABILITY_META["champ_glacierback_mammoth.active"] = AbilityMeta(
@@ -1381,7 +1463,7 @@ ABILITY_META["champ_glacierback_mammoth.active"] = AbilityMeta(
 
 # --- Frostfang Wolverine (T8, ADC-STR Stalker) ---
 # Active: leap burst; crit vs frozen/slowed
-FROSTFANG_WOLVERINE_DMG = ScalingTerm("damage", 90.0, "strength*2.2")
+FROSTFANG_WOLVERINE_DMG = ScalingTerm("damage", 90.0, "strength*1.76")
 _FROSTFANG_BONUS_MULT = 1.5
 
 
@@ -1406,10 +1488,17 @@ ABILITY_META["champ_frostfang_wolverine.active"] = AbilityMeta(
 )
 
 
+# Hybrid auto (T.29d, every-Nth-auto INT proc): STR autos hit hard, and every 3rd
+# auto detonates an INT frost burst — kit reads BOTH stats (V.47). Active stays the
+# STR crit leap (Frozen Leap).
+FROSTFANG_WOLVERINE_PROC = ScalingTerm("burst", 0.0, "intelligence*1.54")
+
+
 @register_passive("champ_frostfang_wolverine.passive")
 def frostfang_wolverine_passive(owner: Any) -> EffectBundle:
-    # Frenzy: gains AS after each kill
-    def hook(ctx: Any, event: Any) -> None:
+    state = {"n": 0}
+
+    def on_kill(ctx: Any, event: Any) -> None:
         if event.killer is not owner:
             return
         ctx.apply_modifier(owner, Modifier(
@@ -1417,21 +1506,31 @@ def frostfang_wolverine_passive(owner: Any) -> EffectBundle:
             "passive:champ_frostfang_wolverine.frenzy",
         ))
 
+    def on_hit(ctx: Any, event: Any) -> None:
+        if event.attacker is not owner or not event.target.alive:
+            return
+        state["n"] += 1
+        if state["n"] % 3 == 0:
+            ctx.deal_damage(owner, event.target, FROSTFANG_WOLVERINE_PROC.eval(owner),
+                            SourceTag.ABILITY, damage_type="magical")
+
     return EffectBundle(hooks=[
-        Hook("on_kill", hook, scope=HookScope.PER_HIT),
+        Hook("on_kill", on_kill, scope=HookScope.PER_HIT),
+        Hook("on_attack_landed", on_hit, scope=HookScope.PER_HIT),
     ])
 
 
 ABILITY_META["champ_frostfang_wolverine.passive"] = AbilityMeta(
     name="Frenzy", kind="passive",
-    blurb="Each kill grants +20 Attack Speed for the rest of the battle.",
-    tags=("buff", "scaling"),
+    blurb="Each kill grants +20 Attack Speed for the battle; every 3rd auto-attack "
+          "detonates a {burst} magic frost burst.",
+    terms=(FROSTFANG_WOLVERINE_PROC,), tags=("buff", "magic", "scaling"),
 )
 
 
 # --- Frostquill Porcupine (T9, ADC-STR Hunter) ---
 # Passive: autos slow; bonus damage vs slowed
-FROSTQUILL_PORCUPINE_BONUS = ScalingTerm("bonus", 0.0, "strength*0.25")
+FROSTQUILL_PORCUPINE_BONUS = ScalingTerm("bonus", 0.0, "strength*0.2")
 
 
 @register_passive("champ_frostquill_porcupine.passive")
@@ -1439,7 +1538,7 @@ def frostquill_porcupine_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any) -> None:
         if event.attacker is not owner:
             return
-        ctx.apply_status(event.target, "slow", duration_ticks=150, stacks=1, source_id=owner.id)
+        ctx.apply_status(event.target, "slow", duration_ticks=secs(3), stacks=1, source_id=owner.id)
         if event.target.has_status("slow"):
             ctx.deal_damage(owner, event.target, FROSTQUILL_PORCUPINE_BONUS.eval(owner),
                           SourceTag.BASIC_ATTACK, damage_type="physical")
@@ -1456,7 +1555,7 @@ ABILITY_META["champ_frostquill_porcupine.passive"] = AbilityMeta(
 )
 
 
-FROSTQUILL_PORCUPINE_DMG = ScalingTerm("damage", 70.0, "strength*1.8")
+FROSTQUILL_PORCUPINE_DMG = ScalingTerm("damage", 70.0, "strength*1.44")
 _PORCUPINE_SPLASH_MULT = 0.5
 
 
@@ -1468,13 +1567,13 @@ def frostquill_porcupine_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     amount = FROSTQUILL_PORCUPINE_DMG.eval(actor)
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY, damage_type="physical")
-    ctx.apply_status(target, "slow", duration_ticks=300, stacks=2, source_id=actor.id)
+    ctx.apply_status(target, "slow", duration_ticks=secs(6), stacks=2, source_id=actor.id)
     hit_count = 0
     for n in neighbors_of(target, ctx):
         if ctx.is_enemy(n, actor) and hit_count < 2:
             ctx.deal_damage(actor, n, amount * _PORCUPINE_SPLASH_MULT, SourceTag.ABILITY,
                             damage_type="physical")
-            ctx.apply_status(n, "slow", duration_ticks=300, stacks=1, source_id=actor.id)
+            ctx.apply_status(n, "slow", duration_ticks=secs(6), stacks=1, source_id=actor.id)
             hit_count += 1
 
 
@@ -1501,7 +1600,7 @@ def borealis_passive(owner: Any) -> EffectBundle:
             if enemies:
                 nearest = _closest_enemy(owner, enemies)
                 if nearest:
-                    ctx.apply_status(nearest, "frozen", duration_ticks=200, source_id=owner.id)
+                    ctx.apply_status(nearest, "frozen", duration_ticks=secs(4), source_id=owner.id)
 
     return EffectBundle(hooks=[
         Hook("on_tick", hook, scope=HookScope.PER_HIT),
@@ -1516,7 +1615,7 @@ ABILITY_META["champ_borealis.passive"] = AbilityMeta(
 
 
 # Active: blizzard — AOE INT+STR damage
-BOREALIS_DMG = ScalingTerm("damage", 80.0, "strength*1.2+intelligence*1.2")
+BOREALIS_DMG = ScalingTerm("damage", 80.0, "strength*0.96+intelligence*2.28")
 
 
 @register_active("champ_borealis.active")
@@ -1525,7 +1624,7 @@ def borealis_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY)
-        ctx.apply_status(t, "slow", duration_ticks=300, stacks=2, source_id=actor.id)
+        ctx.apply_status(t, "slow", duration_ticks=secs(6), stacks=2, source_id=actor.id)
 
 
 ABILITY_META["champ_borealis.active"] = AbilityMeta(
@@ -1576,13 +1675,17 @@ ABILITY_META["champ_pebbleback_pangolin.active"] = AbilityMeta(
 
 # --- Dusk Bat (T2, Trickster) ---
 # Active: blind one enemy (reduce AS)
+# T.35b: blind strength scales with the bat's INT (V.47 dead-INT fix).
+DUSK_BAT_BLIND = ScalingTerm("blind", 30.0, "intelligence*0.24")
+
+
 @register_active("champ_dusk_bat.active")
 def dusk_bat_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
         return
     ctx.apply_modifier(target, Modifier(
-        "attack_speed", "add", -30.0, Lifetime.TIMED,
+        "attack_speed", "add", -DUSK_BAT_BLIND.eval(actor), Lifetime.TIMED,
         "ability:champ_dusk_bat.blind",
         expires_at_tick=ctx.current_tick + 400,
     ))
@@ -1590,7 +1693,8 @@ def dusk_bat_active(ctx: Any, actor: Any, targets: list) -> None:
 
 ABILITY_META["champ_dusk_bat.active"] = AbilityMeta(
     name="Blinding Screech", kind="active",
-    blurb="Blind the primary target, cutting 30 Attack Speed for 4s.",
+    blurb="Blind the primary target for 4s.",
+    clauses=(Clause(template="Cuts {blind} Attack Speed.", terms=(DUSK_BAT_BLIND,)),),
     tags=("debuff", "control"),
 )
 
@@ -1611,7 +1715,7 @@ ABILITY_META["champ_dusk_bat.passive"] = AbilityMeta(
 
 # --- Boulderhide Skink (T3, APC-STR Mage) ---
 # Active: boulder rolls a line — STR damage
-BOULDERHIDE_SKINK_DMG = ScalingTerm("damage", 60.0, "strength*1.8")
+BOULDERHIDE_SKINK_DMG = ScalingTerm("damage", 60.0, "strength*1.44")
 _SKINK_LINE_MULT = 0.5
 
 
@@ -1655,18 +1759,23 @@ ABILITY_META["champ_boulderhide_skink.passive"] = AbilityMeta(
 
 # --- Geode Beetle (T4, SUP-Shield) ---
 # Active: ally shield (large armor buff that blocks next big hit)
-@register_active("champ_geode_beetle.active")
+# T.35b: shield magnitude scales with the beetle's INT (V.47 dead-INT fix).
+GEODE_BEETLE_ARMOR = ScalingTerm("armor", 80.0, "intelligence*0.55")
+GEODE_BEETLE_RES = ScalingTerm("resistance", 40.0, "intelligence*0.32")
+
+
+@register_active("champ_geode_beetle.active", priority=2)
 def geode_beetle_active(ctx: Any, actor: Any, targets: list) -> None:
     ally = lowest_hp_ally(actor, ctx)
     if not ally:
         return
     ctx.apply_modifier(ally, Modifier(
-        "armor", "add", 80.0, Lifetime.TIMED,
+        "armor", "add", GEODE_BEETLE_ARMOR.eval(actor), Lifetime.TIMED,
         "ability:champ_geode_beetle.shield",
         expires_at_tick=ctx.current_tick + 400,
     ))
     ctx.apply_modifier(ally, Modifier(
-        "resistance", "add", 40.0, Lifetime.TIMED,
+        "resistance", "add", GEODE_BEETLE_RES.eval(actor), Lifetime.TIMED,
         "ability:champ_geode_beetle.shield",
         expires_at_tick=ctx.current_tick + 400,
     ))
@@ -1674,8 +1783,29 @@ def geode_beetle_active(ctx: Any, actor: Any, targets: list) -> None:
 
 ABILITY_META["champ_geode_beetle.active"] = AbilityMeta(
     name="Geode Ward", kind="active",
-    blurb="Shield the lowest-HP ally with +80 Armor and +40 Resistance for 4s.",
+    blurb="Shield the lowest-HP ally for 4s.",
+    clauses=(Clause(template="Grants +{armor} Armor and +{resistance} Resistance.",
+                    terms=(GEODE_BEETLE_ARMOR, GEODE_BEETLE_RES)),),
     tags=("defense", "buff"),
+)
+
+
+# --- Geode Beetle — Crystal Lattice (shield lowest-HP ally) ---
+GEODE_SHIELD = ScalingTerm("shield", 80.0, "intelligence*3.65")
+
+
+@register_active("champ_geode_beetle.active2")
+def geode_beetle_active2(ctx: Any, actor: Any, targets: list) -> None:
+    ally = lowest_hp_ally(actor, ctx)
+    if not ally:
+        return
+    ctx.grant_barrier(ally, GEODE_SHIELD.eval(actor), duration_ticks=secs(6))
+
+
+ABILITY_META["champ_geode_beetle.active2"] = AbilityMeta(
+    name="Crystal Lattice", kind="active",
+    blurb="Encase the lowest-HP ally in a {shield}-point crystal barrier (6s).",
+    terms=(GEODE_SHIELD,), tags=("shield", "support"),
 )
 
 
@@ -1695,7 +1825,7 @@ ABILITY_META["champ_geode_beetle.passive"] = AbilityMeta(
 
 # --- Duskstep Marten (T5, INT Assassin) ---
 # Passive: shadow-step — every 4th auto, teleport behind target for bonus damage
-DUSKSTEP_MARTEN_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.6")
+DUSKSTEP_MARTEN_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.95")
 
 
 @register_passive("champ_duskstep_marten.passive")
@@ -1721,22 +1851,28 @@ ABILITY_META["champ_duskstep_marten.passive"] = AbilityMeta(
 )
 
 
-DUSKSTEP_MARTEN_DMG = ScalingTerm("damage", 70.0, "intelligence*2.0")
+# Auto-int carry (T.29d): early-game auto-int. Active = self attack-speed buff,
+# not a nuke; INT routes into the on-auto bonus passive via speed.
+DUSKSTEP_MARTEN_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.11")
+_DUSKSTEP_MARTEN_HASTE_SRC = "ability:champ_duskstep_marten.active"
 
 
 @register_active("champ_duskstep_marten.active")
 def duskstep_marten_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Shadow strike: INT burst
-    target = lowest_hp_enemy(actor, ctx)
-    if not target:
-        return
-    ctx.deal_damage(actor, target, DUSKSTEP_MARTEN_DMG.eval(actor), SourceTag.ABILITY)
+    # Shadowstep: self attack-speed buff — INT fuels the auto bonus via speed.
+    as_bonus = DUSKSTEP_MARTEN_HASTE.eval(actor)
+    actor.modifiers = [m for m in actor.modifiers if m.source_id != _DUSKSTEP_MARTEN_HASTE_SRC]
+    ctx.apply_modifier(actor, Modifier(
+        "attack_speed", "add", as_bonus, Lifetime.TIMED,
+        _DUSKSTEP_MARTEN_HASTE_SRC, expires_at_tick=ctx.current_tick + 2500,
+    ))
 
 
 ABILITY_META["champ_duskstep_marten.active"] = AbilityMeta(
-    name="Shadow Strike", kind="active",
-    blurb="Strike the lowest-HP enemy for {damage} magic damage.",
-    terms=(DUSKSTEP_MARTEN_DMG,), tags=("magic",),
+    name="Shadowstep", kind="active",
+    blurb="Gain a self attack-speed buff scaling on Intelligence ({haste}), "
+          "powering the shadow-laced autos.",
+    terms=(DUSKSTEP_MARTEN_HASTE,), tags=("buff", "haste"),
 )
 
 
@@ -1773,7 +1909,7 @@ ABILITY_META["champ_granite_gorilla.passive"] = AbilityMeta(
 )
 
 
-GRANITE_GORILLA_DMG = ScalingTerm("damage", 70.0, "intelligence*1.8")
+GRANITE_GORILLA_DMG = ScalingTerm("damage", 70.0, "intelligence*3.93")
 
 
 @register_active("champ_granite_gorilla.active")
@@ -1783,7 +1919,7 @@ def granite_gorilla_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 1, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY)
-        ctx.apply_status(t, "stun", duration_ticks=100, source_id=actor.id)
+        ctx.apply_status(t, "stun", duration_ticks=secs(2), source_id=actor.id)
 
 
 ABILITY_META["champ_granite_gorilla.active"] = AbilityMeta(
@@ -1796,8 +1932,8 @@ ABILITY_META["champ_granite_gorilla.active"] = AbilityMeta(
 
 # --- Eclipse Jaguar (T7, Hybrid Stalker) ---
 # Passive: autos alternate STR and INT damage
-ECLIPSE_JAGUAR_INT_BONUS = ScalingTerm("magic", 0.0, "intelligence*0.4")
-ECLIPSE_JAGUAR_STR_BONUS = ScalingTerm("physical", 0.0, "strength*0.3")
+ECLIPSE_JAGUAR_INT_BONUS = ScalingTerm("magic", 0.0, "intelligence*0.64")
+ECLIPSE_JAGUAR_STR_BONUS = ScalingTerm("physical", 0.0, "strength*0.24")
 
 
 @register_passive("champ_eclipse_jaguar.passive")
@@ -1830,8 +1966,8 @@ ABILITY_META["champ_eclipse_jaguar.passive"] = AbilityMeta(
 
 
 # Active: twin strike — both STR and INT damage
-ECLIPSE_JAGUAR_STR_DMG = ScalingTerm("physical", 50.0, "strength*1.5")
-ECLIPSE_JAGUAR_INT_DMG = ScalingTerm("magic", 50.0, "intelligence*1.5")
+ECLIPSE_JAGUAR_STR_DMG = ScalingTerm("physical", 50.0, "strength*1.2")
+ECLIPSE_JAGUAR_INT_DMG = ScalingTerm("magic", 50.0, "intelligence*2.38")
 
 
 @register_active("champ_eclipse_jaguar.active")
@@ -1853,7 +1989,9 @@ ABILITY_META["champ_eclipse_jaguar.active"] = AbilityMeta(
 
 # --- Nightglass Mantis (T8, INT Assassin) ---
 # Active: vanish → INT execute (bonus vs low HP)
-NIGHTGLASS_MANTIS_DMG = ScalingTerm("damage", 100.0, "intelligence*2.5")
+# Hybrid auto-int (T.29d): on-auto INT passive carries DPS; active is lighter
+# damage + a slow debuff (value from autos + utility cast).
+NIGHTGLASS_MANTIS_DMG = ScalingTerm("damage", 60.0, "intelligence*2.86")
 _MANTIS_EXECUTE_MULT = 1.6
 
 
@@ -1866,18 +2004,19 @@ def nightglass_mantis_active(ctx: Any, actor: Any, targets: list) -> None:
     if target.hp_pct < 0.3:
         amount *= _MANTIS_EXECUTE_MULT
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
+    ctx.apply_status(target, "slow", duration_ticks=secs(3), stacks=2, source_id=actor.id)
 
 
 ABILITY_META["champ_nightglass_mantis.active"] = AbilityMeta(
-    name="Vanishing Execute", kind="active",
-    blurb="Vanish and strike the lowest-HP enemy for {damage} magic damage.",
+    name="Vanishing Cut", kind="active",
+    blurb="Vanish and strike the lowest-HP enemy for {damage} magic damage, slowing it.",
     terms=(NIGHTGLASS_MANTIS_DMG,),
-    clauses=(Clause(f"Deals +{int((_MANTIS_EXECUTE_MULT - 1) * 100)}% to targets below 30% HP."),),
-    tags=("magic", "execute"),
+    clauses=(Clause(f"Deals +{int((_MANTIS_EXECUTE_MULT - 1) * 100)}% to targets below 30% HP; slows for 3s."),),
+    tags=("magic", "execute", "slow"),
 )
 
 
-NIGHTGLASS_MANTIS_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.8")
+NIGHTGLASS_MANTIS_BONUS = ScalingTerm("bonus", 0.0, "intelligence*1.26")
 
 
 @register_passive("champ_nightglass_mantis.passive")
@@ -1912,7 +2051,7 @@ ABILITY_META["champ_nightglass_mantis.passive"] = AbilityMeta(
 
 # --- Cliffeyrie Eagle (T9, ADC-STR Hunter) ---
 # Passive: first auto vastly amplified
-CLIFFEYRIE_EAGLE_BONUS = ScalingTerm("bonus", 0.0, "strength*1.5")
+CLIFFEYRIE_EAGLE_BONUS = ScalingTerm("bonus", 0.0, "strength*1.2")
 
 
 @register_passive("champ_cliffeyrie_eagle.passive")
@@ -1939,7 +2078,7 @@ ABILITY_META["champ_cliffeyrie_eagle.passive"] = AbilityMeta(
 )
 
 
-CLIFFEYRIE_EAGLE_DMG = ScalingTerm("damage", 80.0, "strength*2.2")
+CLIFFEYRIE_EAGLE_DMG = ScalingTerm("damage", 80.0, "strength*0.9+intelligence*1.67")
 
 
 @register_active("champ_cliffeyrie_eagle.active")
@@ -1961,7 +2100,7 @@ ABILITY_META["champ_cliffeyrie_eagle.active"] = AbilityMeta(
 
 # --- Umbra (T10, Primordial — Cloudy) ---
 # Passive: every 5th auto triggers a free cast
-UMBRA_CLONE_STRIKE = ScalingTerm("bonus", 0.0, "intelligence*1.5")
+UMBRA_CLONE_STRIKE = ScalingTerm("bonus", 0.0, "intelligence*2.38")
 
 
 @register_passive("champ_umbra.passive")
@@ -1996,6 +2135,24 @@ ABILITY_META["champ_umbra.active"] = AbilityMeta(
 )
 
 
+# Clone statline: Magnitude fractions of the summoner + flat literals (SummonSpec, V.46).
+_UMBRA_CLONE = SummonSpec(stats={
+    "max_hp": PctResource("max_hp", 0.3),
+    "strength": ScalingTerm("strength", 0.0, "strength*0.32"),
+    "intelligence": ScalingTerm("intelligence", 0.0, "intelligence*0.64"),
+    "armor": ScalingTerm("armor", 0.0, "armor*0.3"),
+    "resistance": ScalingTerm("resistance", 0.0, "resistance*0.3"),
+    "attack_speed": ScalingTerm("attack_speed", 0.0, "attack_speed*1.0"),
+    "mana_regen": 0,
+    "move_speed": ScalingTerm("move_speed", 0.0, "move_speed*1.0"),
+    "threat": 20,
+    "attack_range": ScalingTerm("attack_range", 0.0, "attack_range*1.0"),
+    "crit_chance": 0.0,
+    "penetration": 0,
+    "penetration_pct": 0.0,
+})
+
+
 # Active: summon shadow clones (spawn real flagged pieces)
 @register_active("champ_umbra.active")
 def umbra_active(ctx: Any, actor: Any, targets: list) -> None:
@@ -2004,22 +2161,7 @@ def umbra_active(ctx: Any, actor: Any, targets: list) -> None:
     for i in range(2):
         clone = Piece(
             id=f"{actor.id}_clone_{ctx.current_tick}_{i}",
-            base_stats={
-                "max_hp": actor.max_hp * 0.3,
-                "strength": actor.stat("strength") * 0.4,
-                "intelligence": actor.stat("intelligence") * 0.4,
-                "armor": actor.stat("armor") * 0.3,
-                "resistance": actor.stat("resistance") * 0.3,
-                "attack_speed": actor.stat("attack_speed"),
-                "mana_regen": 0,
-                "move_speed": actor.stat("move_speed"),
-                "threat": 20,
-                "attack_range": actor.stat("attack_range"),
-                "ability_cost": 999_999,
-                "crit_chance": 0.0,
-                "penetration": 0,
-                "penetration_pct": 0.0,
-            },
+            base_stats=_UMBRA_CLONE.eval(actor),
             affinity=actor.affinity,
             is_enemy=actor.is_enemy,
             summon=True,
@@ -2039,7 +2181,7 @@ def umbra_active(ctx: Any, actor: Any, targets: list) -> None:
 
 # --- Lostlight Wisp (T1, SUP-Heal) ---
 # Active: HoT wisp heal on ally
-LOSTLIGHT_WISP_HEAL = ScalingTerm("heal", 35.0, "intelligence*2.0")
+LOSTLIGHT_WISP_HEAL = ScalingTerm("heal", 35.0, "intelligence*3.65")
 
 
 @register_active("champ_lostlight_wisp.active")
@@ -2057,7 +2199,7 @@ ABILITY_META["champ_lostlight_wisp.active"] = AbilityMeta(
 )
 
 
-LOSTLIGHT_WISP_HOT = ScalingTerm("heal", 0.0, "intelligence*0.3")
+LOSTLIGHT_WISP_HOT = ScalingTerm("heal", 0.0, "intelligence*0.54")
 
 
 @register_passive("champ_lostlight_wisp.passive")
@@ -2086,7 +2228,12 @@ ABILITY_META["champ_lostlight_wisp.passive"] = AbilityMeta(
 
 # --- Will-o-Fawn (T2, INT Mystic) ---
 # Active: conjure ally-auto double (grant ally bonus attack)
-@register_active("champ_will_o_fawn.active")
+# T.35b: haste scales with the fawn's INT (V.47 dead-INT fix). NB: authored as a
+# mage but ships a pure support kit — role mismatch flagged for a later content pass.
+WILL_O_FAWN_HASTE = ScalingTerm("haste", 40.0, "intelligence*0.32")
+
+
+@register_active("champ_will_o_fawn.active", priority=2)
 def will_o_fawn_active(ctx: Any, actor: Any, targets: list) -> None:
     # Grant an ally a temporary attack speed buff (simulates double attack)
     allies = [a for a in ctx.allies_of(actor) if a is not actor]
@@ -2094,7 +2241,7 @@ def will_o_fawn_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     ally = min(allies, key=lambda a: (a.hp, a.id))
     ctx.apply_modifier(ally, Modifier(
-        "attack_speed", "add", 40.0, Lifetime.TIMED,
+        "attack_speed", "add", WILL_O_FAWN_HASTE.eval(actor), Lifetime.TIMED,
         "ability:champ_will_o_fawn",
         expires_at_tick=ctx.current_tick + 300,
     ))
@@ -2102,8 +2249,31 @@ def will_o_fawn_active(ctx: Any, actor: Any, targets: list) -> None:
 
 ABILITY_META["champ_will_o_fawn.active"] = AbilityMeta(
     name="Conjure Double", kind="active",
-    blurb="Grant a wounded ally +40 Attack Speed for 3s.",
+    blurb="Grant a wounded ally Attack Speed for 3s.",
+    clauses=(Clause(template="Grants +{haste} Attack Speed.", terms=(WILL_O_FAWN_HASTE,)),),
     tags=("buff",),
+)
+
+
+# --- Will-o-Fawn — Wisp Lure (INT dmg + threat drop, primary target) ---
+WILL_WISP_LURE = ScalingTerm("damage", 50.0, "intelligence*3.5")
+
+
+@register_active("champ_will_o_fawn.active2")
+def will_o_fawn_active2(ctx: Any, actor: Any, targets: list) -> None:
+    target = primary_target(actor, ctx)
+    if not target:
+        return
+    ctx.deal_damage(actor, target, WILL_WISP_LURE.eval(actor), SourceTag.ABILITY, damage_type="magical")
+    # Threat drop: temporary -30% threat so the wisp is harder to pin down.
+    ctx.apply_modifier(actor, Modifier("threat", "mul", 0.70, Lifetime.TIMED, "champ_will_o_fawn.active2",
+                                       expires_at_tick=ctx.current_tick + secs(4)))
+
+
+ABILITY_META["champ_will_o_fawn.active2"] = AbilityMeta(
+    name="Wisp Lure", kind="active",
+    blurb="Lure the target with a phantom light for {damage} magic damage; the caster sheds threat.",
+    terms=(WILL_WISP_LURE,), clauses=(Clause("-30% threat for 4s."),), tags=("magic",),
 )
 
 
@@ -2123,7 +2293,7 @@ ABILITY_META["champ_will_o_fawn.passive"] = AbilityMeta(
 
 # --- Phantom Lynx (T3, APC-INT Assassin) ---
 # Cast: phases through target for INT damage, with penetration.
-PHANTOM_LYNX_DMG = ScalingTerm("damage", 90.0, "intelligence*2.2")
+PHANTOM_LYNX_DMG = ScalingTerm("damage", 90.0, "intelligence*4.82")
 
 
 @register_active("champ_phantom_lynx.active")
@@ -2190,7 +2360,7 @@ ABILITY_META["champ_hollow_elk.passive"] = AbilityMeta(
 )
 
 
-HOLLOW_ELK_DMG = ScalingTerm("damage", 60.0, "intelligence*1.8")
+HOLLOW_ELK_DMG = ScalingTerm("damage", 60.0, "intelligence*3.93")
 _HOLLOW_ELK_HEAL_SHARE = 0.3
 
 
@@ -2215,7 +2385,7 @@ ABILITY_META["champ_hollow_elk.active"] = AbilityMeta(
 
 # --- Fogveil Moth (T5, Trickster) ---
 # Active: shroud enemy (reduce their AS — simulates miss chance)
-FOGVEIL_MOTH_DMG = ScalingTerm("damage", 30.0, "intelligence*1.2")
+FOGVEIL_MOTH_DMG = ScalingTerm("damage", 30.0, "strength*0.6+intelligence*1.52")
 
 
 @register_active("champ_fogveil_moth.active")
@@ -2255,7 +2425,7 @@ ABILITY_META["champ_fogveil_moth.passive"] = AbilityMeta(
 
 # --- Wraithorn Stag (T6, STR Bruiser) ---
 # Active: spectral gore — STR burst
-WRAITHORN_STAG_DMG = ScalingTerm("damage", 80.0, "strength*2.2")
+WRAITHORN_STAG_DMG = ScalingTerm("damage", 80.0, "strength*1.76")
 
 
 @register_active("champ_wraithorn_stag.active")
@@ -2274,12 +2444,19 @@ ABILITY_META["champ_wraithorn_stag.active"] = AbilityMeta(
 )
 
 
+# Hybrid auto (T.29d, INT-buffs-autos): autos deal bonus INT magic damage; the
+# active is the STR burst (Spectral Gore) — kit reads BOTH stats (V.47). High STR
+# autos hit hard, INT rides along as on-hit magic (Volibear feel).
+WRAITHORN_STAG_ONHIT = ScalingTerm("bonus", 0.0, "intelligence*0.66")
+
+
 @register_passive("champ_wraithorn_stag.passive")
 def wraithorn_stag_passive(owner: Any) -> EffectBundle:
-    # Phase-move: gains move speed after attacking
     def hook(ctx: Any, event: Any) -> None:
-        if event.attacker is not owner:
+        if event.attacker is not owner or not event.target.alive:
             return
+        ctx.deal_damage(owner, event.target, WRAITHORN_STAG_ONHIT.eval(owner),
+                        SourceTag.ABILITY, damage_type="magical")
         ctx.apply_modifier(owner, Modifier(
             "move_speed", "add", 25.0, Lifetime.TIMED,
             "passive:champ_wraithorn_stag",
@@ -2293,8 +2470,8 @@ def wraithorn_stag_passive(owner: Any) -> EffectBundle:
 
 ABILITY_META["champ_wraithorn_stag.passive"] = AbilityMeta(
     name="Phase Drift", kind="passive",
-    blurb="Auto-attacks grant +25 Move Speed for 3s.",
-    tags=("buff",),
+    blurb="Auto-attacks deal {bonus} bonus magic damage and grant +25 Move Speed for 3s.",
+    terms=(WRAITHORN_STAG_ONHIT,), tags=("magic", "buff"),
 )
 
 
@@ -2317,7 +2494,7 @@ def marshghast_boar_passive(owner: Any) -> EffectBundle:
                 "armor", "add", 40.0, Lifetime.COMBAT,
                 "passive:champ_marshghast_boar.ghost",
             ))
-            ctx.gain_mana(owner, owner.actives[0].cost * 0.5 if owner.actives else 0)
+            ctx.gain_mana(owner, owner.actives[0].mana_cost * 0.5 if owner.actives else 0)
 
     return EffectBundle(hooks=[
         Hook("on_damage_taken", hook, scope=HookScope.PER_HIT),
@@ -2332,7 +2509,7 @@ ABILITY_META["champ_marshghast_boar.passive"] = AbilityMeta(
 )
 
 
-MARSHGHAST_BOAR_DMG = ScalingTerm("damage", 60.0, "strength*1.2+intelligence*1.2")
+MARSHGHAST_BOAR_DMG = ScalingTerm("damage", 60.0, "strength*0.96+intelligence*2.28")
 
 
 @register_active("champ_marshghast_boar.active")
@@ -2354,7 +2531,7 @@ ABILITY_META["champ_marshghast_boar.active"] = AbilityMeta(
 
 # --- Veilfang Wolf (T8, INT Skirmisher) ---
 # Passive: autos deal bonus INT + shred resistance
-VEILFANG_WOLF_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.35")
+VEILFANG_WOLF_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.55")
 
 
 @register_passive("champ_veilfang_wolf.passive")
@@ -2382,28 +2559,38 @@ ABILITY_META["champ_veilfang_wolf.passive"] = AbilityMeta(
 )
 
 
-VEILFANG_WOLF_DMG = ScalingTerm("damage", 80.0, "intelligence*2.2")
+# Hybrid auto-int (T.29d): the on-auto INT/res-shred passive carries DPS; active
+# is lighter damage + a self attack-speed buff (value from autos + utility cast).
+VEILFANG_WOLF_DMG = ScalingTerm("damage", 50.0, "intelligence*2.47")
+VEILFANG_WOLF_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.64")
+_VEILFANG_WOLF_HASTE_SRC = "ability:champ_veilfang_wolf.active"
 
 
 @register_active("champ_veilfang_wolf.active")
 def veilfang_wolf_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Fang rush: INT damage
+    # Fang Rush: light hit + a self attack-speed buff that powers the shred autos.
     target = primary_target(actor, ctx)
-    if not target:
-        return
-    ctx.deal_damage(actor, target, VEILFANG_WOLF_DMG.eval(actor), SourceTag.ABILITY)
+    if target:
+        ctx.deal_damage(actor, target, VEILFANG_WOLF_DMG.eval(actor), SourceTag.ABILITY)
+    as_bonus = VEILFANG_WOLF_HASTE.eval(actor)
+    actor.modifiers = [m for m in actor.modifiers if m.source_id != _VEILFANG_WOLF_HASTE_SRC]
+    ctx.apply_modifier(actor, Modifier(
+        "attack_speed", "add", as_bonus, Lifetime.TIMED,
+        _VEILFANG_WOLF_HASTE_SRC, expires_at_tick=ctx.current_tick + 2500,
+    ))
 
 
 ABILITY_META["champ_veilfang_wolf.active"] = AbilityMeta(
     name="Fang Rush", kind="active",
-    blurb="Rush the primary target for {damage} magic damage.",
-    terms=(VEILFANG_WOLF_DMG,), tags=("magic",),
+    blurb="Hit the primary target for {damage} magic damage and gain a self "
+          "attack-speed buff ({haste}) to fuel the rending autos.",
+    terms=(VEILFANG_WOLF_DMG, VEILFANG_WOLF_HASTE), tags=("magic", "buff", "haste"),
 )
 
 
 # --- Spectral Heron (T9, INT Hunter) ---
 # Passive: autos pierce (hit target + 1 behind)
-SPECTRAL_HERON_PIERCE = ScalingTerm("bonus", 0.0, "intelligence*0.3")
+SPECTRAL_HERON_PIERCE = ScalingTerm("bonus", 0.0, "intelligence*0.47")
 
 
 @register_passive("champ_spectral_heron.passive")
@@ -2429,29 +2616,28 @@ ABILITY_META["champ_spectral_heron.passive"] = AbilityMeta(
 )
 
 
-SPECTRAL_HERON_DMG = ScalingTerm("damage", 80.0, "intelligence*2.0")
-_SPECTRAL_HERON_LINE_MULT = 0.6
+# Auto-int carry (T.29d): INT routes into AUTOS (the on-auto pierce passive). The
+# active is a self attack-speed buff, NOT a nuke.
+SPECTRAL_HERON_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.26")
+_SPECTRAL_HERON_HASTE_SRC = "ability:champ_spectral_heron.active"
 
 
 @register_active("champ_spectral_heron.active")
 def spectral_heron_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Spectral beam: line damage
-    target = primary_target(actor, ctx)
-    if not target:
-        return
-    amount = SPECTRAL_HERON_DMG.eval(actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
-    for n in neighbors_of(target, ctx):
-        if ctx.is_enemy(n, actor):
-            ctx.deal_damage(actor, n, amount * _SPECTRAL_HERON_LINE_MULT, SourceTag.ABILITY)
+    # Spirit Focus: self attack-speed buff — speeds the piercing autos.
+    as_bonus = SPECTRAL_HERON_HASTE.eval(actor)
+    actor.modifiers = [m for m in actor.modifiers if m.source_id != _SPECTRAL_HERON_HASTE_SRC]
+    ctx.apply_modifier(actor, Modifier(
+        "attack_speed", "add", as_bonus, Lifetime.TIMED,
+        _SPECTRAL_HERON_HASTE_SRC, expires_at_tick=ctx.current_tick + 2500,
+    ))
 
 
 ABILITY_META["champ_spectral_heron.active"] = AbilityMeta(
-    name="Spectral Beam", kind="active",
-    blurb="Fire a beam through the primary target for {damage} magic damage.",
-    terms=(SPECTRAL_HERON_DMG,),
-    clauses=(Clause(f"Enemies in the line take {int(_SPECTRAL_HERON_LINE_MULT * 100)}% damage."),),
-    tags=("magic", "aoe"),
+    name="Spirit Focus", kind="active",
+    blurb="Focus into a self attack-speed buff scaling on Intelligence ({haste}), "
+          "speeding the piercing autos.",
+    terms=(SPECTRAL_HERON_HASTE,), tags=("buff", "haste"),
 )
 
 
@@ -2484,7 +2670,7 @@ ABILITY_META["champ_mournhollow.passive"] = AbilityMeta(
 
 
 # Active: board fear — AOE fear enemies
-MOURNHOLLOW_DMG = ScalingTerm("damage", 80.0, "intelligence*1.8")
+MOURNHOLLOW_DMG = ScalingTerm("damage", 80.0, "intelligence*3.42")
 _MOURNHOLLOW_AOE_MULT = 0.6
 
 
@@ -2494,7 +2680,7 @@ def mournhollow_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount * _MOURNHOLLOW_AOE_MULT, SourceTag.ABILITY)
-        ctx.apply_status(t, "fear", duration_ticks=200, source_id=actor.id)
+        ctx.apply_status(t, "fear", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["champ_mournhollow.active"] = AbilityMeta(
@@ -2512,7 +2698,7 @@ ABILITY_META["champ_mournhollow.active"] = AbilityMeta(
 
 # --- Sparkfly (T1, Trickster) ---
 # Active: brief stun one enemy
-SPARKFLY_DMG = ScalingTerm("damage", 20.0, "intelligence*1.0")
+SPARKFLY_DMG = ScalingTerm("damage", 20.0, "intelligence*2.18")
 
 
 @register_active("champ_sparkfly.active")
@@ -2521,7 +2707,7 @@ def sparkfly_active(ctx: Any, actor: Any, targets: list) -> None:
     if not target:
         return
     ctx.deal_damage(actor, target, SPARKFLY_DMG.eval(actor), SourceTag.ABILITY)
-    ctx.apply_status(target, "stun", duration_ticks=150, source_id=actor.id)
+    ctx.apply_status(target, "stun", duration_ticks=secs(3), source_id=actor.id)
 
 
 ABILITY_META["champ_sparkfly.active"] = AbilityMeta(
@@ -2548,9 +2734,21 @@ ABILITY_META["champ_sparkfly.passive"] = AbilityMeta(
 
 # --- Thunderhoof Colt (T2, ADC-STR Skirmisher) ---
 # Passive: stacking AS when auto attacked
+# Hybrid auto (T.29d, AS-per-INT): INT fuels attack speed (more autos), STR makes
+# each auto hit — a Jax/Voli-style hybrid auto-carrier. Active stays STR (Thunder
+# Charge), passive routes INT → AS, so the kit reads BOTH stats (V.47).
+THUNDERHOOF_COLT_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.55")
+
+
 @register_passive("champ_thunderhoof_colt.passive")
 def thunderhoof_colt_passive(owner: Any) -> EffectBundle:
-    def hook(ctx: Any, event: Any) -> None:
+    def on_start(ctx: Any, event: Any) -> None:
+        ctx.apply_modifier(owner, Modifier(
+            "attack_speed", "add", THUNDERHOOF_COLT_HASTE.eval(owner),
+            Lifetime.COMBAT, "passive:champ_thunderhoof_colt.int_haste",
+        ))
+
+    def on_hit(ctx: Any, event: Any) -> None:
         if event.target is not owner:
             return
         ctx.apply_modifier(owner, Modifier(
@@ -2560,18 +2758,20 @@ def thunderhoof_colt_passive(owner: Any) -> EffectBundle:
         ))
 
     return EffectBundle(hooks=[
-        Hook("on_damage_taken", hook, scope=HookScope.PER_HIT),
+        Hook("on_combat_start", on_start, scope=HookScope.PER_HIT),
+        Hook("on_damage_taken", on_hit, scope=HookScope.PER_HIT),
     ])
 
 
 ABILITY_META["champ_thunderhoof_colt.passive"] = AbilityMeta(
     name="Galvanize", kind="passive",
-    blurb="Each hit taken grants +8 Attack Speed for 6s, stacking.",
-    tags=("buff",),
+    blurb="Gain attack speed scaling on Intelligence ({haste}) at combat start; "
+          "each hit taken adds +8 Attack Speed for 6s, stacking.",
+    terms=(THUNDERHOOF_COLT_HASTE,), tags=("buff", "haste"),
 )
 
 
-THUNDERHOOF_COLT_DMG = ScalingTerm("damage", 45.0, "strength*1.6")
+THUNDERHOOF_COLT_DMG = ScalingTerm("damage", 45.0, "strength*1.28")
 
 
 @register_active("champ_thunderhoof_colt.active")
@@ -2593,7 +2793,7 @@ ABILITY_META["champ_thunderhoof_colt.active"] = AbilityMeta(
 
 # --- Voltscale Mamba (T3, ADC-STR Stalker) ---
 # Active: dash + electric trail damage
-VOLTSCALE_MAMBA_DMG = ScalingTerm("damage", 55.0, "strength*1.8")
+VOLTSCALE_MAMBA_DMG = ScalingTerm("damage", 55.0, "strength*1.44")
 
 
 @register_active("champ_voltscale_mamba.active")
@@ -2604,7 +2804,7 @@ def voltscale_mamba_active(ctx: Any, actor: Any, targets: list) -> None:
     ctx.deal_damage(actor, target, VOLTSCALE_MAMBA_DMG.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
     # Electric trail: apply burn to target (represents trail damage)
-    ctx.apply_status(target, "burn", duration_ticks=200, source_id=actor.id)
+    ctx.apply_status(target, "burn", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["champ_voltscale_mamba.active"] = AbilityMeta(
@@ -2631,6 +2831,10 @@ ABILITY_META["champ_voltscale_mamba.passive"] = AbilityMeta(
 
 # --- Coppercrest Stork (T4, SUP-Shield) ---
 # Active: ally shield that reflects damage
+# T.35b: shield magnitude scales with the stork's INT (V.47 dead-INT fix).
+COPPERCREST_STORK_ARMOR = ScalingTerm("armor", 50.0, "intelligence*0.55")
+
+
 @register_active("champ_coppercrest_stork.active")
 def coppercrest_stork_active(ctx: Any, actor: Any, targets: list) -> None:
     ally = lowest_hp_ally(actor, ctx)
@@ -2638,7 +2842,7 @@ def coppercrest_stork_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     # Shield as armor buff
     ctx.apply_modifier(ally, Modifier(
-        "armor", "add", 50.0, Lifetime.TIMED,
+        "armor", "add", COPPERCREST_STORK_ARMOR.eval(actor), Lifetime.TIMED,
         "ability:champ_coppercrest_stork.shield",
         expires_at_tick=ctx.current_tick + 400,
     ))
@@ -2646,7 +2850,8 @@ def coppercrest_stork_active(ctx: Any, actor: Any, targets: list) -> None:
 
 ABILITY_META["champ_coppercrest_stork.active"] = AbilityMeta(
     name="Copper Ward", kind="active",
-    blurb="Shield the lowest-HP ally with +50 Armor for 4s.",
+    blurb="Shield the lowest-HP ally for 4s.",
+    clauses=(Clause(template="Grants +{armor} Armor.", terms=(COPPERCREST_STORK_ARMOR,)),),
     tags=("defense", "buff"),
 )
 
@@ -2693,7 +2898,7 @@ ABILITY_META["champ_thunderhide_bison.passive"] = AbilityMeta(
 )
 
 
-THUNDERHIDE_BISON_DMG = ScalingTerm("damage", 60.0, "strength*1.8")
+THUNDERHIDE_BISON_DMG = ScalingTerm("damage", 60.0, "strength*1.44")
 
 
 @register_active("champ_thunderhide_bison.active")
@@ -2704,7 +2909,7 @@ def thunderhide_bison_active(ctx: Any, actor: Any, targets: list) -> None:
         return
     ctx.deal_damage(actor, target, THUNDERHIDE_BISON_DMG.eval(actor), SourceTag.ABILITY,
                     damage_type="physical")
-    ctx.apply_status(target, "stun", duration_ticks=120, source_id=actor.id)
+    ctx.apply_status(target, "stun", duration_ticks=secs(2.4), source_id=actor.id)
 
 
 ABILITY_META["champ_thunderhide_bison.active"] = AbilityMeta(
@@ -2717,7 +2922,7 @@ ABILITY_META["champ_thunderhide_bison.active"] = AbilityMeta(
 
 # --- Tempest Eel (T6, APC-INT Mage) ---
 # Cast: chain lightning, jumps to nearby enemies.
-TEMPEST_EEL_DMG = ScalingTerm("damage", 100.0, "intelligence*2.0")
+TEMPEST_EEL_DMG = ScalingTerm("damage", 100.0, "intelligence*4.37")
 _TEMPEST_EEL_CHAIN1_MULT = 0.6
 _TEMPEST_EEL_CHAIN2_MULT = 0.4
 
@@ -2747,6 +2952,35 @@ ABILITY_META["champ_tempest_eel.active"] = AbilityMeta(
 )
 
 
+# --- Tempest Eel — Maelstrom (ULTIMATE, T6) ---
+# Tier >= 5 multicaster secondary = ultimate: 2x default cost (600_000), ~2x
+# output (T.29d). Full chain-lightning storm vs the single Voltaic Lash.
+TEMPEST_MAELSTROM = ScalingTerm("damage", 110.0, "intelligence*6.55")
+
+
+@register_active("champ_tempest_eel.active2", mana_cost=600_000, priority=2)
+def tempest_eel_active2(ctx: Any, actor: Any, targets: list) -> None:
+    target = primary_target(actor, ctx)
+    if not target:
+        return
+    dmg = TEMPEST_MAELSTROM.eval(actor)
+    ctx.deal_damage(actor, target, dmg, SourceTag.ABILITY, damage_type="magical")
+    ctx.apply_status(target, "charged", duration_ticks=secs(3), source_id=actor.id)
+    # Storm: arc to EVERY other enemy near the target at 70% damage.
+    for e in enemies_in_radius(target.position_q, target.position_r, 3, actor, ctx):
+        if e is target:
+            continue
+        ctx.deal_damage(actor, e, dmg * 0.7, SourceTag.ABILITY, damage_type="magical")
+        ctx.apply_status(e, "charged", duration_ticks=secs(3), source_id=actor.id)
+
+
+ABILITY_META["champ_tempest_eel.active2"] = AbilityMeta(
+    name="Maelstrom", kind="active",
+    blurb="ULTIMATE: a lightning storm hits the target for {damage} magic damage, arcing to every nearby enemy at 70%.",
+    terms=(TEMPEST_MAELSTROM,), clauses=(Clause("Charges all struck enemies for 3s."),), tags=("magic", "aoe", "chain", "ultimate"),
+)
+
+
 @register_passive("champ_tempest_eel.passive")
 def tempest_eel_passive(owner: Any) -> EffectBundle:
     return EffectBundle(modifiers=[
@@ -2762,10 +2996,8 @@ ABILITY_META["champ_tempest_eel.passive"] = AbilityMeta(
 
 
 # --- Voltmane Jackal (T7, Hybrid Skirmisher) ---
-# Passive: autos alternate STR/INT; discharge on higher stat
-# Discharge scales on the *higher* of STR/INT — max() can't be a ScalingTerm
-# expression, so this Tier-B outlet stays inline with a hoisted coefficient.
-_JACKAL_DISCHARGE_COEFF = 0.5
+# Passive: autos alternate STR/INT; discharge on higher stat (MaxOfTerm, V.46).
+JACKAL_DISCHARGE = MaxOfTerm("bonus", 0.5, ("strength", "intelligence"))
 
 
 @register_passive("champ_voltmane_jackal.passive")
@@ -2776,12 +3008,9 @@ def voltmane_jackal_passive(owner: Any) -> EffectBundle:
         if event.attacker is not owner:
             return
         state["count"] += 1
-        str_val = owner.stat("strength")
-        int_val = owner.stat("intelligence")
         if state["count"] % 3 == 0:
             # Discharge: bonus damage based on higher stat
-            bonus = max(str_val, int_val) * _JACKAL_DISCHARGE_COEFF
-            ctx.deal_damage(owner, event.target, bonus, SourceTag.ABILITY)
+            ctx.deal_damage(owner, event.target, JACKAL_DISCHARGE.eval(owner), SourceTag.ABILITY)
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
@@ -2790,14 +3019,14 @@ def voltmane_jackal_passive(owner: Any) -> EffectBundle:
 
 ABILITY_META["champ_voltmane_jackal.passive"] = AbilityMeta(
     name="Discharge", kind="passive",
-    blurb="Every 3rd auto-attack discharges bonus magic damage.",
-    clauses=(Clause(f"Deals {_JACKAL_DISCHARGE_COEFF:g}× your higher of Strength or Intelligence."),),
+    blurb="Every 3rd auto-attack discharges {bonus} bonus magic damage.",
+    terms=(JACKAL_DISCHARGE,),
     tags=("magic",),
 )
 
 
 # Active: static discharge — both-scaling burst
-VOLTMANE_JACKAL_DMG = ScalingTerm("damage", 60.0, "strength*1.2+intelligence*1.2")
+VOLTMANE_JACKAL_DMG = ScalingTerm("damage", 60.0, "strength*0.96+intelligence*2.28")
 
 
 @register_active("champ_voltmane_jackal.active")
@@ -2806,7 +3035,7 @@ def voltmane_jackal_active(ctx: Any, actor: Any, targets: list) -> None:
     if not target:
         return
     ctx.deal_damage(actor, target, VOLTMANE_JACKAL_DMG.eval(actor), SourceTag.ABILITY)
-    ctx.apply_status(target, "charged", duration_ticks=300, source_id=actor.id)
+    ctx.apply_status(target, "charged", duration_ticks=secs(6), source_id=actor.id)
 
 
 ABILITY_META["champ_voltmane_jackal.active"] = AbilityMeta(
@@ -2819,7 +3048,7 @@ ABILITY_META["champ_voltmane_jackal.active"] = AbilityMeta(
 
 # --- Thunderclap Gorilla (T8, STR Bruiser) ---
 # Active: shockwave knockback + stun
-THUNDERCLAP_GORILLA_DMG = ScalingTerm("damage", 90.0, "strength*2.2")
+THUNDERCLAP_GORILLA_DMG = ScalingTerm("damage", 90.0, "strength*1.76")
 
 
 @register_active("champ_thunderclap_gorilla.active")
@@ -2828,7 +3057,7 @@ def thunderclap_gorilla_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY, damage_type="physical")
-        ctx.apply_status(t, "stun", duration_ticks=150, source_id=actor.id)
+        ctx.apply_status(t, "stun", duration_ticks=secs(3), source_id=actor.id)
 
 
 ABILITY_META["champ_thunderclap_gorilla.active"] = AbilityMeta(
@@ -2855,7 +3084,7 @@ ABILITY_META["champ_thunderclap_gorilla.passive"] = AbilityMeta(
 
 # --- Storm Eagle (T9, INT Hunter) ---
 # Passive: every 3rd auto forks to 2 targets
-STORM_EAGLE_FORK = ScalingTerm("bonus", 0.0, "intelligence*0.4")
+STORM_EAGLE_FORK = ScalingTerm("bonus", 0.0, "intelligence*0.64")
 
 
 @register_passive("champ_storm_eagle.passive")
@@ -2885,39 +3114,34 @@ ABILITY_META["champ_storm_eagle.passive"] = AbilityMeta(
 )
 
 
-STORM_EAGLE_DMG = ScalingTerm("damage", 100.0, "intelligence*2.8")
-_STORM_EAGLE_CHAIN_MULT = 0.5
+# Auto-int carry (T.29d): INT routes into AUTOS (the on-auto fork passive). The
+# active is a self-haste, NOT a nuke — value comes from the empowered autos.
+STORM_EAGLE_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.26")
+_STORM_EAGLE_HASTE_SRC = "ability:champ_storm_eagle.active"
 
 
 @register_active("champ_storm_eagle.active")
 def storm_eagle_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Lightning dive: INT damage to primary + chain to 2 neighbors
-    target = primary_target(actor, ctx)
-    if not target:
-        return
-    # Buffed scaling for T9 mage damage dealer + chain bounce at 50%
-    amount = STORM_EAGLE_DMG.eval(actor)
-    ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
-    # Chain to 2 neighbors at 50% damage
-    hit_count = 0
-    for n in neighbors_of(target, ctx):
-        if ctx.is_enemy(n, actor) and n is not target and hit_count < 2:
-            ctx.deal_damage(actor, n, amount * _STORM_EAGLE_CHAIN_MULT, SourceTag.ABILITY)
-            hit_count += 1
+    # Tailwind: self attack-speed buff — INT fuels the auto-fork DPS via speed.
+    as_bonus = STORM_EAGLE_HASTE.eval(actor)
+    actor.modifiers = [m for m in actor.modifiers if m.source_id != _STORM_EAGLE_HASTE_SRC]
+    ctx.apply_modifier(actor, Modifier(
+        "attack_speed", "add", as_bonus, Lifetime.TIMED,
+        _STORM_EAGLE_HASTE_SRC, expires_at_tick=ctx.current_tick + 2500,
+    ))
 
 
 ABILITY_META["champ_storm_eagle.active"] = AbilityMeta(
-    name="Lightning Dive", kind="active",
-    blurb="Dive the primary target for {damage} magic damage.",
-    terms=(STORM_EAGLE_DMG,),
-    clauses=(Clause(f"Chains to 2 nearby enemies for {int(_STORM_EAGLE_CHAIN_MULT * 100)}% damage."),),
-    tags=("magic", "aoe"),
+    name="Tailwind", kind="active",
+    blurb="Surge with a self attack-speed buff scaling on Intelligence ({haste}), "
+          "accelerating the lightning-fork autos.",
+    terms=(STORM_EAGLE_HASTE,), tags=("buff", "haste"),
 )
 
 
 # --- Aerion (T10, Primordial — Thunder) ---
 # Passive: when mana is full, autos trigger free casts
-AERION_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.8")
+AERION_BONUS = ScalingTerm("bonus", 0.0, "intelligence*1.26")
 
 
 @register_passive("champ_aerion.passive")
@@ -2928,7 +3152,7 @@ def aerion_passive(owner: Any) -> EffectBundle:
         # If mana is near-full, grant bonus damage (simulates free cast)
         if owner.actives:
             slot = owner.actives[0]
-            if slot.current_mana >= slot.cost * 0.9:
+            if slot.current_mana >= slot.mana_cost * 0.9:
                 ctx.deal_damage(owner, event.target, AERION_BONUS.eval(owner), SourceTag.ABILITY)
 
     return EffectBundle(hooks=[
@@ -2944,7 +3168,7 @@ ABILITY_META["champ_aerion.passive"] = AbilityMeta(
 
 
 # Active: board storm — massive AOE
-AERION_DMG = ScalingTerm("damage", 100.0, "strength*1.3+intelligence*1.3")
+AERION_DMG = ScalingTerm("damage", 100.0, "strength*1.04+intelligence*2.47")
 _AERION_AOE_MULT = 0.6
 
 
@@ -2954,7 +3178,7 @@ def aerion_active(ctx: Any, actor: Any, targets: list) -> None:
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 4, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount * _AERION_AOE_MULT, SourceTag.ABILITY)
-        ctx.apply_status(t, "charged", duration_ticks=200, source_id=actor.id)
+        ctx.apply_status(t, "charged", duration_ticks=secs(4), source_id=actor.id)
 
 
 ABILITY_META["champ_aerion.active"] = AbilityMeta(

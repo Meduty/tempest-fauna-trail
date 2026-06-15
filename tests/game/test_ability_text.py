@@ -30,6 +30,7 @@ from src.game.content import (
     ENEMY_ROSTER,
     _CHAMPION_DEFS,
     _ENEMY_DEFS,
+    discover_abilities,
 )
 from src.game.registries import ABILITY_META, _eval_scaling
 
@@ -37,11 +38,11 @@ SNAPSHOT_PATH = Path(__file__).parent / "ability_formulas.snapshot.json"
 
 # Champion roster ability-id coverage set (the V.38 guarantee for T.34a).
 CHAMPION_IDS = sorted(
-    {a for d in _CHAMPION_DEFS for a in (d.active_ability, d.passive_ability)}
+    {a for d in _CHAMPION_DEFS for a in (*discover_abilities(d.id), d.passive_ability)}
 )
 # Enemy roster ability-id coverage set (T.34b).
 ENEMY_IDS = sorted(
-    {a for d in _ENEMY_DEFS for a in (d.active_ability, d.passive_ability)}
+    {a for d in _ENEMY_DEFS for a in (*discover_abilities(d.id), d.passive_ability)}
 )
 
 # Boss ability-id coverage set (T.34c) — V.15 field-set over all 6 BossDdefs.
@@ -81,7 +82,7 @@ def _source_for(ability_id: str) -> object:
         return _BOSS_SHEETS[ability_id]
     return next(
         s for s in _ALL_SHEETS.values()
-        if ability_id in (s.active_ability, s.passive_ability)
+        if ability_id in (*s.active_abilities, s.passive_ability)
     )
 
 
@@ -109,13 +110,14 @@ def test_all_boss_abilities_have_meta() -> None:
 
 
 def test_champion_id_count() -> None:
-    # 60 champions x (active + passive) = 120 ids (content budget).
-    assert len(CHAMPION_IDS) == 120
+    # 60 champions x (active + passive) = 120, + 6 T.29d Multicaster `.active2`
+    # secondaries = 126 ids.
+    assert len(CHAMPION_IDS) == 126
 
 
 def test_enemy_id_count() -> None:
-    # 60 enemies x (active + passive) = 120 ids.
-    assert len(ENEMY_IDS) == 120
+    # 60 enemies x (active + passive) = 120, + 3 T.29d `.active2` secondaries = 123.
+    assert len(ENEMY_IDS) == 123
 
 
 def test_boss_id_count() -> None:
@@ -136,9 +138,12 @@ def test_render_smoke_against_sheet(ability_id: str) -> None:
     assert r.name, f"{ability_id} has empty name"
     assert r.text, f"{ability_id} has empty text"
     assert not re.search(r"\{\w+\}", r.text), f"{ability_id} left an unfilled token: {r.text!r}"
-    # formula has one line per term; each line starts with a rounded int.
+    # formula has one line per term: a "N = …" total, or a SetByCaller rate
+    # line ("5 per stacks") whose magnitude has no pre-combat total.
     for line in (r.formula.splitlines() if r.formula else []):
-        assert re.match(r"^-?\d+ = ", line), f"{ability_id} malformed formula line: {line!r}"
+        assert re.match(r"^-?\d+ = ", line) or " per " in line, (
+            f"{ability_id} malformed formula line: {line!r}"
+        )
 
 
 def test_render_against_live_piece() -> None:
@@ -175,7 +180,7 @@ def test_term_numbers_match_eval_scaling() -> None:
     for aid in sampled:
         champ = next(
             c for c in CHAMPION_ROSTER.values()
-            if aid in (c.active_ability, c.passive_ability)
+            if aid in (*c.active_abilities, c.passive_ability)
         )
         meta = ABILITY_META[aid]
         for term in meta.terms:
@@ -272,3 +277,100 @@ def test_formula_snapshot() -> None:
     assert SNAPSHOT_PATH.exists(), "run with UPDATE_ABILITY_SNAPSHOT=1 to create it"
     golden = json.loads(SNAPSHOT_PATH.read_text())
     assert current == golden, "rendered formulas drifted from golden snapshot"
+
+
+# ---------------------------------------------------------------------------
+# A2 orphan-stat-read guard (V.46) — no handler reads a stat outside a Magnitude
+# ---------------------------------------------------------------------------
+import ast  # noqa: E402
+import inspect  # noqa: E402
+import textwrap  # noqa: E402
+
+from src.game.registries import (  # noqa: E402
+    ABILITY_REGISTRY,
+    MaxOfTerm,
+    PASSIVE_REGISTRY,
+    PctResource,
+    ScalingTerm,
+    _STAT_ALIASES,
+)
+
+# Ability ids whose handler reads a stat/max_hp that is *intentionally* not a
+# rendered Magnitude — each with a reason. V.46 escape hatch (A3).
+_PROSE_ALLOWLIST: dict[str, str] = {
+    # Flat max_hp GROWTH (resource mutation, not a stat-scaled outlet): the
+    # handler reads `.max_hp` only inside `min(hp + flat, max_hp)` reconciliation.
+    "champ_snowpelt_cub.passive": "flat +30 max_hp growth per cadence",
+    "champ_glacierback_mammoth.passive": "flat +40 max_hp growth per cadence",
+    "enemy_levyman.passive": "flat +25 max_hp growth per cadence",
+}
+
+
+def _covered_stats(meta) -> set[str]:
+    """Canonical stat names a meta's Magnitudes (headline + clause-terms) cover."""
+    cov: set[str] = set()
+
+    def add(t) -> None:
+        if isinstance(t, ScalingTerm):
+            expr = (t.scaling or "").replace("-", "+-")
+            for part in expr.split("+"):
+                if "*" in part:
+                    nm = part.split("*", 1)[0].strip()
+                    cov.add(_STAT_ALIASES.get(nm, nm))
+        elif isinstance(t, MaxOfTerm):
+            for s in t.stats:
+                cov.add(_STAT_ALIASES.get(s, s))
+        elif isinstance(t, PctResource):
+            cov.add(t.resource)
+        # SetByCaller covers a runtime key, no stat.
+
+    for t in meta.terms:
+        add(t)
+    for c in meta.clauses:
+        for t in c.terms:
+            add(t)
+    return cov
+
+
+def _handler_stat_reads(fn) -> set[str]:
+    """Canonical stats a handler reads via `.stat("lit")` or `.max_hp` (AST)."""
+    try:
+        src = textwrap.dedent(inspect.getsource(fn))
+    except (OSError, TypeError):
+        return set()
+    reads: set[str] = set()
+    for node in ast.walk(ast.parse(src)):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "stat"
+            and node.args
+            and isinstance(node.args[0], ast.Constant)
+            and isinstance(node.args[0].value, str)
+        ):
+            reads.add(_STAT_ALIASES.get(node.args[0].value, node.args[0].value))
+        # Only a *read* (Load) of `.max_hp` is a scaling source; assignment
+        # targets (`clone.max_hp = ...` reconciliation) are Store and don't count.
+        if (
+            isinstance(node, ast.Attribute)
+            and node.attr == "max_hp"
+            and isinstance(node.ctx, ast.Load)
+        ):
+            reads.add("max_hp")
+    return reads
+
+
+def test_no_orphan_stat_reads() -> None:
+    """V.46 — every handler stat/max_hp read is a Magnitude or allowlisted."""
+    offenders: dict[str, set[str]] = {}
+    for aid, meta in ABILITY_META.items():
+        fn = ABILITY_REGISTRY.get(aid) or PASSIVE_REGISTRY.get(aid)
+        if fn is None:
+            continue
+        orphans = _handler_stat_reads(fn) - _covered_stats(meta)
+        if orphans and aid not in _PROSE_ALLOWLIST:
+            offenders[aid] = orphans
+    assert not offenders, (
+        "handlers read stats outside a Magnitude (V.46) — convert to a Magnitude "
+        f"or add to _PROSE_ALLOWLIST with a reason:\n{json.dumps({k: sorted(v) for k, v in offenders.items()}, indent=2)}"
+    )

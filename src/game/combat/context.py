@@ -296,9 +296,16 @@ class CombatContext:
         return final
 
     def heal(self, source: Piece, target: Piece, amount: float) -> float:
-        """Heal a target. Returns actual amount healed."""
+        """Heal a target. Returns actual amount healed.
+
+        Antiheal (V): a `grievous` target receives reduced healing
+        (GRIEVOUS_HEAL_MULT) — the grievous-wounds primitive (Bramble/Witherbloom).
+        """
         if not target.alive:
             return 0.0
+        if target.has_status("grievous"):
+            from src.game.status import GRIEVOUS_HEAL_MULT
+            amount *= GRIEVOUS_HEAL_MULT
         actual = min(amount, target.max_hp - target.hp)
         target.hp += actual
         event = HealEvent(source=source, target=target, amount=actual)
@@ -399,7 +406,7 @@ class CombatContext:
         # Calculate auto damage
         str_val = attacker.stat("strength")
         int_val = attacker.stat("intelligence")
-        raw = (1.0 * str_val + 0.2 * int_val) * mult
+        raw = (1.0 * str_val + 0.25 * int_val) * mult
 
         # Deal damage
         final = self.deal_damage(attacker, target, raw, SourceTag.BASIC_ATTACK, damage_type="physical")
@@ -445,14 +452,12 @@ class CombatContext:
         self._current_cast_id = old_cast_id
 
     def gain_mana(self, actor: Piece, amount: float) -> None:
-        """Add mana to ALL of actor's active slots (separate pools)."""
-        for slot in actor.actives:
-            slot.current_mana = min(slot.cost, slot.current_mana + amount)
+        """Add mana to ALL of actor's active slots (separate pools).
 
-    def spend_mana(self, actor: Piece, slot_idx: int) -> None:
-        """Reset mana on a specific slot after casting."""
-        if slot_idx < len(actor.actives):
-            actor.actives[slot_idx].current_mana = 0.0
+        Clamps to `max_mana` (the universal cap, V.48) so granted mana can bank
+        into the overload headroom, not just to `mana_cost`."""
+        for slot in actor.actives:
+            slot.current_mana = min(float(slot.max_mana), slot.current_mana + amount)
 
     def teleport(self, actor: Piece, dest_q: int, dest_r: int) -> None:
         """Move piece to destination instantly."""

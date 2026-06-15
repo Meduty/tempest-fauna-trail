@@ -218,7 +218,7 @@ class TestPhaseHook:
     def test_grants_ability_below_50_pct(self):
         boss = _make_piece("boss", hp=1000.0)
         boss.max_hp = 1000.0
-        boss.actives = [ActiveSlot("smash", cost=36_000)]
+        boss.actives = [ActiveSlot("smash", mana_cost=36_000)]
 
         ctx = _make_ctx(team=[boss], enemies=[_make_piece("e", is_enemy=True)])
 
@@ -242,7 +242,7 @@ class TestPhaseHook:
         """Phase hook fires only once."""
         boss = _make_piece("boss", hp=1000.0)
         boss.max_hp = 1000.0
-        boss.actives = [ActiveSlot("smash", cost=36_000)]
+        boss.actives = [ActiveSlot("smash", mana_cost=36_000)]
 
         ctx = _make_ctx(team=[boss], enemies=[_make_piece("e", is_enemy=True)])
 
@@ -454,9 +454,9 @@ class TestCombatLoop:
     def test_simple_combat_resolves(self):
         """Two pieces fight; one should win."""
         team_piece = _make_piece("hero", hp=500.0, strength=80.0)
-        team_piece.actives = [ActiveSlot("smash", cost=100, current_mana=0.0)]
+        team_piece.actives = [ActiveSlot("smash", mana_cost=100, current_mana=0.0)]
         enemy_piece = _make_piece("baddie", hp=300.0, strength=30.0, is_enemy=True)
-        enemy_piece.actives = [ActiveSlot("smash", cost=100, current_mana=0.0)]
+        enemy_piece.actives = [ActiveSlot("smash", mana_cost=100, current_mana=0.0)]
 
         bus = EventBus()
         ctx = CombatContext([team_piece, enemy_piece], bus, WeatherState.CLEAR, seed=42)
@@ -468,7 +468,7 @@ class TestCombatLoop:
     def test_status_gates_prevent_casting(self):
         """Silenced piece should not cast."""
         piece = _make_piece("caster")
-        piece.actives = [ActiveSlot("smash", cost=10, current_mana=10.0)]
+        piece.actives = [ActiveSlot("smash", mana_cost=10, current_mana=10.0)]
         piece.statuses.append(StatusInstance("silence", remaining_ticks=100))
 
         ctx = _make_ctx(team=[piece], enemies=[_make_piece("e", is_enemy=True)])
@@ -492,7 +492,7 @@ class TestLoadout:
             role="tank", tier=1, level=1, max_hp=1000, strength=50,
             intelligence=30, attack_speed=100, move_speed=90, mana_regen=10,
             threat=60, armor=25, resistance=25, attack_range=1,
-            active_ability="smash", passive_ability="", ability_cost=36000,
+            active_abilities=["smash"], passive_ability="",
         )
         piece = piece_from_champion(champ)
         assert piece.id == "test_champ"
@@ -508,14 +508,14 @@ class TestLoadout:
             role="tank", tier=1, level=1, max_hp=1000, strength=50,
             intelligence=30, attack_speed=100, move_speed=90, mana_regen=10,
             threat=60, armor=25, resistance=25, attack_range=1,
-            active_ability="smash", passive_ability="", ability_cost=36000,
+            active_abilities=["smash"], passive_ability="",
         )
         enemy = Enemy(
             id="test_enemy", name="Baddie", affinity=WeatherState.RAIN,
             role="fighter", tier=1, level=1, max_hp=800, strength=40,
             intelligence=20, attack_speed=90, move_speed=80, mana_regen=8,
             threat=50, armor=20, resistance=20, attack_range=1,
-            active_ability="smash", passive_ability="", ability_cost=36000,
+            active_abilities=["smash"], passive_ability="",
         )
         pieces, bus, _ = compile_loadout([champ], [enemy], WeatherState.CLEAR)
         assert len(pieces) == 2
@@ -534,9 +534,9 @@ class TestDeterminism:
     def test_deterministic_combat(self):
         def run_combat():
             team_piece = _make_piece("hero", hp=500.0, strength=80.0)
-            team_piece.actives = [ActiveSlot("smash", cost=50, current_mana=0.0)]
+            team_piece.actives = [ActiveSlot("smash", mana_cost=50, current_mana=0.0)]
             enemy_piece = _make_piece("baddie", hp=300.0, strength=30.0, is_enemy=True)
-            enemy_piece.actives = [ActiveSlot("smash", cost=50, current_mana=0.0)]
+            enemy_piece.actives = [ActiveSlot("smash", mana_cost=50, current_mana=0.0)]
             bus = EventBus()
             ctx = CombatContext([team_piece, enemy_piece], bus, WeatherState.CLEAR, seed=42)
             winner = run(ctx)
@@ -564,14 +564,14 @@ class TestResolveCombatEntryPoint:
             role="tank", tier=1, level=1, max_hp=1000, strength=80,
             intelligence=30, attack_speed=100, move_speed=90, mana_regen=10,
             threat=60, armor=25, resistance=25, attack_range=1,
-            active_ability="smash", passive_ability="", ability_cost=36000,
+            active_abilities=["smash"], passive_ability="",
         )
         enemy = Enemy(
             id="test_enemy", name="Baddie", affinity=WeatherState.CLEAR,
             role="fighter", tier=1, level=1, max_hp=500, strength=30,
             intelligence=20, attack_speed=80, move_speed=80, mana_regen=8,
             threat=50, armor=20, resistance=20, attack_range=1,
-            active_ability="", passive_ability="", ability_cost=36000,
+            active_abilities=[], passive_ability="",
         )
         result = resolve_combat([champ], [enemy], WeatherState.CLEAR)
         assert result.outcome == CombatOutcome.WIN
@@ -650,11 +650,11 @@ class TestHierarchBarrier:
         ctx.bus.fire("on_death", DeathEvent(victim=hierarch, killer=ally), ctx=ctx)
 
         # 50 + INT(100)*2.0 = 250 barrier on the surviving ally
-        assert ally.barrier_total == 250.0
+        assert ally.barrier_total == 367.0
         # Duration = 600 * level(1); not expired yet at tick 0
         ctx.current_tick = 599
         expire_modifiers(ctx, [ally])
-        assert ally.barrier_total == 250.0
+        assert ally.barrier_total == 367.0
         ctx.current_tick = 600
         expire_modifiers(ctx, [ally])
         assert ally.barrier_total == 0.0
@@ -687,8 +687,8 @@ class TestGladeHeronRework:
         ctx = _make_ctx(team=[heron], enemies=[target])
 
         ABILITY_REGISTRY["champ_glade_heron.active"](ctx, heron, [])
-        # base 100 + INT(200)*0.8 = 260
-        assert heron.stat("attack_speed") == 260.0
+        # base 100 + INT(200)*1.15 = 330
+        assert heron.stat("attack_speed") == 352.0
 
     def test_active_refreshes_not_stacks(self):
         heron = self._heron(intelligence=200.0)
@@ -702,7 +702,7 @@ class TestGladeHeronRework:
         # Still a single haste modifier; AS not multiplied by recasts
         haste = [m for m in heron.modifiers if m.source_id == "ability:champ_glade_heron.haste"]
         assert len(haste) == 1
-        assert heron.stat("attack_speed") == 260.0
+        assert heron.stat("attack_speed") == 352.0
 
     def test_passive_applies_poison_per_auto(self):
         heron = self._heron()
@@ -735,9 +735,9 @@ class TestGladeHeronRework:
         # Pre-poison to 2 stacks; next auto adds the 3rd -> burst fires
         ctx.apply_status(target, "poison", duration_ticks=400, stacks=2, source_id=heron.id)
         ctx.bus.fire("on_attack_landed", AttackEvent(attacker=heron, target=target, amount=10.0), ctx=ctx)
-        # burst = INT(200)*0.2 = 40, res=0 -> full
+        # burst = INT(200)*0.29 = 58, res=0 -> full
         assert target.status_stacks("poison") == 3
-        assert target.hp == 5000.0 - 40.0
+        assert target.hp == 5000.0 - 64.0
 
 
 class TestGladeHeronFlatStacks:

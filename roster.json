@@ -1,0 +1,6264 @@
+{
+  "champions": [
+    {
+      "id": "champ_aegis_tortoise",
+      "name": "Aegis Tortoise",
+      "affinity": "clear",
+      "traits": [
+        "Scaled",
+        "Guardian"
+      ],
+      "role": "tank",
+      "role_code": "str-melee-tanky_arm-leaden-utility",
+      "intent": "utility",
+      "tier": 5,
+      "level": 1,
+      "max_hp": 926,
+      "strength": 92,
+      "intelligence": 8,
+      "attack_speed": 80.0128338686385,
+      "move_speed": 76,
+      "mana_regen": 117,
+      "threat": 100,
+      "armor": 108,
+      "resistance": 100,
+      "attack_range": 1,
+      "active_ability": "champ_aegis_tortoise.active",
+      "passive_ability": "champ_aegis_tortoise.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_aegis_tortoise.active",
+        "name": "Fortify",
+        "text": "Harden the shell for 6s. Gain +30 Armor and +30 Resistance.",
+        "formula": "",
+        "tags": [
+          "defense",
+          "buff"
+        ]
+      },
+      "passive": {
+        "id": "champ_aegis_tortoise.passive",
+        "name": "Bulwark Shell",
+        "text": "Reduces damage from adjacent attackers by 20%.",
+        "formula": "",
+        "tags": [
+          "defense"
+        ]
+      }
+    },
+    {
+      "id": "champ_aerion",
+      "name": "Aerion, the Skybreaker",
+      "affinity": "thunder",
+      "traits": [
+        "Skyborn",
+        "Primordial",
+        "Hunter"
+      ],
+      "role": "spellblade",
+      "role_code": "ranged-brisk",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 1527,
+      "strength": 134,
+      "intelligence": 134,
+      "attack_speed": 118.31232978239187,
+      "move_speed": 129,
+      "mana_regen": 120,
+      "threat": 72,
+      "armor": 57,
+      "resistance": 57,
+      "attack_range": 3,
+      "active_ability": "champ_aerion.active",
+      "passive_ability": "champ_aerion.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_aerion.active",
+        "name": "Board Storm",
+        "text": "Summon a storm over all enemies within 4 hexes, each taking 60% of 448 magic damage. (100 +130% STR +130% INT) Charges struck enemies for 2s.",
+        "formula": "448 = 100 + 130% STR + 130% INT  (STR 1.3×134, INT 1.3×134)",
+        "tags": [
+          "magic",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "champ_aerion.passive",
+        "name": "Overcharge",
+        "text": "While mana is near-full, auto-attacks unleash 107 bonus magic damage. (+80% INT)",
+        "formula": "107 = 80% INT  (INT 0.8×134)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "champ_aurion",
+      "name": "Aurion, the First Dawn",
+      "affinity": "clear",
+      "traits": [
+        "Spirit",
+        "Primordial",
+        "Channeler"
+      ],
+      "role": "spellblade",
+      "role_code": "ranged-steady",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 1527,
+      "strength": 150,
+      "intelligence": 150,
+      "attack_speed": 98.952130363455,
+      "move_speed": 110,
+      "mana_regen": 120,
+      "threat": 72,
+      "armor": 57,
+      "resistance": 57,
+      "attack_range": 3,
+      "active_ability": "champ_aurion.active",
+      "passive_ability": "champ_aurion.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_aurion.active",
+        "name": "Solar Nova",
+        "text": "Erupt for 550 magic damage to all enemies within 2 hexes. (100 +150% STR +150% INT) Disarms struck enemies for 2s.",
+        "formula": "550 = 100 + 150% STR + 150% INT  (STR 1.5×150, INT 1.5×150)",
+        "tags": [
+          "magic",
+          "aoe",
+          "disarm"
+        ]
+      },
+      "passive": {
+        "id": "champ_aurion.passive",
+        "name": "Ascendance",
+        "text": "Every 6s, permanently gain +15 Strength and +15 Intelligence.",
+        "formula": "",
+        "tags": [
+          "buff",
+          "scaling"
+        ]
+      }
+    },
+    {
+      "id": "champ_borealis",
+      "name": "Borealis, the Pale Aurora",
+      "affinity": "snow",
+      "traits": [
+        "Swarm",
+        "Primordial",
+        "Mystic"
+      ],
+      "role": "spellblade",
+      "role_code": "ranged-heavy",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 1527,
+      "strength": 158,
+      "intelligence": 158,
+      "attack_speed": 91.42316392275734,
+      "move_speed": 102,
+      "mana_regen": 120,
+      "threat": 72,
+      "armor": 57,
+      "resistance": 57,
+      "attack_range": 3,
+      "active_ability": "champ_borealis.active",
+      "passive_ability": "champ_borealis.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_borealis.active",
+        "name": "Blizzard",
+        "text": "Conjure a blizzard for 459 magic damage to all enemies within 3 hexes. (80 +120% STR +120% INT) Applies 2 stacks of slow for 3s.",
+        "formula": "459 = 80 + 120% STR + 120% INT  (STR 1.2×158, INT 1.2×158)",
+        "tags": [
+          "magic",
+          "aoe",
+          "slow"
+        ]
+      },
+      "passive": {
+        "id": "champ_borealis.passive",
+        "name": "Deep Freeze",
+        "text": "Every 6s, freezes the nearest enemy for 2s.",
+        "formula": "",
+        "tags": [
+          "freeze",
+          "control"
+        ]
+      }
+    },
+    {
+      "id": "champ_boulderhide_skink",
+      "name": "Boulderhide Skink",
+      "affinity": "cloudy",
+      "traits": [
+        "Scaled",
+        "Mystic",
+        "Packmate"
+      ],
+      "role": "mage",
+      "role_code": "str-ranged-squishy-ability-heavy-damage",
+      "intent": "damage",
+      "tier": 3,
+      "level": 1,
+      "max_hp": 425,
+      "strength": 171,
+      "intelligence": 17,
+      "attack_speed": 68.20773872780167,
+      "move_speed": 88,
+      "mana_regen": 140,
+      "threat": 34,
+      "armor": 16,
+      "resistance": 16,
+      "attack_range": 3,
+      "active_ability": "champ_boulderhide_skink.active",
+      "passive_ability": "champ_boulderhide_skink.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_boulderhide_skink.active",
+        "name": "Rolling Boulder",
+        "text": "Roll a boulder into the primary target for 368 physical damage. (60 +180% STR) One enemy in the line takes 50% damage.",
+        "formula": "368 = 60 + 180% STR  (STR 1.8×171)",
+        "tags": [
+          "physical",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "champ_boulderhide_skink.passive",
+        "name": "Pebbled Hide",
+        "text": "Grants +5 Armor for the whole battle.",
+        "formula": "",
+        "tags": [
+          "defense"
+        ]
+      }
+    },
+    {
+      "id": "champ_cliffeyrie_eagle",
+      "name": "Cliffeyrie Eagle",
+      "affinity": "cloudy",
+      "traits": [
+        "Skyborn",
+        "Hunter"
+      ],
+      "role": "marksman",
+      "role_code": "str-ranged-auto-speedy-damage",
+      "intent": "damage",
+      "tier": 9,
+      "level": 1,
+      "max_hp": 1306,
+      "strength": 220,
+      "intelligence": 27,
+      "attack_speed": 172.7236453318168,
+      "move_speed": 135,
+      "mana_regen": 68,
+      "threat": 65,
+      "armor": 49,
+      "resistance": 49,
+      "attack_range": 3,
+      "active_ability": "champ_cliffeyrie_eagle.active",
+      "passive_ability": "champ_cliffeyrie_eagle.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_cliffeyrie_eagle.active",
+        "name": "Diving Talon",
+        "text": "Dive the primary target for 564 physical damage. (80 +220% STR)",
+        "formula": "564 = 80 + 220% STR  (STR 2.2×220)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "champ_cliffeyrie_eagle.passive",
+        "name": "Talon Dive",
+        "text": "The first auto-attack deals 330 bonus physical damage. (+150% STR)",
+        "formula": "330 = 150% STR  (STR 1.5×220)",
+        "tags": [
+          "physical"
+        ]
+      }
+    },
+    {
+      "id": "champ_coppercrest_stork",
+      "name": "Coppercrest Stork",
+      "affinity": "thunder",
+      "traits": [
+        "Skyborn",
+        "Warden"
+      ],
+      "role": "support",
+      "role_code": "int-ranged-ability-speedy-utility",
+      "intent": "utility",
+      "tier": 4,
+      "level": 1,
+      "max_hp": 825,
+      "strength": 13,
+      "intelligence": 108,
+      "attack_speed": 75.6425152795487,
+      "move_speed": 122,
+      "mana_regen": 189,
+      "threat": 60,
+      "armor": 30,
+      "resistance": 30,
+      "attack_range": 3,
+      "active_ability": "champ_coppercrest_stork.active",
+      "passive_ability": "champ_coppercrest_stork.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_coppercrest_stork.active",
+        "name": "Copper Ward",
+        "text": "Shield the lowest-HP ally with +50 Armor for 4s.",
+        "formula": "",
+        "tags": [
+          "defense",
+          "buff"
+        ]
+      },
+      "passive": {
+        "id": "champ_coppercrest_stork.passive",
+        "name": "Conductive Plumage",
+        "text": "Grants +10 Resistance for the whole battle.",
+        "formula": "",
+        "tags": [
+          "defense"
+        ]
+      }
+    },
+    {
+      "id": "champ_coral_colossus",
+      "name": "Coral Colossus",
+      "affinity": "rain",
+      "traits": [
+        "Tidekin",
+        "Guardian",
+        "Mender"
+      ],
+      "role": "tank",
+      "role_code": "str-melee-tanky_hp-leaden-utility",
+      "intent": "utility",
+      "tier": 5,
+      "level": 1,
+      "max_hp": 1852,
+      "strength": 92,
+      "intelligence": 8,
+      "attack_speed": 80.0128338686385,
+      "move_speed": 76,
+      "mana_regen": 117,
+      "threat": 100,
+      "armor": 43,
+      "resistance": 40,
+      "attack_range": 1,
+      "active_ability": "champ_coral_colossus.active",
+      "passive_ability": "champ_coral_colossus.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_coral_colossus.active",
+        "name": "Shell Bastion",
+        "text": "Withdraw into the shell for 3s, becoming nearly invulnerable. Gain +200 Armor and +200 Resistance.",
+        "formula": "",
+        "tags": [
+          "defense",
+          "buff"
+        ]
+      },
+      "passive": {
+        "id": "champ_coral_colossus.passive",
+        "name": "Coral Mend",
+        "text": "Regenerates rapidly while wounded. Below 40% HP, heals 4% of max HP every 2s.",
+        "formula": "",
+        "tags": [
+          "heal"
+        ]
+      }
+    },
+    {
+      "id": "champ_dawnwisp",
+      "name": "Dawnwisp",
+      "affinity": "clear",
+      "traits": [
+        "Spirit",
+        "Mender"
+      ],
+      "role": "support",
+      "role_code": "int-ranged-ability-utility",
+      "intent": "utility",
+      "tier": 1,
+      "level": 1,
+      "max_hp": 583,
+      "strength": 9,
+      "intelligence": 85,
+      "attack_speed": 64.8,
+      "move_speed": 100,
+      "mana_regen": 162,
+      "threat": 56,
+      "armor": 21,
+      "resistance": 21,
+      "attack_range": 3,
+      "active_ability": "champ_dawnwisp.active",
+      "passive_ability": "champ_dawnwisp.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_dawnwisp.active",
+        "name": "Knit Wound",
+        "text": "Mend the lowest-HP ally for 252. (40 +250% INT)",
+        "formula": "252 = 40 + 250% INT  (INT 2.5×85)",
+        "tags": [
+          "heal"
+        ]
+      },
+      "passive": {
+        "id": "champ_dawnwisp.passive",
+        "name": "Lingering Light",
+        "text": "Each of your heals also restores 26 to its target. (+30% INT)",
+        "formula": "26 = 30% INT  (INT 0.3×85)",
+        "tags": [
+          "heal"
+        ]
+      }
+    },
+    {
+      "id": "champ_dusk_bat",
+      "name": "Dusk Bat",
+      "affinity": "cloudy",
+      "traits": [
+        "Swarm",
+        "Trickster",
+        "Hunter"
+      ],
+      "role": "support",
+      "role_code": "int-ranged-ability-blinding-utility",
+      "intent": "utility",
+      "tier": 2,
+      "level": 1,
+      "max_hp": 655,
+      "strength": 11,
+      "intelligence": 78,
+      "attack_speed": 77.66266619967794,
+      "move_speed": 127,
+      "mana_regen": 194,
+      "threat": 57,
+      "armor": 24,
+      "resistance": 24,
+      "attack_range": 3,
+      "active_ability": "champ_dusk_bat.active",
+      "passive_ability": "champ_dusk_bat.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_dusk_bat.active",
+        "name": "Blinding Screech",
+        "text": "Blind the primary target, cutting 30 Attack Speed for 4s.",
+        "formula": "",
+        "tags": [
+          "debuff",
+          "control"
+        ]
+      },
+      "passive": {
+        "id": "champ_dusk_bat.passive",
+        "name": "Nightwing",
+        "text": "Grants +10 Move Speed for the whole battle.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_duskstep_marten",
+      "name": "Duskstep Marten",
+      "affinity": "cloudy",
+      "traits": [
+        "Beast",
+        "Skirmisher"
+      ],
+      "role": "assassin",
+      "role_code": "int-melee-ability-blinding-damage",
+      "intent": "damage",
+      "tier": 5,
+      "level": 1,
+      "max_hp": 914,
+      "strength": 17,
+      "intelligence": 127,
+      "attack_speed": 110.17392163552763,
+      "move_speed": 135,
+      "mana_regen": 185,
+      "threat": 51,
+      "armor": 50,
+      "resistance": 46,
+      "attack_range": 1,
+      "active_ability": "champ_duskstep_marten.active",
+      "passive_ability": "champ_duskstep_marten.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_duskstep_marten.active",
+        "name": "Shadow Strike",
+        "text": "Strike the lowest-HP enemy for 324 magic damage. (70 +200% INT)",
+        "formula": "324 = 70 + 200% INT  (INT 2×127)",
+        "tags": [
+          "magic"
+        ]
+      },
+      "passive": {
+        "id": "champ_duskstep_marten.passive",
+        "name": "Shadow Step",
+        "text": "Every 4th auto-attack blinks behind the target for 76 bonus magic damage. (+60% INT)",
+        "formula": "76 = 60% INT  (INT 0.6×127)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "champ_eclipse_jaguar",
+      "name": "Eclipse Jaguar",
+      "affinity": "cloudy",
+      "traits": [
+        "Beast",
+        "Channeler"
+      ],
+      "role": "spellblade",
+      "role_code": "ranged-blinding",
+      "intent": "hybrid",
+      "tier": 7,
+      "level": 1,
+      "max_hp": 1080,
+      "strength": 82,
+      "intelligence": 82,
+      "attack_speed": 136.8273195452814,
+      "move_speed": 141,
+      "mana_regen": 113,
+      "threat": 68,
+      "armor": 40,
+      "resistance": 40,
+      "attack_range": 3,
+      "active_ability": "champ_eclipse_jaguar.active",
+      "passive_ability": "champ_eclipse_jaguar.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_eclipse_jaguar.active",
+        "name": "Twin Strike",
+        "text": "Strike the primary target twice: 173 physical and 173 magic damage. (50 +150% STR; 50 +150% INT)",
+        "formula": "173 = 50 + 150% STR  (STR 1.5×82)\n173 = 50 + 150% INT  (INT 1.5×82)",
+        "tags": [
+          "physical",
+          "magic"
+        ]
+      },
+      "passive": {
+        "id": "champ_eclipse_jaguar.passive",
+        "name": "Eclipse Rhythm",
+        "text": "Auto-attacks alternate bonus damage: 25 physical on odd hits, 33 magic on even hits. (+30% STR; +40% INT)",
+        "formula": "25 = 30% STR  (STR 0.3×82)\n33 = 40% INT  (INT 0.4×82)",
+        "tags": [
+          "physical",
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "champ_ember_salamander",
+      "name": "Ember Salamander",
+      "affinity": "clear",
+      "traits": [
+        "Scaled",
+        "Mystic"
+      ],
+      "role": "mage",
+      "role_code": "int-ranged-squishy-ability-steady-damage",
+      "intent": "damage",
+      "tier": 3,
+      "level": 1,
+      "max_hp": 425,
+      "strength": 17,
+      "intelligence": 162,
+      "attack_speed": 70.78857208506983,
+      "move_speed": 96,
+      "mana_regen": 145,
+      "threat": 34,
+      "armor": 16,
+      "resistance": 16,
+      "attack_range": 3,
+      "active_ability": "champ_ember_salamander.active",
+      "passive_ability": "champ_ember_salamander.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_ember_salamander.active",
+        "name": "Kindling Light",
+        "text": "Sear the primary target for 352 magic damage. (60 +180% INT) Sets the target burning for 3s.",
+        "formula": "352 = 60 + 180% INT  (INT 1.8×162)",
+        "tags": [
+          "magic",
+          "burn"
+        ]
+      },
+      "passive": {
+        "id": "champ_ember_salamander.passive",
+        "name": "Smoldering Strikes",
+        "text": "Auto-attacks against burning targets deal 49 bonus magic damage. (+30% INT)",
+        "formula": "49 = 30% INT  (INT 0.3×162)",
+        "tags": [
+          "magic",
+          "burn"
+        ]
+      }
+    },
+    {
+      "id": "champ_fogveil_moth",
+      "name": "Fogveil Moth",
+      "affinity": "mist",
+      "traits": [
+        "Swarm",
+        "Trickster"
+      ],
+      "role": "support",
+      "role_code": "int-ranged-ability-utility",
+      "intent": "utility",
+      "tier": 5,
+      "level": 1,
+      "max_hp": 926,
+      "strength": 15,
+      "intelligence": 134,
+      "attack_speed": 70.14112059913114,
+      "move_speed": 108,
+      "mana_regen": 175,
+      "threat": 61,
+      "armor": 33,
+      "resistance": 33,
+      "attack_range": 3,
+      "active_ability": "champ_fogveil_moth.active",
+      "passive_ability": "champ_fogveil_moth.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_fogveil_moth.active",
+        "name": "Shroud",
+        "text": "Shroud the primary target for 191 magic damage and cut 35 Attack Speed for 5s. (30 +120% INT)",
+        "formula": "191 = 30 + 120% INT  (INT 1.2×134)",
+        "tags": [
+          "magic",
+          "debuff"
+        ]
+      },
+      "passive": {
+        "id": "champ_fogveil_moth.passive",
+        "name": "Veiled Form",
+        "text": "Grants +10 Resistance for the whole battle.",
+        "formula": "",
+        "tags": [
+          "defense"
+        ]
+      }
+    },
+    {
+      "id": "champ_frostfang_wolverine",
+      "name": "Frostfang Wolverine",
+      "affinity": "snow",
+      "traits": [
+        "Beast",
+        "Stalker"
+      ],
+      "role": "swashbuckler",
+      "role_code": "str-melee-squishy-auto-blinding-damage",
+      "intent": "damage",
+      "tier": 8,
+      "level": 1,
+      "max_hp": 840,
+      "strength": 224,
+      "intelligence": 30,
+      "attack_speed": 232.83864852654543,
+      "move_speed": 144,
+      "mana_regen": 67,
+      "threat": 44,
+      "armor": 46,
+      "resistance": 42,
+      "attack_range": 1,
+      "active_ability": "champ_frostfang_wolverine.active",
+      "passive_ability": "champ_frostfang_wolverine.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_frostfang_wolverine.active",
+        "name": "Frozen Leap",
+        "text": "Leap onto the primary target for 583 physical damage (always crits). (90 +220% STR) Deals +50% to frozen or slowed targets.",
+        "formula": "583 = 90 + 220% STR  (STR 2.2×224)",
+        "tags": [
+          "physical",
+          "crit"
+        ]
+      },
+      "passive": {
+        "id": "champ_frostfang_wolverine.passive",
+        "name": "Frenzy",
+        "text": "Each kill grants +20 Attack Speed for the rest of the battle.",
+        "formula": "",
+        "tags": [
+          "buff",
+          "scaling"
+        ]
+      }
+    },
+    {
+      "id": "champ_frostplate_tortoise",
+      "name": "Frostplate Tortoise",
+      "affinity": "snow",
+      "traits": [
+        "Scaled",
+        "Guardian"
+      ],
+      "role": "tank",
+      "role_code": "str-melee-tanky_arm-heavy-utility",
+      "intent": "utility",
+      "tier": 5,
+      "level": 1,
+      "max_hp": 926,
+      "strength": 83,
+      "intelligence": 8,
+      "attack_speed": 97.15844112620388,
+      "move_speed": 92,
+      "mana_regen": 117,
+      "threat": 100,
+      "armor": 108,
+      "resistance": 100,
+      "attack_range": 1,
+      "active_ability": "champ_frostplate_tortoise.active",
+      "passive_ability": "champ_frostplate_tortoise.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_frostplate_tortoise.active",
+        "name": "Ice Slam",
+        "text": "Slam the primary target for 193 physical damage. (60 +160% STR) Roots for 2s.",
+        "formula": "193 = 60 + 160% STR  (STR 1.6×83)",
+        "tags": [
+          "physical",
+          "root"
+        ]
+      },
+      "passive": {
+        "id": "champ_frostplate_tortoise.passive",
+        "name": "Rimeplate",
+        "text": "Each hit taken grants +5 Armor for 6s, stacking.",
+        "formula": "",
+        "tags": [
+          "defense"
+        ]
+      }
+    },
+    {
+      "id": "champ_frostquill_porcupine",
+      "name": "Frostquill Porcupine",
+      "affinity": "snow",
+      "traits": [
+        "Swarm",
+        "Hunter",
+        "Trickster"
+      ],
+      "role": "marksman",
+      "role_code": "str-ranged-auto-brisk-damage",
+      "intent": "damage",
+      "tier": 9,
+      "level": 1,
+      "max_hp": 1306,
+      "strength": 233,
+      "intelligence": 27,
+      "attack_speed": 158.3300082208321,
+      "move_speed": 127,
+      "mana_regen": 68,
+      "threat": 65,
+      "armor": 49,
+      "resistance": 49,
+      "attack_range": 3,
+      "active_ability": "champ_frostquill_porcupine.active",
+      "passive_ability": "champ_frostquill_porcupine.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_frostquill_porcupine.active",
+        "name": "Quill Volley",
+        "text": "Loose quills at the primary target for 489 physical damage. (70 +180% STR) Up to 2 nearby enemies take 50% splash; all hit are slowed.",
+        "formula": "489 = 70 + 180% STR  (STR 1.8×233)",
+        "tags": [
+          "physical",
+          "aoe",
+          "slow"
+        ]
+      },
+      "passive": {
+        "id": "champ_frostquill_porcupine.passive",
+        "name": "Chill Quills",
+        "text": "Auto-attacks slow for 1.5s and deal 58 bonus physical damage to slowed targets. (+25% STR)",
+        "formula": "58 = 25% STR  (STR 0.25×233)",
+        "tags": [
+          "physical",
+          "slow"
+        ]
+      }
+    },
+    {
+      "id": "champ_geode_beetle",
+      "name": "Geode Beetle",
+      "affinity": "cloudy",
+      "traits": [
+        "Swarm",
+        "Warden"
+      ],
+      "role": "support",
+      "role_code": "int-ranged-ability-heavy-utility",
+      "intent": "utility",
+      "tier": 4,
+      "level": 1,
+      "max_hp": 825,
+      "strength": 13,
+      "intelligence": 134,
+      "attack_speed": 63.60847875780232,
+      "move_speed": 90,
+      "mana_regen": 159,
+      "threat": 60,
+      "armor": 30,
+      "resistance": 30,
+      "attack_range": 3,
+      "active_ability": "champ_geode_beetle.active",
+      "passive_ability": "champ_geode_beetle.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_geode_beetle.active",
+        "name": "Geode Ward",
+        "text": "Shield the lowest-HP ally with +80 Armor and +40 Resistance for 4s.",
+        "formula": "",
+        "tags": [
+          "defense",
+          "buff"
+        ]
+      },
+      "passive": {
+        "id": "champ_geode_beetle.passive",
+        "name": "Crystal Carapace",
+        "text": "Grants +10 Armor for the whole battle.",
+        "formula": "",
+        "tags": [
+          "defense"
+        ]
+      }
+    },
+    {
+      "id": "champ_glacierback_mammoth",
+      "name": "Glacierback Mammoth",
+      "affinity": "snow",
+      "traits": [
+        "Beast",
+        "Bruiser"
+      ],
+      "role": "tank",
+      "role_code": "melee-tanky_hp-heavy",
+      "intent": "hybrid",
+      "tier": 7,
+      "level": 1,
+      "max_hp": 2160,
+      "strength": 62,
+      "intelligence": 62,
+      "attack_speed": 105.2950977570684,
+      "move_speed": 96,
+      "mana_regen": 113,
+      "threat": 95,
+      "armor": 52,
+      "resistance": 48,
+      "attack_range": 1,
+      "active_ability": "champ_glacierback_mammoth.active",
+      "passive_ability": "champ_glacierback_mammoth.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_glacierback_mammoth.active",
+        "name": "Knockback Stomp",
+        "text": "Stomp for 204 physical damage to all adjacent enemies. (80 +200% STR) Stuns struck enemies for 1s.",
+        "formula": "204 = 80 + 200% STR  (STR 2×62)",
+        "tags": [
+          "physical",
+          "aoe",
+          "stun"
+        ]
+      },
+      "passive": {
+        "id": "champ_glacierback_mammoth.passive",
+        "name": "Ancient Bulk",
+        "text": "Grows mightier as the battle drags on. Every 6s, gain +40 max HP (healing 40) and +10 Strength.",
+        "formula": "",
+        "tags": [
+          "scaling",
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_glade_heron",
+      "name": "Glade Heron",
+      "affinity": "rain",
+      "traits": [
+        "Skyborn",
+        "Hunter",
+        "Trickster"
+      ],
+      "role": "mage",
+      "role_code": "int-ranged-ability-steady-damage",
+      "intent": "damage",
+      "tier": 8,
+      "level": 1,
+      "max_hp": 1164,
+      "strength": 24,
+      "intelligence": 231,
+      "attack_speed": 78.15563027464461,
+      "move_speed": 106,
+      "mana_regen": 160,
+      "threat": 54,
+      "armor": 44,
+      "resistance": 84,
+      "attack_range": 3,
+      "active_ability": "champ_glade_heron.active",
+      "passive_ability": "champ_glade_heron.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_glade_heron.active",
+        "name": "Quickening",
+        "text": "Gain +185 Attack Speed for 25s, out-pacing poison decay. (+80% INT)",
+        "formula": "185 = 80% INT  (INT 0.8×231)",
+        "tags": [
+          "buff"
+        ]
+      },
+      "passive": {
+        "id": "champ_glade_heron.passive",
+        "name": "Venom Tip",
+        "text": "Each auto-attack applies a stack of poison for 4s. (+20% INT) Against targets with 3+ poison stacks, autos also deal 46 bonus magic damage.",
+        "formula": "46 = 20% INT  (INT 0.2×231)",
+        "tags": [
+          "poison",
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "champ_goldcrest_lark",
+      "name": "Goldcrest Lark",
+      "affinity": "clear",
+      "traits": [
+        "Skyborn",
+        "Warden"
+      ],
+      "role": "support",
+      "role_code": "int-ranged-ability-utility",
+      "intent": "utility",
+      "tier": 4,
+      "level": 1,
+      "max_hp": 825,
+      "strength": 13,
+      "intelligence": 120,
+      "attack_speed": 68.76592298140791,
+      "move_speed": 106,
+      "mana_regen": 172,
+      "threat": 60,
+      "armor": 30,
+      "resistance": 30,
+      "attack_range": 3,
+      "active_ability": "champ_goldcrest_lark.active",
+      "passive_ability": "champ_goldcrest_lark.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_goldcrest_lark.active",
+        "name": "Rallying Song",
+        "text": "Empower the whole team for 6s. Allies gain +20 Strength and +20% Attack Speed.",
+        "formula": "",
+        "tags": [
+          "buff",
+          "team"
+        ]
+      },
+      "passive": {
+        "id": "champ_goldcrest_lark.passive",
+        "name": "Dawn Chorus",
+        "text": "Grants +10 Intelligence for the whole battle.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_goldhide_rhino",
+      "name": "Goldhide Rhino",
+      "affinity": "clear",
+      "traits": [
+        "Scaled",
+        "Bruiser",
+        "Mender"
+      ],
+      "role": "tank",
+      "role_code": "melee-tanky_hp-heavy",
+      "intent": "hybrid",
+      "tier": 7,
+      "level": 1,
+      "max_hp": 2160,
+      "strength": 62,
+      "intelligence": 62,
+      "attack_speed": 105.2950977570684,
+      "move_speed": 96,
+      "mana_regen": 113,
+      "threat": 95,
+      "armor": 52,
+      "resistance": 48,
+      "attack_range": 1,
+      "active_ability": "champ_goldhide_rhino.active",
+      "passive_ability": "champ_goldhide_rhino.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_goldhide_rhino.active",
+        "name": "Stampede",
+        "text": "Gore the primary target for 153 physical damage. (60 +150% STR) Heals you for 5% of max HP.",
+        "formula": "153 = 60 + 150% STR  (STR 1.5×62)",
+        "tags": [
+          "physical",
+          "heal"
+        ]
+      },
+      "passive": {
+        "id": "champ_goldhide_rhino.passive",
+        "name": "Thick Hide",
+        "text": "Each auto-attack heals you. Restores 3% of max HP per hit.",
+        "formula": "",
+        "tags": [
+          "heal"
+        ]
+      }
+    },
+    {
+      "id": "champ_granite_gorilla",
+      "name": "Granite Gorilla",
+      "affinity": "cloudy",
+      "traits": [
+        "Beast",
+        "Guardian"
+      ],
+      "role": "tank",
+      "role_code": "int-melee-tanky_hp-ability-leaden-utility",
+      "intent": "utility",
+      "tier": 6,
+      "level": 1,
+      "max_hp": 2078,
+      "strength": 9,
+      "intelligence": 104,
+      "attack_speed": 74.32607940962801,
+      "move_speed": 77,
+      "mana_regen": 152,
+      "threat": 87,
+      "armor": 49,
+      "resistance": 45,
+      "attack_range": 1,
+      "active_ability": "champ_granite_gorilla.active",
+      "passive_ability": "champ_granite_gorilla.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_granite_gorilla.active",
+        "name": "Ground Slam",
+        "text": "Slam the ground for 257 magic damage to all adjacent enemies. (70 +180% INT) Stuns struck enemies for 1s.",
+        "formula": "257 = 70 + 180% INT  (INT 1.8×104)",
+        "tags": [
+          "magic",
+          "aoe",
+          "stun"
+        ]
+      },
+      "passive": {
+        "id": "champ_granite_gorilla.passive",
+        "name": "Stone Recoil",
+        "text": "Returns a share of damage taken back to the attacker as magic damage. Reflects 15% of damage taken.",
+        "formula": "",
+        "tags": [
+          "magic",
+          "reflect"
+        ]
+      }
+    },
+    {
+      "id": "champ_grovekeeper_tapir",
+      "name": "Grovekeeper Tapir",
+      "affinity": "rain",
+      "traits": [
+        "Tidekin",
+        "Bruiser",
+        "Mender"
+      ],
+      "role": "tank",
+      "role_code": "melee-tanky_hp-leaden",
+      "intent": "hybrid",
+      "tier": 4,
+      "level": 1,
+      "max_hp": 1527,
+      "strength": 49,
+      "intelligence": 49,
+      "attack_speed": 81.71259366617916,
+      "move_speed": 74,
+      "mana_regen": 106,
+      "threat": 89,
+      "armor": 37,
+      "resistance": 34,
+      "attack_range": 1,
+      "active_ability": "champ_grovekeeper_tapir.active",
+      "passive_ability": "champ_grovekeeper_tapir.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_grovekeeper_tapir.active",
+        "name": "Vine Snare",
+        "text": "Snare the primary target for 138 hybrid damage. (40 +100% STR +100% INT) Roots for 2s and applies 2 stacks of poison for 4s.",
+        "formula": "138 = 40 + 100% STR + 100% INT  (STR 1×49, INT 1×49)",
+        "tags": [
+          "hybrid",
+          "root",
+          "poison"
+        ]
+      },
+      "passive": {
+        "id": "champ_grovekeeper_tapir.passive",
+        "name": "Verdant Renewal",
+        "text": "Regenerates health over time. Heals 2% of max HP every 3s.",
+        "formula": "",
+        "tags": [
+          "heal"
+        ]
+      }
+    },
+    {
+      "id": "champ_hoarfrost_owl",
+      "name": "Hoarfrost Owl",
+      "affinity": "snow",
+      "traits": [
+        "Skyborn",
+        "Warden"
+      ],
+      "role": "support",
+      "role_code": "int-ranged-ability-brisk-utility",
+      "intent": "utility",
+      "tier": 4,
+      "level": 1,
+      "max_hp": 825,
+      "strength": 13,
+      "intelligence": 114,
+      "attack_speed": 72.2042191304783,
+      "move_speed": 115,
+      "mana_regen": 181,
+      "threat": 60,
+      "armor": 30,
+      "resistance": 30,
+      "attack_range": 3,
+      "active_ability": "champ_hoarfrost_owl.active",
+      "passive_ability": "champ_hoarfrost_owl.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_hoarfrost_owl.active",
+        "name": "Ice Shield",
+        "text": "Shield the lowest-HP ally with +60 Armor for 4s and heal 201. (30 +150% INT)",
+        "formula": "201 = 30 + 150% INT  (INT 1.5×114)",
+        "tags": [
+          "defense",
+          "heal"
+        ]
+      },
+      "passive": {
+        "id": "champ_hoarfrost_owl.passive",
+        "name": "Cold Insight",
+        "text": "Grants +8 Intelligence for the whole battle.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_hollow_elk",
+      "name": "Hollow Elk",
+      "affinity": "mist",
+      "traits": [
+        "Spirit",
+        "Guardian",
+        "Channeler"
+      ],
+      "role": "tank",
+      "role_code": "int-melee-tanky_hp-ability-steady-utility",
+      "intent": "utility",
+      "tier": 4,
+      "level": 1,
+      "max_hp": 1650,
+      "strength": 7,
+      "intelligence": 70,
+      "attack_speed": 80.68534963151863,
+      "move_speed": 98,
+      "mana_regen": 165,
+      "threat": 83,
+      "armor": 39,
+      "resistance": 36,
+      "attack_range": 1,
+      "active_ability": "champ_hollow_elk.active",
+      "passive_ability": "champ_hollow_elk.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_hollow_elk.active",
+        "name": "Spirit Drain",
+        "text": "Drain the primary target for 186 magic damage. (60 +180% INT) Heals you for 30% of the damage dealt.",
+        "formula": "186 = 60 + 180% INT  (INT 1.8×70)",
+        "tags": [
+          "magic",
+          "heal"
+        ]
+      },
+      "passive": {
+        "id": "champ_hollow_elk.passive",
+        "name": "Spirit Vessel",
+        "text": "Converts a share of damage taken into mana. Gains mana equal to 10% of damage taken.",
+        "formula": "",
+        "tags": [
+          "mana"
+        ]
+      }
+    },
+    {
+      "id": "champ_iceclaw_lynx",
+      "name": "Iceclaw Lynx",
+      "affinity": "snow",
+      "traits": [
+        "Beast",
+        "Skirmisher",
+        "Trickster"
+      ],
+      "role": "assassin",
+      "role_code": "int-melee-ability-blinding-damage",
+      "intent": "damage",
+      "tier": 6,
+      "level": 1,
+      "max_hp": 1026,
+      "strength": 19,
+      "intelligence": 142,
+      "attack_speed": 112.37720646032912,
+      "move_speed": 138,
+      "mana_regen": 189,
+      "threat": 52,
+      "armor": 56,
+      "resistance": 52,
+      "attack_range": 1,
+      "active_ability": "champ_iceclaw_lynx.active",
+      "passive_ability": "champ_iceclaw_lynx.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_iceclaw_lynx.active",
+        "name": "Frost Pounce",
+        "text": "Pounce the primary target for 364 magic damage. (80 +200% INT) Freezes for 1.5s.",
+        "formula": "364 = 80 + 200% INT  (INT 2×142)",
+        "tags": [
+          "magic",
+          "freeze"
+        ]
+      },
+      "passive": {
+        "id": "champ_iceclaw_lynx.passive",
+        "name": "Frostclaw",
+        "text": "Auto-attacks deal 57 bonus magic damage and slow for 1s. (+40% INT)",
+        "formula": "57 = 40% INT  (INT 0.4×142)",
+        "tags": [
+          "magic",
+          "slow"
+        ]
+      }
+    },
+    {
+      "id": "champ_lostlight_wisp",
+      "name": "Lostlight Wisp",
+      "affinity": "mist",
+      "traits": [
+        "Spirit",
+        "Mender"
+      ],
+      "role": "support",
+      "role_code": "int-ranged-ability-brisk-utility",
+      "intent": "utility",
+      "tier": 1,
+      "level": 1,
+      "max_hp": 583,
+      "strength": 9,
+      "intelligence": 80,
+      "attack_speed": 68.03999999999999,
+      "move_speed": 108,
+      "mana_regen": 170,
+      "threat": 56,
+      "armor": 21,
+      "resistance": 21,
+      "attack_range": 3,
+      "active_ability": "champ_lostlight_wisp.active",
+      "passive_ability": "champ_lostlight_wisp.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_lostlight_wisp.active",
+        "name": "Wisplight",
+        "text": "Mend the lowest-HP ally for 195. (35 +200% INT)",
+        "formula": "195 = 35 + 200% INT  (INT 2×80)",
+        "tags": [
+          "heal"
+        ]
+      },
+      "passive": {
+        "id": "champ_lostlight_wisp.passive",
+        "name": "Guiding Glow",
+        "text": "Every 2s, heal the lowest-HP ally for 24. (+30% INT)",
+        "formula": "24 = 30% INT  (INT 0.3×80)",
+        "tags": [
+          "heal"
+        ]
+      }
+    },
+    {
+      "id": "champ_marsh_thrush",
+      "name": "Marsh Thrush",
+      "affinity": "rain",
+      "traits": [
+        "Skyborn",
+        "Warden",
+        "Mystic"
+      ],
+      "role": "support",
+      "role_code": "int-ranged-ability-brisk-utility",
+      "intent": "utility",
+      "tier": 6,
+      "level": 1,
+      "max_hp": 1039,
+      "strength": 17,
+      "intelligence": 143,
+      "attack_speed": 75.12101074021224,
+      "move_speed": 119,
+      "mana_regen": 188,
+      "threat": 62,
+      "armor": 37,
+      "resistance": 37,
+      "attack_range": 3,
+      "active_ability": "champ_marsh_thrush.active",
+      "passive_ability": "champ_marsh_thrush.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_marsh_thrush.active",
+        "name": "Quickening Trill",
+        "text": "Grant the whole team +28 Move Speed and +28 Attack Speed for 6s. (8 +14% INT)",
+        "formula": "28 = 8 + 14% INT  (INT 0.14×143)",
+        "tags": [
+          "buff",
+          "team"
+        ]
+      },
+      "passive": {
+        "id": "champ_marsh_thrush.passive",
+        "name": "Restless Wings",
+        "text": "Grants +19 Move Speed for the whole battle. (5 +10% INT)",
+        "formula": "19 = 5 + 10% INT  (INT 0.1×143)",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_marshghast_boar",
+      "name": "Marshghast Boar",
+      "affinity": "mist",
+      "traits": [
+        "Spirit",
+        "Bruiser"
+      ],
+      "role": "tank",
+      "role_code": "melee-tanky_hp-steady",
+      "intent": "hybrid",
+      "tier": 7,
+      "level": 1,
+      "max_hp": 2160,
+      "strength": 58,
+      "intelligence": 58,
+      "attack_speed": 113.96645874882698,
+      "move_speed": 104,
+      "mana_regen": 113,
+      "threat": 95,
+      "armor": 52,
+      "resistance": 48,
+      "attack_range": 1,
+      "active_ability": "champ_marshghast_boar.active",
+      "passive_ability": "champ_marshghast_boar.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_marshghast_boar.active",
+        "name": "Ghost Charge",
+        "text": "Charge the primary target for 199 hybrid damage. (60 +120% STR +120% INT)",
+        "formula": "199 = 60 + 120% STR + 120% INT  (STR 1.2×58, INT 1.2×58)",
+        "tags": [
+          "hybrid"
+        ]
+      },
+      "passive": {
+        "id": "champ_marshghast_boar.passive",
+        "name": "Ghostform",
+        "text": "The first time you drop below 50% HP, turn spectral for the rest of the battle. Gain +60 Resistance, +40 Armor, and refund 50% of your ability's mana cost.",
+        "formula": "",
+        "tags": [
+          "defense",
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_mirage_caracal",
+      "name": "Mirage Caracal",
+      "affinity": "clear",
+      "traits": [
+        "Spirit",
+        "Stalker"
+      ],
+      "role": "assassin",
+      "role_code": "int-melee-squishy-ability-blinding-damage",
+      "intent": "damage",
+      "tier": 8,
+      "level": 1,
+      "max_hp": 840,
+      "strength": 30,
+      "intelligence": 224,
+      "attack_speed": 116.91684274303029,
+      "move_speed": 144,
+      "mana_regen": 196,
+      "threat": 38,
+      "armor": 46,
+      "resistance": 42,
+      "attack_range": 1,
+      "active_ability": "champ_mirage_caracal.active",
+      "passive_ability": "champ_mirage_caracal.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_mirage_caracal.active",
+        "name": "Blink Execute",
+        "text": "Blink to the lowest-HP enemy for 573 magic damage. (80 +220% INT) Deals +50% to targets below 30% HP.",
+        "formula": "573 = 80 + 220% INT  (INT 2.2×224)",
+        "tags": [
+          "magic",
+          "execute"
+        ]
+      },
+      "passive": {
+        "id": "champ_mirage_caracal.passive",
+        "name": "Afterimage",
+        "text": "After casting, your next auto-attack deals 112 bonus magic damage. (+50% INT)",
+        "formula": "112 = 50% INT  (INT 0.5×224)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "champ_mirewarden_toad",
+      "name": "Mirewarden Toad",
+      "affinity": "rain",
+      "traits": [
+        "Tidekin",
+        "Guardian"
+      ],
+      "role": "tank",
+      "role_code": "int-melee-tanky_hp-ability-leaden-utility",
+      "intent": "utility",
+      "tier": 7,
+      "level": 1,
+      "max_hp": 2333,
+      "strength": 10,
+      "intelligence": 116,
+      "attack_speed": 75.81247038508924,
+      "move_speed": 79,
+      "mana_regen": 155,
+      "threat": 88,
+      "armor": 55,
+      "resistance": 50,
+      "attack_range": 1,
+      "active_ability": "champ_mirewarden_toad.active",
+      "passive_ability": "champ_mirewarden_toad.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_mirewarden_toad.active",
+        "name": "Tongue Pull",
+        "text": "Yank the furthest enemy for 224 magic damage. (50 +150% INT) Applies 2 stacks of slow for 3s and roots for 1.5s.",
+        "formula": "224 = 50 + 150% INT  (INT 1.5×116)",
+        "tags": [
+          "magic",
+          "slow",
+          "root"
+        ]
+      },
+      "passive": {
+        "id": "champ_mirewarden_toad.passive",
+        "name": "Mire Aura",
+        "text": "Every 3s, slows all enemies within 2 hexes. Applies 1 stack of slow for 3.5s.",
+        "formula": "",
+        "tags": [
+          "slow",
+          "aoe"
+        ]
+      }
+    },
+    {
+      "id": "champ_mournhollow",
+      "name": "Mournhollow, the Pale Stag",
+      "affinity": "mist",
+      "traits": [
+        "Beast",
+        "Primordial",
+        "Channeler"
+      ],
+      "role": "spellblade",
+      "role_code": "ranged",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 1527,
+      "strength": 141,
+      "intelligence": 141,
+      "attack_speed": 107.55666343853805,
+      "move_speed": 120,
+      "mana_regen": 120,
+      "threat": 72,
+      "armor": 57,
+      "resistance": 57,
+      "attack_range": 3,
+      "active_ability": "champ_mournhollow.active",
+      "passive_ability": "champ_mournhollow.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_mournhollow.active",
+        "name": "Board Fear",
+        "text": "Terrify all enemies within 3 hexes, each taking 60% of 334 magic damage. (80 +180% INT) Feared for 2s.",
+        "formula": "334 = 80 + 180% INT  (INT 1.8×141)",
+        "tags": [
+          "magic",
+          "aoe",
+          "fear"
+        ]
+      },
+      "passive": {
+        "id": "champ_mournhollow.passive",
+        "name": "Echoing Dead",
+        "text": "Every 2nd cast triggers a free auto-attack on the primary target.",
+        "formula": "",
+        "tags": [
+          "tempo"
+        ]
+      }
+    },
+    {
+      "id": "champ_nerei",
+      "name": "Nerei, the Floodmother",
+      "affinity": "rain",
+      "traits": [
+        "Tidekin",
+        "Primordial",
+        "Channeler"
+      ],
+      "role": "spellblade",
+      "role_code": "ranged",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 1527,
+      "strength": 141,
+      "intelligence": 141,
+      "attack_speed": 107.55666343853805,
+      "move_speed": 120,
+      "mana_regen": 120,
+      "threat": 72,
+      "armor": 57,
+      "resistance": 57,
+      "attack_range": 3,
+      "active_ability": "champ_nerei.active",
+      "passive_ability": "champ_nerei.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_nerei.active",
+        "name": "Tidal Wave",
+        "text": "Crash a wave over all enemies within 3 hexes, each taking 70% of 372 magic damage. (90 +200% INT) Become charged for 3s.",
+        "formula": "372 = 90 + 200% INT  (INT 2×141)",
+        "tags": [
+          "magic",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "champ_nerei.passive",
+        "name": "Tideturn",
+        "text": "After casting, your next 3 auto-attacks each deal 85 bonus magic damage. (+60% INT)",
+        "formula": "85 = 60% INT  (INT 0.6×141)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "champ_nightglass_mantis",
+      "name": "Nightglass Mantis",
+      "affinity": "cloudy",
+      "traits": [
+        "Swarm",
+        "Stalker"
+      ],
+      "role": "assassin",
+      "role_code": "int-melee-squishy-ability-speedy-damage",
+      "intent": "damage",
+      "tier": 8,
+      "level": 1,
+      "max_hp": 840,
+      "strength": 30,
+      "intelligence": 245,
+      "attack_speed": 109.45406554666667,
+      "move_speed": 132,
+      "mana_regen": 184,
+      "threat": 38,
+      "armor": 46,
+      "resistance": 42,
+      "attack_range": 1,
+      "active_ability": "champ_nightglass_mantis.active",
+      "passive_ability": "champ_nightglass_mantis.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_nightglass_mantis.active",
+        "name": "Vanishing Execute",
+        "text": "Vanish and strike the lowest-HP enemy for 712 magic damage. (100 +250% INT) Deals +60% to targets below 30% HP.",
+        "formula": "712 = 100 + 250% INT  (INT 2.5×245)",
+        "tags": [
+          "magic",
+          "execute"
+        ]
+      },
+      "passive": {
+        "id": "champ_nightglass_mantis.passive",
+        "name": "Ambush",
+        "text": "The first auto-attack after each cast deals 196 bonus magic damage. (+80% INT)",
+        "formula": "196 = 80% INT  (INT 0.8×245)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "champ_pebbleback_pangolin",
+      "name": "Pebbleback Pangolin",
+      "affinity": "cloudy",
+      "traits": [
+        "Scaled",
+        "Guardian",
+        "Packmate"
+      ],
+      "role": "tank",
+      "role_code": "str-melee-tanky_hp-leaden-utility",
+      "intent": "utility",
+      "tier": 1,
+      "level": 1,
+      "max_hp": 1166,
+      "strength": 58,
+      "intelligence": 5,
+      "attack_speed": 73.92,
+      "move_speed": 70,
+      "mana_regen": 108,
+      "threat": 92,
+      "armor": 27,
+      "resistance": 25,
+      "attack_range": 1,
+      "active_ability": "champ_pebbleback_pangolin.active",
+      "passive_ability": "champ_pebbleback_pangolin.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_pebbleback_pangolin.active",
+        "name": "Curl Up",
+        "text": "Curl into a ball, gaining +25 Armor for 4s.",
+        "formula": "",
+        "tags": [
+          "defense",
+          "buff"
+        ]
+      },
+      "passive": {
+        "id": "champ_pebbleback_pangolin.passive",
+        "name": "Stone Scales",
+        "text": "Grants +15 Armor for the whole battle.",
+        "formula": "",
+        "tags": [
+          "defense"
+        ]
+      }
+    },
+    {
+      "id": "champ_permafrost_walrus",
+      "name": "Permafrost Walrus",
+      "affinity": "snow",
+      "traits": [
+        "Tidekin",
+        "Mystic"
+      ],
+      "role": "mage",
+      "role_code": "str-ranged-squishy-ability-leaden-damage",
+      "intent": "damage",
+      "tier": 3,
+      "level": 1,
+      "max_hp": 425,
+      "strength": 191,
+      "intelligence": 17,
+      "attack_speed": 62.677381533655584,
+      "move_speed": 73,
+      "mana_regen": 129,
+      "threat": 34,
+      "armor": 16,
+      "resistance": 16,
+      "attack_range": 3,
+      "active_ability": "champ_permafrost_walrus.active",
+      "passive_ability": "champ_permafrost_walrus.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_permafrost_walrus.active",
+        "name": "Ice Boulder",
+        "text": "Hurl a boulder at the primary target for 414 physical damage. (70 +180% STR) Adjacent enemies take 40% splash.",
+        "formula": "414 = 70 + 180% STR  (STR 1.8×191)",
+        "tags": [
+          "physical",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "champ_permafrost_walrus.passive",
+        "name": "Glacial Brawn",
+        "text": "Grants +8 Strength for the whole battle.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_phantom_lynx",
+      "name": "Phantom Lynx",
+      "affinity": "mist",
+      "traits": [
+        "Spirit",
+        "Stalker",
+        "Packmate"
+      ],
+      "role": "assassin",
+      "role_code": "int-melee-squishy-ability-speedy-damage",
+      "intent": "damage",
+      "tier": 3,
+      "level": 1,
+      "max_hp": 472,
+      "strength": 17,
+      "intelligence": 138,
+      "attack_speed": 99.13677340617423,
+      "move_speed": 120,
+      "mana_regen": 167,
+      "threat": 34,
+      "armor": 26,
+      "resistance": 24,
+      "attack_range": 1,
+      "active_ability": "champ_phantom_lynx.active",
+      "passive_ability": "champ_phantom_lynx.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_phantom_lynx.active",
+        "name": "Phase Strike",
+        "text": "Phase through the lowest-HP enemy for 394 magic damage. (90 +220% INT) Gain +30% magic penetration for 2s.",
+        "formula": "394 = 90 + 220% INT  (INT 2.2×138)",
+        "tags": [
+          "magic",
+          "penetration"
+        ]
+      },
+      "passive": {
+        "id": "champ_phantom_lynx.passive",
+        "name": "Ghostpierce",
+        "text": "Grants +15% magic penetration for the whole battle.",
+        "formula": "",
+        "tags": [
+          "penetration"
+        ]
+      }
+    },
+    {
+      "id": "champ_reedbank_otter",
+      "name": "Reedbank Otter",
+      "affinity": "rain",
+      "traits": [
+        "Tidekin",
+        "Skirmisher"
+      ],
+      "role": "swashbuckler",
+      "role_code": "str-melee-auto-speedy-damage",
+      "intent": "damage",
+      "tier": 2,
+      "level": 1,
+      "max_hp": 647,
+      "strength": 98,
+      "intelligence": 12,
+      "attack_speed": 183.78328337086913,
+      "move_speed": 117,
+      "mana_regen": 59,
+      "threat": 56,
+      "armor": 35,
+      "resistance": 33,
+      "attack_range": 1,
+      "active_ability": "champ_reedbank_otter.active",
+      "passive_ability": "champ_reedbank_otter.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_reedbank_otter.active",
+        "name": "Slippery Strike",
+        "text": "Strike the primary target for 197 physical damage. (40 +160% STR) Gain +20 Attack Speed for 4s.",
+        "formula": "197 = 40 + 160% STR  (STR 1.6×98)",
+        "tags": [
+          "physical",
+          "buff"
+        ]
+      },
+      "passive": {
+        "id": "champ_reedbank_otter.passive",
+        "name": "Slipstream",
+        "text": "Auto-attacks grant +20 Move Speed for 3s.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_riptide_caiman",
+      "name": "Riptide Caiman",
+      "affinity": "rain",
+      "traits": [
+        "Scaled",
+        "Stalker"
+      ],
+      "role": "swashbuckler",
+      "role_code": "str-melee-squishy-auto-speedy-damage",
+      "intent": "damage",
+      "tier": 9,
+      "level": 1,
+      "max_hp": 943,
+      "strength": 276,
+      "intelligence": 34,
+      "attack_speed": 211.10667762777612,
+      "move_speed": 135,
+      "mana_regen": 68,
+      "threat": 45,
+      "armor": 52,
+      "resistance": 48,
+      "attack_range": 1,
+      "active_ability": "champ_riptide_caiman.active",
+      "passive_ability": "champ_riptide_caiman.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_riptide_caiman.active",
+        "name": "Death Roll",
+        "text": "Lunge at the lowest-HP enemy for 790 physical damage. (100 +250% STR)",
+        "formula": "790 = 100 + 250% STR  (STR 2.5×276)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "champ_riptide_caiman.passive",
+        "name": "Bloodscent",
+        "text": "Killing an enemy refunds 40% of your ability's mana cost.",
+        "formula": "",
+        "tags": [
+          "mana"
+        ]
+      }
+    },
+    {
+      "id": "champ_snowpelt_cub",
+      "name": "Snowpelt Cub",
+      "affinity": "snow",
+      "traits": [
+        "Beast",
+        "Guardian",
+        "Packmate"
+      ],
+      "role": "tank",
+      "role_code": "str-melee-tanky_hp-heavy-utility",
+      "intent": "utility",
+      "tier": 1,
+      "level": 1,
+      "max_hp": 1166,
+      "strength": 52,
+      "intelligence": 5,
+      "attack_speed": 89.76,
+      "move_speed": 85,
+      "mana_regen": 108,
+      "threat": 92,
+      "armor": 27,
+      "resistance": 25,
+      "attack_range": 1,
+      "active_ability": "champ_snowpelt_cub.active",
+      "passive_ability": "champ_snowpelt_cub.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_snowpelt_cub.active",
+        "name": "Frostbite Nip",
+        "text": "Nip the primary target for 87 physical damage. (25 +120% STR) Applies 1 stack of slow for 2s.",
+        "formula": "87 = 25 + 120% STR  (STR 1.2×52)",
+        "tags": [
+          "physical",
+          "slow"
+        ]
+      },
+      "passive": {
+        "id": "champ_snowpelt_cub.passive",
+        "name": "Winter Growth",
+        "text": "Steadily grows hardier through the battle. Every 6s, permanently gain +30 max HP (also healing 30).",
+        "formula": "",
+        "tags": [
+          "scaling"
+        ]
+      }
+    },
+    {
+      "id": "champ_sparkfly",
+      "name": "Sparkfly",
+      "affinity": "thunder",
+      "traits": [
+        "Swarm",
+        "Trickster",
+        "Packmate"
+      ],
+      "role": "support",
+      "role_code": "int-ranged-ability-blinding-utility",
+      "intent": "utility",
+      "tier": 1,
+      "level": 1,
+      "max_hp": 583,
+      "strength": 9,
+      "intelligence": 69,
+      "attack_speed": 76.14,
+      "move_speed": 125,
+      "mana_regen": 190,
+      "threat": 56,
+      "armor": 21,
+      "resistance": 21,
+      "attack_range": 3,
+      "active_ability": "champ_sparkfly.active",
+      "passive_ability": "champ_sparkfly.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_sparkfly.active",
+        "name": "Static Jolt",
+        "text": "Jolt the primary target for 89 magic damage. (20 +100% INT) Stuns for 1.5s.",
+        "formula": "89 = 20 + 100% INT  (INT 1×69)",
+        "tags": [
+          "magic",
+          "stun"
+        ]
+      },
+      "passive": {
+        "id": "champ_sparkfly.passive",
+        "name": "Crackle",
+        "text": "Grants +10 Move Speed for the whole battle.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_spectral_heron",
+      "name": "Spectral Heron",
+      "affinity": "mist",
+      "traits": [
+        "Spirit",
+        "Hunter"
+      ],
+      "role": "mage",
+      "role_code": "int-ranged-ability-steady-damage",
+      "intent": "damage",
+      "tier": 9,
+      "level": 1,
+      "max_hp": 1306,
+      "strength": 27,
+      "intelligence": 260,
+      "attack_speed": 79.7186055377616,
+      "move_speed": 108,
+      "mana_regen": 164,
+      "threat": 55,
+      "armor": 49,
+      "resistance": 49,
+      "attack_range": 3,
+      "active_ability": "champ_spectral_heron.active",
+      "passive_ability": "champ_spectral_heron.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_spectral_heron.active",
+        "name": "Spectral Beam",
+        "text": "Fire a beam through the primary target for 600 magic damage. (80 +200% INT) Enemies in the line take 60% damage.",
+        "formula": "600 = 80 + 200% INT  (INT 2×260)",
+        "tags": [
+          "magic",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "champ_spectral_heron.passive",
+        "name": "Piercing Shot",
+        "text": "Auto-attacks pierce to one enemy behind the target for 78 magic damage. (+30% INT)",
+        "formula": "78 = 30% INT  (INT 0.3×260)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "champ_springfrog",
+      "name": "Springfrog",
+      "affinity": "rain",
+      "traits": [
+        "Tidekin",
+        "Mender",
+        "Packmate"
+      ],
+      "role": "support",
+      "role_code": "int-ranged-ability-steady-utility",
+      "intent": "utility",
+      "tier": 1,
+      "level": 1,
+      "max_hp": 583,
+      "strength": 9,
+      "intelligence": 90,
+      "attack_speed": 62.208,
+      "move_speed": 92,
+      "mana_regen": 156,
+      "threat": 56,
+      "armor": 21,
+      "resistance": 21,
+      "attack_range": 3,
+      "active_ability": "champ_springfrog.active",
+      "passive_ability": "champ_springfrog.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_springfrog.active",
+        "name": "Healing Rain",
+        "text": "Shower the lowest-HP ally for 210. (30 +200% INT)",
+        "formula": "210 = 30 + 200% INT  (INT 2×90)",
+        "tags": [
+          "heal"
+        ]
+      },
+      "passive": {
+        "id": "champ_springfrog.passive",
+        "name": "Dewfall",
+        "text": "Every 2s, heal the lowest-HP ally for 36. (+40% INT)",
+        "formula": "36 = 40% INT  (INT 0.4×90)",
+        "tags": [
+          "heal"
+        ]
+      }
+    },
+    {
+      "id": "champ_storm_eagle",
+      "name": "Storm Eagle",
+      "affinity": "thunder",
+      "traits": [
+        "Skyborn",
+        "Hunter",
+        "Channeler"
+      ],
+      "role": "mage",
+      "role_code": "int-ranged-ability-brisk-damage",
+      "intent": "damage",
+      "tier": 9,
+      "level": 1,
+      "max_hp": 1306,
+      "strength": 27,
+      "intelligence": 233,
+      "attack_speed": 87.19222480692676,
+      "move_speed": 127,
+      "mana_regen": 179,
+      "threat": 55,
+      "armor": 49,
+      "resistance": 49,
+      "attack_range": 3,
+      "active_ability": "champ_storm_eagle.active",
+      "passive_ability": "champ_storm_eagle.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_storm_eagle.active",
+        "name": "Lightning Dive",
+        "text": "Dive the primary target for 752 magic damage. (100 +280% INT) Chains to 2 nearby enemies for 50% damage.",
+        "formula": "752 = 100 + 280% INT  (INT 2.8×233)",
+        "tags": [
+          "magic",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "champ_storm_eagle.passive",
+        "name": "Forked Lightning",
+        "text": "Every 3rd auto-attack forks to up to 2 nearby enemies for 93 magic damage each. (+40% INT)",
+        "formula": "93 = 40% INT  (INT 0.4×233)",
+        "tags": [
+          "magic",
+          "aoe"
+        ]
+      }
+    },
+    {
+      "id": "champ_sunmane_lion",
+      "name": "Sunmane Lion",
+      "affinity": "clear",
+      "traits": [
+        "Beast",
+        "Bruiser"
+      ],
+      "role": "support",
+      "role_code": "str-melee-auto-heavy-utility",
+      "intent": "utility",
+      "tier": 6,
+      "level": 1,
+      "max_hp": 1155,
+      "strength": 169,
+      "intelligence": 17,
+      "attack_speed": 128.83187097668855,
+      "move_speed": 94,
+      "mana_regen": 72,
+      "threat": 73,
+      "armor": 61,
+      "resistance": 56,
+      "attack_range": 1,
+      "active_ability": "champ_sunmane_lion.active",
+      "passive_ability": "champ_sunmane_lion.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_sunmane_lion.active",
+        "name": "Regal Cleave",
+        "text": "Cleave the primary target for 418 physical damage. (80 +200% STR) Heals for 30% of the damage dealt.",
+        "formula": "418 = 80 + 200% STR  (STR 2×169)",
+        "tags": [
+          "physical",
+          "heal"
+        ]
+      },
+      "passive": {
+        "id": "champ_sunmane_lion.passive",
+        "name": "Pride's Fury",
+        "text": "Below 50% HP, gain +25 Strength for 6s when struck.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_sunspear_falcon",
+      "name": "Sunspear Falcon",
+      "affinity": "clear",
+      "traits": [
+        "Skyborn",
+        "Hunter"
+      ],
+      "role": "marksman",
+      "role_code": "str-ranged-auto-blinding-damage",
+      "intent": "damage",
+      "tier": 9,
+      "level": 1,
+      "max_hp": 1306,
+      "strength": 201,
+      "intelligence": 27,
+      "attack_speed": 194.31410099829392,
+      "move_speed": 146,
+      "mana_regen": 68,
+      "threat": 65,
+      "armor": 49,
+      "resistance": 49,
+      "attack_range": 3,
+      "active_ability": "champ_sunspear_falcon.active",
+      "passive_ability": "champ_sunspear_falcon.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_sunspear_falcon.active",
+        "name": "Diving Strike",
+        "text": "Dive the primary target for 472 physical damage. (70 +200% STR)",
+        "formula": "472 = 70 + 200% STR  (STR 2×201)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "champ_sunspear_falcon.passive",
+        "name": "Sun Mark",
+        "text": "The first auto-attack marks a target; every later auto on it deals 70 bonus physical damage. (+35% STR)",
+        "formula": "70 = 35% STR  (STR 0.35×201)",
+        "tags": [
+          "physical"
+        ]
+      }
+    },
+    {
+      "id": "champ_tempest_eel",
+      "name": "Tempest Eel",
+      "affinity": "thunder",
+      "traits": [
+        "Tidekin",
+        "Mystic"
+      ],
+      "role": "mage",
+      "role_code": "int-ranged-squishy-ability-speedy-damage",
+      "intent": "damage",
+      "tier": 6,
+      "level": 1,
+      "max_hp": 600,
+      "strength": 24,
+      "intelligence": 195,
+      "attack_speed": 86.07615813982655,
+      "move_speed": 127,
+      "mana_regen": 177,
+      "threat": 36,
+      "armor": 22,
+      "resistance": 22,
+      "attack_range": 3,
+      "active_ability": "champ_tempest_eel.active",
+      "passive_ability": "champ_tempest_eel.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_tempest_eel.active",
+        "name": "Chain Lightning",
+        "text": "Strike the primary target for 490 magic damage. (100 +200% INT) Arcs to up to 2 nearby enemies for 60% then 40% damage.",
+        "formula": "490 = 100 + 200% INT  (INT 2×195)",
+        "tags": [
+          "magic",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "champ_tempest_eel.passive",
+        "name": "Storm Charge",
+        "text": "Grants +10 Intelligence for the whole battle.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_thunderclap_gorilla",
+      "name": "Thunderclap Gorilla",
+      "affinity": "thunder",
+      "traits": [
+        "Beast",
+        "Bruiser"
+      ],
+      "role": "support",
+      "role_code": "str-melee-auto-heavy-utility",
+      "intent": "utility",
+      "tier": 8,
+      "level": 1,
+      "max_hp": 1455,
+      "strength": 213,
+      "intelligence": 21,
+      "attack_speed": 134.03621671792666,
+      "move_speed": 98,
+      "mana_regen": 74,
+      "threat": 76,
+      "armor": 77,
+      "resistance": 71,
+      "attack_range": 1,
+      "active_ability": "champ_thunderclap_gorilla.active",
+      "passive_ability": "champ_thunderclap_gorilla.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_thunderclap_gorilla.active",
+        "name": "Shockwave",
+        "text": "Unleash a shockwave for 559 physical damage to all enemies within 2 hexes. (90 +220% STR) Stuns struck enemies for 1.5s.",
+        "formula": "559 = 90 + 220% STR  (STR 2.2×213)",
+        "tags": [
+          "physical",
+          "aoe",
+          "stun"
+        ]
+      },
+      "passive": {
+        "id": "champ_thunderclap_gorilla.passive",
+        "name": "Brawn",
+        "text": "Grants +15 Strength for the whole battle.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_thunderhide_bison",
+      "name": "Thunderhide Bison",
+      "affinity": "thunder",
+      "traits": [
+        "Beast",
+        "Guardian",
+        "Bruiser"
+      ],
+      "role": "tank",
+      "role_code": "str-melee-tanky_arm-heavy-utility",
+      "intent": "utility",
+      "tier": 5,
+      "level": 1,
+      "max_hp": 926,
+      "strength": 83,
+      "intelligence": 8,
+      "attack_speed": 97.15844112620388,
+      "move_speed": 92,
+      "mana_regen": 117,
+      "threat": 100,
+      "armor": 108,
+      "resistance": 100,
+      "attack_range": 1,
+      "active_ability": "champ_thunderhide_bison.active",
+      "passive_ability": "champ_thunderhide_bison.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_thunderhide_bison.active",
+        "name": "Thunder Stomp",
+        "text": "Stomp the primary target for 209 physical damage. (60 +180% STR) Stuns for 1.2s.",
+        "formula": "209 = 60 + 180% STR  (STR 1.8×83)",
+        "tags": [
+          "physical",
+          "stun"
+        ]
+      },
+      "passive": {
+        "id": "champ_thunderhide_bison.passive",
+        "name": "Storm Hide",
+        "text": "Every 6s, gain +50 Resistance for 2s to absorb a magic burst.",
+        "formula": "",
+        "tags": [
+          "defense"
+        ]
+      }
+    },
+    {
+      "id": "champ_thunderhoof_colt",
+      "name": "Thunderhoof Colt",
+      "affinity": "thunder",
+      "traits": [
+        "Beast",
+        "Skirmisher",
+        "Packmate"
+      ],
+      "role": "swashbuckler",
+      "role_code": "str-melee-auto-speedy-damage",
+      "intent": "damage",
+      "tier": 2,
+      "level": 1,
+      "max_hp": 647,
+      "strength": 98,
+      "intelligence": 12,
+      "attack_speed": 183.78328337086913,
+      "move_speed": 117,
+      "mana_regen": 59,
+      "threat": 56,
+      "armor": 35,
+      "resistance": 33,
+      "attack_range": 1,
+      "active_ability": "champ_thunderhoof_colt.active",
+      "passive_ability": "champ_thunderhoof_colt.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_thunderhoof_colt.active",
+        "name": "Thunder Charge",
+        "text": "Charge the primary target for 202 physical damage. (45 +160% STR)",
+        "formula": "202 = 45 + 160% STR  (STR 1.6×98)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "champ_thunderhoof_colt.passive",
+        "name": "Galvanize",
+        "text": "Each hit taken grants +8 Attack Speed for 6s, stacking.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_torrent_heron",
+      "name": "Torrent Heron",
+      "affinity": "rain",
+      "traits": [
+        "Tidekin",
+        "Mystic"
+      ],
+      "role": "mage",
+      "role_code": "str-ranged-squishy-ability-damage",
+      "intent": "damage",
+      "tier": 3,
+      "level": 1,
+      "max_hp": 425,
+      "strength": 153,
+      "intelligence": 17,
+      "attack_speed": 73.73809592194775,
+      "move_speed": 104,
+      "mana_regen": 151,
+      "threat": 34,
+      "armor": 16,
+      "resistance": 16,
+      "attack_range": 3,
+      "active_ability": "champ_torrent_heron.active",
+      "passive_ability": "champ_torrent_heron.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_torrent_heron.active",
+        "name": "Water Spears",
+        "text": "Spear the primary target for 295 physical damage. (50 +160% STR) Up to 2 adjacent enemies take 60% splash.",
+        "formula": "295 = 50 + 160% STR  (STR 1.6×153)",
+        "tags": [
+          "physical",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "champ_torrent_heron.passive",
+        "name": "Tidal Might",
+        "text": "Grants +8 Strength for the whole battle.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_umbra",
+      "name": "Umbra, the Mountain's Shadow",
+      "affinity": "cloudy",
+      "traits": [
+        "Scaled",
+        "Primordial",
+        "Stalker"
+      ],
+      "role": "spellblade",
+      "role_code": "ranged-steady",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 1527,
+      "strength": 150,
+      "intelligence": 150,
+      "attack_speed": 98.952130363455,
+      "move_speed": 110,
+      "mana_regen": 120,
+      "threat": 72,
+      "armor": 57,
+      "resistance": 57,
+      "attack_range": 3,
+      "active_ability": "champ_umbra.active",
+      "passive_ability": "champ_umbra.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_umbra.active",
+        "name": "Shadow Clones",
+        "text": "Summon 2 shadow clones that fight at your side for 12s. Each clone inherits 40% of your Strength/Intelligence and 30% of max HP, Armor and Resistance.",
+        "formula": "",
+        "tags": [
+          "summon"
+        ]
+      },
+      "passive": {
+        "id": "champ_umbra.passive",
+        "name": "Shadow Echo",
+        "text": "Every 5th auto-attack unleashes a clone strike for 225 magic damage. (+150% INT)",
+        "formula": "225 = 150% INT  (INT 1.5×150)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "champ_veilfang_wolf",
+      "name": "Veilfang Wolf",
+      "affinity": "mist",
+      "traits": [
+        "Spirit",
+        "Skirmisher"
+      ],
+      "role": "assassin",
+      "role_code": "int-melee-ability-brisk-damage",
+      "intent": "damage",
+      "tier": 8,
+      "level": 1,
+      "max_hp": 1293,
+      "strength": 24,
+      "intelligence": 207,
+      "attack_speed": 104.4788807490909,
+      "move_speed": 124,
+      "mana_regen": 175,
+      "threat": 54,
+      "armor": 71,
+      "resistance": 65,
+      "attack_range": 1,
+      "active_ability": "champ_veilfang_wolf.active",
+      "passive_ability": "champ_veilfang_wolf.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_veilfang_wolf.active",
+        "name": "Fang Rush",
+        "text": "Rush the primary target for 535 magic damage. (80 +220% INT)",
+        "formula": "535 = 80 + 220% INT  (INT 2.2×207)",
+        "tags": [
+          "magic"
+        ]
+      },
+      "passive": {
+        "id": "champ_veilfang_wolf.passive",
+        "name": "Rending Fangs",
+        "text": "Auto-attacks deal 72 bonus magic damage and shred 8 Resistance for 4s. (+35% INT)",
+        "formula": "72 = 35% INT  (INT 0.35×207)",
+        "tags": [
+          "magic",
+          "debuff"
+        ]
+      }
+    },
+    {
+      "id": "champ_veldt_pronghorn",
+      "name": "Veldt Pronghorn",
+      "affinity": "clear",
+      "traits": [
+        "Beast",
+        "Skirmisher",
+        "Packmate"
+      ],
+      "role": "swashbuckler",
+      "role_code": "str-melee-auto-brisk-damage",
+      "intent": "damage",
+      "tier": 2,
+      "level": 1,
+      "max_hp": 647,
+      "strength": 104,
+      "intelligence": 12,
+      "attack_speed": 168.46800975663004,
+      "move_speed": 110,
+      "mana_regen": 59,
+      "threat": 56,
+      "armor": 35,
+      "resistance": 33,
+      "attack_range": 1,
+      "active_ability": "champ_veldt_pronghorn.active",
+      "passive_ability": "champ_veldt_pronghorn.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_veldt_pronghorn.active",
+        "name": "Lunging Charge",
+        "text": "Charge the primary target for 237 physical damage. (50 +180% STR)",
+        "formula": "237 = 50 + 180% STR  (STR 1.8×104)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "champ_veldt_pronghorn.passive",
+        "name": "Double Kick",
+        "text": "Every 3rd auto-attack strikes a second time. The extra hit deals 50% of the attack's damage.",
+        "formula": "",
+        "tags": [
+          "physical"
+        ]
+      }
+    },
+    {
+      "id": "champ_voltmane_jackal",
+      "name": "Voltmane Jackal",
+      "affinity": "thunder",
+      "traits": [
+        "Beast",
+        "Skirmisher",
+        "Channeler"
+      ],
+      "role": "spellblade",
+      "role_code": "ranged-brisk",
+      "intent": "hybrid",
+      "tier": 7,
+      "level": 1,
+      "max_hp": 1080,
+      "strength": 95,
+      "intelligence": 95,
+      "attack_speed": 111.48892703689596,
+      "move_speed": 122,
+      "mana_regen": 113,
+      "threat": 68,
+      "armor": 40,
+      "resistance": 40,
+      "attack_range": 3,
+      "active_ability": "champ_voltmane_jackal.active",
+      "passive_ability": "champ_voltmane_jackal.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_voltmane_jackal.active",
+        "name": "Static Discharge",
+        "text": "Blast the primary target for 288 hybrid magic damage. (60 +120% STR +120% INT) Charges the target for 3s.",
+        "formula": "288 = 60 + 120% STR + 120% INT  (STR 1.2×95, INT 1.2×95)",
+        "tags": [
+          "magic"
+        ]
+      },
+      "passive": {
+        "id": "champ_voltmane_jackal.passive",
+        "name": "Discharge",
+        "text": "Every 3rd auto-attack discharges bonus magic damage. Deals 0.5× your higher of Strength or Intelligence.",
+        "formula": "",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "champ_voltscale_mamba",
+      "name": "Voltscale Mamba",
+      "affinity": "thunder",
+      "traits": [
+        "Scaled",
+        "Stalker"
+      ],
+      "role": "swashbuckler",
+      "role_code": "str-melee-squishy-auto-blinding-damage",
+      "intent": "damage",
+      "tier": 3,
+      "level": 1,
+      "max_hp": 472,
+      "strength": 126,
+      "intelligence": 17,
+      "attack_speed": 210.8909543367706,
+      "move_speed": 130,
+      "mana_regen": 61,
+      "threat": 40,
+      "armor": 26,
+      "resistance": 24,
+      "attack_range": 1,
+      "active_ability": "champ_voltscale_mamba.active",
+      "passive_ability": "champ_voltscale_mamba.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_voltscale_mamba.active",
+        "name": "Electric Dash",
+        "text": "Dash through the primary target for 282 physical damage. (55 +180% STR) Leaves a trail that burns for 2s.",
+        "formula": "282 = 55 + 180% STR  (STR 1.8×126)",
+        "tags": [
+          "physical",
+          "burn"
+        ]
+      },
+      "passive": {
+        "id": "champ_voltscale_mamba.passive",
+        "name": "Live Wire",
+        "text": "Grants +15 Move Speed for the whole battle.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_will_o_fawn",
+      "name": "Will-o-Fawn",
+      "affinity": "mist",
+      "traits": [
+        "Spirit",
+        "Mystic"
+      ],
+      "role": "mage",
+      "role_code": "int-ranged-squishy-ability-damage",
+      "intent": "damage",
+      "tier": 2,
+      "level": 1,
+      "max_hp": 378,
+      "strength": 15,
+      "intelligence": 136,
+      "attack_speed": 72.29237545182788,
+      "move_speed": 102,
+      "mana_regen": 148,
+      "threat": 34,
+      "armor": 14,
+      "resistance": 14,
+      "attack_range": 3,
+      "active_ability": "champ_will_o_fawn.active",
+      "passive_ability": "champ_will_o_fawn.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_will_o_fawn.active",
+        "name": "Conjure Double",
+        "text": "Grant a wounded ally +40 Attack Speed for 3s.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      },
+      "passive": {
+        "id": "champ_will_o_fawn.passive",
+        "name": "Wandering Light",
+        "text": "Grants +8 Intelligence for the whole battle.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_wintermoth",
+      "name": "Wintermoth",
+      "affinity": "snow",
+      "traits": [
+        "Swarm",
+        "Warden"
+      ],
+      "role": "support",
+      "role_code": "int-ranged-ability-steady-utility",
+      "intent": "utility",
+      "tier": 2,
+      "level": 1,
+      "max_hp": 655,
+      "strength": 11,
+      "intelligence": 101,
+      "attack_speed": 63.452050682290064,
+      "move_speed": 94,
+      "mana_regen": 159,
+      "threat": 57,
+      "armor": 24,
+      "resistance": 24,
+      "attack_range": 3,
+      "active_ability": "champ_wintermoth.active",
+      "passive_ability": "champ_wintermoth.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_wintermoth.active",
+        "name": "Frost Blessing",
+        "text": "Grant the lowest-HP ally +25 Attack Speed for 6s and heal 121. (20 +100% INT)",
+        "formula": "121 = 20 + 100% INT  (INT 1×101)",
+        "tags": [
+          "buff",
+          "heal"
+        ]
+      },
+      "passive": {
+        "id": "champ_wintermoth.passive",
+        "name": "Frostward",
+        "text": "Grants +8 Resistance for the whole battle.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "champ_wraithorn_stag",
+      "name": "Wraithorn Stag",
+      "affinity": "mist",
+      "traits": [
+        "Spirit",
+        "Bruiser",
+        "Skirmisher"
+      ],
+      "role": "support",
+      "role_code": "str-melee-auto-steady-utility",
+      "intent": "utility",
+      "tier": 6,
+      "level": 1,
+      "max_hp": 1155,
+      "strength": 160,
+      "intelligence": 17,
+      "attack_speed": 139.44155446888644,
+      "move_speed": 102,
+      "mana_regen": 72,
+      "threat": 73,
+      "armor": 61,
+      "resistance": 56,
+      "attack_range": 1,
+      "active_ability": "champ_wraithorn_stag.active",
+      "passive_ability": "champ_wraithorn_stag.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "items": [],
+      "active": {
+        "id": "champ_wraithorn_stag.active",
+        "name": "Spectral Gore",
+        "text": "Gore the primary target for 432 physical damage. (80 +220% STR)",
+        "formula": "432 = 80 + 220% STR  (STR 2.2×160)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "champ_wraithorn_stag.passive",
+        "name": "Phase Drift",
+        "text": "Auto-attacks grant +25 Move Speed for 3s.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    }
+  ],
+  "enemies": [
+    {
+      "id": "enemy_arcanist",
+      "name": "Arcanist",
+      "affinity": "clear",
+      "role": "mage",
+      "role_code": "int-ranged-squishy-ability-steady-damage",
+      "intent": "damage",
+      "tier": 9,
+      "level": 1,
+      "max_hp": 849,
+      "strength": 34,
+      "intelligence": 325,
+      "attack_speed": 79.7186055377616,
+      "move_speed": 108,
+      "mana_regen": 164,
+      "threat": 38,
+      "armor": 32,
+      "resistance": 32,
+      "attack_range": 3,
+      "active_ability": "enemy_arcanist.active",
+      "passive_ability": "enemy_arcanist.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_arcanist.active",
+        "name": "Chain Lightning",
+        "text": "Strike the primary target for 1010 magic damage. (100 +280% INT) Bounces to up to 3 nearby enemies at 60%, 45%, then 30% damage.",
+        "formula": "1010 = 100 + 280% INT  (INT 2.8×325)",
+        "tags": [
+          "magic",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "enemy_arcanist.passive",
+        "name": "Arcane Surge",
+        "text": "Auto-attacks deal 114 bonus magic damage. (+35% INT)",
+        "formula": "114 = 35% INT  (INT 0.35×325)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "enemy_archmagus_imperator",
+      "name": "Archmagus Imperator",
+      "affinity": "clear",
+      "role": "spellblade",
+      "role_code": "ranged",
+      "intent": "hybrid",
+      "tier": 9,
+      "level": 1,
+      "max_hp": 1361,
+      "strength": 126,
+      "intelligence": 126,
+      "attack_speed": 105.44789092296509,
+      "move_speed": 117,
+      "mana_regen": 117,
+      "threat": 70,
+      "armor": 50,
+      "resistance": 50,
+      "attack_range": 3,
+      "active_ability": "enemy_archmagus_imperator.active",
+      "passive_ability": "enemy_archmagus_imperator.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_archmagus_imperator.active",
+        "name": "Imperial Nuke",
+        "text": "Blast the primary target for 458 hybrid magic damage. (80 +150% STR +150% INT)",
+        "formula": "458 = 80 + 150% STR + 150% INT  (STR 1.5×126, INT 1.5×126)",
+        "tags": [
+          "magic"
+        ]
+      },
+      "passive": {
+        "id": "enemy_archmagus_imperator.passive",
+        "name": "Spellblade",
+        "text": "Auto-attacks alternate 38 physical (odd) and 44 magic (even) bonus damage. (+30% STR; +35% INT)",
+        "formula": "38 = 30% STR  (STR 0.3×126)\n44 = 35% INT  (INT 0.35×126)",
+        "tags": [
+          "physical",
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "enemy_avalanche_engine",
+      "name": "Avalanche Engine",
+      "affinity": "snow",
+      "role": "mage",
+      "role_code": "str-ranged-squishy-ability-heavy-damage",
+      "intent": "damage",
+      "tier": 5,
+      "level": 1,
+      "max_hp": 535,
+      "strength": 216,
+      "intelligence": 21,
+      "attack_speed": 70.96308685615222,
+      "move_speed": 92,
+      "mana_regen": 146,
+      "threat": 36,
+      "armor": 20,
+      "resistance": 20,
+      "attack_range": 3,
+      "active_ability": "enemy_avalanche_engine.active",
+      "passive_ability": "enemy_avalanche_engine.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_avalanche_engine.active",
+        "name": "Ice Boulder",
+        "text": "Roll a boulder into the primary target for 454 physical damage. (65 +180% STR) Slows the target (2 stacks); one enemy in the line takes 50% and is slowed.",
+        "formula": "454 = 65 + 180% STR  (STR 1.8×216)",
+        "tags": [
+          "physical",
+          "aoe",
+          "slow"
+        ]
+      },
+      "passive": {
+        "id": "enemy_avalanche_engine.passive",
+        "name": "None",
+        "text": "No passive effect.",
+        "formula": "",
+        "tags": []
+      }
+    },
+    {
+      "id": "enemy_battlemage",
+      "name": "Battlemage",
+      "affinity": "clear",
+      "role": "mage",
+      "role_code": "int-ranged-squishy-ability-steady-damage",
+      "intent": "damage",
+      "tier": 5,
+      "level": 1,
+      "max_hp": 535,
+      "strength": 21,
+      "intelligence": 204,
+      "attack_speed": 73.6481766290877,
+      "move_speed": 100,
+      "mana_regen": 151,
+      "threat": 36,
+      "armor": 20,
+      "resistance": 20,
+      "attack_range": 3,
+      "active_ability": "enemy_battlemage.active",
+      "passive_ability": "enemy_battlemage.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_battlemage.active",
+        "name": "Fireball",
+        "text": "Hurl a fireball at the primary target for 478 magic damage. (70 +200% INT) Adjacent enemies take 50% splash.",
+        "formula": "478 = 70 + 200% INT  (INT 2×204)",
+        "tags": [
+          "magic",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "enemy_battlemage.passive",
+        "name": "None",
+        "text": "No passive effect.",
+        "formula": "",
+        "tags": []
+      }
+    },
+    {
+      "id": "enemy_blight_lurker",
+      "name": "Blight Lurker",
+      "affinity": "rain",
+      "role": "tank",
+      "role_code": "str-melee-tanky_hp-heavy-utility",
+      "intent": "utility",
+      "tier": 3,
+      "level": 1,
+      "max_hp": 1470,
+      "strength": 66,
+      "intelligence": 7,
+      "attack_speed": 93.38598222157361,
+      "move_speed": 88,
+      "mana_regen": 112,
+      "threat": 96,
+      "armor": 34,
+      "resistance": 32,
+      "attack_range": 1,
+      "active_ability": "enemy_blight_lurker.active",
+      "passive_ability": "enemy_blight_lurker.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_blight_lurker.active",
+        "name": "Blighted Claw",
+        "text": "Claw the primary target for 139 physical damage. (40 +150% STR)",
+        "formula": "139 = 40 + 150% STR  (STR 1.5×66)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "enemy_blight_lurker.passive",
+        "name": "Lurking Regen",
+        "text": "Regenerates while it avoids being hit. After 3s without taking damage, heals 3% of max HP every 2s.",
+        "formula": "",
+        "tags": [
+          "heal"
+        ]
+      }
+    },
+    {
+      "id": "enemy_brineblight_berserker",
+      "name": "Brineblight Berserker",
+      "affinity": "rain",
+      "role": "swashbuckler",
+      "role_code": "str-melee-auto-speedy-damage",
+      "intent": "damage",
+      "tier": 5,
+      "level": 1,
+      "max_hp": 914,
+      "strength": 139,
+      "intelligence": 17,
+      "attack_speed": 195.03128255480635,
+      "move_speed": 124,
+      "mana_regen": 63,
+      "threat": 60,
+      "armor": 50,
+      "resistance": 46,
+      "attack_range": 1,
+      "active_ability": "enemy_brineblight_berserker.active",
+      "passive_ability": "enemy_brineblight_berserker.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_brineblight_berserker.active",
+        "name": "Frenzied Blow",
+        "text": "Strike the primary target for 338 physical damage. (60 +200% STR)",
+        "formula": "338 = 60 + 200% STR  (STR 2×139)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "enemy_brineblight_berserker.passive",
+        "name": "Bloodfrenzy",
+        "text": "Below 50% HP, each hit taken grants +15 Attack Speed for 3s.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "enemy_caged_banshee",
+      "name": "Caged Banshee",
+      "affinity": "mist",
+      "role": "support",
+      "role_code": "int-ranged-ability-utility",
+      "intent": "utility",
+      "tier": 5,
+      "level": 1,
+      "max_hp": 926,
+      "strength": 15,
+      "intelligence": 134,
+      "attack_speed": 70.14112059913114,
+      "move_speed": 108,
+      "mana_regen": 175,
+      "threat": 61,
+      "armor": 33,
+      "resistance": 33,
+      "attack_range": 3,
+      "active_ability": "enemy_caged_banshee.active",
+      "passive_ability": "enemy_caged_banshee.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_caged_banshee.active",
+        "name": "Wailing Scream",
+        "text": "Scream at all enemies within 3 hexes for 164 magic damage each. (30 +100% INT) Fears struck enemies for 2s.",
+        "formula": "164 = 30 + 100% INT  (INT 1×134)",
+        "tags": [
+          "magic",
+          "aoe",
+          "fear"
+        ]
+      },
+      "passive": {
+        "id": "enemy_caged_banshee.passive",
+        "name": "None",
+        "text": "No passive effect.",
+        "formula": "",
+        "tags": []
+      }
+    },
+    {
+      "id": "enemy_caged_storm_drake",
+      "name": "Caged Storm-Drake",
+      "affinity": "thunder",
+      "role": "spellblade",
+      "role_code": "ranged-speedy",
+      "intent": "hybrid",
+      "tier": 9,
+      "level": 1,
+      "max_hp": 1361,
+      "strength": 113,
+      "intelligence": 113,
+      "attack_speed": 126.5374691075581,
+      "move_speed": 135,
+      "mana_regen": 117,
+      "threat": 70,
+      "armor": 50,
+      "resistance": 50,
+      "attack_range": 3,
+      "active_ability": "enemy_caged_storm_drake.active",
+      "passive_ability": "enemy_caged_storm_drake.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_caged_storm_drake.active",
+        "name": "Storm Dive",
+        "text": "Dive for 374 hybrid magic damage to all enemies within 2 hexes. (80 +130% STR +130% INT) Stuns struck enemies for 1s.",
+        "formula": "374 = 80 + 130% STR + 130% INT  (STR 1.3×113, INT 1.3×113)",
+        "tags": [
+          "magic",
+          "aoe",
+          "stun"
+        ]
+      },
+      "passive": {
+        "id": "enemy_caged_storm_drake.passive",
+        "name": "Storm Conduit",
+        "text": "While mana is near-full, auto-attacks chain to a nearby enemy for 45 magic damage. (+40% INT)",
+        "formula": "45 = 40% INT  (INT 0.4×113)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "enemy_cannoneer",
+      "name": "Cannoneer",
+      "affinity": "clear",
+      "role": "marksman",
+      "role_code": "str-ranged-auto-heavy-damage",
+      "intent": "damage",
+      "tier": 8,
+      "level": 1,
+      "max_hp": 1164,
+      "strength": 244,
+      "intelligence": 24,
+      "attack_speed": 119.94718257428097,
+      "move_speed": 98,
+      "mana_regen": 67,
+      "threat": 63,
+      "armor": 44,
+      "resistance": 44,
+      "attack_range": 3,
+      "active_ability": "enemy_cannoneer.active",
+      "passive_ability": "enemy_cannoneer.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_cannoneer.active",
+        "name": "Cannon Blast",
+        "text": "Fire a cannonball at the primary target for 617 physical damage. (80 +220% STR) Adjacent enemies take 40% splash.",
+        "formula": "617 = 80 + 220% STR  (STR 2.2×244)",
+        "tags": [
+          "physical",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "enemy_cannoneer.passive",
+        "name": "Scattershot",
+        "text": "Auto-attacks splash 49 physical damage to nearby enemies. (+20% STR)",
+        "formula": "49 = 20% STR  (STR 0.2×244)",
+        "tags": [
+          "physical",
+          "aoe"
+        ]
+      }
+    },
+    {
+      "id": "enemy_capture_rig_wolf",
+      "name": "Capture-Rig Wolf",
+      "affinity": "thunder",
+      "role": "swashbuckler",
+      "role_code": "str-melee-auto-speedy-damage",
+      "intent": "damage",
+      "tier": 3,
+      "level": 1,
+      "max_hp": 726,
+      "strength": 110,
+      "intelligence": 14,
+      "attack_speed": 187.4586260771294,
+      "move_speed": 120,
+      "mana_regen": 61,
+      "threat": 57,
+      "armor": 40,
+      "resistance": 37,
+      "attack_range": 1,
+      "active_ability": "enemy_capture_rig_wolf.active",
+      "passive_ability": "enemy_capture_rig_wolf.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_capture_rig_wolf.active",
+        "name": "Shock Bite",
+        "text": "Bite the primary target for 221 physical damage. (45 +160% STR)",
+        "formula": "221 = 45 + 160% STR  (STR 1.6×110)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "enemy_capture_rig_wolf.passive",
+        "name": "Static Burst",
+        "text": "Every 6s, gain +30 Attack Speed for 3s.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "enemy_cold_iron_yeti",
+      "name": "Cold-Iron Yeti",
+      "affinity": "snow",
+      "role": "tank",
+      "role_code": "str-melee-tanky_hp-leaden-utility",
+      "intent": "utility",
+      "tier": 4,
+      "level": 1,
+      "max_hp": 1650,
+      "strength": 82,
+      "intelligence": 7,
+      "attack_speed": 78.44408991953199,
+      "move_speed": 74,
+      "mana_regen": 115,
+      "threat": 98,
+      "armor": 39,
+      "resistance": 36,
+      "attack_range": 1,
+      "active_ability": "enemy_cold_iron_yeti.active",
+      "passive_ability": "enemy_cold_iron_yeti.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_cold_iron_yeti.active",
+        "name": "Knockback Charge",
+        "text": "Charge the primary target for 208 physical damage. (60 +180% STR) Stuns for 1.5s.",
+        "formula": "208 = 60 + 180% STR  (STR 1.8×82)",
+        "tags": [
+          "physical",
+          "stun"
+        ]
+      },
+      "passive": {
+        "id": "enemy_cold_iron_yeti.passive",
+        "name": "Frosthide",
+        "text": "Reduces all incoming damage by 15%.",
+        "formula": "",
+        "tags": [
+          "defense"
+        ]
+      }
+    },
+    {
+      "id": "enemy_company_captain",
+      "name": "Company Captain",
+      "affinity": "clear",
+      "role": "support",
+      "role_code": "int-ranged-ability-utility",
+      "intent": "utility",
+      "tier": 5,
+      "level": 1,
+      "max_hp": 926,
+      "strength": 15,
+      "intelligence": 134,
+      "attack_speed": 70.14112059913114,
+      "move_speed": 108,
+      "mana_regen": 175,
+      "threat": 61,
+      "armor": 33,
+      "resistance": 33,
+      "attack_range": 3,
+      "active_ability": "enemy_company_captain.active",
+      "passive_ability": "enemy_company_captain.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_company_captain.active",
+        "name": "Mark Target",
+        "text": "Mark the lowest-HP enemy, shredding its Armor and Resistance for 6s. Reduces both by 8 + 15% of the Captain's Intelligence.",
+        "formula": "",
+        "tags": [
+          "debuff"
+        ]
+      },
+      "passive": {
+        "id": "enemy_company_captain.passive",
+        "name": "Focus Fire",
+        "text": "The Captain's strikes mark enemies and raise their threat; allies hitting a marked target trigger bonus magic damage. Bonus scales with the Captain's Intelligence and level.",
+        "formula": "",
+        "tags": [
+          "magic",
+          "debuff"
+        ]
+      }
+    },
+    {
+      "id": "enemy_company_guard",
+      "name": "Company Guard",
+      "affinity": "clear",
+      "role": "tank",
+      "role_code": "melee-tanky_hp-heavy",
+      "intent": "hybrid",
+      "tier": 4,
+      "level": 1,
+      "max_hp": 1527,
+      "strength": 44,
+      "intelligence": 44,
+      "attack_speed": 99.2224351660747,
+      "move_speed": 90,
+      "mana_regen": 106,
+      "threat": 89,
+      "armor": 37,
+      "resistance": 34,
+      "attack_range": 1,
+      "active_ability": "enemy_company_guard.active",
+      "passive_ability": "enemy_company_guard.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_company_guard.active",
+        "name": "Shield Wall",
+        "text": "Brace for 6s, gaining +40 Armor and +50 threat to draw fire.",
+        "formula": "",
+        "tags": [
+          "defense",
+          "taunt"
+        ]
+      },
+      "passive": {
+        "id": "enemy_company_guard.passive",
+        "name": "Bodyguard",
+        "text": "High threat (+80) draws enemy attacks onto itself.",
+        "formula": "",
+        "tags": [
+          "taunt"
+        ]
+      }
+    },
+    {
+      "id": "enemy_conscript",
+      "name": "Conscript",
+      "affinity": "clear",
+      "role": "swashbuckler",
+      "role_code": "str-melee-auto-steady-damage",
+      "intent": "damage",
+      "tier": 1,
+      "level": 1,
+      "max_hp": 576,
+      "strength": 103,
+      "intelligence": 11,
+      "attack_speed": 138.13800000000003,
+      "move_speed": 92,
+      "mana_regen": 58,
+      "threat": 55,
+      "armor": 32,
+      "resistance": 29,
+      "attack_range": 1,
+      "active_ability": "enemy_conscript.active",
+      "passive_ability": "enemy_conscript.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_conscript.active",
+        "name": "Thrust",
+        "text": "Strike the primary target for 184 physical damage. (30 +150% STR)",
+        "formula": "184 = 30 + 150% STR  (STR 1.5×103)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "enemy_conscript.passive",
+        "name": "Heavy Swing",
+        "text": "Every 4th auto-attack deals 52 bonus physical damage. (+50% STR)",
+        "formula": "52 = 50% STR  (STR 0.5×103)",
+        "tags": [
+          "physical"
+        ]
+      }
+    },
+    {
+      "id": "enemy_crossbow_levy",
+      "name": "Crossbow Levy",
+      "affinity": "clear",
+      "role": "marksman",
+      "role_code": "str-ranged-auto-brisk-damage",
+      "intent": "damage",
+      "tier": 2,
+      "level": 1,
+      "max_hp": 582,
+      "strength": 104,
+      "intelligence": 12,
+      "attack_speed": 137.83746252815183,
+      "move_speed": 110,
+      "mana_regen": 59,
+      "threat": 56,
+      "armor": 22,
+      "resistance": 22,
+      "attack_range": 3,
+      "active_ability": "enemy_crossbow_levy.active",
+      "passive_ability": "enemy_crossbow_levy.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_crossbow_levy.active",
+        "name": "Piercing Bolt",
+        "text": "Fire a bolt at the primary target for 227 physical damage. (40 +180% STR) Gains +15 Penetration for the hit.",
+        "formula": "227 = 40 + 180% STR  (STR 1.8×104)",
+        "tags": [
+          "physical",
+          "penetration"
+        ]
+      },
+      "passive": {
+        "id": "enemy_crossbow_levy.passive",
+        "name": "Bodkin Tips",
+        "text": "Grants +5 Penetration for the whole battle.",
+        "formula": "",
+        "tags": [
+          "penetration"
+        ]
+      }
+    },
+    {
+      "id": "enemy_drained_stalker",
+      "name": "Drained Stalker",
+      "affinity": "mist",
+      "role": "mage",
+      "role_code": "int-ranged-ability-speedy-damage",
+      "intent": "damage",
+      "tier": 4,
+      "level": 1,
+      "max_hp": 733,
+      "strength": 15,
+      "intelligence": 124,
+      "attack_speed": 82.7340010870064,
+      "move_speed": 122,
+      "mana_regen": 170,
+      "threat": 50,
+      "armor": 27,
+      "resistance": 27,
+      "attack_range": 3,
+      "active_ability": "enemy_drained_stalker.active",
+      "passive_ability": "enemy_drained_stalker.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_drained_stalker.active",
+        "name": "Drain Bolt",
+        "text": "Strike the primary target for 273 magic damage. (50 +180% INT)",
+        "formula": "273 = 50 + 180% INT  (INT 1.8×124)",
+        "tags": [
+          "magic"
+        ]
+      },
+      "passive": {
+        "id": "enemy_drained_stalker.passive",
+        "name": "Soul Pierce",
+        "text": "Auto-attacks pierce to one enemy behind the target for 31 magic damage. (+25% INT)",
+        "formula": "31 = 25% INT  (INT 0.25×124)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "enemy_dredge_hulk",
+      "name": "Dredge-Hulk",
+      "affinity": "rain",
+      "role": "tank",
+      "role_code": "melee-tanky_hp-leaden",
+      "intent": "hybrid",
+      "tier": 7,
+      "level": 1,
+      "max_hp": 2160,
+      "strength": 69,
+      "intelligence": 69,
+      "attack_speed": 86.71360991758573,
+      "move_speed": 79,
+      "mana_regen": 113,
+      "threat": 95,
+      "armor": 52,
+      "resistance": 48,
+      "attack_range": 1,
+      "active_ability": "enemy_dredge_hulk.active",
+      "passive_ability": "enemy_dredge_hulk.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_dredge_hulk.active",
+        "name": "Crushing Sweep",
+        "text": "Sweep the primary target for 232 physical damage. (60 +150% STR +100% INT) Applies 2 stacks of slow for 4s.",
+        "formula": "232 = 60 + 150% STR + 100% INT  (STR 1.5×69, INT 1×69)",
+        "tags": [
+          "physical",
+          "slow"
+        ]
+      },
+      "passive": {
+        "id": "enemy_dredge_hulk.passive",
+        "name": "Slurry Trail",
+        "text": "Every 3s, slows all enemies within 2 hexes for 3.5s.",
+        "formula": "",
+        "tags": [
+          "slow",
+          "aura"
+        ]
+      }
+    },
+    {
+      "id": "enemy_drowned_siren",
+      "name": "Drowned Siren",
+      "affinity": "rain",
+      "role": "mage",
+      "role_code": "int-ranged-squishy-ability-damage",
+      "intent": "damage",
+      "tier": 4,
+      "level": 1,
+      "max_hp": 477,
+      "strength": 19,
+      "intelligence": 172,
+      "attack_speed": 75.2127282609149,
+      "move_speed": 106,
+      "mana_regen": 154,
+      "threat": 35,
+      "armor": 18,
+      "resistance": 18,
+      "attack_range": 3,
+      "active_ability": "enemy_drowned_siren.active",
+      "passive_ability": "enemy_drowned_siren.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_drowned_siren.active",
+        "name": "Drowning Song",
+        "text": "Flood all enemies within 2 hexes for 360 magic damage each. (50 +180% INT) Silences struck enemies for 2s.",
+        "formula": "360 = 50 + 180% INT  (INT 1.8×172)",
+        "tags": [
+          "magic",
+          "aoe",
+          "silence"
+        ]
+      },
+      "passive": {
+        "id": "enemy_drowned_siren.passive",
+        "name": "None",
+        "text": "No passive effect.",
+        "formula": "",
+        "tags": []
+      }
+    },
+    {
+      "id": "enemy_field_chaplain",
+      "name": "Field Chaplain",
+      "affinity": "clear",
+      "role": "support",
+      "role_code": "int-ranged-ability-steady-utility",
+      "intent": "utility",
+      "tier": 3,
+      "level": 1,
+      "max_hp": 735,
+      "strength": 12,
+      "intelligence": 113,
+      "attack_speed": 64.72098019206385,
+      "move_speed": 96,
+      "mana_regen": 162,
+      "threat": 58,
+      "armor": 26,
+      "resistance": 26,
+      "attack_range": 3,
+      "active_ability": "enemy_field_chaplain.active",
+      "passive_ability": "enemy_field_chaplain.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_field_chaplain.active",
+        "name": "Benediction",
+        "text": "Heal all allies within 2 hexes for 200 each. (30 +150% INT)",
+        "formula": "200 = 30 + 150% INT  (INT 1.5×113)",
+        "tags": [
+          "heal",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "enemy_field_chaplain.passive",
+        "name": "None",
+        "text": "No passive effect.",
+        "formula": "",
+        "tags": []
+      }
+    },
+    {
+      "id": "enemy_field_medic",
+      "name": "Field Medic",
+      "affinity": "clear",
+      "role": "support",
+      "role_code": "int-ranged-ability-utility",
+      "intent": "utility",
+      "tier": 2,
+      "level": 1,
+      "max_hp": 655,
+      "strength": 11,
+      "intelligence": 95,
+      "attack_speed": 66.09588612738548,
+      "move_speed": 102,
+      "mana_regen": 165,
+      "threat": 57,
+      "armor": 24,
+      "resistance": 24,
+      "attack_range": 3,
+      "active_ability": "enemy_field_medic.active",
+      "passive_ability": "enemy_field_medic.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_field_medic.active",
+        "name": "Triage",
+        "text": "Heal the lowest-HP ally for 220. (30 +200% INT)",
+        "formula": "220 = 30 + 200% INT  (INT 2×95)",
+        "tags": [
+          "heal"
+        ]
+      },
+      "passive": {
+        "id": "enemy_field_medic.passive",
+        "name": "Self-Care",
+        "text": "Regenerates health over time. Heals 2% of max HP every 3s.",
+        "formula": "",
+        "tags": [
+          "heal"
+        ]
+      }
+    },
+    {
+      "id": "enemy_flood_tyrant",
+      "name": "Flood Tyrant",
+      "affinity": "rain",
+      "role": "spellblade",
+      "role_code": "ranged-heavy",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 1527,
+      "strength": 158,
+      "intelligence": 158,
+      "attack_speed": 91.42316392275734,
+      "move_speed": 102,
+      "mana_regen": 120,
+      "threat": 72,
+      "armor": 57,
+      "resistance": 57,
+      "attack_range": 3,
+      "active_ability": "enemy_flood_tyrant.active",
+      "passive_ability": "enemy_flood_tyrant.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_flood_tyrant.active",
+        "name": "Deluge",
+        "text": "Flood all enemies within 3 hexes for 60% of 438 magic damage. (90 +220% INT)",
+        "formula": "438 = 90 + 220% INT  (INT 2.2×158)",
+        "tags": [
+          "magic",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "enemy_flood_tyrant.passive",
+        "name": "Rising Tide",
+        "text": "Every 6s, permanently gain +15 Intelligence.",
+        "formula": "",
+        "tags": [
+          "scaling",
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "enemy_frost_sovereign",
+      "name": "Frost Sovereign",
+      "affinity": "snow",
+      "role": "spellblade",
+      "role_code": "ranged-leaden",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 1527,
+      "strength": 177,
+      "intelligence": 177,
+      "attack_speed": 75.28966440697663,
+      "move_speed": 84,
+      "mana_regen": 120,
+      "threat": 72,
+      "armor": 57,
+      "resistance": 57,
+      "attack_range": 3,
+      "active_ability": "enemy_frost_sovereign.active",
+      "passive_ability": "enemy_frost_sovereign.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_frost_sovereign.active",
+        "name": "Absolute Zero",
+        "text": "Freeze all enemies within 3 hexes for 60% of 568 magic damage. (90 +120% STR +150% INT) Freezes struck enemies for 1.5s.",
+        "formula": "568 = 90 + 120% STR + 150% INT  (STR 1.2×177, INT 1.5×177)",
+        "tags": [
+          "magic",
+          "aoe",
+          "freeze"
+        ]
+      },
+      "passive": {
+        "id": "enemy_frost_sovereign.passive",
+        "name": "Endless Winter",
+        "text": "Every 6s, permanently gain +15 Intelligence.",
+        "formula": "",
+        "tags": [
+          "scaling",
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "enemy_glacier_goliath",
+      "name": "Glacier Goliath",
+      "affinity": "snow",
+      "role": "tank",
+      "role_code": "str-melee-tanky_arm-leaden-utility",
+      "intent": "utility",
+      "tier": 7,
+      "level": 1,
+      "max_hp": 1166,
+      "strength": 116,
+      "intelligence": 10,
+      "attack_speed": 83.2450655208823,
+      "move_speed": 79,
+      "mana_regen": 122,
+      "threat": 104,
+      "armor": 136,
+      "resistance": 126,
+      "attack_range": 1,
+      "active_ability": "enemy_glacier_goliath.active",
+      "passive_ability": "enemy_glacier_goliath.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_glacier_goliath.active",
+        "name": "Ice Carapace",
+        "text": "Encase in ice for 3s, gaining +100 Armor and +100 Resistance.",
+        "formula": "",
+        "tags": [
+          "defense",
+          "buff"
+        ]
+      },
+      "passive": {
+        "id": "enemy_glacier_goliath.passive",
+        "name": "Glacial Growth",
+        "text": "Every 6s, permanently gain +15 Armor and +15 Resistance.",
+        "formula": "",
+        "tags": [
+          "defense",
+          "scaling"
+        ]
+      }
+    },
+    {
+      "id": "enemy_grand_marshal",
+      "name": "Grand Marshal",
+      "affinity": "clear",
+      "role": "swashbuckler",
+      "role_code": "str-melee-auto-brisk-damage",
+      "intent": "damage",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 1629,
+      "strength": 261,
+      "intelligence": 31,
+      "attack_speed": 197.38440352029048,
+      "move_speed": 129,
+      "mana_regen": 70,
+      "threat": 66,
+      "armor": 89,
+      "resistance": 82,
+      "attack_range": 1,
+      "active_ability": "enemy_grand_marshal.active",
+      "passive_ability": "enemy_grand_marshal.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_grand_marshal.active",
+        "name": "Decapitate",
+        "text": "Strike the primary target for 742 physical damage. (90 +250% STR)",
+        "formula": "742 = 90 + 250% STR  (STR 2.5×261)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "enemy_grand_marshal.passive",
+        "name": "War Momentum",
+        "text": "Every 6s, permanently gain +20 Strength.",
+        "formula": "",
+        "tags": [
+          "scaling",
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "enemy_gunslinger",
+      "name": "Gunslinger",
+      "affinity": "clear",
+      "role": "marksman",
+      "role_code": "str-ranged-auto-speedy-damage",
+      "intent": "damage",
+      "tier": 5,
+      "level": 1,
+      "max_hp": 823,
+      "strength": 139,
+      "intelligence": 17,
+      "attack_speed": 159.57104936302338,
+      "move_speed": 124,
+      "mana_regen": 63,
+      "threat": 60,
+      "armor": 31,
+      "resistance": 31,
+      "attack_range": 3,
+      "active_ability": "enemy_gunslinger.active",
+      "passive_ability": "enemy_gunslinger.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_gunslinger.active",
+        "name": "Deadeye Shot",
+        "text": "Shoot the primary target for 300 physical damage. (50 +180% STR)",
+        "formula": "300 = 50 + 180% STR  (STR 1.8×139)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "enemy_gunslinger.passive",
+        "name": "Ricochet",
+        "text": "Auto-attacks ricochet to a nearby enemy for 42 physical damage. (+30% STR)",
+        "formula": "42 = 30% STR  (STR 0.3×139)",
+        "tags": [
+          "physical"
+        ]
+      }
+    },
+    {
+      "id": "enemy_heavy_knight",
+      "name": "Heavy Knight",
+      "affinity": "clear",
+      "role": "tank",
+      "role_code": "str-melee-tanky_hp-leaden-utility",
+      "intent": "utility",
+      "tier": 4,
+      "level": 1,
+      "max_hp": 1650,
+      "strength": 82,
+      "intelligence": 7,
+      "attack_speed": 78.44408991953199,
+      "move_speed": 74,
+      "mana_regen": 115,
+      "threat": 98,
+      "armor": 39,
+      "resistance": 36,
+      "attack_range": 1,
+      "active_ability": "enemy_heavy_knight.active",
+      "passive_ability": "enemy_heavy_knight.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_heavy_knight.active",
+        "name": "Greatsword",
+        "text": "Strike the primary target for 181 physical damage. (50 +160% STR)",
+        "formula": "181 = 50 + 160% STR  (STR 1.6×82)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "enemy_heavy_knight.passive",
+        "name": "Iron Vigil",
+        "text": "Every 6s, gain +40 Armor for 4s.",
+        "formula": "",
+        "tags": [
+          "defense"
+        ]
+      }
+    },
+    {
+      "id": "enemy_hexblade_officer",
+      "name": "Hexblade Officer",
+      "affinity": "clear",
+      "role": "assassin",
+      "role_code": "int-melee-ability-brisk-damage",
+      "intent": "damage",
+      "tier": 6,
+      "level": 1,
+      "max_hp": 1026,
+      "strength": 19,
+      "intelligence": 165,
+      "attack_speed": 100.42218449646433,
+      "move_speed": 119,
+      "mana_regen": 169,
+      "threat": 52,
+      "armor": 56,
+      "resistance": 52,
+      "attack_range": 1,
+      "active_ability": "enemy_hexblade_officer.active",
+      "passive_ability": "enemy_hexblade_officer.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_hexblade_officer.active",
+        "name": "Hex Bolt",
+        "text": "Blast the primary target for 357 magic damage. (60 +180% INT) Gain +20 Intelligence for 6s, empowering autos.",
+        "formula": "357 = 60 + 180% INT  (INT 1.8×165)",
+        "tags": [
+          "magic",
+          "buff"
+        ]
+      },
+      "passive": {
+        "id": "enemy_hexblade_officer.passive",
+        "name": "Hexed Blade",
+        "text": "Auto-attacks deal 41 bonus magic damage. (+25% INT)",
+        "formula": "41 = 25% INT  (INT 0.25×165)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "enemy_hierarch",
+      "name": "Hierarch",
+      "affinity": "clear",
+      "role": "support",
+      "role_code": "int-ranged-ability-steady-utility",
+      "intent": "utility",
+      "tier": 8,
+      "level": 1,
+      "max_hp": 1309,
+      "strength": 21,
+      "intelligence": 201,
+      "attack_speed": 71.45657625110363,
+      "move_speed": 106,
+      "mana_regen": 179,
+      "threat": 64,
+      "armor": 47,
+      "resistance": 47,
+      "attack_range": 3,
+      "active_ability": "enemy_hierarch.active",
+      "passive_ability": "enemy_hierarch.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_hierarch.active",
+        "name": "Sanctuary",
+        "text": "Shield the whole team for 5s. Grants Armor (20 + 40% of Intelligence) and Resistance (10 + 20% of Intelligence).",
+        "formula": "",
+        "tags": [
+          "defense",
+          "team"
+        ]
+      },
+      "passive": {
+        "id": "enemy_hierarch.passive",
+        "name": "Last Rites",
+        "text": "On death, grants all surviving allies a barrier. Barrier = 50 + 2× Intelligence, lasting 6s per level.",
+        "formula": "",
+        "tags": [
+          "defense",
+          "team"
+        ]
+      }
+    },
+    {
+      "id": "enemy_hollowed_wisp",
+      "name": "Hollowed Wisp",
+      "affinity": "mist",
+      "role": "assassin",
+      "role_code": "int-melee-squishy-ability-brisk-damage",
+      "intent": "damage",
+      "tier": 3,
+      "level": 1,
+      "max_hp": 472,
+      "strength": 17,
+      "intelligence": 145,
+      "attack_speed": 94.63055643316629,
+      "move_speed": 112,
+      "mana_regen": 159,
+      "threat": 34,
+      "armor": 26,
+      "resistance": 24,
+      "attack_range": 1,
+      "active_ability": "enemy_hollowed_wisp.active",
+      "passive_ability": "enemy_hollowed_wisp.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_hollowed_wisp.active",
+        "name": "Spirit Bolt",
+        "text": "Strike the primary target for 311 magic damage. (50 +180% INT)",
+        "formula": "311 = 50 + 180% INT  (INT 1.8×145)",
+        "tags": [
+          "magic"
+        ]
+      },
+      "passive": {
+        "id": "enemy_hollowed_wisp.passive",
+        "name": "Phantom Strike",
+        "text": "The first auto-attack deals 116 bonus magic damage. (+80% INT)",
+        "formula": "116 = 80% INT  (INT 0.8×145)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "enemy_inquisitor",
+      "name": "Inquisitor",
+      "affinity": "clear",
+      "role": "spellblade",
+      "role_code": "ranged-steady",
+      "intent": "hybrid",
+      "tier": 6,
+      "level": 1,
+      "max_hp": 962,
+      "strength": 94,
+      "intelligence": 94,
+      "attack_speed": 91.4171030171895,
+      "move_speed": 102,
+      "mana_regen": 110,
+      "threat": 66,
+      "armor": 36,
+      "resistance": 36,
+      "attack_range": 3,
+      "active_ability": "enemy_inquisitor.active",
+      "passive_ability": "enemy_inquisitor.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_inquisitor.active",
+        "name": "Smite",
+        "text": "Smite the primary target for 281 hybrid magic damage. (55 +120% STR +120% INT)",
+        "formula": "281 = 55 + 120% STR + 120% INT  (STR 1.2×94, INT 1.2×94)",
+        "tags": [
+          "magic"
+        ]
+      },
+      "passive": {
+        "id": "enemy_inquisitor.passive",
+        "name": "Witch Hunter",
+        "text": "Auto-attacks against caster-type targets deal bonus magic damage. Deals 0.3× the higher of Strength or Intelligence.",
+        "formula": "",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "enemy_iron_collared_hound",
+      "name": "Iron-Collared Hound",
+      "affinity": "snow",
+      "role": "swashbuckler",
+      "role_code": "str-melee-auto-speedy-damage",
+      "intent": "damage",
+      "tier": 3,
+      "level": 1,
+      "max_hp": 726,
+      "strength": 110,
+      "intelligence": 14,
+      "attack_speed": 187.4586260771294,
+      "move_speed": 120,
+      "mana_regen": 61,
+      "threat": 57,
+      "armor": 40,
+      "resistance": 37,
+      "attack_range": 1,
+      "active_ability": "enemy_iron_collared_hound.active",
+      "passive_ability": "enemy_iron_collared_hound.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_iron_collared_hound.active",
+        "name": "Savage Bite",
+        "text": "Bite the primary target for 216 physical damage. (40 +160% STR) Applies 2 stacks of slow for 2.5s.",
+        "formula": "216 = 40 + 160% STR  (STR 1.6×110)",
+        "tags": [
+          "physical",
+          "slow"
+        ]
+      },
+      "passive": {
+        "id": "enemy_iron_collared_hound.passive",
+        "name": "Hamstring",
+        "text": "Auto-attacks apply 1 stack of slow for 1.5s.",
+        "formula": "",
+        "tags": [
+          "slow"
+        ]
+      }
+    },
+    {
+      "id": "enemy_iron_maiden",
+      "name": "Iron Maiden",
+      "affinity": "clear",
+      "role": "tank",
+      "role_code": "melee-tanky_hp-leaden",
+      "intent": "hybrid",
+      "tier": 7,
+      "level": 1,
+      "max_hp": 2160,
+      "strength": 69,
+      "intelligence": 69,
+      "attack_speed": 86.71360991758573,
+      "move_speed": 79,
+      "mana_regen": 113,
+      "threat": 95,
+      "armor": 52,
+      "resistance": 48,
+      "attack_range": 1,
+      "active_ability": "enemy_iron_maiden.active",
+      "passive_ability": "enemy_iron_maiden.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_iron_maiden.active",
+        "name": "Impale",
+        "text": "Impale the primary target for 184 physical damage. (60 +180% STR)",
+        "formula": "184 = 60 + 180% STR  (STR 1.8×69)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "enemy_iron_maiden.passive",
+        "name": "Spike Mantle",
+        "text": "Each hit taken grants +3 Armor for 6s and stores a spike. Every 6s, releases stored spikes as AoE physical damage (50% of Strength + 5 per stack).",
+        "formula": "",
+        "tags": [
+          "defense",
+          "physical",
+          "aoe"
+        ]
+      }
+    },
+    {
+      "id": "enemy_levyman",
+      "name": "Levyman",
+      "affinity": "clear",
+      "role": "tank",
+      "role_code": "str-melee-tanky_hp-heavy-utility",
+      "intent": "utility",
+      "tier": 1,
+      "level": 1,
+      "max_hp": 1166,
+      "strength": 52,
+      "intelligence": 5,
+      "attack_speed": 89.76,
+      "move_speed": 85,
+      "mana_regen": 108,
+      "threat": 92,
+      "armor": 27,
+      "resistance": 25,
+      "attack_range": 1,
+      "active_ability": "enemy_levyman.active",
+      "passive_ability": "enemy_levyman.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_levyman.active",
+        "name": "Cudgel",
+        "text": "Strike the primary target for 93 physical damage. (25 +130% STR)",
+        "formula": "93 = 25 + 130% STR  (STR 1.3×52)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "enemy_levyman.passive",
+        "name": "Hardened",
+        "text": "Every 6s, permanently gain +25 max HP.",
+        "formula": "",
+        "tags": [
+          "scaling"
+        ]
+      }
+    },
+    {
+      "id": "enemy_lord_commander",
+      "name": "Lord Commander",
+      "affinity": "clear",
+      "role": "support",
+      "role_code": "str-melee-auto-steady-utility",
+      "intent": "utility",
+      "tier": 7,
+      "level": 1,
+      "max_hp": 1296,
+      "strength": 179,
+      "intelligence": 19,
+      "attack_speed": 142.23014051853607,
+      "move_speed": 104,
+      "mana_regen": 73,
+      "threat": 74,
+      "armor": 68,
+      "resistance": 63,
+      "attack_range": 1,
+      "active_ability": "enemy_lord_commander.active",
+      "passive_ability": "enemy_lord_commander.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_lord_commander.active",
+        "name": "Commanding Shockwave",
+        "text": "Unleash a shockwave for 438 physical damage to all enemies within 2 hexes. (80 +200% STR) Stuns struck enemies for 1.5s.",
+        "formula": "438 = 80 + 200% STR  (STR 2×179)",
+        "tags": [
+          "physical",
+          "aoe",
+          "stun"
+        ]
+      },
+      "passive": {
+        "id": "enemy_lord_commander.passive",
+        "name": "Command Presence",
+        "text": "Grants +15 Strength for the whole battle.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "enemy_maw_of_the_drowned",
+      "name": "Maw of the Drowned",
+      "affinity": "rain",
+      "role": "spellblade",
+      "role_code": "ranged-heavy",
+      "intent": "hybrid",
+      "tier": 9,
+      "level": 1,
+      "max_hp": 1361,
+      "strength": 141,
+      "intelligence": 141,
+      "attack_speed": 89.63070728452031,
+      "move_speed": 100,
+      "mana_regen": 117,
+      "threat": 70,
+      "armor": 50,
+      "resistance": 50,
+      "attack_range": 3,
+      "active_ability": "enemy_maw_of_the_drowned.active",
+      "passive_ability": "enemy_maw_of_the_drowned.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_maw_of_the_drowned.active",
+        "name": "Vortex",
+        "text": "Pull all enemies within 3 hexes, each taking 60% of 362 magic damage. (80 +200% INT) Roots struck enemies for 2s.",
+        "formula": "362 = 80 + 200% INT  (INT 2×141)",
+        "tags": [
+          "magic",
+          "aoe",
+          "root"
+        ]
+      },
+      "passive": {
+        "id": "enemy_maw_of_the_drowned.passive",
+        "name": "Devouring Tide",
+        "text": "After casting, the next 3 auto-attacks each deal 70 bonus magic damage. (+50% INT)",
+        "formula": "70 = 50% INT  (INT 0.5×141)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "enemy_picket",
+      "name": "Picket",
+      "affinity": "clear",
+      "role": "marksman",
+      "role_code": "str-ranged-auto-brisk-damage",
+      "intent": "damage",
+      "tier": 1,
+      "level": 1,
+      "max_hp": 518,
+      "strength": 92,
+      "intelligence": 11,
+      "attack_speed": 135.13500000000002,
+      "move_speed": 108,
+      "mana_regen": 58,
+      "threat": 55,
+      "armor": 19,
+      "resistance": 19,
+      "attack_range": 3,
+      "active_ability": "enemy_picket.active",
+      "passive_ability": "enemy_picket.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_picket.active",
+        "name": "Jab",
+        "text": "Strike the primary target for 130 physical damage. (20 +120% STR)",
+        "formula": "130 = 20 + 120% STR  (STR 1.2×92)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "enemy_picket.passive",
+        "name": "None",
+        "text": "No passive effect — a plain auto-attacker.",
+        "formula": "",
+        "tags": []
+      }
+    },
+    {
+      "id": "enemy_pikeman",
+      "name": "Pikeman",
+      "affinity": "clear",
+      "role": "tank",
+      "role_code": "str-melee-tanky_arm-heavy-utility",
+      "intent": "utility",
+      "tier": 2,
+      "level": 1,
+      "max_hp": 655,
+      "strength": 58,
+      "intelligence": 6,
+      "attack_speed": 91.55504226534138,
+      "move_speed": 87,
+      "mana_regen": 110,
+      "threat": 94,
+      "armor": 77,
+      "resistance": 71,
+      "attack_range": 1,
+      "active_ability": "enemy_pikeman.active",
+      "passive_ability": "enemy_pikeman.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_pikeman.active",
+        "name": "Pike Thrust",
+        "text": "Strike the primary target for 122 physical damage. (35 +150% STR)",
+        "formula": "122 = 35 + 150% STR  (STR 1.5×58)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "enemy_pikeman.passive",
+        "name": "Brace",
+        "text": "Reduces damage from attackers 2+ hexes away by 25%.",
+        "formula": "",
+        "tags": [
+          "defense"
+        ]
+      }
+    },
+    {
+      "id": "enemy_powder_sapper",
+      "name": "Powder Sapper",
+      "affinity": "clear",
+      "role": "mage",
+      "role_code": "str-ranged-squishy-ability-speedy-damage",
+      "intent": "damage",
+      "tier": 2,
+      "level": 1,
+      "max_hp": 378,
+      "strength": 123,
+      "intelligence": 15,
+      "attack_speed": 79.52161299701066,
+      "move_speed": 117,
+      "mana_regen": 163,
+      "threat": 34,
+      "armor": 14,
+      "resistance": 14,
+      "attack_range": 3,
+      "active_ability": "enemy_powder_sapper.active",
+      "passive_ability": "enemy_powder_sapper.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_powder_sapper.active",
+        "name": "Powder Charge",
+        "text": "Detonate on the primary target for 271 physical damage. (50 +180% STR) Adjacent enemies take 40% splash.",
+        "formula": "271 = 50 + 180% STR  (STR 1.8×123)",
+        "tags": [
+          "physical",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "enemy_powder_sapper.passive",
+        "name": "None",
+        "text": "No passive effect.",
+        "formula": "",
+        "tags": []
+      }
+    },
+    {
+      "id": "enemy_quarried_behemoth",
+      "name": "Quarried Behemoth",
+      "affinity": "cloudy",
+      "role": "tank",
+      "role_code": "melee-tanky_hp-leaden",
+      "intent": "hybrid",
+      "tier": 9,
+      "level": 1,
+      "max_hp": 2721,
+      "strength": 87,
+      "intelligence": 87,
+      "attack_speed": 90.21652890075902,
+      "move_speed": 82,
+      "mana_regen": 117,
+      "threat": 98,
+      "armor": 66,
+      "resistance": 60,
+      "attack_range": 1,
+      "active_ability": "enemy_quarried_behemoth.active",
+      "passive_ability": "enemy_quarried_behemoth.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_quarried_behemoth.active",
+        "name": "Ground Slam",
+        "text": "Slam for 271 physical damage to all enemies within 2 hexes. (80 +220% STR) Stuns struck enemies for 1s.",
+        "formula": "271 = 80 + 220% STR  (STR 2.2×87)",
+        "tags": [
+          "physical",
+          "aoe",
+          "stun"
+        ]
+      },
+      "passive": {
+        "id": "enemy_quarried_behemoth.passive",
+        "name": "Absorb Stone",
+        "text": "Each hit taken permanently grants +5 Strength.",
+        "formula": "",
+        "tags": [
+          "scaling",
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "enemy_quarry_crawler",
+      "name": "Quarry Crawler",
+      "affinity": "cloudy",
+      "role": "support",
+      "role_code": "str-melee-auto-steady-utility",
+      "intent": "utility",
+      "tier": 3,
+      "level": 1,
+      "max_hp": 816,
+      "strength": 113,
+      "intelligence": 12,
+      "attack_speed": 131.39957027882596,
+      "move_speed": 96,
+      "mana_regen": 67,
+      "threat": 69,
+      "armor": 43,
+      "resistance": 40,
+      "attack_range": 1,
+      "active_ability": "enemy_quarry_crawler.active",
+      "passive_ability": "enemy_quarry_crawler.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_quarry_crawler.active",
+        "name": "Pincer",
+        "text": "Strike the primary target for 221 physical damage. (40 +160% STR)",
+        "formula": "221 = 40 + 160% STR  (STR 1.6×113)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "enemy_quarry_crawler.passive",
+        "name": "Hardening Shell",
+        "text": "Each hit taken grants +8 Armor for 4s.",
+        "formula": "",
+        "tags": [
+          "defense"
+        ]
+      }
+    },
+    {
+      "id": "enemy_reaver_of_the_reach",
+      "name": "Reaver of the Reach",
+      "affinity": "cloudy",
+      "role": "spellblade",
+      "role_code": "ranged-brisk",
+      "intent": "hybrid",
+      "tier": 7,
+      "level": 1,
+      "max_hp": 1080,
+      "strength": 95,
+      "intelligence": 95,
+      "attack_speed": 111.48892703689596,
+      "move_speed": 122,
+      "mana_regen": 113,
+      "threat": 68,
+      "armor": 40,
+      "resistance": 40,
+      "attack_range": 3,
+      "active_ability": "enemy_reaver_of_the_reach.active",
+      "passive_ability": "enemy_reaver_of_the_reach.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_reaver_of_the_reach.active",
+        "name": "Reaver Strike",
+        "text": "Strike the primary target for 308 hybrid physical damage. (70 +150% STR +100% INT)",
+        "formula": "308 = 70 + 150% STR + 100% INT  (STR 1.5×95, INT 1×95)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "enemy_reaver_of_the_reach.passive",
+        "name": "Reaving Sweep",
+        "text": "Every 4th auto-attack cleaves a nearby enemy. Deals 0.6× the higher of Strength or Intelligence.",
+        "formula": "",
+        "tags": [
+          "physical"
+        ]
+      }
+    },
+    {
+      "id": "enemy_riflemaster",
+      "name": "Riflemaster",
+      "affinity": "clear",
+      "role": "marksman",
+      "role_code": "str-ranged-auto-brisk-damage",
+      "intent": "damage",
+      "tier": 6,
+      "level": 1,
+      "max_hp": 924,
+      "strength": 165,
+      "intelligence": 19,
+      "attack_speed": 149.19867410903268,
+      "move_speed": 119,
+      "mana_regen": 64,
+      "threat": 61,
+      "armor": 35,
+      "resistance": 35,
+      "attack_range": 3,
+      "active_ability": "enemy_riflemaster.active",
+      "passive_ability": "enemy_riflemaster.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_riflemaster.active",
+        "name": "Aimed Shot",
+        "text": "Take aim at the primary target for 400 physical damage. (70 +200% STR)",
+        "formula": "400 = 70 + 200% STR  (STR 2×165)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "enemy_riflemaster.passive",
+        "name": "Long Shot",
+        "text": "Grants +1 attack range; the first auto-attack deals 198 bonus physical damage. (+120% STR)",
+        "formula": "198 = 120% STR  (STR 1.2×165)",
+        "tags": [
+          "physical"
+        ]
+      }
+    },
+    {
+      "id": "enemy_riven_frost_wyrm",
+      "name": "Riven Frost-Wyrm",
+      "affinity": "snow",
+      "role": "spellblade",
+      "role_code": "ranged-steady",
+      "intent": "hybrid",
+      "tier": 9,
+      "level": 1,
+      "max_hp": 1361,
+      "strength": 134,
+      "intelligence": 134,
+      "attack_speed": 97.01205964912786,
+      "move_speed": 108,
+      "mana_regen": 117,
+      "threat": 70,
+      "armor": 50,
+      "resistance": 50,
+      "attack_range": 3,
+      "active_ability": "enemy_riven_frost_wyrm.active",
+      "passive_ability": "enemy_riven_frost_wyrm.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_riven_frost_wyrm.active",
+        "name": "Frost Cone",
+        "text": "Breathe frost on the primary target for 428 hybrid magic damage. (80 +130% STR +130% INT) Adjacent enemies take 50% damage.",
+        "formula": "428 = 80 + 130% STR + 130% INT  (STR 1.3×134, INT 1.3×134)",
+        "tags": [
+          "magic",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "enemy_riven_frost_wyrm.passive",
+        "name": "Rimebite",
+        "text": "Every 4th auto-attack freezes the target for 1.5s.",
+        "formula": "",
+        "tags": [
+          "freeze"
+        ]
+      }
+    },
+    {
+      "id": "enemy_sergeant_at_arms",
+      "name": "Sergeant-at-Arms",
+      "affinity": "clear",
+      "role": "tank",
+      "role_code": "melee-tanky_hp-heavy",
+      "intent": "hybrid",
+      "tier": 3,
+      "level": 1,
+      "max_hp": 1361,
+      "strength": 39,
+      "intelligence": 39,
+      "attack_speed": 97.27706481413918,
+      "move_speed": 88,
+      "mana_regen": 104,
+      "threat": 87,
+      "armor": 33,
+      "resistance": 30,
+      "attack_range": 1,
+      "active_ability": "enemy_sergeant_at_arms.active",
+      "passive_ability": "enemy_sergeant_at_arms.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_sergeant_at_arms.active",
+        "name": "Cleave",
+        "text": "Cleave the primary target for 112 physical damage. (50 +160% STR) Adjacent enemies take 50% damage.",
+        "formula": "112 = 50 + 160% STR  (STR 1.6×39)",
+        "tags": [
+          "physical",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "enemy_sergeant_at_arms.passive",
+        "name": "Rally the Line",
+        "text": "Every 6s, gain +8 Strength per nearby ally for 6s.",
+        "formula": "",
+        "tags": [
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "enemy_shaftmaw",
+      "name": "Shaftmaw",
+      "affinity": "cloudy",
+      "role": "assassin",
+      "role_code": "int-melee-squishy-ability-brisk-damage",
+      "intent": "damage",
+      "tier": 5,
+      "level": 1,
+      "max_hp": 594,
+      "strength": 21,
+      "intelligence": 183,
+      "attack_speed": 98.4532916743013,
+      "move_speed": 117,
+      "mana_regen": 165,
+      "threat": 36,
+      "armor": 33,
+      "resistance": 30,
+      "attack_range": 1,
+      "active_ability": "enemy_shaftmaw.active",
+      "passive_ability": "enemy_shaftmaw.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_shaftmaw.active",
+        "name": "Blink Maul",
+        "text": "Blink to the lowest-HP enemy for 436 magic damage. (70 +200% INT)",
+        "formula": "436 = 70 + 200% INT  (INT 2×183)",
+        "tags": [
+          "magic"
+        ]
+      },
+      "passive": {
+        "id": "enemy_shaftmaw.passive",
+        "name": "None",
+        "text": "No passive effect.",
+        "formula": "",
+        "tags": []
+      }
+    },
+    {
+      "id": "enemy_shroud_killer",
+      "name": "Shroud-Killer",
+      "affinity": "mist",
+      "role": "swashbuckler",
+      "role_code": "str-melee-squishy-auto-blinding-damage",
+      "intent": "damage",
+      "tier": 7,
+      "level": 1,
+      "max_hp": 749,
+      "strength": 199,
+      "intelligence": 27,
+      "attack_speed": 228.2735781080445,
+      "move_speed": 141,
+      "mana_regen": 66,
+      "threat": 44,
+      "armor": 41,
+      "resistance": 38,
+      "attack_range": 1,
+      "active_ability": "enemy_shroud_killer.active",
+      "passive_ability": "enemy_shroud_killer.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_shroud_killer.active",
+        "name": "Shadow Execute",
+        "text": "Dash to the lowest-HP enemy for 588 physical damage. (90 +250% STR) Deals +50% to targets below 30% HP.",
+        "formula": "588 = 90 + 250% STR  (STR 2.5×199)",
+        "tags": [
+          "physical",
+          "execute"
+        ]
+      },
+      "passive": {
+        "id": "enemy_shroud_killer.passive",
+        "name": "Bloodthirst",
+        "text": "Killing an enemy refunds 50% of the ability's mana cost.",
+        "formula": "",
+        "tags": [
+          "mana"
+        ]
+      }
+    },
+    {
+      "id": "enemy_signal_drummer",
+      "name": "Signal Drummer",
+      "affinity": "clear",
+      "role": "support",
+      "role_code": "int-ranged-ability-steady-utility",
+      "intent": "utility",
+      "tier": 1,
+      "level": 1,
+      "max_hp": 583,
+      "strength": 9,
+      "intelligence": 90,
+      "attack_speed": 62.208,
+      "move_speed": 92,
+      "mana_regen": 156,
+      "threat": 56,
+      "armor": 21,
+      "resistance": 21,
+      "attack_range": 3,
+      "active_ability": "enemy_signal_drummer.active",
+      "passive_ability": "enemy_signal_drummer.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_signal_drummer.active",
+        "name": "Drum Roll",
+        "text": "Grant the whole team +15 Attack Speed for 6s.",
+        "formula": "",
+        "tags": [
+          "buff",
+          "team"
+        ]
+      },
+      "passive": {
+        "id": "enemy_signal_drummer.passive",
+        "name": "Marching Beat",
+        "text": "Every 3s, grants nearby allies +12 Attack Speed.",
+        "formula": "",
+        "tags": [
+          "buff",
+          "aura"
+        ]
+      }
+    },
+    {
+      "id": "enemy_slag_sentinel",
+      "name": "Slag Sentinel",
+      "affinity": "cloudy",
+      "role": "tank",
+      "role_code": "str-melee-tanky_arm-leaden-utility",
+      "intent": "utility",
+      "tier": 4,
+      "level": 1,
+      "max_hp": 825,
+      "strength": 82,
+      "intelligence": 7,
+      "attack_speed": 78.44408991953199,
+      "move_speed": 74,
+      "mana_regen": 115,
+      "threat": 98,
+      "armor": 97,
+      "resistance": 89,
+      "attack_range": 1,
+      "active_ability": "enemy_slag_sentinel.active",
+      "passive_ability": "enemy_slag_sentinel.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_slag_sentinel.active",
+        "name": "Molten Grasp",
+        "text": "Strike the primary target for 168 physical damage. (45 +150% STR) Roots for 2.5s.",
+        "formula": "168 = 45 + 150% STR  (STR 1.5×82)",
+        "tags": [
+          "physical",
+          "root"
+        ]
+      },
+      "passive": {
+        "id": "enemy_slag_sentinel.passive",
+        "name": "Slag Plating",
+        "text": "Grants +30 Resistance and +20 Armor for the whole battle.",
+        "formula": "",
+        "tags": [
+          "defense"
+        ]
+      }
+    },
+    {
+      "id": "enemy_spymaster",
+      "name": "Spymaster",
+      "affinity": "clear",
+      "role": "assassin",
+      "role_code": "int-melee-squishy-ability-blinding-damage",
+      "intent": "damage",
+      "tier": 8,
+      "level": 1,
+      "max_hp": 840,
+      "strength": 30,
+      "intelligence": 224,
+      "attack_speed": 116.91684274303029,
+      "move_speed": 144,
+      "mana_regen": 196,
+      "threat": 38,
+      "armor": 46,
+      "resistance": 42,
+      "attack_range": 1,
+      "active_ability": "enemy_spymaster.active",
+      "passive_ability": "enemy_spymaster.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_spymaster.active",
+        "name": "Assassinate",
+        "text": "Strike the lowest-HP enemy for 660 magic damage. (100 +250% INT) Deals +60% to targets below 30% HP.",
+        "formula": "660 = 100 + 250% INT  (INT 2.5×224)",
+        "tags": [
+          "magic",
+          "execute"
+        ]
+      },
+      "passive": {
+        "id": "enemy_spymaster.passive",
+        "name": "Opening Strike",
+        "text": "The first auto-attack deals 224 bonus magic damage. (+100% INT)",
+        "formula": "224 = 100% INT  (INT 1×224)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "enemy_standard_bearer",
+      "name": "Standard Bearer",
+      "affinity": "clear",
+      "role": "support",
+      "role_code": "int-ranged-ability-utility",
+      "intent": "utility",
+      "tier": 3,
+      "level": 1,
+      "max_hp": 735,
+      "strength": 12,
+      "intelligence": 107,
+      "attack_speed": 67.41768770006651,
+      "move_speed": 104,
+      "mana_regen": 169,
+      "threat": 58,
+      "armor": 26,
+      "resistance": 26,
+      "attack_range": 3,
+      "active_ability": "enemy_standard_bearer.active",
+      "passive_ability": "enemy_standard_bearer.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_standard_bearer.active",
+        "name": "Rally",
+        "text": "Grant the whole team +12 Strength for 6s.",
+        "formula": "",
+        "tags": [
+          "buff",
+          "team"
+        ]
+      },
+      "passive": {
+        "id": "enemy_standard_bearer.passive",
+        "name": "Standard Aura",
+        "text": "Every 3s, grants nearby allies +8 Strength and +8 Intelligence.",
+        "formula": "",
+        "tags": [
+          "buff",
+          "aura"
+        ]
+      }
+    },
+    {
+      "id": "enemy_steam_engineer",
+      "name": "Steam Engineer",
+      "affinity": "clear",
+      "role": "mage",
+      "role_code": "int-ranged-squishy-ability-steady-damage",
+      "intent": "damage",
+      "tier": 4,
+      "level": 1,
+      "max_hp": 477,
+      "strength": 19,
+      "intelligence": 182,
+      "attack_speed": 72.20421913047831,
+      "move_speed": 98,
+      "mana_regen": 148,
+      "threat": 35,
+      "armor": 18,
+      "resistance": 18,
+      "attack_range": 3,
+      "active_ability": "enemy_steam_engineer.active",
+      "passive_ability": "enemy_steam_engineer.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_steam_engineer.active",
+        "name": "Deploy Turret",
+        "text": "Deploy a turret that fights for 12s. The turret has 25% of your max HP and attacks with 50% of your Intelligence.",
+        "formula": "",
+        "tags": [
+          "summon"
+        ]
+      },
+      "passive": {
+        "id": "enemy_steam_engineer.passive",
+        "name": "None",
+        "text": "No passive effect.",
+        "formula": "",
+        "tags": []
+      }
+    },
+    {
+      "id": "enemy_steam_knight",
+      "name": "Steam Knight",
+      "affinity": "clear",
+      "role": "support",
+      "role_code": "str-melee-auto-heavy-utility",
+      "intent": "utility",
+      "tier": 6,
+      "level": 1,
+      "max_hp": 1155,
+      "strength": 169,
+      "intelligence": 17,
+      "attack_speed": 128.83187097668855,
+      "move_speed": 94,
+      "mana_regen": 72,
+      "threat": 73,
+      "armor": 61,
+      "resistance": 56,
+      "attack_range": 1,
+      "active_ability": "enemy_steam_knight.active",
+      "passive_ability": "enemy_steam_knight.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_steam_knight.active",
+        "name": "Piston Strike",
+        "text": "Strike the primary target for 364 physical damage. (60 +180% STR)",
+        "formula": "364 = 60 + 180% STR  (STR 1.8×169)",
+        "tags": [
+          "physical"
+        ]
+      },
+      "passive": {
+        "id": "enemy_steam_knight.passive",
+        "name": "Steam Vent",
+        "text": "Every 3rd hit taken reflects 68 physical damage to the attacker. (+40% STR)",
+        "formula": "68 = 40% STR  (STR 0.4×169)",
+        "tags": [
+          "physical",
+          "reflect"
+        ]
+      }
+    },
+    {
+      "id": "enemy_stone_warden",
+      "name": "Stone Warden",
+      "affinity": "cloudy",
+      "role": "tank",
+      "role_code": "melee-tanky_hp-leaden",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 3055,
+      "strength": 97,
+      "intelligence": 97,
+      "attack_speed": 92.02070094186033,
+      "move_speed": 84,
+      "mana_regen": 120,
+      "threat": 100,
+      "armor": 74,
+      "resistance": 68,
+      "attack_range": 1,
+      "active_ability": "enemy_stone_warden.active",
+      "passive_ability": "enemy_stone_warden.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_stone_warden.active",
+        "name": "Seismic Slam",
+        "text": "Slam for 274 physical damage to all enemies within 2 hexes. (80 +200% STR)",
+        "formula": "274 = 80 + 200% STR  (STR 2×97)",
+        "tags": [
+          "physical",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "enemy_stone_warden.passive",
+        "name": "Bulwark",
+        "text": "Every 6s, permanently gain +20 Armor.",
+        "formula": "",
+        "tags": [
+          "defense",
+          "scaling"
+        ]
+      }
+    },
+    {
+      "id": "enemy_storm_tyrant",
+      "name": "Storm Tyrant",
+      "affinity": "thunder",
+      "role": "spellblade",
+      "role_code": "ranged-speedy",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 1527,
+      "strength": 127,
+      "intelligence": 127,
+      "attack_speed": 129.06799612624567,
+      "move_speed": 137,
+      "mana_regen": 120,
+      "threat": 72,
+      "armor": 57,
+      "resistance": 57,
+      "attack_range": 3,
+      "active_ability": "enemy_storm_tyrant.active",
+      "passive_ability": "enemy_storm_tyrant.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_storm_tyrant.active",
+        "name": "Tempest",
+        "text": "Unleash a tempest on all enemies within 3 hexes for 60% of 420 magic damage. (90 +130% STR +130% INT)",
+        "formula": "420 = 90 + 130% STR + 130% INT  (STR 1.3×127, INT 1.3×127)",
+        "tags": [
+          "magic",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "enemy_storm_tyrant.passive",
+        "name": "Gathering Storm",
+        "text": "Every 6s, permanently gain +12 Strength and +12 Intelligence.",
+        "formula": "",
+        "tags": [
+          "scaling",
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "enemy_stormhawk",
+      "name": "Stormhawk",
+      "affinity": "thunder",
+      "role": "mage",
+      "role_code": "int-ranged-ability-blinding-damage",
+      "intent": "damage",
+      "tier": 4,
+      "level": 1,
+      "max_hp": 733,
+      "strength": 15,
+      "intelligence": 113,
+      "attack_speed": 88.37495570657501,
+      "move_speed": 133,
+      "mana_regen": 181,
+      "threat": 50,
+      "armor": 27,
+      "resistance": 27,
+      "attack_range": 3,
+      "active_ability": "enemy_stormhawk.active",
+      "passive_ability": "enemy_stormhawk.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_stormhawk.active",
+        "name": "Lightning Dive",
+        "text": "Dive the primary target for 253 magic damage. (50 +180% INT)",
+        "formula": "253 = 50 + 180% INT  (INT 1.8×113)",
+        "tags": [
+          "magic"
+        ]
+      },
+      "passive": {
+        "id": "enemy_stormhawk.passive",
+        "name": "Arc Strike",
+        "text": "Auto-attacks arc to a nearby enemy for 34 magic damage. (+30% INT)",
+        "formula": "34 = 30% INT  (INT 0.3×113)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "enemy_stretcher_hand",
+      "name": "Stretcher-Hand",
+      "affinity": "clear",
+      "role": "support",
+      "role_code": "int-ranged-ability-utility",
+      "intent": "utility",
+      "tier": 1,
+      "level": 1,
+      "max_hp": 583,
+      "strength": 9,
+      "intelligence": 85,
+      "attack_speed": 64.8,
+      "move_speed": 100,
+      "mana_regen": 162,
+      "threat": 56,
+      "armor": 21,
+      "resistance": 21,
+      "attack_range": 3,
+      "active_ability": "enemy_stretcher_hand.active",
+      "passive_ability": "enemy_stretcher_hand.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_stretcher_hand.active",
+        "name": "Field Dressing",
+        "text": "Heal the lowest-HP ally for 152. (25 +150% INT)",
+        "formula": "152 = 25 + 150% INT  (INT 1.5×85)",
+        "tags": [
+          "heal"
+        ]
+      },
+      "passive": {
+        "id": "enemy_stretcher_hand.passive",
+        "name": "None",
+        "text": "No passive effect.",
+        "formula": "",
+        "tags": []
+      }
+    },
+    {
+      "id": "enemy_sundered_lord",
+      "name": "Sundered Lord",
+      "affinity": "mist",
+      "role": "spellblade",
+      "role_code": "ranged",
+      "intent": "hybrid",
+      "tier": 9,
+      "level": 1,
+      "max_hp": 1361,
+      "strength": 126,
+      "intelligence": 126,
+      "attack_speed": 105.44789092296509,
+      "move_speed": 117,
+      "mana_regen": 117,
+      "threat": 70,
+      "armor": 50,
+      "resistance": 50,
+      "attack_range": 3,
+      "active_ability": "enemy_sundered_lord.active",
+      "passive_ability": "enemy_sundered_lord.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_sundered_lord.active",
+        "name": "Haunt",
+        "text": "Haunt all enemies within 3 hexes for 60% of 372 magic damage. (70 +120% STR +120% INT) Fears struck enemies for 1.5s.",
+        "formula": "372 = 70 + 120% STR + 120% INT  (STR 1.2×126, INT 1.2×126)",
+        "tags": [
+          "magic",
+          "aoe",
+          "fear"
+        ]
+      },
+      "passive": {
+        "id": "enemy_sundered_lord.passive",
+        "name": "Haunting Blade",
+        "text": "Every 2nd auto-attack deals 38 bonus magic damage. (+30% INT)",
+        "formula": "38 = 30% INT  (INT 0.3×126)",
+        "tags": [
+          "magic"
+        ]
+      }
+    },
+    {
+      "id": "enemy_thunder_bull",
+      "name": "Thunder Bull",
+      "affinity": "thunder",
+      "role": "support",
+      "role_code": "str-melee-auto-heavy-utility",
+      "intent": "utility",
+      "tier": 7,
+      "level": 1,
+      "max_hp": 1296,
+      "strength": 190,
+      "intelligence": 19,
+      "attack_speed": 131.40828200082137,
+      "move_speed": 96,
+      "mana_regen": 73,
+      "threat": 74,
+      "armor": 68,
+      "resistance": 63,
+      "attack_range": 1,
+      "active_ability": "enemy_thunder_bull.active",
+      "passive_ability": "enemy_thunder_bull.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_thunder_bull.active",
+        "name": "Discharge",
+        "text": "Gore the primary target for 450 physical damage. (70 +200% STR) Stuns for 1.8s.",
+        "formula": "450 = 70 + 200% STR  (STR 2×190)",
+        "tags": [
+          "physical",
+          "stun"
+        ]
+      },
+      "passive": {
+        "id": "enemy_thunder_bull.passive",
+        "name": "Static Build",
+        "text": "Builds static charge with each auto-attack landed.",
+        "formula": "",
+        "tags": [
+          "tempo"
+        ]
+      }
+    },
+    {
+      "id": "enemy_veil_lord",
+      "name": "Veil Lord",
+      "affinity": "mist",
+      "role": "spellblade",
+      "role_code": "ranged",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 1527,
+      "strength": 141,
+      "intelligence": 141,
+      "attack_speed": 107.55666343853805,
+      "move_speed": 120,
+      "mana_regen": 120,
+      "threat": 72,
+      "armor": 57,
+      "resistance": 57,
+      "attack_range": 3,
+      "active_ability": "enemy_veil_lord.active",
+      "passive_ability": "enemy_veil_lord.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_veil_lord.active",
+        "name": "Shroud Burst",
+        "text": "Blast all enemies within 3 hexes for 60% of 362 magic damage. (80 +200% INT)",
+        "formula": "362 = 80 + 200% INT  (INT 2×141)",
+        "tags": [
+          "magic",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "enemy_veil_lord.passive",
+        "name": "Veiled Ascendance",
+        "text": "Every 6s, permanently gain +15 Intelligence.",
+        "formula": "",
+        "tags": [
+          "scaling",
+          "buff"
+        ]
+      }
+    },
+    {
+      "id": "enemy_voltaic_diviner",
+      "name": "Voltaic Diviner",
+      "affinity": "thunder",
+      "role": "mage",
+      "role_code": "int-ranged-squishy-ability-brisk-damage",
+      "intent": "damage",
+      "tier": 5,
+      "level": 1,
+      "max_hp": 535,
+      "strength": 21,
+      "intelligence": 183,
+      "attack_speed": 80.55269318806468,
+      "move_speed": 117,
+      "mana_regen": 165,
+      "threat": 36,
+      "armor": 20,
+      "resistance": 20,
+      "attack_range": 3,
+      "active_ability": "enemy_voltaic_diviner.active",
+      "passive_ability": "enemy_voltaic_diviner.passive",
+      "ability_cost": 300000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "active": {
+        "id": "enemy_voltaic_diviner.active",
+        "name": "Chain Lightning",
+        "text": "Strike the primary target for 431 magic damage. (65 +200% INT) Bounces to up to 2 nearby enemies at 50% then 35% damage.",
+        "formula": "431 = 65 + 200% INT  (INT 2×183)",
+        "tags": [
+          "magic",
+          "aoe"
+        ]
+      },
+      "passive": {
+        "id": "enemy_voltaic_diviner.passive",
+        "name": "None",
+        "text": "No passive effect.",
+        "formula": "",
+        "tags": []
+      }
+    }
+  ],
+  "counts": {
+    "champions": 60,
+    "enemies": 60,
+    "bosses": 6
+  },
+  "bosses": [
+    {
+      "id": "boss_holloway",
+      "name": "Foundry-Lord Holloway",
+      "affinity": "clear",
+      "role": "boss",
+      "role_code": "boss",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 900,
+      "strength": 80,
+      "intelligence": 20,
+      "attack_speed": 90,
+      "move_speed": 75,
+      "mana_regen": 12,
+      "threat": 100,
+      "armor": 55,
+      "resistance": 35,
+      "attack_range": 1,
+      "active_ability": "holloway.pressure_vent",
+      "passive_ability": "holloway.stoke_the_fires",
+      "ability_cost": 420000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "stage": 1,
+      "abilities": {
+        "active": {
+          "id": "holloway.pressure_vent",
+          "name": "Pressure Vent",
+          "text": "Vent scalding steam for 300 physical damage to all enemies within 2 hexes. (100 +250% STR) Burns struck enemies for 4s.",
+          "formula": "300 = 100 + 250% STR  (STR 2.5×80)",
+          "tags": [
+            "physical",
+            "aoe",
+            "burn"
+          ]
+        },
+        "passive": {
+          "id": "holloway.stoke_the_fires",
+          "name": "Stoke the Fires",
+          "text": "Every 6s, gain +8 Strength per living ally for 6s.",
+          "formula": "",
+          "tags": [
+            "buff"
+          ]
+        },
+        "phase_hook": {
+          "id": "holloway.phase_hook",
+          "name": "Overpressure",
+          "text": "At 50% HP, enter Phase 2: swap to Magma Heave, gain the Cinder Husk passive, and burn all enemies.",
+          "formula": "",
+          "tags": [
+            "phase"
+          ]
+        },
+        "phase2_active": {
+          "id": "holloway.magma_heave",
+          "name": "Magma Heave",
+          "text": "Erupt for 70% of 380 physical damage to all enemies within 3 hexes. (140 +300% STR) Burns struck enemies for 5s.",
+          "formula": "380 = 140 + 300% STR  (STR 3×80)",
+          "tags": [
+            "physical",
+            "aoe",
+            "burn"
+          ]
+        },
+        "phase2_passive": {
+          "id": "holloway.cinder_husk",
+          "name": "Cinder Husk",
+          "text": "Grants +30 Armor and reflects 10% of damage taken as physical damage.",
+          "formula": "",
+          "tags": [
+            "defense",
+            "reflect"
+          ]
+        },
+        "on_death": {
+          "id": "holloway.boiler_burst",
+          "name": "Boiler Burst",
+          "text": "On death, explode for 80 true damage to all enemies.",
+          "formula": "80 = 80",
+          "tags": [
+            "true",
+            "aoe",
+            "on-death"
+          ]
+        }
+      }
+    },
+    {
+      "id": "boss_vance",
+      "name": "Solar Overseer Vance",
+      "affinity": "mist",
+      "role": "boss",
+      "role_code": "boss",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 700,
+      "strength": 40,
+      "intelligence": 130,
+      "attack_speed": 95,
+      "move_speed": 85,
+      "mana_regen": 12,
+      "threat": 70,
+      "armor": 25,
+      "resistance": 50,
+      "attack_range": 4,
+      "active_ability": "vance.focusing_lens",
+      "passive_ability": "vance.glare",
+      "ability_cost": 440000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "stage": 2,
+      "abilities": {
+        "active": {
+          "id": "vance.focusing_lens",
+          "name": "Focusing Lens",
+          "text": "Focus a beam on the furthest enemy for 484 magic damage. (120 +280% INT)",
+          "formula": "484 = 120 + 280% INT  (INT 2.8×130)",
+          "tags": [
+            "magic"
+          ]
+        },
+        "passive": {
+          "id": "vance.glare",
+          "name": "Glare",
+          "text": "Every 3s, enemies within 3 hexes lose 15 Attack Speed for 3.5s.",
+          "formula": "",
+          "tags": [
+            "debuff",
+            "aura"
+          ]
+        },
+        "phase_hook": {
+          "id": "vance.phase_hook",
+          "name": "Solar Eclipse",
+          "text": "At 50% HP, enter Phase 2: swap to Sunflare Pounce, gain the Drought Aura passive, and silence all enemies.",
+          "formula": "",
+          "tags": [
+            "phase"
+          ]
+        },
+        "phase2_active": {
+          "id": "vance.sunflare_pounce",
+          "name": "Sunflare Pounce",
+          "text": "Pounce the lowest-HP enemy for 540 magic damage. (150 +300% INT) Fears for 2.5s.",
+          "formula": "540 = 150 + 300% INT  (INT 3×130)",
+          "tags": [
+            "magic",
+            "fear"
+          ]
+        },
+        "phase2_passive": {
+          "id": "vance.drought_aura",
+          "name": "Drought Aura",
+          "text": "Every 3s, enemies within 4 hexes lose 5 Mana Regen for 3.5s.",
+          "formula": "",
+          "tags": [
+            "debuff",
+            "aura"
+          ]
+        },
+        "on_death": {
+          "id": "vance.sun_husk_collapse",
+          "name": "Sun Husk Collapse",
+          "text": "On death, burst for 60 true damage to all enemies and burn them for 3s.",
+          "formula": "60 = 60",
+          "tags": [
+            "true",
+            "aoe",
+            "burn",
+            "on-death"
+          ]
+        }
+      }
+    },
+    {
+      "id": "boss_strand",
+      "name": "Grid-Director Strand",
+      "affinity": "thunder",
+      "role": "boss",
+      "role_code": "boss",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 800,
+      "strength": 50,
+      "intelligence": 150,
+      "attack_speed": 130,
+      "move_speed": 90,
+      "mana_regen": 12,
+      "threat": 75,
+      "armor": 30,
+      "resistance": 35,
+      "attack_range": 3,
+      "active_ability": "strand.arc_cascade",
+      "passive_ability": "strand.overcharged",
+      "ability_cost": 380000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "stage": 3,
+      "abilities": {
+        "active": {
+          "id": "strand.arc_cascade",
+          "name": "Arc Cascade",
+          "text": "Strike the primary target for 485 magic damage. (110 +250% INT) Chains to up to 3 nearby enemies at 60%, 50%, then 40% damage.",
+          "formula": "485 = 110 + 250% INT  (INT 2.5×150)",
+          "tags": [
+            "magic",
+            "aoe"
+          ]
+        },
+        "passive": {
+          "id": "strand.overcharged",
+          "name": "Overcharged",
+          "text": "Each cast permanently grants +12 Intelligence.",
+          "formula": "",
+          "tags": [
+            "scaling",
+            "buff"
+          ]
+        },
+        "phase_hook": {
+          "id": "strand.phase_hook",
+          "name": "Grid Overload",
+          "text": "At 50% HP, enter Phase 2: swap to Thunderhead, gain the Stormform passive, and stun all enemies.",
+          "formula": "",
+          "tags": [
+            "phase"
+          ]
+        },
+        "phase2_active": {
+          "id": "strand.thunderhead",
+          "name": "Thunderhead",
+          "text": "Call down a storm for 60% of 580 magic damage to all enemies within 4 hexes. (130 +300% INT) Charges struck enemies for 3s.",
+          "formula": "580 = 130 + 300% INT  (INT 3×150)",
+          "tags": [
+            "magic",
+            "aoe"
+          ]
+        },
+        "phase2_passive": {
+          "id": "strand.stormform",
+          "name": "Stormform",
+          "text": "Auto-attacks against charged enemies deal 60 bonus magic damage. (+40% INT)",
+          "formula": "60 = 40% INT  (INT 0.4×150)",
+          "tags": [
+            "magic"
+          ]
+        },
+        "on_death": {
+          "id": "strand.lightning_strike",
+          "name": "Lightning Strike",
+          "text": "On death, blast all enemies for 100 true damage and stun them for 1s.",
+          "formula": "100 = 100",
+          "tags": [
+            "true",
+            "aoe",
+            "stun",
+            "on-death"
+          ]
+        }
+      }
+    },
+    {
+      "id": "boss_vossberg",
+      "name": "Clearance-Marshal Vossberg",
+      "affinity": "cloudy",
+      "role": "boss",
+      "role_code": "boss",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 1100,
+      "strength": 140,
+      "intelligence": 40,
+      "attack_speed": 105,
+      "move_speed": 95,
+      "mana_regen": 12,
+      "threat": 110,
+      "armor": 60,
+      "resistance": 45,
+      "attack_range": 1,
+      "active_ability": "vossberg.scorched_advance",
+      "passive_ability": "vossberg.no_quarter",
+      "ability_cost": 400000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "stage": 4,
+      "abilities": {
+        "active": {
+          "id": "vossberg.scorched_advance",
+          "name": "Scorched Advance",
+          "text": "Charge the primary target for 522 physical damage and burn for 3s. (130 +280% STR) Adjacent enemies take 40% splash.",
+          "formula": "522 = 130 + 280% STR  (STR 2.8×140)",
+          "tags": [
+            "physical",
+            "aoe",
+            "burn"
+          ]
+        },
+        "passive": {
+          "id": "vossberg.no_quarter",
+          "name": "No Quarter",
+          "text": "Every 3rd attack permanently grants +10 Strength.",
+          "formula": "",
+          "tags": [
+            "scaling",
+            "buff"
+          ]
+        },
+        "phase_hook": {
+          "id": "vossberg.phase_hook",
+          "name": "Total War",
+          "text": "At 50% HP, enter Phase 2: swap to Wildfire Leap, gain the Feeding Frenzy passive, and surge +40 Strength.",
+          "formula": "",
+          "tags": [
+            "phase"
+          ]
+        },
+        "phase2_active": {
+          "id": "vossberg.wildfire_leap",
+          "name": "Wildfire Leap",
+          "text": "Leap and erupt for 80% of 608 physical damage to all enemies within 2 hexes. (160 +320% STR) Burns struck enemies for 4s.",
+          "formula": "608 = 160 + 320% STR  (STR 3.2×140)",
+          "tags": [
+            "physical",
+            "aoe",
+            "burn"
+          ]
+        },
+        "phase2_passive": {
+          "id": "vossberg.feeding_frenzy",
+          "name": "Feeding Frenzy",
+          "text": "Killing an enemy heals for 10% of max HP.",
+          "formula": "",
+          "tags": [
+            "heal"
+          ]
+        },
+        "on_death": {
+          "id": "vossberg.fire_gutters_out",
+          "name": "Fire Gutters Out",
+          "text": "On death, the marshal's surviving allies lose 20 Strength.",
+          "formula": "",
+          "tags": [
+            "debuff",
+            "on-death"
+          ]
+        }
+      }
+    },
+    {
+      "id": "boss_crege",
+      "name": "Dredge-Admiral Crège",
+      "affinity": "rain",
+      "role": "boss",
+      "role_code": "boss",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 1350,
+      "strength": 110,
+      "intelligence": 80,
+      "attack_speed": 100,
+      "move_speed": 80,
+      "mana_regen": 12,
+      "threat": 90,
+      "armor": 60,
+      "resistance": 50,
+      "attack_range": 3,
+      "active_ability": "crege.harpoon_winch",
+      "passive_ability": "crege.dredged_depths",
+      "ability_cost": 460000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "stage": 5,
+      "abilities": {
+        "active": {
+          "id": "crege.harpoon_winch",
+          "name": "Harpoon Winch",
+          "text": "Harpoon the furthest enemy for 400 physical damage. (100 +200% STR +100% INT) Pulls the target toward Crège and roots it for 2.5s.",
+          "formula": "400 = 100 + 200% STR + 100% INT  (STR 2×110, INT 1×80)",
+          "tags": [
+            "physical",
+            "root"
+          ]
+        },
+        "passive": {
+          "id": "crege.dredged_depths",
+          "name": "Dredged Depths",
+          "text": "Every 3s, slows all enemies within 3 hexes for 3.5s.",
+          "formula": "",
+          "tags": [
+            "slow",
+            "aura"
+          ]
+        },
+        "phase_hook": {
+          "id": "crege.phase_hook",
+          "name": "Maelstrom Rising",
+          "text": "At 50% HP, enter Phase 2: swap to Maelstrom Jaws, gain the Drowning Tide passive, and root all enemies.",
+          "formula": "",
+          "tags": [
+            "phase"
+          ]
+        },
+        "phase2_active": {
+          "id": "crege.maelstrom_jaws",
+          "name": "Maelstrom Jaws",
+          "text": "Engulf all enemies within 3 hexes for 70% of 515 physical damage. (120 +250% STR +150% INT) Applies 2 stacks of slow for 4s.",
+          "formula": "515 = 120 + 250% STR + 150% INT  (STR 2.5×110, INT 1.5×80)",
+          "tags": [
+            "physical",
+            "aoe",
+            "slow"
+          ]
+        },
+        "phase2_passive": {
+          "id": "crege.drowning_tide",
+          "name": "Drowning Tide",
+          "text": "Every 2s, deals 5 damage to all enemies.",
+          "formula": "5 = 5",
+          "tags": [
+            "aoe",
+            "dot"
+          ]
+        },
+        "on_death": {
+          "id": "crege.silt_drains",
+          "name": "Silt Drains",
+          "text": "On death, the waters recede: removes slow from all enemies and heals each for 50.",
+          "formula": "",
+          "tags": [
+            "heal",
+            "on-death"
+          ]
+        }
+      }
+    },
+    {
+      "id": "boss_iron_emperor",
+      "name": "The Iron Emperor",
+      "affinity": "snow",
+      "role": "boss",
+      "role_code": "boss",
+      "intent": "hybrid",
+      "tier": 10,
+      "level": 1,
+      "max_hp": 3000,
+      "strength": 180,
+      "intelligence": 180,
+      "attack_speed": 110,
+      "move_speed": 80,
+      "mana_regen": 15,
+      "threat": 120,
+      "armor": 80,
+      "resistance": 80,
+      "attack_range": 2,
+      "active_ability": "iron_emperor.decree_of_iron",
+      "passive_ability": "iron_emperor.tribute",
+      "ability_cost": 520000,
+      "crit_chance": 0.0,
+      "penetration": 0,
+      "penetration_pct": 0.0,
+      "stage": 6,
+      "abilities": {
+        "active": {
+          "id": "iron_emperor.decree_of_iron",
+          "name": "Decree of Iron",
+          "text": "Mark the lowest-HP enemy for 640 magic damage. (100 +150% STR +150% INT) Shreds 25 Armor and 25 Resistance for 6s.",
+          "formula": "640 = 100 + 150% STR + 150% INT  (STR 1.5×180, INT 1.5×180)",
+          "tags": [
+            "magic",
+            "debuff"
+          ]
+        },
+        "passive": {
+          "id": "iron_emperor.tribute",
+          "name": "Tribute",
+          "text": "Every 6s, gain +6 Strength and +6 Intelligence per living ally for 6s.",
+          "formula": "",
+          "tags": [
+            "buff"
+          ]
+        },
+        "phase_hook": {
+          "id": "iron_emperor.phase_hook",
+          "name": "Iron Reclamation",
+          "text": "At 50% HP, enter Phase 2: swap to Reclamation, gain The Wound Spreads passive, surge +50 Strength and +50 Intelligence, and freeze all enemies.",
+          "formula": "",
+          "tags": [
+            "phase"
+          ]
+        },
+        "phase2_active": {
+          "id": "iron_emperor.reclamation",
+          "name": "Reclamation",
+          "text": "Channel a finisher for 50% of 870 magic damage to all enemies within 4 hexes. (150 +200% STR +200% INT) Applies 3 stacks of slow for 4s.",
+          "formula": "870 = 150 + 200% STR + 200% INT  (STR 2×180, INT 2×180)",
+          "tags": [
+            "magic",
+            "aoe",
+            "slow"
+          ]
+        },
+        "phase2_passive": {
+          "id": "iron_emperor.the_wound_spreads",
+          "name": "The Wound Spreads",
+          "text": "Every 3s, deals escalating damage (3 × growing intensity) to all enemies and slows them for 3.5s.",
+          "formula": "",
+          "tags": [
+            "aoe",
+            "dot",
+            "slow",
+            "scaling"
+          ]
+        },
+        "on_death": {
+          "id": "iron_emperor.world_engine_dark",
+          "name": "World Engine Dark",
+          "text": "On death, strips all timed buffs from the Emperor's allies and heals each surviving enemy for 100.",
+          "formula": "",
+          "tags": [
+            "debuff",
+            "heal",
+            "on-death"
+          ]
+        }
+      }
+    }
+  ]
+}

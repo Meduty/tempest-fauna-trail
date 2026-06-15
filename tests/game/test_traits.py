@@ -32,19 +32,21 @@ def _pieces(team, weather=WeatherState.CLEAR):
 # --------------------------------------------------------------------------
 # Registration + vocabulary
 # --------------------------------------------------------------------------
-def test_all_24_traits_registered():
+def test_all_25_traits_registered():
+    # T.29d added the Multicaster Calling (12 → 13 callings; 24 → 25 traits).
     expected = KINSHIP_TAGS | CALLING_TAGS | {
         "Sunlit", "Overcast", "Shrouded", "Stormfed", "Frostbound", "Galvanized",
     }
     assert expected <= set(TRAIT_REGISTRY)
-    assert len(TRAIT_REGISTRY) == 24
+    assert len(TRAIT_REGISTRY) == 25
 
 
-def test_calling_vocab_is_the_twelve_catalog_callings():
-    # B.9: 4 dead T.5 tags dropped, Packmate added.
+def test_calling_vocab_is_the_thirteen_catalog_callings():
+    # B.9: 4 dead T.5 tags dropped, Packmate added. T.29d: +Multicaster.
     assert CALLING_TAGS == frozenset({
         "Hunter", "Guardian", "Mystic", "Warden", "Stalker", "Bruiser",
         "Skirmisher", "Channeler", "Mender", "Trickster", "Packmate", "Primordial",
+        "Multicaster",
     })
     for dead in ("Bulwark", "Drifter", "Harbinger", "Emissary"):
         assert dead not in CALLING_TAGS
