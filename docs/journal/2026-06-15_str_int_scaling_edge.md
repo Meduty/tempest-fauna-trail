@@ -115,3 +115,38 @@ cell. So:
 is wrong or exhausted. My first read ("cadence/rarity") was a guess; the intent
 slice was the evidence. A composite metric (cell averaging damage + utility
 pieces) hid two unrelated problems.
+
+## Analytical equilibrium — the INT ability damage coeff ≈ 3.7
+
+Cross-checked the empirical tuning against pure math. For DPS parity between a
+STR/auto carrier and an INT/ability carrier at equal primary stat P (each ≈0 in
+its off-stat), tick=10ms, ENERGY_THRESHOLD=60000, auto = `1.0·STR + 0.25·INT`,
+playstyle mults (auto AS×1.3; ability AS×0.75, mana_regen×1.5), mana_cost=300k:
+
+```
+STR/auto DPS per P  = 1.00 × (1.3·100/60000)×100 = 0.2167   (full auto)
+INT/auto DPS per P  = 0.25 × (0.75·100/60000)×100 = 0.0313  (the 0.25 tagalong)
+casts/sec           = (1.5·100)×100 / 300000      = 0.0500  (~1 cast / 20s)
+
+0.2167 = 0.0313 + coeff × 0.0500   →   coeff ≈ 3.71   (3.75 at flat baseline)
+```
+
+Interpretation: autos give STR 0.217 DPS/point but INT only 0.031, so the INT
+caster must recover **0.185/point through rare casts** → at ~0.05 casts/s each
+cast needs a **~3.7 INT coeff**.
+
+**The blind sim-tuning converged on it.** Post-tune INT damage coeffs cluster
+3.0–4.2, centered ≈3.7 (ember 3.42, tempest active 3.80, phantom 4.19; ult 5.70
+at 2× cost — higher cost ⇒ higher coeff, correct). Empirical == analytical →
+D.25 is balanced both ways, not just "sim says ok."
+
+**Reusable rule (for T.36 kit redesign + new mages):**
+`equilibrium INT coeff ≈ 3.7 × (cost / 300000) × (100 / mana_regen_base)` — i.e.
+**scale the coeff with cast cost** (an ultimate at 2× cost wants ~2× coeff) and
+**inversely with cast rate**. Auto-int / hybrid pieces need less (autos carry).
+
+A final **+15% INT push on all ability-playstyle pieces** (collision-safe, 23
+terms) lifts the whole int/ability cell — both the 4 damage casters and the 14
+INT utility pieces (their heals/shields scale on INT too), partly addressing the
+D.26 support drag. Centers INT damage coeffs just above 3.7 — within the "casts
+are big nukes" design intent.

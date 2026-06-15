@@ -52,7 +52,7 @@ from src.game.targeting import (
 
 # --- Dawnwisp (T1, SUP-Heal) ---
 # Cast: knit a wound on the lowest-HP ally, INT-scaled heal.
-DAWNWISP_HEAL = ScalingTerm("heal", 40.0, "intelligence*3.96")
+DAWNWISP_HEAL = ScalingTerm("heal", 40.0, "intelligence*4.55")
 
 
 @register_active("champ_dawnwisp.active")
@@ -152,7 +152,7 @@ ABILITY_META["champ_veldt_pronghorn.active"] = AbilityMeta(
 
 # --- Ember Salamander (T3, APC-INT Mage) ---
 # Cast: line of kindling light, burns ground for several ticks.
-EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "intelligence*3.42")
+EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "intelligence*3.93")
 
 
 @register_active("champ_ember_salamander.active", priority=2)
@@ -173,7 +173,7 @@ ABILITY_META["champ_ember_salamander.active"] = AbilityMeta(
 
 
 # --- Ember Salamander — Magma Burst (INT splash) ---
-EMBER_MAGMA_BURST = ScalingTerm("damage", 60.0, "intelligence*3.42")
+EMBER_MAGMA_BURST = ScalingTerm("damage", 60.0, "intelligence*3.93")
 
 
 @register_active("champ_ember_salamander.active2")
@@ -589,7 +589,7 @@ ABILITY_META["champ_aurion.active"] = AbilityMeta(
 
 # --- Springfrog (T1, SUP-Heal) ---
 # Cast: healing rain on lowest-HP ally, restoring health.
-SPRINGFROG_HEAL = ScalingTerm("heal", 30.0, "intelligence*3.17")
+SPRINGFROG_HEAL = ScalingTerm("heal", 30.0, "intelligence*3.65")
 
 
 @register_active("champ_springfrog.active")
@@ -607,7 +607,7 @@ ABILITY_META["champ_springfrog.active"] = AbilityMeta(
 )
 
 
-SPRINGFROG_HOT = ScalingTerm("heal", 0.0, "intelligence*0.64")
+SPRINGFROG_HOT = ScalingTerm("heal", 0.0, "intelligence*0.74")
 
 
 @register_passive("champ_springfrog.passive")
@@ -687,7 +687,7 @@ ABILITY_META["champ_reedbank_otter.active"] = AbilityMeta(
 
 # --- Torrent Heron (T3, APC-STR Mage) ---
 # Cast: three water-spears in a cone, STR-scaled.
-TORRENT_HERON_DMG = ScalingTerm("damage", 50.0, "strength*0.7+intelligence*1.32")
+TORRENT_HERON_DMG = ScalingTerm("damage", 50.0, "strength*0.7+intelligence*1.52")
 _TORRENT_SPLASH_MULT = 0.6
 
 
@@ -834,7 +834,7 @@ ABILITY_META["champ_coral_colossus.active"] = AbilityMeta(
 
 # --- Marsh Thrush (T6, SUP-Buff) ---
 # Cast: team MS+AS buff — buff magnitude scales from INT
-MARSH_THRUSH_BUFF = ScalingTerm("haste", 8.0, "intelligence*0.22")
+MARSH_THRUSH_BUFF = ScalingTerm("haste", 8.0, "intelligence*0.25")
 
 
 @register_active("champ_marsh_thrush.active")
@@ -865,7 +865,7 @@ ABILITY_META["champ_marsh_thrush.active"] = AbilityMeta(
 # --- Marsh Thrush — Galecrash (ULTIMATE, T6) ---
 # Tier >= 5 multicaster secondary = ultimate: 2x default cost (600_000), ~2x
 # output (T.29d). Fires ~half as often as the primary at equal MR share.
-MARSH_GALECRASH = ScalingTerm("damage", 120.0, "intelligence*5.7")
+MARSH_GALECRASH = ScalingTerm("damage", 120.0, "intelligence*6.55")
 
 
 @register_active("champ_marsh_thrush.active2", mana_cost=600_000, priority=2)
@@ -887,7 +887,7 @@ ABILITY_META["champ_marsh_thrush.active2"] = AbilityMeta(
 )
 
 
-MARSH_THRUSH_PASSIVE_MS = ScalingTerm("speed", 5.0, "intelligence*0.15")
+MARSH_THRUSH_PASSIVE_MS = ScalingTerm("speed", 5.0, "intelligence*0.17")
 
 
 @register_passive("champ_marsh_thrush.passive")
@@ -908,7 +908,7 @@ ABILITY_META["champ_marsh_thrush.passive"] = AbilityMeta(
 
 # --- Mirewarden Toad (T7, Tank-Guardian) ---
 # Active: tongue pull (slow + damage)
-MIREWARDEN_TOAD_DMG = ScalingTerm("damage", 50.0, "intelligence*2.86")
+MIREWARDEN_TOAD_DMG = ScalingTerm("damage", 50.0, "intelligence*3.29")
 
 
 @register_active("champ_mirewarden_toad.active")
@@ -1172,7 +1172,7 @@ ABILITY_META["champ_snowpelt_cub.active"] = AbilityMeta(
 
 # --- Wintermoth (T2, SUP-Buff) ---
 # Active: grant ally AS buff
-WINTERMOTH_HEAL = ScalingTerm("heal", 20.0, "intelligence*1.58")
+WINTERMOTH_HEAL = ScalingTerm("heal", 20.0, "intelligence*1.82")
 
 
 @register_active("champ_wintermoth.active", priority=2)
@@ -1196,7 +1196,7 @@ ABILITY_META["champ_wintermoth.active"] = AbilityMeta(
 
 
 # --- Wintermoth — Frost Pollen (chill/slow enemies in radius) ---
-WINTERMOTH_FROST = ScalingTerm("damage", 30.0, "intelligence*1.9")
+WINTERMOTH_FROST = ScalingTerm("damage", 30.0, "intelligence*2.18")
 
 
 @register_active("champ_wintermoth.active2")
@@ -1271,7 +1271,7 @@ ABILITY_META["champ_permafrost_walrus.passive"] = AbilityMeta(
 
 # --- Hoarfrost Owl (T4, SUP-Shield) ---
 # Active: ally ice-shield (large armor buff) + chill burst on expiry
-HOARFROST_OWL_HEAL = ScalingTerm("heal", 30.0, "intelligence*2.38")
+HOARFROST_OWL_HEAL = ScalingTerm("heal", 30.0, "intelligence*2.74")
 
 
 @register_active("champ_hoarfrost_owl.active")
@@ -1791,7 +1791,7 @@ ABILITY_META["champ_geode_beetle.active"] = AbilityMeta(
 
 
 # --- Geode Beetle — Crystal Lattice (shield lowest-HP ally) ---
-GEODE_SHIELD = ScalingTerm("shield", 80.0, "intelligence*3.17")
+GEODE_SHIELD = ScalingTerm("shield", 80.0, "intelligence*3.65")
 
 
 @register_active("champ_geode_beetle.active2")
@@ -1909,7 +1909,7 @@ ABILITY_META["champ_granite_gorilla.passive"] = AbilityMeta(
 )
 
 
-GRANITE_GORILLA_DMG = ScalingTerm("damage", 70.0, "intelligence*3.42")
+GRANITE_GORILLA_DMG = ScalingTerm("damage", 70.0, "intelligence*3.93")
 
 
 @register_active("champ_granite_gorilla.active")
@@ -2078,7 +2078,7 @@ ABILITY_META["champ_cliffeyrie_eagle.passive"] = AbilityMeta(
 )
 
 
-CLIFFEYRIE_EAGLE_DMG = ScalingTerm("damage", 80.0, "strength*0.9+intelligence*1.45")
+CLIFFEYRIE_EAGLE_DMG = ScalingTerm("damage", 80.0, "strength*0.9+intelligence*1.67")
 
 
 @register_active("champ_cliffeyrie_eagle.active")
@@ -2181,7 +2181,7 @@ def umbra_active(ctx: Any, actor: Any, targets: list) -> None:
 
 # --- Lostlight Wisp (T1, SUP-Heal) ---
 # Active: HoT wisp heal on ally
-LOSTLIGHT_WISP_HEAL = ScalingTerm("heal", 35.0, "intelligence*3.17")
+LOSTLIGHT_WISP_HEAL = ScalingTerm("heal", 35.0, "intelligence*3.65")
 
 
 @register_active("champ_lostlight_wisp.active")
@@ -2199,7 +2199,7 @@ ABILITY_META["champ_lostlight_wisp.active"] = AbilityMeta(
 )
 
 
-LOSTLIGHT_WISP_HOT = ScalingTerm("heal", 0.0, "intelligence*0.47")
+LOSTLIGHT_WISP_HOT = ScalingTerm("heal", 0.0, "intelligence*0.54")
 
 
 @register_passive("champ_lostlight_wisp.passive")
@@ -2256,7 +2256,7 @@ ABILITY_META["champ_will_o_fawn.active"] = AbilityMeta(
 
 
 # --- Will-o-Fawn — Wisp Lure (INT dmg + threat drop, primary target) ---
-WILL_WISP_LURE = ScalingTerm("damage", 50.0, "intelligence*3.04")
+WILL_WISP_LURE = ScalingTerm("damage", 50.0, "intelligence*3.5")
 
 
 @register_active("champ_will_o_fawn.active2")
@@ -2293,7 +2293,7 @@ ABILITY_META["champ_will_o_fawn.passive"] = AbilityMeta(
 
 # --- Phantom Lynx (T3, APC-INT Assassin) ---
 # Cast: phases through target for INT damage, with penetration.
-PHANTOM_LYNX_DMG = ScalingTerm("damage", 90.0, "intelligence*4.19")
+PHANTOM_LYNX_DMG = ScalingTerm("damage", 90.0, "intelligence*4.82")
 
 
 @register_active("champ_phantom_lynx.active")
@@ -2360,7 +2360,7 @@ ABILITY_META["champ_hollow_elk.passive"] = AbilityMeta(
 )
 
 
-HOLLOW_ELK_DMG = ScalingTerm("damage", 60.0, "intelligence*3.42")
+HOLLOW_ELK_DMG = ScalingTerm("damage", 60.0, "intelligence*3.93")
 _HOLLOW_ELK_HEAL_SHARE = 0.3
 
 
@@ -2385,7 +2385,7 @@ ABILITY_META["champ_hollow_elk.active"] = AbilityMeta(
 
 # --- Fogveil Moth (T5, Trickster) ---
 # Active: shroud enemy (reduce their AS — simulates miss chance)
-FOGVEIL_MOTH_DMG = ScalingTerm("damage", 30.0, "strength*0.6+intelligence*1.32")
+FOGVEIL_MOTH_DMG = ScalingTerm("damage", 30.0, "strength*0.6+intelligence*1.52")
 
 
 @register_active("champ_fogveil_moth.active")
@@ -2698,7 +2698,7 @@ ABILITY_META["champ_mournhollow.active"] = AbilityMeta(
 
 # --- Sparkfly (T1, Trickster) ---
 # Active: brief stun one enemy
-SPARKFLY_DMG = ScalingTerm("damage", 20.0, "intelligence*1.9")
+SPARKFLY_DMG = ScalingTerm("damage", 20.0, "intelligence*2.18")
 
 
 @register_active("champ_sparkfly.active")
@@ -2922,7 +2922,7 @@ ABILITY_META["champ_thunderhide_bison.active"] = AbilityMeta(
 
 # --- Tempest Eel (T6, APC-INT Mage) ---
 # Cast: chain lightning, jumps to nearby enemies.
-TEMPEST_EEL_DMG = ScalingTerm("damage", 100.0, "intelligence*3.8")
+TEMPEST_EEL_DMG = ScalingTerm("damage", 100.0, "intelligence*4.37")
 _TEMPEST_EEL_CHAIN1_MULT = 0.6
 _TEMPEST_EEL_CHAIN2_MULT = 0.4
 
@@ -2955,7 +2955,7 @@ ABILITY_META["champ_tempest_eel.active"] = AbilityMeta(
 # --- Tempest Eel — Maelstrom (ULTIMATE, T6) ---
 # Tier >= 5 multicaster secondary = ultimate: 2x default cost (600_000), ~2x
 # output (T.29d). Full chain-lightning storm vs the single Voltaic Lash.
-TEMPEST_MAELSTROM = ScalingTerm("damage", 110.0, "intelligence*5.7")
+TEMPEST_MAELSTROM = ScalingTerm("damage", 110.0, "intelligence*6.55")
 
 
 @register_active("champ_tempest_eel.active2", mana_cost=600_000, priority=2)

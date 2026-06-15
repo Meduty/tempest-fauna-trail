@@ -92,6 +92,16 @@ kit change). Proposal — one per cell-family so the kings showcase the matrix:
 - **str/ability** — **ability empowers autos** (Jax-W: cast → next autos bonus),
   NOT a raw STR cast (weak quadrant guard).
 
+**Coefficient equilibrium (from D.25, use when authoring kits):** because the
+universal auto is `1.0·STR + 0.25·INT`, a STR carrier gets ~7× the auto DPS of an
+INT carrier per primary point. The DPS-parity **INT ability *damage* coeff ≈ 3.7**
+at baseline (mana_cost 300k, ability-playstyle mults) — derived + validated in the
+2026-06-15 STR/INT journal. **Scaling rule:**
+`INT coeff ≈ 3.7 × (mana_cost / 300000) × (100 / mana_regen_base)` — an ultimate at
+2× cost wants ~2× coeff; auto-int/hybrid pieces need less (autos carry). STR
+ability coeffs run ~0.8× their old values (STR over-converts via autos). Authored
+INT damage coeffs currently sit ~3.5–4.3 (just above 3.7, "big nuke" intent).
+
 ## Execution shape (phased — each phase ships + tests green)
 
 1. **Primordial diversification** (6 pieces) — self-contained, high-value slice;
