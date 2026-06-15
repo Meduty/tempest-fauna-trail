@@ -85,12 +85,12 @@ kit change). Proposal — one per cell-family so the kings showcase the matrix:
 
 - **str/auto** — STR autos; ability = utility/steroid (not a nuke).
 - **int/ability** — big INT nuke (casts rare ⇒ per-cast must hit hard).
-- **int/auto** — INT fuels autos: self-haste (AS scales INT) or on-hit INT proc;
+- **int/auto** — INT fuels autos: self-haste (AS scales INT) or on-hit INT proc or utility ability;
   STR-less. (the glade_heron line — already built.)
-- **hybrid/auto** — AS-per-INT *or* on-hit-INT bonus; STR makes autos land (Voli).
+- **hybrid/auto** — AS-per-INT *or* on-hit-INT bonus; STR makes autos land (Voli), int provides additional ability damage or utility.
 - **hybrid/ability** — both-coeff cast `STR·A + INT·B` (Jax Q / Varus W).
-- **str/ability** — **ability empowers autos** (Jax-W: cast → next autos bonus),
-  NOT a raw STR cast (weak quadrant guard).
+- **str/ability** — main value source should be ablity not autos - even though autos have high str scaling, abilities should hit hard and give big effects and utlity (not focusing on autos but can have 'next auto' empowering effect - be careful not to overtune coeff, STR coeff should be lower on STR casters since they get more free damage from autos the INT casters),
+  .
 
 **Coefficient equilibrium (from D.25, use when authoring kits):** because the
 universal auto is `1.0·STR + 0.25·INT`, a STR carrier gets ~7× the auto DPS of an
