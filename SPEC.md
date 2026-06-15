@@ -699,12 +699,15 @@ in their T-task plan docs; what remains here is genuinely undecided.
   because the universal auto is `1.0·STR + 0.2·INT` (STR gets 5× the auto value). So
   **STR-as-coeff is strictly stronger than INT-as-coeff** (autos tag along free) → INT
   needs ~+0.06 wr_delta to reach parity. **First iteration APPLIED (2026-06-15, commit
-  ceca46e):** (1) engine auto INT term `0.2·INT → 0.25·INT`; (2) all 125 ability
+  ceca46e):** (1) engine auto INT term `0.2·INT → 0.25·INT`; (2) all ability
   `intelligence*K` coeffs ×1.2 (per-term, not a global damage scale — STR coeffs/bases/
-  hybrid expressions untouched). Directional re-measure (n=600) closed the by-stat gap
-  ~0.058→0.024 (both stats near par). **Still open:** confirm on a big (n≥4000) sweep
-  and decide whether a 2nd iteration is needed; the per-term coeffs are now the tuning
-  surface. Classification fix landed
+  hybrid expressions untouched). **Iter 2 (7f7f34d):** ability `strength*K` ×0.8 +
+  `intelligence*K` ×1.2 again (cumulative INT ×1.44, STR ability ×0.8) — targets the
+  ability-layer gap (post-iter1 ability STR +0.039 vs INT −0.036). Multisize (2-5v5,
+  n=3000) post-iter1 read INT by-stat −0.030; iter-2 directional → −0.016 by-stat,
+  ability marginal −0.014 (near par). **Still open:** confirm on a big multisize sweep;
+  residual printed "ability gap" is the n=3 ability-STR sample (noisy), not a real
+  deficit. The per-term coeffs are the tuning surface for any further nudge. Classification fix landed
   (2026-06-15): `classify_role` no longer forces INT⇒caster, and 9 INT auto-carriers
   were re-axised (`glade_heron` + 4 full-converts → auto, 3 → hybrid) so the auto-INT
   archetype is representable + measurable (currently ~−0.03 wr_delta). (post T.29c/T.29d)
