@@ -179,7 +179,7 @@ Aurion (not Umbra) is the one that stays in `hybrid/hybrid`.
 | 8 | `champ_tempest_eel` | Tidekin · Mystic·**Multicaster** | int/ability | **int/hybrid** | ~ soft (caster; hybrid-playstyle still casts) |
 | 9 | `champ_marsh_thrush` | Skyborn · Warden·Mystic·Multicaster | int/ability | **hybrid/ability** | ✓ all-cast → ability |
 | 10 | `champ_eclipse_jaguar` | Beast · **Stalker**·Channeler | hybrid/hybrid | **hybrid/auto** | ✓ **tweak: restore Stalker** (in the roster doc, dropped from code) — kit-soul is alternating STR/INT autos → role `spellblade`; Channeler justifies the twin-cast active |
-| 11 | `champ_voltmane_jackal` | Beast · **Skirmisher**·Channeler | hybrid/hybrid | **hybrid/auto** | ✓ Skirmisher=auto |
+| 11 | `champ_voltmane_jackal` | Beast · **Skirmisher**·**Channeler** | hybrid/hybrid | **hybrid/hybrid + intent=damage** → **Spellslinger** | ✓✓ Skirmisher(auto)+Channeler(cast) = hybrid-playstyle honors both (see Spellslinger tweaks) |
 | 12 | `champ_grovekeeper_tapir` | Tidekin · Bruiser·**Mender** | hybrid/hybrid | **hybrid/ability** | ✓ Mender=cast (caster-mender tank; was hybrid/auto — swapped with eclipse to preserve its auto-soul) |
 
 **The 3 Calling tweaks** (minimal trait edits to fit the cells): `snowpelt_cub` gains
@@ -188,7 +188,7 @@ Aurion (not Umbra) is the one that stays in `hybrid/hybrid`.
 tweak doubles as a doc/code drift fix). All Beast pieces, all auto-Callings, lore-natural.
 No other traits change.
 
-**Stays `hybrid/hybrid` (target 4):** **Aurion** (king) + `champ_goldhide_rhino`, `champ_marshghast_boar`, `champ_glacierback_mammoth`.
+**Occupies `hybrid/hybrid` (target 4):** **Aurion** (king) + `champ_voltmane_jackal` + `champ_torrent_heron` + `champ_marshghast_boar`. *(Spellslinger tweaks moved `goldhide_rhino`→hybrid/ability and `glacierback_mammoth`→hybrid/auto out; voltmane + torrent in — grid-neutral. See "Spellslinger population" below.)*
 
 **Verification — destination cell multiset is identical to the earlier draft** (only WHICH
 piece fills each cell changed; eclipse_jaguar takes hybrid/**auto** to keep its alternating-
@@ -284,9 +284,27 @@ PlacementRole is unchanged.** The identity taxonomy can grow (new roles, re-axis
 perturbing placement. Net: Spellslinger + all T.36 role shifts are **display + matrix-regen
 only, zero game-logic risk.**
 
-**Note:** `Spellslinger` currently has **1 occupant** (tempest_eel) — thin but kept
-(taxonomy completeness + honest home; future int/hybrid & hybrid/hybrid ranged dealers
-populate it). Revisit populating it when identities are next tuned.
+**Spellslinger population (2 grid-neutral tweaks — applied).** Adding the role surfaced 2
+pieces that are *more* Calling-honest as spellslingers; both swaps preserve every cell count:
+- **`voltmane_jackal`** hybrid/auto → **hybrid/hybrid + intent=damage** (Spellslinger). It is
+  Beast·**Skirmisher·Channeler** — Skirmisher(auto)+Channeler(cast) *are* hybrid-playstyle;
+  the old hybrid/auto **ignored its Channeler**. Paired swap: **`glacierback_mammoth`**
+  hybrid/hybrid → **hybrid/auto** (Beast·Bruiser → Bruiser=auto, honest). *(voltmane intent
+  hybrid→damage: V.33 ±10% re-check at build; it already has a damage kit `STR·0.96+INT·2.28`.)*
+- **`torrent_heron`** hybrid/ability → **hybrid/hybrid** (Spellslinger — Tidekin·Mystic,
+  ranged, already intent=damage; mild Mystic→hybrid dilution). Paired swap: **`goldhide_rhino`**
+  hybrid/hybrid → **hybrid/ability** (Scaled·Bruiser·**Mender** → Mender=cast, caster-tank).
+
+Net: **`Spellslinger` = 3 occupants** (tempest_eel, voltmane_jackal, torrent_heron). Both
+swaps are grid-neutral (cell counts unchanged) and improve/keep Calling honesty. **Updated
+`hybrid/hybrid` (target 4):** Aurion (king) + voltmane_jackal + torrent_heron + `champ_marshghast_boar`
+(rhino → hybrid/ability, mammoth → hybrid/auto).
+
+**Role-distribution side-effect (flagged, not fixed):** post-T.36 the **champion** roster has
+**0 bruiser** (all tanks are intent=utility) and **0 assassin** (phantom_lynx, the lone melee
+caster-dealer, flipped int/ability→int/auto = swashbuckler). Enemies still field both (4
+assassin), so encounters aren't missing the archetypes, but the champion roster lost two
+identities — revisit if we want a champion assassin/bruiser back.
 
 ### Coeff guidance per landing cell
 - **str/auto, hybrid/auto** — autos carry; ability coeffs modest (utility/steroid). hybrid/auto: STR base + on-hit-INT `Magnitude` (both referenced → V.47).
