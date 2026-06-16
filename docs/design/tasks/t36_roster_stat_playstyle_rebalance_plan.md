@@ -194,6 +194,19 @@ int/hybrid 3+1=**4**; hybrid/auto 4+2=**6**; hybrid/ability 4+2=**6**; hybrid/hy
 
 **Stat marginal check:** str ×6 (#1-6), int ×2 (#7-8), hybrid ×4 (#9-12) — matches the required 6/2/4 fills.
 
+### T.36b flip kits — the 3 caster→auto reworks (LOCKED, live brainstorm)
+
+These three flip *playstyle* ability→auto — a real identity reshape (the autos must
+carry, the caster kit gets demoted), same problem class as the auto-kings. The other
+9 are coeff-only or template-driven (see per-cell guidance). **Each holds intent → role
+identity is preserved** (the recurring lesson: flex stat+playstyle, hold intent).
+
+| Piece | → axis · role | Locked kit |
+|---|---|---|
+| `champ_dusk_bat` | str/auto · **utility** → role `support` (unchanged) | *Blinding Flurry* passive (was +move_speed): each auto shreds target `attack_speed` (flat/stacking — the harrying flurry); STR autos chip + deliver the shred. *Dusk Swarm* active (was single-target blind): AoE blind/AS-shred r1-2 + **minimal** STR strike (low coeff — it's a support; autos+debuff are the value). **Don't erase the debuff — relocate it onto the autos.** A Hunter that isn't a dealer (intent=utility holds the support role). |
+| `champ_phantom_lynx` | int/auto · damage → role `swashbuckler` | *Phantom Claw* passive (was flat pen%): flat **`penetration = INT·0.12`** (the shred, INT-scaled — sized vs max-res 359 so it never zeroes the midfield; old INT·0.3 did); each auto +`INT·0.8` **magic** on-hit (the carry, split phys/magic vs base auto). On `soul_charged`: that auto instead adds `INT·1.8` **TRUE** + **heals self 35%** of it (soul reap). *Soul Reap* active (Yorick-Q style): lunge + apply self `soul_charged` — no direct damage; the payoff lands **on the next auto**. INT does quadruple duty (proc / pen / true-strike / reap-heal); the *active resolves through an auto* = the cleanest int/auto in the roster. Sustain is **scoped to its own burst** (squishy diver survives the commit; no free omni-lifesteal). |
+| `champ_granite_gorilla` | str/auto + **Bruiser** tweak · utility → role `tank` (unchanged) | *Stone Charge* passive (replaces instant % reflect): damage taken **banks** `charge += STR·0.08` **per blow** (flat-per-blow, ignore magnitude), **hard cap `charge ≤ STR·1.5`**; autos discharge `charge·0.5` each as bonus physical on the gorilla's *own* target; depletes. *Ground Slam* active: `70 + STR·1.2` AoE r1 + stun 2s + **dumps remaining charge** AoE. **Avoids the asymmetric-reflect death-trap** (no instant %-of-incoming reflect → squishies don't suicide poking it) AND **makes autos the point** (str/auto honored — discharge flows through autos). STR keyed to the gorilla's *own* stat (not enemy damage), cap kills the hidden `k·N` hit-count multiplier → linear STR scaling, no stealth gem. |
+
 ### Coeff guidance per landing cell
 - **str/auto, hybrid/auto** — autos carry; ability coeffs modest (utility/steroid). hybrid/auto: STR base + on-hit-INT `Magnitude` (both referenced → V.47).
 - **str/ability** (revised — ability is the *main value*, NOT "empowers autos"). The ability hits hard / carries a big effect, but the STR damage-coeff is tuned **well below** the INT baseline because the live STR auto-attack tagalong already pays out. **Parity formula** (vs the INT coeff it replaces): `coeff_str ≈ coeff_int − 0.667·(autos_per_cast)` — autos are `1.85·base` for a str-stat piece vs `0.65·base` for int-stat (`1.0·STR+0.25·INT`, primary weights 1.8/0.2). A ranged caster (~3 autos/cast) lands `coeff_str ≈ 1.1–1.7`; an AoE+CC ability sits at the low end (the CC is the payoff). *Worked example: Mournhollow's old `INT·3.42` AoE → `STR·~1.0–1.4`, not the naive 2.7.* The T.36b `str/ability` rows (#4–6) inherit this — drop their "empowers autos" rationale on build.
