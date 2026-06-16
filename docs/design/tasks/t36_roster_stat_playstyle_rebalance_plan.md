@@ -402,3 +402,83 @@ gate is the engine's V.33 ±10% HP·DPS proxy + `stat_edge.py` sims at build.*
 - `docs/live/content/rosters.md` — new stat×playstyle distribution + the 6 king archetypes (per substep).
 - `docs/live/content/abilities.md` — rewritten kits for the re-axised pieces.
 - Run `/check` after each substep — stale living doc is a bug.
+
+## 12. T.36c — role + trait distribution reconciliation (settled target + method)
+
+T.36a/b lock the **stat×playstyle grid** but leave the **role distribution** lopsided
+(over: support/tank/swashbuckler; empty: assassin/bruiser; thin: spellblade/spellslinger).
+T.36c gently reconciles **three distributions at once** — role · stat-playstyle (fixed) ·
+traits (the free variable, fit last) — so every role, including the off-roles, is populated
+for champions (and enemies). **Gentle, not strict:** soft targets, prefer identity-fitting
+single-lever moves.
+
+### Settled target role distribution (soft)
+
+| role | champ target | enemy target | now (champ / enemy) |
+|---|---|---|---|
+| tank | 8 | 9 | 11 / 13 |
+| support | 10 | 9 | 15 / 12 |
+| swashbuckler | 8 | 7 | 12 / 6 |
+| mage | 8 | 9 | 8 / 10 |
+| marksman | 7 | 7 | 6 / 5 |
+| bruiser | 6 | 6 | 2 / 0 |
+| assassin | 4 | 5 | 0 / 4 |
+| spellblade | 5 | 4 | 3 / 10 |
+| spellslinger | 4 | 4 | 3 / 0 |
+| **total** | **60** | **60** | 60 / 60 |
+
+Floors: every role ≥4 (off-roles live); no role >10 (kill the support/tank/swash hoard).
+
+### The dependency chain (the order of operations)
+
+**grid (fixed) → set reach/durability/intent to hit the role target → fit Callings to the
+resulting playstyle → gentle Kinship rebalance → rebuild kits to the new identity.**
+
+Role = `f(stat, reach, durability, playstyle, intent)`. The grid pins stat×playstyle, so the
+**grid-neutral levers are `intent` and `durability`** (and `reach`, more core). Traits are
+fit *after* (a Calling is chosen to match the final playstyle, Calling→playstyle).
+
+### Achievability + the assassin problem
+
+Grid-neutral single-lever refits are **abundant** for bruiser/spellblade/spellslinger/marksman
+(an `intent` or `durability` flip on an over-pop donor, identity-fitting):
+- **bruiser** (need +4) — `tank → bruiser` (intent→damage) on Bruiser-calling tanks:
+  `glacierback_mammoth`, `marshghast_boar` (done), `thunderhide_bison`, + 1 (e.g. `thunderclap_gorilla`).
+- **spellblade** (+2) — `swashbuckler → spellblade` (intent damage→hybrid) on hybrid-stat strikers.
+- **spellslinger** (+1) — covered by the T.36b tweaks (3 already); +1 from a ranged hybrid-play support.
+- **marksman** (+1) — a ranged auto/hybrid support → damage.
+
+**`assassin` is the structural hard case.** Assassin = `melee + ability + non-tanky + damage`,
+but **every melee+ability champion is a *tank*** (Guardian/Bruiser) — there are **no natural
+squishy-melee-casters**. So the only grid-neutral assassins come from either:
+- **(a)** jarring `tank → squishy assassin` conversions (durability+intent flip on a caster-tank
+  — a big identity break, *not* gentle), or
+- **(b)** paired **swash↔mage playstyle swaps** within a stat row (a melee striker gains the
+  cast → assassin; a ranged mage drops to auto → marksman) — grid-neutral but **2 kit reworks
+  per assassin**, and pushes marksman up (so pair with the marksman target).
+
+→ Decision pending: **assassin floor** (4 via swaps, or lower to 2-3 to stay gentle). The best
+swap donors are the assassin-*flavoured* melee strikers already squishy (Stalker/Trickster):
+`nightglass_mantis`, `voltscale_mamba`, `mirage_caracal`, `duskstep_marten`, `phantom_lynx`
+(was an assassin pre-T.36) — each swapped against a ranged mage that can carry autos.
+
+### Trait reconciliation (fit last)
+
+- **Callings** follow the final playstyle (Calling→playstyle); AUTO≈CAST balance preserved
+  (now 34/33). A role refit that changes playstyle gets its Calling re-fit.
+- **Kinship** gentle-rebalance toward ~10 each (Beast 14 over; Swarm 8 under) — only where it
+  doesn't fight a piece's locked identity.
+
+### Enemies (parallel pass)
+
+Same method; **enemies are freer** (no stat×playstyle grid contract; tags opaque per V.22).
+Fill enemy `bruiser` (0→6) from aggressive tanky melee (`heavy_knight`, `sergeant_at_arms`,
+`dredge_hulk`, `quarried_behemoth`, brutes — intent→damage; keep defensive walls
+`glacier_goliath`/`slag_sentinel`/`stone_warden` as tank); fill `spellslinger`/`assassin`
+likewise. Trim over-pop tank/support/spellblade.
+
+### Scope
+
+New **T.36c** (depends T.36b). Re-axis = intent/durability (+ a few reach/playstyle swaps),
+trait re-fit, kit rebuilds for moved pieces, snapshot + role-matrix regen, distribution-guard
+update. Est L. **Open:** the assassin floor (swap-cost vs gentleness) — settle before picking.
