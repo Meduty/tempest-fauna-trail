@@ -594,3 +594,36 @@ drained_stalker, stormhawk`.
 
 **Both rosters now have a proven target** (champ ~20 + enemy 21 curated re-axes). Next: identity-
 curate occupants (champ + enemy), fit traits, rebuild kits — then build.
+
+### Curated champion assignment (identity-fit, all 3 distros checked) — LOCKED draft
+
+Curated the off-role occupants by **existing Calling/lore** (not the solver's count-min picks),
+then ran a marginal-cleanup with **caster identities protected** (Menders/Mystics held
+ranged+ability so the solver couldn't shove healers to auto/melee). **Cost 2 — fits the bill:**
+
+- **Axis marginals:** stat 22/22/16 ✓ · playstyle 24/24/12 ✓ · reach 30/30 ✓ · durability
+  11/8/13/28 ✓ · intent 27/21/12 (±1). Durability skew **fixed** (was hybrid 35 / arm 3).
+- **Roles (emergent):** tank 12 · support 11 · bruiser 7 · mage 7 · swash 6 · marksman 5 ·
+  assassin 4 · spellblade 4 · spellslinger 4 = 60 — every role ≥4, frontline-weighted.
+- **Calling-honesty:** clean but for 2 minor donor artifacts — `torrent_heron` (Mystic) and
+  `coral_colossus` (Mender) got pushed to auto; final fix = make torrent the spellslinger it
+  wants (Mystic ranged), accept coral as a Guardian-tank (Guardian dominant).
+- **Kinship:** unchanged by re-axis → **Beast still 14** (over). Gentle rebalance to ~10 is a
+  separate tag-swap lever (swap a Kinship on ~3-4 Beast pieces where lore allows) — pending.
+
+**Off-role fills (all lore/Calling-honest):**
+- **bruiser** (Bruiser-calling, intent→damage): sunmane_lion, glacierback_mammoth, marshghast_boar,
+  thunderclap_gorilla, thunderhide_bison, wraithorn_stag (+1 donor)
+- **assassin** (Stalker squishy, playstyle→ability = the ambusher's burst): mirage_caracal,
+  nightglass_mantis, voltscale_mamba, riptide_caiman
+- **spellslinger** (auto+cast Callings): storm_eagle (Hunter·Channeler), voltmane_jackal,
+  tempest_eel, cliffeyrie_eagle
+- **spellblade** (dual-stat strikers): aurion*, eclipse_jaguar (Stalker·Channeler), aerion*, thunderhoof_colt
+
+**Scope:** 36 axis-changes; 24 move stat/playstyle (kit rebuilds) — **9 are the designed
+kings+flips → ~15 genuinely new kit rebuilds**; the other 12 are intent/durability relabels
+(no kit-scaling change). Note: this is a **roster-wide rebalance**, not the original 18-piece
+edit — the cost of fixing the durability skew + populating every role lore-honestly.
+
+**Remaining before build:** (1) the 2 honesty fixes (torrent/coral); (2) Beast Kinship
+rebalance; (3) the enemy curation (same pass on the 21 enemy movers); (4) per-piece kit rebuilds.
