@@ -627,3 +627,42 @@ edit — the cost of fixing the durability skew + populating every role lore-hon
 
 **Remaining before build:** (1) the 2 honesty fixes (torrent/coral); (2) Beast Kinship
 rebalance; (3) the enemy curation (same pass on the 21 enemy movers); (4) per-piece kit rebuilds.
+
+### Curated ENEMY assignment + honesty/Kinship resolution
+
+**(1) Champion honesty fixes:** `torrent_heron` → protected as a ranged mage (Mystic, not
+auto); `coral_colossus` → accepted as a Guardian-tank (Guardian dominant over its Mender,
+frontline auto is fine). Both resolved.
+
+**(2) Kinship rebalance — NOT done (reasoned).** Kinship is **animal-locked**: every Beast
+piece is a mammal (lion/mammoth/gorilla/bison/colt…); none can become Swarm (insects) or any
+other Kinship without re-theming the animal, and a swap also breaks the affinity×tier content
+grid + trait synergies (V.37 one-Primordial-per-Kinship, emblems V.22). So a *gentle* Kinship
+rebalance doesn't exist — Beast 14 / Swarm 8 (range 8-14, all ≥8) is the natural animal-determined
+spread. Forcing it = content re-theme, out of scope for an axis rebalance.
+
+**(3) Enemy curation (cost 2 — fits the bill).** Enemies carry opaque tags not Callings (V.22),
+so curated by **name/lore**: protect caster-named enemies (medics/chaplains/magi/diviners stay
+ranged+ability), fill bruiser from aggressive brutes, spellslinger from battlemage-types.
+- **Axis marginals:** stat 22/22/16 ✓ · playstyle 22/22/16 ✓ · reach 30/30 ✓ · durability
+  11/8/13/28 ✓ (skew fixed) · intent 27/21/12 (±1).
+- **Roles:** tank 12 · support 11 · spellblade 6 · bruiser 6 · mage 6 · swash 6 · marksman 5 ·
+  assassin 4 · spellslinger 4 = 60 — all ≥4.
+- **bruiser fills:** blight_lurker, brineblight_berserker (berserker!), dredge_hulk,
+  quarried_behemoth, cold_iron_yeti, sergeant_at_arms. **spellslinger fills:** `battlemage`
+  (literal), reaver_of_the_reach, stormhawk, drained_stalker. **assassins kept:** hollowed_wisp,
+  shaftmaw, hexblade_officer, spymaster.
+- **Scope:** 30 enemy changes, 15 kit rebuilds.
+
+### Combined T.36b scope (both rosters)
+
+| | axis changes | kit rebuilds (stat/play) |
+|---|---|---|
+| champions | 36 | 24 (9 = designed kings+flips → ~15 new) |
+| enemies | 30 | 15 |
+| **total** | **66** | **~39** (~30 new) |
+
+This is a **roster-wide rebalance** — far beyond the original 18-piece T.36 — the cost of
+deriving the whole roster from a principled axis distribution + fixing the durability skew +
+populating every role lore-honestly. Both rosters now fit all 3 distros within ±1, lore-honest.
+**Remaining = the per-piece kit rebuilds** (the build itself) + snapshot/role-matrix regen.
