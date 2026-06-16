@@ -1,16 +1,20 @@
 # T.36 Plan — Roster axis-distribution rebalance + Primordial diversification
 
-> **Status:** ✅ **BUILD-READY (2026-06-16, rev 6).** Full roster-wide rebalance, derived from a
+> **Status:** ✅ **BUILD-READY (2026-06-16, rev 7).** Full roster-wide rebalance, derived from a
 > **unified axis-distribution solve** (role is a pure function of the axes, V.32 — so we optimize
 > the axis *marginals* + soft role floors directly, and the role distribution falls out; one
 > target, not two competing grids). Split for build into **T.36a (6 kings) → T.36b (champions) →
 > T.36c (enemies)**. Both rosters fit all three target distributions (axis marginals · role distro
-> all ≥4 · Calling/lore-honest) within ±1. Combined ~63 axis edits / ~39 kit rebuilds (~30 new
+> all ≥4 · Calling/lore-honest) within ±2. Combined ~65 axis edits / ~40 kit rebuilds (~31 new
 > beyond the kings+flips). Kit-authoring conventions live in
 > [docs/live/systems/kit_design_conventions.md](../../live/systems/kit_design_conventions.md).
 >
-> *(This doc was rewritten clean at rev 6 — earlier revs' ad-hoc stat/playstyle grid + role
-> targets are superseded and removed. Git history holds them.)*
+> *(Rewritten clean at rev 6 — earlier revs' ad-hoc grid/role targets are superseded & removed,
+> git history holds them. **rev 7** applied matrix improvements: dawnwisp kept support (was
+> support-mage), enemy `maw`/`flood` kept ranged (were melee-curated), light enemy stat×playstyle
+> cross-variety. **A "force tanky_arm 8 + reach 30/30" lever was tried and reverted** — it
+> melee-ized the ranged marksmen (falcon/heron) and dropped marksman below floor; the ±2 reach/
+> durability drift is the gentler, identity-preserving outcome.)*
 
 - **New §T rows:** T.36a (kings) · T.36b (champions) · T.36c (enemies). All depend on the built
   T.32/T.33/T.34/T.35 chain — no unbuilt gate.
@@ -83,9 +87,9 @@ TOTAL    24   24   12        marksman     5
 GRID  stat × playstyle      ROLE distro (derived)        AXIS marginals
         auto abil hybr       tank        12               stat   str22 int22 hyb16
 str      16    3    3        support     11               play   auto22 abil22 hyb16
-int       3   16    3        spellblade   6               reach  melee30 ranged30
-hybrid    3    3   10        bruiser      6               durab  thp11 tarm7 squ13 hyb29
-                             mage         6               intent dmg28 util20 hyb12
+int       4   15    3        spellblade   6               reach  melee30 ranged30
+hybrid    2    4   10        bruiser      6               durab  thp11 tarm7 squ13 hyb29
+                             mage         6               intent dmg29 util19 hyb12
 TOTAL    22   22   16        swashbuckler 6
                              marksman     5
                              assassin     4
@@ -104,10 +108,10 @@ final identity-curation at build (the matrices are the contract, not the exact d
 
 | piece | → role | axis edits |
 |---|---|---|
-| dawnwisp | mage | stat int→str; intent utility→hybrid ⚠ (Mender→support-mage) |
+| dawnwisp | support | stat int→str (Mender stays support — intent kept utility) |
 | veldt_pronghorn | tank | durability hybrid→tanky_arm; intent damage→utility |
 | ember_salamander | mage | stat int→str; intent damage→hybrid |
-| goldcrest_lark | support | stat int→hybrid |
+| goldcrest_lark | mage | stat int→hybrid; intent utility→hybrid |
 | aegis_tortoise | tank | playstyle hybrid→auto |
 | **sunmane_lion** | **bruiser** | durability hybrid→tanky_hp; intent utility→damage |
 | goldhide_rhino | tank | playstyle hybrid→auto; durability tanky_hp→tanky_arm |
@@ -146,7 +150,7 @@ final identity-curation at build (the matrices are the contract, not the exact d
 spellblade/spellslinger). **24 of these move stat/playstyle → kit rebuild.** marsh_thrush:
 utility-INT / damage-STR (Galecrash `INT·6.55`→discounted `STR`), V.47-hybrid; axes unchanged.
 
-## 5. Full enemy move list (26 movers — reference solve)
+## 5. Full enemy move list (28 movers — reference solve)
 
 Enemies carry opaque tags not Callings (V.22), so curated by **name/lore**. ⚠ = awkward, build-curate.
 
@@ -156,32 +160,34 @@ Enemies carry opaque tags not Callings (V.22), so curated by **name/lore**. ⚠ 
 | levyman | tank | stat str→int; playstyle hybrid→auto |
 | picket | swashbuckler | reach ranged→melee; durability hybrid→squishy |
 | pikeman | tank | playstyle hybrid→auto |
+| crossbow_levy | marksman | durability hybrid→squishy |
 | powder_sapper | support | intent damage→utility |
 | **sergeant_at_arms** | **bruiser** | intent hybrid→damage |
 | heavy_knight | tank | playstyle hybrid→auto |
-| company_guard | tank | playstyle hybrid→auto; intent hybrid→utility |
+| company_guard | tank | stat hybrid→int; playstyle hybrid→auto; intent hybrid→utility |
 | **battlemage** | **spellslinger** | playstyle ability→hybrid |
 | steam_knight | tank | durability hybrid→tanky_arm |
-| inquisitor | marksman | stat hybrid→int; playstyle hybrid→auto |
-| hexblade_officer | tank | durability hybrid→tanky_arm; intent damage→utility ⚠ |
+| inquisitor | tank | playstyle hybrid→auto; reach ranged→melee; durability hybrid→tanky_arm ⚠ |
 | lord_commander | tank | durability hybrid→tanky_arm |
-| iron_maiden | tank | playstyle hybrid→auto |
+| iron_maiden | tank | playstyle hybrid→ability |
 | archmagus_imperator | mage | playstyle hybrid→ability |
 | **blight_lurker** | **bruiser** | intent utility→damage |
 | **brineblight_berserker** | **bruiser** | durability hybrid→tanky_hp |
 | **dredge_hulk** | **bruiser** | intent hybrid→damage |
-| maw_of_the_drowned | tank | playstyle hybrid→ability; reach ranged→melee; durability hybrid→tanky_arm ⚠ |
-| flood_tyrant | assassin | playstyle hybrid→ability; reach ranged→melee ⚠ |
+| maw_of_the_drowned | tank | playstyle hybrid→ability; durability hybrid→tanky_arm (kept **ranged** — fixed) |
+| flood_tyrant | mage | playstyle hybrid→ability (kept **ranged** — fixed, was melee assassin) |
 | **cold_iron_yeti** | **bruiser** | intent utility→damage |
 | glacier_goliath | tank | playstyle hybrid→ability |
+| riven_frost_wyrm | spellblade | reach ranged→melee ⚠ |
 | **reaver_of_the_reach** | **spellslinger** | playstyle ability→hybrid; intent hybrid→damage |
 | **quarried_behemoth** | **bruiser** | intent hybrid→damage |
 | **drained_stalker** | **spellslinger** | playstyle ability→hybrid |
 | **stormhawk** | **spellslinger** | playstyle ability→hybrid |
+| voltaic_diviner | marksman | playstyle ability→auto; durability squishy→hybrid (lever-3 int-auto variety) |
 
-Assassins kept as-is: hollowed_wisp, shaftmaw, hexblade→(moved), spymaster + flood_tyrant. **15
-move stat/playstyle → kit rebuild.** The ⚠ T9-T10 pieces (maw→tank, flood→assassin) go melee to
-hit the reach marginal — re-curate at build (swap with another melee donor) if the lore jars.
+Assassins kept as-is (hollowed_wisp, shaftmaw, hexblade_officer, spymaster = 4). **16 move
+stat/playstyle → kit rebuild.** Residual ⚠ (inquisitor→melee tank, riven_frost_wyrm→melee
+spellblade) — enemies are opaque-tag (V.22) so looser, but re-curate at build if the lore jars.
 
 ## 6. T.36a — the 6 Primordial king kits (locked)
 
@@ -232,7 +238,7 @@ last — sims run champ-vs-enemy, so stabilize champions first).
 |---|---|---|
 | **T.36a** | 5 king axis edits + 6 king kit rebuilds; new `grief`/`nerei_grudge` StatusDefs; **extend V.47 guard** (hybrid→both STR+INT) + dead-STR-hybrid test (B.24); fix stale `0.2` comment | M |
 | **T.36b** | ~37 champion axis edits + **~15 new kit rebuilds** (beyond kings+flips, by §7 batch); protect casters; marsh utility-INT/damage-STR; new **`Spellslinger`** role (amends V.32); soft axis-marginal/distribution guard; 2 honesty fixes (torrent→mage, coral→Guardian-tank) | L |
-| **T.36c** | ~26 enemy axis edits + **~15 kit rebuilds** (`abilities/enemies.py`, §7 batch + the ⚠ re-curation); same marginals + floors | L |
+| **T.36c** | ~28 enemy axis edits + **~16 kit rebuilds** (`abilities/enemies.py`, §7 batch + the ⚠ re-curation); same marginals + floors | L |
 
 **Per-task acceptance:** target marginals hit (±2); all roles ≥4; V.33 ±10% HP·DPS band holds;
 V.46 (no orphan stat reads) + V.47 (axis↔scaling incl. hybrid→both) green; role-matrix
