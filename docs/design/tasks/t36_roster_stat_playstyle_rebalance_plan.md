@@ -65,17 +65,18 @@ TOT      24    24     12      60
 
 ### Staged math (a then b) — verified to land exactly
 
-**After T.36a** (5 kings leave `hybrid/hybrid`; Umbra stays):
+**After T.36a** (5 kings leave `hybrid/hybrid`; **Aurion** stays):
 
 ```
-        auto ability hybrid  TOT       king moves:
-str       9     3      6      18       Aurion  h/h→str/auto
-int       5    19      3      27       Nerei   h/h→int/ability
-hybrid    4     4      7      15       Borealis h/h→hybrid/ability
-                                       Mournhollow h/h→hybrid/auto
-                                       Aerion  h/h→str/ability
-                                       Umbra   stays h/h
+        auto ability hybrid  TOT       king moves (CORRECTED — Calling-honest):
+str       9     3      6      18       Umbra       h/h→str/auto      (Stalker=auto)
+int       5    19      3      27       Nerei       h/h→int/ability   (Channeler=cast)
+hybrid    4     4      7      15       Borealis    h/h→hybrid/ability (Mystic=cast)
+                                       Mournhollow h/h→str/ability   (Channeler=cast)
+                                       Aerion      h/h→hybrid/auto   (Hunter=auto)
+                                       Aurion      stays h/h         (Channeler=cast)
 ```
+*(Grid totals identical to the original draft — same cell multiset, only occupants swapped.)*
 
 **T.36b** then re-axises **12 non-king champs** (deltas vs post-a): str/auto +3, str/ability +3, str/hybrid −2, int/auto +1, int/ability −7, int/hybrid +1, hybrid/auto +2, hybrid/ability +2, hybrid/hybrid −3 → **lands the target exactly** (proof in §5 table; sums balance: 7 int + 2 str + 3 hybrid sources = 6 str + 2 int + 4 hybrid fills = 12).
 
@@ -115,22 +116,42 @@ Universal auto is `1.0·STR + 0.25·INT`, so a STR carrier gets ~7× INT's auto 
 - **Grid = full draft (22/22/16).** Flagships `str/auto = int/ability = 12`; off-cells 6; `hybrid/hybrid = 4`. (User-ratified.)
 - **Split T.36a / T.36b** along the apex-vs-distribution seam. (User-ratified.)
 - **Distribution guard = soft self-documenting test, not §V.** On failure the test message tells operators to *re-evaluate whether the new distribution is desirable*, not blindly restore counts. (User-ratified — see §8 for the exact comment.)
-- **str/ability is the weak quadrant** (STR-on-cast wastes the auto tagalong). Every piece landing there uses the **"ability empowers autos"** pattern (Jax-W: cast buffs next autos), never a raw STR nuke. Enforced by review, not test.
-- **Umbra keeps `hybrid/hybrid`** as the deliberate "dual mold survives" king; the other 5 kings diversify.
+- **str/ability** (revised guideline — supersedes the old "empowers autos" rule): the **ability is the main value source** (hits hard / big effect); the STR ability-coeff is tuned **lower** than the INT baseline because the free auto-attack tagalong already pays STR. *Not* the "cast buffs next autos" steroid pattern. Enforced by review, not test.
+- **Aurion keeps `hybrid/hybrid`** (Channeler — keeps a cast in a mixed kit) as the deliberate "dual mold survives" king; the other 5 kings diversify. *(Corrected: the earlier draft kept Umbra here, but Umbra is a Stalker = auto-Calling, so it belongs in `str/auto`.)*
 - **Per-piece assignment is a proposal.** Cell counts are the contract; lore/kit fit may reshuffle *which* piece fills a cell during build — as long as the matrix lands and V.47 holds.
 
 ## 5. Authored values
 
-### T.36a — the 6 kings (axis + kit sketch, all V.47-legal: T10 + one-per-Kinship + Primordial)
+### T.36a — the 6 kings (CORRECTED: Calling-honest, live-brainstorm locks)
 
-| King | Kinship | new axis | kit identity (sketch — tunable) |
-|---|---|---|---|
-| Aurion | Spirit | **str/auto** | radiant warlord-archer; autos carry, ability = team steroid/utility (not a nuke) |
-| Nerei | Tidekin | **int/ability** | floodmother archmage; rare big-INT nuke (`coeff ≈ 3.7+`, "ultimate" feel) |
-| Borealis | Swarm | **hybrid/ability** | aurora battlemage; both-coeff cast `STR·A + INT·B` |
-| Umbra | Scaled | **hybrid/hybrid** (kept) | shadow bruiser-king; dual mold preserved |
-| Mournhollow | Beast | **hybrid/auto** | pale-stag; STR autos + on-hit-INT proc (autos land, INT bonus) |
-| Aerion | Skyborn | **str/ability** | storm warcaster; **ability empowers autos** (str/ability done right) |
+> **Supersedes the earlier draft.** The earlier table put 3 kings' *playstyle* against
+> their *Calling*: Aurion + Mournhollow are **Channelers** (cast → ability/hybrid) yet
+> were dumped in `auto` cells; Aerion is a **Hunter** (auto) yet sat in `str/ability`.
+> Rule (from the kit-rework guideline): **the Calling fixes the playstyle; the stat
+> stays flexible.** Cast-Callings (Channeler/Mystic/Multicaster/Warden/Mender) → ability;
+> auto-Callings (Hunter/Skirmisher/Stalker/Bruiser) → auto. **Grid is unchanged** — the
+> corrected list fills the *same cell multiset*; only the king↔cell occupant swapped
+> (Aurion↔Umbra, Mournhollow↔Aerion).
+
+| King | Kinship · Calling | from | → to | Calling fit | locked kit (live) |
+|---|---|---|---|---|---|
+| Aurion | Spirit · **Channeler** | hybrid/hybrid | **hybrid/hybrid** (kept) | cast → hybrid ✓ (keeps a cast) | *Ascendance* passive: each cast → +15 STR/+15 INT, **max 8 stacks** (cast-driven; fixes the old +1/tick 600% bug). *Solar Nova*: `100 + STR·1.2 + INT·2.86` AoE magic r2, disarm 4s — coeffs held |
+| Nerei | Tidekin · **Channeler** | hybrid/hybrid | **int/ability** | cast → ability ✓ | *Grudge of the Flood* passive (replaces Tideturn): `on_damage_taken` → attacker gains `nerei_grudge` (marker, 6s, +1 stack, refresh); `on_damage_pre` → Nerei outgoing vs grudged ×`(1 + 0.06·stacks)`, **cap 5 (+30%)**. *Tidal Wave*: `90 + INT·3.8` ×0.7 r3, charged 6s — coeff held |
+| Borealis | Swarm · **Mystic** | hybrid/hybrid | **hybrid/ability** | cast → ability ✓ | *Blizzard*: `80 + STR·0.96 + INT·2.7` board (INT nudged 2.28→2.7, Mystic lean); **frozen targets take +15% Blizzard dmg** (light freeze-coupling); freeze aura kept |
+| Umbra | Scaled · **Stalker** | hybrid/hybrid | **str/auto** | auto → auto ✓ | *Hungering Shadow* passive: every 5th auto → empowered `STR·1.5` strike (was INT·2.38). *Shadow Split*: STR-scaling auto-clones (steroid). **No INT** (str-stat) |
+| Mournhollow | Beast · **Channeler** | hybrid/hybrid | **str/ability** | cast → ability ✓ | *Echoing Dead* passive **kept** (every 2nd cast → free auto on primary — now `STR·1.0`, the auto tagalong). *Haunting Mist* (was Board Fear): `80 + STR·1.0` ×0.6 r3 AoE + fear 4s + **grief** DoT — `potency = GRIEF_DOT.eval(actor) = STR·0.4` **per DOT tick** (`dot_interval_ticks=100` = 1s, like BURN), 4s → **4 ticks** total ≈ `STR·1.6` spread (NOT per engine tick; trimmed 0.6→0.4 — DPS-fit ran hot at 0.6, see §5 fit table). **STR coeff in D.25 parity band ~1.1–1.4** — fear + DoT carry; old 2.7 was ~2× over parity. New `grief` StatusDef (REFRESH, DoT, no gate — matches BURN convention) + `GRIEF_DOT` ScalingTerm on AbilityMeta (V.46) |
+| Aerion | Skyborn · **Hunter** | hybrid/hybrid | **hybrid/auto** | auto → auto ✓ | *Overcharge* passive (rework — drop the near-full-mana gate): **every 3rd auto** (deterministic cadence counter, `crit_counter`-style, V.2) arcs chain-lightning to ≤2 nearby enemies for `INT·1.4` each. *Skybreaker* active (was Board Storm — rework to steroid, NOT nuke): 4s self-buff +~35% `attack_speed` + autos chain to adjacent; low/no direct coeff — **autos carry**. Both stats referenced (STR autos + INT chain) → V.47. *Build-confirm: timed-self-Modifier path (Modifier+Lifetime) on `attack_speed`.* |
+
+**Note on the str/ability guideline (supersedes §4 "empowers autos"):** per the revised
+kit-rework rule, a `str/ability` piece makes the **ability the main value source**
+(hits hard / big effect), with the STR ability-coeff tuned **lower** than the INT
+baseline because the free auto-attack tagalong already pays STR. It is *not* the old
+"cast buffs next autos" steroid pattern. Mournhollow's *Board Fear* (board-wide CC +
+discounted STR burst) + the free-auto passive is the canonical shape.
+
+**Resulting grid after T.36a — UNCHANGED** (same per-cell king deltas as the original
+draft; see staged math below): each of the 5 leaver kings adds +1 to its target cell,
+Aurion (not Umbra) is the one that stays in `hybrid/hybrid`.
 
 ### T.36b — the 12 non-king re-axis moves (delta-verified to land target)
 
@@ -155,22 +176,52 @@ Universal auto is `1.0·STR + 0.25·INT`, so a STR carrier gets ~7× INT's auto 
 
 ### Coeff guidance per landing cell
 - **str/auto, hybrid/auto** — autos carry; ability coeffs modest (utility/steroid). hybrid/auto: STR base + on-hit-INT `Magnitude` (both referenced → V.47).
-- **str/ability** — "empowers autos": ability grants a decaying auto-buff `Magnitude` (STR-scaled), not a nuke.
+- **str/ability** (revised — ability is the *main value*, NOT "empowers autos"). The ability hits hard / carries a big effect, but the STR damage-coeff is tuned **well below** the INT baseline because the live STR auto-attack tagalong already pays out. **Parity formula** (vs the INT coeff it replaces): `coeff_str ≈ coeff_int − 0.667·(autos_per_cast)` — autos are `1.85·base` for a str-stat piece vs `0.65·base` for int-stat (`1.0·STR+0.25·INT`, primary weights 1.8/0.2). A ranged caster (~3 autos/cast) lands `coeff_str ≈ 1.1–1.7`; an AoE+CC ability sits at the low end (the CC is the payoff). *Worked example: Mournhollow's old `INT·3.42` AoE → `STR·~1.0–1.4`, not the naive 2.7.* The T.36b `str/ability` rows (#4–6) inherit this — drop their "empowers autos" rationale on build.
 - **int/ability** — big INT nuke, `coeff ≈ 3.7 × (cost/300k)`.
 - **int/auto** — INT fuels autos (AS-per-INT or on-hit-INT); no STR.
 - **hybrid/ability** — `strength*A + intelligence*B` cast (both referenced).
+
+### DPS / HP·DPS fit (T.36a kings — analytic, pre-build)
+
+> **Terminology:** "power" in this codebase is the abstract scalar `scaling.power(T,L)
+> = 1.5^((T-1)/2 + (L-1))` (T.18) — *not* used here. The metric below is **HP·DPS** (the
+> V.33 worth proxy = effective-fight value), a different quantity. Kept distinct on purpose.
+
+Composed each king's **new** axis statline via `compose_stats(...)` (T10), applied the
+locked coeffs + the real cadence (`autos/sec = attack_speed/600`, `casts/sec =
+mana_regen·100/300000`, `ENERGY_THRESHOLD=60000`, `DEFAULT_MANA_COST=300000`). Single-
+target, mid-fight proxy (Aurion at mid-ramp +60/+60):
+
+| King | axis | autoDPS | abilDPS | TOT(1t) | HP | HP·DPS |
+|---|---|---|---|---|---|---|
+| Aurion | hybrid/hybrid | 31 | 38 | 69 | 1527 | 105k |
+| Nerei | int/ability | 15 | 48 | 63 | 1420 | 89k |
+| Borealis | hybrid/ability | 25 | 36 | 61 | 1527 | 93k |
+| Umbra | str/auto | 71 | proc 21 | 91 | 1420 | 129k |
+| Mournhollow | str/ability | 42 | 53+grief | 104→~90 | 1420 | 147k→~127k (grief 0.6→0.4) |
+| Aerion | hybrid/auto | 51 | chain 38 | 89 | 1420 | 126k |
+
+**Reading (validated against the auto-vs-caster literature — autos are "free" sustained
+DPS, casters pay it back in burst/AoE/utility):** two healthy clusters — auto-carries
+(Umbra/Aerion ~127k) sustain higher single-target; ability-casters (Nerei/Borealis/Aurion
+~90–105k single-target) trade for AoE ×2–4 + hard CC (freeze/disarm/fear) → comparable in
+teamfights. Single-target proxy *understates* the casters (no AoE multiply, no CC value)
+and the carries (uncounted Umbra clones, Aerion +35% AS burst). **Mournhollow ran hot at
+grief `0.6` (147k) — trimmed to `0.4` (~127k).** All else in-band. *Non-gating; the real
+gate is the engine's V.33 ±10% HP·DPS proxy + `stat_edge.py` sims at build.*
 
 ## 6. Content / roster audit + reconciliation
 
 1. **Stale `0.2·INT` in a test comment** — `tests/game/test_content.py:363` comment reads `(1.0 STR + 0.2 INT)`; code is `0.25` (D.25, `context.py:409`). Origin: written at T.35b before the D.25 0.25 bump landed in the same arc. **Fix:** correct the comment in T.36a. (Doc nit, not behavior.)
 2. **V.47 guard under-enforces hybrid-STR** (§3) — guard checks INT only; SPEC says hybrid references both. Origin: T.35b guard authored for the dead-INT case only. **Fix + §B backprop** in T.36a; add `test_guard_detects_a_dead_str_hybrid` mirroring the existing dead-INT detector test.
 3. **No drift in the axis vocab** — `stat ∈ {str,int,hybrid}`, `playstyle ∈ {auto,ability,hybrid}` confirmed against `_PRIMARY_STAT` + `classify_role`; no dead tokens.
+4. **"Permanent" blurbs mislabel in-combat ramps** — `champions.py:559` (Aurion old passive — auto-replaced by *Ascendance*) and `:1146` (`+30 max HP` ramp) say "permanently", but combat is a pure function (V.2) so all piece runtime state resets per `resolve_combat`; nothing persists across battles. **Invariant already holds by construction:** no champion/enemy piece grants cross-combat stat stacking — only augments may permastack across a `Run`. **Fix:** reword the two blurbs to "until end of battle" (`:1146`; `:559` dies with the rework); add candidate **§V** "piece stat stacking is in-combat only; cross-`Run` permastacking is augment-exclusive" + a blurb-wording guard. (User-noted.)
 
 ## 7. Open questions
 
 **Resolved here (overridable):**
 - Per-piece assignments in §5 (esp. #6 `dusk_bat`→str/ability is the biggest lore stretch — swap candidate: `coppercrest_stork`).
-- Umbra is the kept-hybrid king (vs e.g. Borealis).
+- **Aurion** is the kept-hybrid king (Channeler — keeps a cast in a mixed kit). *(Corrected from the earlier draft, which kept Umbra; Umbra is a Stalker = auto-Calling → `str/auto`.)*
 
 **Still open / deferred:**
 - D.26 INT-utility support value (needs survivability sim) — not touched.
@@ -191,20 +242,20 @@ Universal auto is `1.0·STR + 0.25·INT`, so a STR carrier gets ~7× INT's auto 
 ## 9. Acceptance criteria
 
 **T.36a:**
-1. All 6 kings carry their §5 axis; 5 leave `hybrid/hybrid` (Umbra stays); matrix matches the post-a table.
+1. All 6 kings carry their §5 axis; 5 leave `hybrid/hybrid` (Aurion stays); matrix matches the post-a table.
 2. Each king kit references its primary via `Magnitude`(s); hybrids reference **both** STR and INT.
 3. V.47 guard **extended** (hybrid-STR) + new dead-STR-hybrid detector test; both green. Stale `0.2` comment fixed.
 4. Snapshots/role-matrix regen; full suite green; sims byte-identical post-rebaseline.
 
 **T.36b:**
 1. The 12 §5 moves applied; live matrix equals the **target grid exactly** (verified by the new distribution guard).
-2. Every re-axised int/hybrid piece passes V.47; str/ability pieces use "empowers autos" (review).
+2. Every re-axised int/hybrid piece passes V.47; str/ability pieces follow the revised guideline — **ability is the main value, STR coeff below the INT baseline** (parity formula §5), not "empowers autos" (review).
 3. Proxy band, V.46, determinism, snapshots all green.
 4. `stat_edge` STR/INT gap does not widen vs pre-T.36 baseline (recorded, non-gating).
 
 ## 10. SPEC changes needed (apply via `/spec` after approval)
 
-- **New §T.36a** — *Primordial diversification — re-axis + kit-rewrite the 6 T10 kings into 6 distinct apex archetypes (Aurion str/auto, Nerei int/ability, Borealis hybrid/ability, Umbra keeps hybrid/hybrid, Mournhollow hybrid/auto, Aerion str/ability); extend the V.47 guard to enforce hybrid→both STR+INT; fix stale 0.2 test comment.* Files: `game/content.py`, `game/abilities/champions.py`, `tests/game/test_content.py`, `tests/game/test_role_intent.py`, snapshots. Depends: T.32, T.35a, T.35b. Est: M. Status: 📋 Plan.
+- **New §T.36a** — *Primordial diversification — re-axis + kit-rewrite the 6 T10 kings into 6 distinct apex archetypes (Calling-honest: Aurion keeps hybrid/hybrid, Nerei int/ability, Borealis hybrid/ability, Umbra str/auto, Mournhollow str/ability, Aerion hybrid/auto); extend the V.47 guard to enforce hybrid→both STR+INT; fix stale 0.2 test comment.* Files: `game/content.py`, `game/abilities/champions.py`, `tests/game/test_content.py`, `tests/game/test_role_intent.py`, snapshots. Depends: T.32, T.35a, T.35b. Est: M. Status: 📋 Plan.
 - **New §T.36b** — *Roster distribution re-axis — re-axis + kit-rewrite 12 non-king champs to land the 22/22/16 target grid; add the self-documenting distribution guard test.* Files: `game/content.py`, `game/abilities/champions.py`, `tests/game/test_content.py`, `docs/design/tasks/t32_role_matrix.txt`, `tests/game/test_role_intent.py`, snapshots. Depends: T.36a. Est: L. Status: 📋 Plan.
 - **Amend V.37** — append: Primordials are no longer pinned to a shared `hybrid` axis; each T10 is a distinct apex archetype (still exactly one per Kinship + Primordial trait). (T.36a)
 - **Amend V.47** — note the guard now enforces `hybrid`→**both** STR+INT (was INT-only); cite `TestAxisScalingAlignment` covering str-hybrid + int-hybrid. (T.36a)
