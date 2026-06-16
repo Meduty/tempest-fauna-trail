@@ -406,6 +406,12 @@ class BattleEvent:
     amount: int = 0
     note: str = ""
     is_crit: bool = False
+    # Mana telemetry (T.36b). On a cast: slot_idx = which slot fired, mana_spent =
+    # cost deducted, mana_after = that slot's current mana after the spend. -1/0
+    # defaults mark a non-mana event. Feeds the mana-bar UI + cadence checks.
+    slot_idx: int = -1
+    mana_spent: int = 0
+    mana_after: int = 0
 
     def __post_init__(self) -> None:
         if self.tick < 0:
@@ -420,6 +426,9 @@ class BattleEvent:
             "amount": self.amount,
             "note": self.note,
             "is_crit": self.is_crit,
+            "slot_idx": self.slot_idx,
+            "mana_spent": self.mana_spent,
+            "mana_after": self.mana_after,
         }
 
     @classmethod
@@ -432,6 +441,9 @@ class BattleEvent:
             amount=payload.get("amount", 0),
             note=payload.get("note", ""),
             is_crit=payload.get("is_crit", False),
+            slot_idx=payload.get("slot_idx", -1),
+            mana_spent=payload.get("mana_spent", 0),
+            mana_after=payload.get("mana_after", 0),
         )
 
 
