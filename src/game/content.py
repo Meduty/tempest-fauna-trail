@@ -157,9 +157,10 @@ _INTENT: dict[str, dict[str, float]] = {
 # Valid override targets — every base stat key, incl. premium crit/penetration (V.33).
 ALL_STAT_KEYS = frozenset(_BASE_STATS)
 INTENT_VALUES = frozenset(_INTENT)
-# The 8 coarse role titles `classify_role` can return (V.32).
+# The 9 coarse role titles `classify_role` can return (V.32).
 ROLE_TITLES = frozenset(
-    {"tank", "bruiser", "support", "mage", "marksman", "assassin", "swashbuckler", "spellblade"}
+    {"tank", "bruiser", "support", "mage", "marksman", "assassin", "swashbuckler",
+     "spellblade", "spellslinger"}
 )
 
 
@@ -188,6 +189,13 @@ def classify_role(
         return "support"
     if stat == "hybrid" and intent == "hybrid" and not caster:
         return "spellblade"
+    # Spellslinger (V.32, T.36b) — a ranged dealer that casts *and* autos: the
+    # ranged, playstyle-keyed analog of spellblade's stat-keyed catch. Evaluated
+    # before the final mage/marksman line (which only reads playstyle=="ability"
+    # as caster), so a ranged playstyle-hybrid damage dealer isn't mislabelled a
+    # marksman (conventions doc §4b — the taxonomy hole this closes).
+    if reach == "ranged" and playstyle == "hybrid" and intent == "damage":
+        return "spellslinger"
     if reach == "melee":
         return "assassin" if caster else "swashbuckler"
     return "mage" if caster else "marksman"
