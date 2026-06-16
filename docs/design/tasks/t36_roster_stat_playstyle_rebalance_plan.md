@@ -572,3 +572,25 @@ iceclaw_lynx, duskstep_marten, nightglass_mantis`.
 **Restructure:** the §5 T.36b 12-piece table + the §12 T.36c role-reconciliation are **superseded**
 by this single solve. New task shape: **T.36a** (6 kings — unchanged) → **T.36b** (unified roster
 axis-distribution solve: the ~20-change curated re-axis + trait-fit + kit rebuilds). T.36c folded in.
+
+### Enemy parallel solve (same method, 60 enemies)
+
+Enemies carry the **same durability skew** (hybrid 36/60, tanky_arm 3) — the ad-hoc artifact
+is roster-wide. Enemies are freer (no D.25 stat-parity contract; tags opaque, V.22), so the
+solve targets the same marginals + role floors, min-change, no pins (bosses are separate in
+`game/bosses/`, not in the 60).
+
+**Result: cost 8, 21 changes.** Marginals all hit (stat 22/22/16, playstyle 22/22/16, reach
+30/30, durability 11/8/13/28, intent ~30/18/12). **Emergent enemy roles:** tank 12 · support 11
+· spellblade 6 · bruiser 6 · swash 6 · mage 6 · marksman 5 · assassin 4 · spellslinger 4 = 60 —
+every role ≥4, **bruiser 0→6 and spellslinger 0→4 filled**, spellblade 10→6 / mage 10→6 / tank
+13→12 trimmed. Same **identity-curation** caveat as champions (raw solver output picks by count
+— e.g. `field_medic` ranged→melee, `conscript` str→int are jarring; curate the occupants for
+identity while holding the marginals). The 21 raw movers:
+`conscript, levyman, picket, stretcher_hand, signal_drummer, pikeman, crossbow_levy,
+field_medic, powder_sapper, sergeant_at_arms, heavy_knight, steam_engineer, company_guard,
+inquisitor, iron_maiden, archmagus_imperator, blight_lurker, maw_of_the_drowned, flood_tyrant,
+drained_stalker, stormhawk`.
+
+**Both rosters now have a proven target** (champ ~20 + enemy 21 curated re-axes). Next: identity-
+curate occupants (champ + enemy), fit traits, rebuild kits — then build.
