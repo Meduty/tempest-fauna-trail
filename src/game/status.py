@@ -211,6 +211,17 @@ GRIEF = _register(StatusDef(
     dot_scales_with_stacks=False,
 ))
 
+# Stone Charge — Granite Gorilla's capacitor bank (T.36b). Pure stacking marker
+# (no gate/DOT); each stack = a slice of banked STR. Shared state across the
+# passive (build on blow taken, discharge half on auto) and the active (dump all
+# on Ground Slam) — stacks live on the piece, readable by both. Cap enforced at
+# the application site (no max_stacks field on StatusDef).
+STONE_CHARGE = _register(StatusDef(
+    id="stone_charge",
+    display_name="Stone Charge",
+    stack_behaviour=StackBehaviour.STACK,
+))
+
 # Soul Charged — pure marker (no gate, no DOT). Phantom Lynx's Soul Reap applies
 # it to self; the next auto consumes it for the empowered true-strike + lifesteal
 # (T.36b, Yorick-style empower-next-auto across the active→passive boundary).

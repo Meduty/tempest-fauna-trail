@@ -46,7 +46,7 @@
   "champ_goldhide_rhino.active": "134 = 60 + 120% STR + 38% INT  (STR 1.2\u00d747, INT 0.38\u00d747)\n108 = 5% HP  (HP 2160)",
   "champ_goldhide_rhino.passive": "65 = 3% HP  (HP 2160)",
   "champ_granite_gorilla.active": "158 = 70 + 120% STR  (STR 1.2\u00d773)",
-  "champ_granite_gorilla.passive": "6 = 8% STR  (STR 0.08\u00d773)\n110 = 150% STR  (STR 1.5\u00d773)",
+  "champ_granite_gorilla.passive": "7 = 10% STR  (STR 0.1\u00d773)\n110 = 150% STR  (STR 1.5\u00d773)",
   "champ_grovekeeper_tapir.active": "140 = 40 + 80% STR + 190% INT  (STR 0.8\u00d737, INT 1.9\u00d737)",
   "champ_grovekeeper_tapir.passive": "31 = 2% HP  (HP 1527)",
   "champ_hoarfrost_owl.active": "318 = 30 + 274% INT  (INT 2.74\u00d7105)",

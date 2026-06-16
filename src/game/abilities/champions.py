@@ -1929,40 +1929,43 @@ ABILITY_META["champ_duskstep_marten.active"] = AbilityMeta(
 
 
 # --- Granite Gorilla (T6, Beast/Guardian+Bruiser — str/auto TANK) ---
-# Flip (T.36b): a capacitor tank. Stone Charge banks a slice of STR per blow taken
-# (hard-capped — conventions #6: bound the accumulator so the per-event×count ramp
-# can't run) and discharges half the bank through each auto. Replaces the old
-# Stone Recoil %-of-incoming reflect, which punished squishies for attacking the
-# tank (conventions #9 — worst case a squishy died faster than the tank). str/auto,
-# STR throughout (auto-satisfied, V.47); +Bruiser Calling makes the auto playstyle
-# Calling-honest. The §7 active "dump" is dropped: dumping the bank from the active
-# needs cross-function piece state (an engine/model change) — the bank discharges
-# through autos only. The closure owns the bank, so both hooks live in the passive.
-GORILLA_CHARGE_PER_BLOW = ScalingTerm("charge", 0.0, "strength*0.08")
-GORILLA_CHARGE_CAP = ScalingTerm("cap", 0.0, "strength*1.5")
-_GORILLA_DISCHARGE_PCT = 0.5
+# Flip (T.36b): a capacitor tank. Stone Charge banks one stack of STR per blow
+# taken (cap 15 stacks = STR·1.5 — conventions #6: bound the accumulator so the
+# per-event×count ramp can't run); each auto discharges half the stacks, and
+# Ground Slam dumps the full bank on the primary. The bank is a `stone_charge`
+# stacking status, so the passive (build/auto-discharge) and the active (dump)
+# share it via the piece. Replaces the old Stone Recoil %-of-incoming reflect,
+# which punished squishies for attacking the tank (conventions #9). str/auto, STR
+# throughout (auto-satisfied, V.47); +Bruiser Calling makes the auto Calling-honest.
+GORILLA_CHARGE_PER_STACK = ScalingTerm("charge", 0.0, "strength*0.1")  # one stack's worth
+GORILLA_CHARGE_CAP = ScalingTerm("cap", 0.0, "strength*1.5")           # = 15 stacks
+_GORILLA_CAP_STACKS = 15
+_GORILLA_CHARGE_TICKS = 60000  # bank persists the whole battle (no decay)
 
 
 @register_passive("champ_granite_gorilla.passive")
 def granite_gorilla_passive(owner: Any) -> EffectBundle:
-    state = {"charge": 0.0}
-
     def on_taken(ctx: Any, event: Any) -> None:
         if event.target is not owner:
             return
         if event.tag == SourceTag.REFLECT.value:
             return
-        cap = GORILLA_CHARGE_CAP.eval(owner)
-        state["charge"] = min(state["charge"] + GORILLA_CHARGE_PER_BLOW.eval(owner), cap)
+        if owner.status_stacks("stone_charge") < _GORILLA_CAP_STACKS:
+            ctx.apply_status(owner, "stone_charge", duration_ticks=_GORILLA_CHARGE_TICKS,
+                             stacks=1, source_id=owner.id)
 
     def on_attack(ctx: Any, event: Any) -> None:
         if event.attacker is not owner:
             return
-        if state["charge"] <= 0.0:
+        st = owner.get_status("stone_charge")
+        if st is None or st.stacks <= 0:
             return
-        release = state["charge"] * _GORILLA_DISCHARGE_PCT
-        state["charge"] -= release
-        ctx.deal_damage(owner, event.target, release, SourceTag.ABILITY)
+        release = st.stacks // 2  # discharge half the stacks
+        if release <= 0:
+            return
+        st.stacks -= release
+        ctx.deal_damage(owner, event.target, release * GORILLA_CHARGE_PER_STACK.eval(owner),
+                        SourceTag.ABILITY)
 
     return EffectBundle(hooks=[
         Hook("on_damage_taken", on_taken, scope=HookScope.PER_HIT),
@@ -1974,7 +1977,7 @@ ABILITY_META["champ_granite_gorilla.passive"] = AbilityMeta(
     name="Stone Charge", kind="passive",
     blurb="Banks {charge} Strength damage each time it is struck, up to {cap}; "
           "each auto-attack discharges half the bank as bonus magic damage.",
-    terms=(GORILLA_CHARGE_PER_BLOW, GORILLA_CHARGE_CAP),
+    terms=(GORILLA_CHARGE_PER_STACK, GORILLA_CHARGE_CAP),
     tags=("scaling", "tempo"),
 )
 
@@ -1984,17 +1987,26 @@ GRANITE_GORILLA_DMG = ScalingTerm("damage", 70.0, "strength*1.2")
 
 @register_active("champ_granite_gorilla.active")
 def granite_gorilla_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Ground slam: STR damage AOE + stun
+    # Ground slam: STR damage AOE + stun, then dump the full charge bank on the
+    # primary target (concentrated — avoids an AoE×bank hidden multiplier, #6).
     amount = GRANITE_GORILLA_DMG.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 1, actor, ctx)
     for t in hit_targets:
         ctx.deal_damage(actor, t, amount, SourceTag.ABILITY)
         ctx.apply_status(t, "stun", duration_ticks=secs(2), source_id=actor.id)
+    st = actor.get_status("stone_charge")
+    if st is not None and st.stacks > 0:
+        dump = st.stacks * GORILLA_CHARGE_PER_STACK.eval(actor)
+        primary = primary_target(actor, ctx)
+        if primary:
+            ctx.deal_damage(actor, primary, dump, SourceTag.ABILITY)
+        ctx.remove_status(actor, "stone_charge")
 
 
 ABILITY_META["champ_granite_gorilla.active"] = AbilityMeta(
     name="Ground Slam", kind="active",
-    blurb="Slam the ground for {damage} magic damage to all adjacent enemies.",
+    blurb="Slam the ground for {damage} magic damage to all adjacent enemies, then "
+          "dump the full Stone Charge bank onto the primary target.",
     terms=(GRANITE_GORILLA_DMG,),
     clauses=(Clause("Stuns struck enemies for 2s."),), tags=("magic", "aoe", "stun"),
 )
