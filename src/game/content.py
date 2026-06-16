@@ -562,7 +562,7 @@ _CHAMPION_DEFS: tuple[ChampionDef, ...] = (
     _champion_def("champ_granite_gorilla", "Granite Gorilla", WeatherState.CLOUDY, 6, "melee", ["Beast", "Guardian", "Bruiser"], stat="str", durability="tanky_hp", playstyle="auto", intent="utility", speed="leaden"),
     _champion_def("champ_eclipse_jaguar", "Eclipse Jaguar", WeatherState.CLOUDY, 7, "ranged", ["Beast", "Channeler"], speed="blinding"),
     _champion_def("champ_nightglass_mantis", "Nightglass Mantis", WeatherState.CLOUDY, 8, "melee", ["Swarm", "Stalker"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="speedy"),
-    _champion_def("champ_cliffeyrie_eagle", "Cliffeyrie Eagle", WeatherState.CLOUDY, 9, "ranged", ["Skyborn", "Hunter"], stat="hybrid", playstyle="ability", intent="damage", speed="speedy"),
+    _champion_def("champ_cliffeyrie_eagle", "Cliffeyrie Eagle", WeatherState.CLOUDY, 9, "ranged", ["Skyborn", "Hunter"], stat="hybrid", playstyle="hybrid", intent="damage", speed="speedy"),
     _champion_def("champ_umbra", "Umbra, the Mountain's Shadow", WeatherState.CLOUDY, 10, "ranged", ["Scaled", "Primordial", "Stalker"], stat="str", playstyle="auto", intent="damage", speed="steady"),
     _champion_def("champ_lostlight_wisp", "Lostlight Wisp", WeatherState.MIST, 1, "ranged", ["Spirit", "Mender"], stat="int", playstyle="ability", intent="utility", speed="brisk"),
     _champion_def("champ_will_o_fawn", "Will-o-Fawn", WeatherState.MIST, 2, "ranged", ["Spirit", "Mystic", "Multicaster"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="hybrid"),
@@ -580,9 +580,9 @@ _CHAMPION_DEFS: tuple[ChampionDef, ...] = (
     _champion_def("champ_coppercrest_stork", "Coppercrest Stork", WeatherState.THUNDER, 4, "ranged", ["Skyborn", "Warden"], stat="int", playstyle="ability", intent="utility", speed="speedy"),
     _champion_def("champ_thunderhide_bison", "Thunderhide Bison", WeatherState.THUNDER, 5, "melee", ["Beast", "Guardian", "Bruiser"], stat="str", durability="tanky_arm", intent="damage", speed="heavy"),
     _champion_def("champ_tempest_eel", "Tempest Eel", WeatherState.THUNDER, 6, "ranged", ["Tidekin", "Mystic", "Multicaster"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="speedy"),
-    _champion_def("champ_voltmane_jackal", "Voltmane Jackal", WeatherState.THUNDER, 7, "ranged", ["Beast", "Skirmisher", "Channeler"], speed="brisk"),
+    _champion_def("champ_voltmane_jackal", "Voltmane Jackal", WeatherState.THUNDER, 7, "ranged", ["Beast", "Skirmisher", "Channeler"], intent="damage", speed="brisk"),
     _champion_def("champ_thunderclap_gorilla", "Thunderclap Gorilla", WeatherState.THUNDER, 8, "melee", ["Beast", "Bruiser"], stat="str", durability="tanky_hp", playstyle="auto", intent="damage", speed="heavy"),
-    _champion_def("champ_storm_eagle", "Storm Eagle", WeatherState.THUNDER, 9, "ranged", ["Skyborn", "Hunter", "Channeler"], stat="int", playstyle="auto", intent="damage", speed="brisk"),
+    _champion_def("champ_storm_eagle", "Storm Eagle", WeatherState.THUNDER, 9, "ranged", ["Skyborn", "Hunter", "Channeler"], stat="int", playstyle="hybrid", intent="damage", speed="brisk"),
     _champion_def("champ_aerion", "Aerion, the Skybreaker", WeatherState.THUNDER, 10, "ranged", ["Skyborn", "Primordial", "Hunter"], playstyle="auto", speed="brisk"),
 )
 
