@@ -412,22 +412,44 @@ traits (the free variable, fit last) — so every role, including the off-roles,
 for champions (and enemies). **Gentle, not strict:** soft targets, prefer identity-fitting
 single-lever moves.
 
-### Settled target role distribution (soft)
+### Role-reachability ceiling (the structural finding)
 
-| role | champ target | enemy target | now (champ / enemy) |
+The **grid-neutral ceiling** = how many pieces can *ever* reach a role via intent/durability
+flips alone (grid untouched). It exposes that the caster-heavy grid (int/ability=12) **couples
+to roles** — martial roles are body-starved:
+
+| role | baseline (champ) | grid-neutral ceiling | note |
 |---|---|---|---|
-| tank | 8 | 9 | 11 / 13 |
+| bruiser | 0 | 56 | trivially fillable (any melee → tanky+damage) |
+| **assassin** | 0 | **5** | hard cap — only 5 melee-ability bodies, **all tanky→squishy (identity-breaks)**; no clean body |
+| **spellslinger** | 3 | **4** | the 4th body is **Aurion** (locked king) → +1 needs a grid touch |
+| spellblade | 3 | 10 | room |
+| marksman | 6 | 10 | room |
+| mage | 8 | 19 | room |
+
+### Settled target role distribution (soft — user-ratified)
+
+| role | champ target | enemy target | baseline (champ / enemy) |
+|---|---|---|---|
+| tank | 8 | 9 | 13 / 13 |
 | support | 10 | 9 | 15 / 12 |
 | swashbuckler | 8 | 7 | 12 / 6 |
 | mage | 8 | 9 | 8 / 10 |
 | marksman | 7 | 7 | 6 / 5 |
-| bruiser | 6 | 6 | 2 / 0 |
-| assassin | 4 | 5 | 0 / 4 |
-| spellblade | 5 | 4 | 3 / 10 |
-| spellslinger | 4 | 4 | 3 / 0 |
+| bruiser | 6 | 6 | 0 / 0 |
+| **assassin** | **2** | 5 | 0 / 4 |
+| spellblade | 7 | 4 | 3 / 10 |
+| **spellslinger** | **4** | 4 | 3 / 0 |
 | **total** | **60** | **60** | 60 / 60 |
 
-Floors: every role ≥4 (off-roles live); no role >10 (kill the support/tank/swash hoard).
+**Two ceiling-driven decisions (user-ratified):**
+- **assassin = 2** (not 3) — no clean assassin body exists (all 5 are Guardian/Channeler
+  tank→squishy conversions = identity-break + Calling re-fit). Gentle floor; freed slot → spellblade 7.
+- **spellslinger = 4** (not 3) — accept **one deliberate grid touch** (a ranged hybrid-ability
+  support → hybrid-playstyle + damage = the 4th body), since the only grid-neutral 4th is the
+  locked king Aurion. ±1 hybrid-row drift on the **soft** distribution guard (not §V) — acceptable.
+
+Floors: every role ≥2 (all off-roles live); the support/tank/swash hoard broken (15/13/12 → 10/8/8).
 
 ### The dependency chain (the order of operations)
 
