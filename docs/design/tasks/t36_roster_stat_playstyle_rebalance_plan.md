@@ -1,15 +1,16 @@
 # T.36 Plan — Roster stat/playstyle rebalance + Primordial diversification
 
-> **Status:** ✅ **BUILD-READY (2026-06-16, rev 3)** — rev 3 adds the full
-> live-brainstorm lock-in: all **6 king kits** (T.36a) + the **3 caster→auto flip
-> kits** + the **6 moderate** sketches (T.36b), the **Calling-honest reshuffle**
-> (corrects 3 kings + the 12 distribution moves that had playstyle fighting their
-> Calling), the new **`Spellslinger`** role (taxonomy hole), and the
-> `marsh_thrush` utility-INT/damage-STR resolution. Conventions distilled to
-> `docs/live/systems/kit_design_conventions.md`. rev 2 (2026-06-15) ratified the
-> grid (22/22/16), the **T.36a/T.36b** split, and the self-documenting
-> distribution guard (§8). Cell *counts* are the contract; per-piece kits are
-> locked but coeffs stay sim-tunable at build.
+> **Status:** ✅ **BUILD-READY (2026-06-16, rev 4)** — **rev 4 REFRAMES the
+> distribution approach (see §13, which supersedes the §5 T.36b table + §12 T.36c):**
+> stop fighting two grids; **optimize the axis marginals directly** (role is a pure
+> function of the axes, V.32) via one unified solve (marginals + soft role floors).
+> Fixes the real ad-hoc artifact — the `durability` skew — and yields an all-roles-
+> populated, frontline-weighted emergent role distro in ~20 curated re-axes. New task
+> shape: **T.36a** (6 kings, unchanged) → **T.36b** (unified roster axis-distribution
+> solve; T.36c folded in). rev 3 locked the 6 king kits + 3 flip kits +
+> `Spellslinger` role; conventions in `docs/live/systems/kit_design_conventions.md`.
+> §2–§12 below are the rev 2/3 record (kings + the now-superseded ad-hoc T.36b/c
+> tables) — read §13 for the current distribution plan.
 
 - **Status:** two NEW §T rows — **T.36a** (`📋 Plan`) + **T.36b** (`📋 Plan`, depends T.36a).
 - **Depends:** T.32 (role/intent axes, `classify_role`), T.33a/b (stat scaling), T.34a–c (`AbilityMeta`/`Magnitude`), T.35a (closed `Magnitude` family + V.46 orphan-stat guard), T.35b (V.47 axis↔scaling + INT coeffs). All built ✅ — no unbuilt gate.
@@ -504,3 +505,70 @@ likewise. Trim over-pop tank/support/spellblade.
 New **T.36c** (depends T.36b). Re-axis = intent/durability (+ a few reach/playstyle swaps),
 trait re-fit, kit rebuilds for moved pieces, snapshot + role-matrix regen, distribution-guard
 update. Est L. **Open:** the assassin floor (swap-cost vs gentleness) — settle before picking.
+
+## 13. Unified axis-distribution solve — SUPERSEDES the §5 T.36b table + §12 T.36c
+
+**Reframe (user-driven):** we were fighting *two* grids — the stat×playstyle contract AND a
+role-distribution target. But **role is a pure function of the axes** (V.32), so optimize the
+**axis distribution** directly and role falls out for free. One objective, not two.
+
+### The structural findings (why this is the right frame)
+
+1. **Role-volume is unequal** in axis-space (of 216 stat·play·reach·dur·intent combos): tank
+   33% · support 17% · bruiser 14% · swash 9% · mage/marksman/assassin/spellslinger 6% ·
+   spellblade 4%. → even *perfectly balanced axes* yield a **frontline-weighted, assassin-rare**
+   roster. **That is correct, not a flaw** — it matches gameplay (field several frontliners,
+   1-2 assassins). So we **stop targeting equal roles**; accept the natural shape, only enforce
+   soft floors so no off-role is empty.
+2. **Marginals alone are insufficient** — a min-change solve hitting every marginal still left
+   assassin=1, because the *degenerate correlations* persisted (all melee+ability pieces were
+   tanky → the squishy-melee-caster corner stayed empty). **The joint matters** → the solve must
+   carry role floors as constraints in the *same* objective.
+3. **The real ad-hoc artifact = `durability`**, wildly skewed (hybrid **35**/60, tanky_arm **3**)
+   — a glut of middling-durability pieces, almost no armor-tanks. No role-first approach surfaces
+   this; the axis view does. *This is the "which archetypes are over/under-represented" answer.*
+
+### Target axis marginals (design — user-ratified)
+
+| axis | target |
+|---|---|
+| stat | str 22 · int 22 · hybrid 16 (D.25 parity held) |
+| playstyle | auto 24 · ability 24 · hybrid 12 |
+| reach | melee 30 · ranged 30 (even frontline capacity) |
+| **durability** | tanky_hp 11 · **tanky_arm 8** · squishy 13 · hybrid 28 (fixes the skew) |
+| intent | damage ~26 · utility ~22 · hybrid 12 (slight dealer lean; solve drifts to ~29/19/12 to meet floors — soft) |
+
+Role floors (soft, in-objective): assassin/spellblade/spellslinger ≥4, bruiser ≥6, marksman ≥5,
+mage ≥6, swash ≥6, support/tank ≥8; caps tank ≤12, support ≤11. Stat-parity `|str−int| ≤ ~0`.
+
+### Solve result (kings + 3 flip kits PINNED, other 51 free)
+
+Greedy min-change over single-axis flips, multi-restart. **Cost 6, 20 non-king changes.**
+**Emergent role distro:** tank 12 · support 11 · swash 7 · mage 7 · bruiser 6 · marksman 5 ·
+assassin 4 · spellblade 4 · spellslinger 4 = 60. All marginals hit; all roles ≥4; frontline-weighted.
+
+### Starting change-list (20 — to be IDENTITY-CURATED, not gospel)
+
+The solver minimized *count*, not identity, so some picks are jarring (e.g. `ember_salamander`
+fire-mage → melee/str). The solve **proves feasibility + fixes the marginals/roles**; the
+per-piece pass swaps *which* piece fills each cell for identity fit (as we did for the kings),
+**holding the marginals**. The 20 movers it found (durability/intent/reach/playstyle/stat flips):
+`dawnwisp, veldt_pronghorn, ember_salamander, goldcrest_lark, aegis_tortoise, sunmane_lion,
+goldhide_rhino, mirage_caracal, sunspear_falcon, springfrog, reedbank_otter, torrent_heron,
+grovekeeper_tapir, coral_colossus, snowpelt_cub, permafrost_walrus, frostplate_tortoise,
+iceclaw_lynx, duskstep_marten, nightglass_mantis`.
+
+### Workflow (one task now)
+
+1. **Settle target marginals** (above) — done.
+2. **Solve** for emergent roles + feasibility — done (cost 6, 20 changes).
+3. **Identity-curate** the per-piece assignment (swap occupants for lore/kit fit; hold marginals).
+4. **Fit traits** — Callings→playstyle honest (Calling fixes playstyle); gentle Kinship rebalance
+   (Beast 14→~10); the trait is the free variable.
+5. **Rebuild kits** for every moved piece (one at a time, king-style) to its new identity.
+6. Snapshot + role-matrix regen; distribution guard becomes an **axis-marginal** guard (soft);
+   `stat_edge` read; V.33/V.47 hold.
+
+**Restructure:** the §5 T.36b 12-piece table + the §12 T.36c role-reconciliation are **superseded**
+by this single solve. New task shape: **T.36a** (6 kings — unchanged) → **T.36b** (unified roster
+axis-distribution solve: the ~20-change curated re-axis + trait-fit + kit rebuilds). T.36c folded in.
