@@ -153,26 +153,46 @@ discounted STR burst) + the free-auto passive is the canonical shape.
 draft; see staged math below): each of the 5 leaver kings adds +1 to its target cell,
 Aurion (not Umbra) is the one that stays in `hybrid/hybrid`.
 
-### T.36b — the 12 non-king re-axis moves (delta-verified to land target)
+### T.36b — the 12 non-king re-axis moves (CORRECTED: Calling-honest reshuffle)
 
-| # | piece | kin / T | from | → to | rationale (tunable) |
+> **Supersedes the earlier draft**, which inherited the same Calling-incoherence as the
+> kings (dusk_bat is a **Hunter** = auto, yet was pointed at an ability cell; eclipse_jaguar
+> is a **Channeler** = cast, yet pointed at an auto cell; Guardians shoved into raw auto).
+> Reshuffled to honor Calling→playstyle while **preserving the destination cell multiset**
+> (3×str/auto, 3×str/ability, 1×int/auto, 1×int/hybrid, 2×hybrid/ability, 2×hybrid/auto) →
+> grid still lands exactly. The roster's re-axis pool is cast-Calling-skewed vs the
+> auto-heavy target, so **2 irreducible auto-slot misfits** are paid with a **minimal
+> Calling tweak** (a Beast-natural auto-Calling added) rather than a playstyle that fights
+> the kit. (User-ratified approach.)
+
+| # | piece | Kinship · Calling | from | → to | Calling fit |
 |---|---|---|---|---|---|
-| 1 | `champ_snowpelt_cub` | Beast 1 | str/hybrid | **str/auto** | young beast, pure striker |
-| 2 | `champ_granite_gorilla` | Beast 6 | int/ability | **str/auto** | brawler; INT was dead weight |
-| 3 | `champ_mirewarden_toad` | Tidekin 7 | int/ability | **str/auto** | gulp-bruiser tank |
-| 4 | `champ_pebbleback_pangolin` | Scaled 1 | str/hybrid | **str/ability** | roll-up buffs next autos (weak-quadrant pattern) |
-| 5 | `champ_hollow_elk` | Spirit 4 | int/ability | **str/ability** | charge empowers autos |
-| 6 | `champ_dusk_bat` | Swarm 2 | int/ability | **str/ability** | dive empowers autos (lore stretch — flag) |
-| 7 | `champ_phantom_lynx` | Spirit 3 | int/ability | **int/auto** | INT-fed assassin autos (glade_heron pattern) |
-| 8 | `champ_tempest_eel` | Tidekin 6 | int/ability | **int/hybrid** | zaps (auto) + casts; both INT |
-| 9 | `champ_marsh_thrush` | Skyborn 6 | int/ability | **hybrid/ability** | both-coeff support-caster |
-| 10 | `champ_grovekeeper_tapir` | Tidekin 4 | hybrid/hybrid | **hybrid/ability** | both-coeff cast, drops the triple-hybrid |
-| 11 | `champ_voltmane_jackal` | Beast 7 | hybrid/hybrid | **hybrid/auto** | lightning brawler, on-hit INT |
-| 12 | `champ_eclipse_jaguar` | Beast 7 | hybrid/hybrid | **hybrid/auto** | ambush striker, STR autos + INT bonus |
+| 1 | `champ_snowpelt_cub` | Beast · Guardian·Packmate | str/hybrid | **str/auto** | **tweak +Skirmisher** (young beast striker; Guardian alone leans cast) |
+| 2 | `champ_granite_gorilla` | Beast · Guardian | int/ability | **str/auto** | **tweak +Bruiser** (gorilla brawler — natural auto) |
+| 3 | `champ_dusk_bat` | Swarm · Trickster·**Hunter** | int/ability | **str/auto** | ✓ Hunter=auto (was the ✗✗ Hunter-in-ability) |
+| 4 | `champ_pebbleback_pangolin` | Scaled · **Guardian**·Packmate | str/hybrid | **str/ability** | ✓ Guardian→ability (tank casts) |
+| 5 | `champ_mirewarden_toad` | Tidekin · **Guardian** | int/ability | **str/ability** | ✓ Guardian→ability (mire-caster; was str/auto) |
+| 6 | `champ_hollow_elk` | Spirit · Guardian·**Channeler** | int/ability | **str/ability** | ✓ Channeler+Guardian=cast |
+| 7 | `champ_phantom_lynx` | Spirit · **Stalker**·Packmate | int/ability | **int/auto** | ✓ Stalker=auto (INT-fed assassin autos) |
+| 8 | `champ_tempest_eel` | Tidekin · Mystic·**Multicaster** | int/ability | **int/hybrid** | ~ soft (caster; hybrid-playstyle still casts) |
+| 9 | `champ_marsh_thrush` | Skyborn · Warden·Mystic·Multicaster | int/ability | **hybrid/ability** | ✓ all-cast → ability |
+| 10 | `champ_eclipse_jaguar` | Beast · **Channeler** | hybrid/hybrid | **hybrid/ability** | ✓ Channeler=cast (was the ✗✗ Channeler-in-auto) |
+| 11 | `champ_voltmane_jackal` | Beast · **Skirmisher**·Channeler | hybrid/hybrid | **hybrid/auto** | ✓ Skirmisher=auto |
+| 12 | `champ_grovekeeper_tapir` | Tidekin · **Bruiser**·Mender | hybrid/hybrid | **hybrid/auto** | ✓ Bruiser=auto (was hybrid/ability) |
 
-**Stays `hybrid/hybrid` (target 4):** Umbra (king) + `champ_goldhide_rhino`, `champ_marshghast_boar`, `champ_glacierback_mammoth`.
+**The 2 Calling tweaks** (the minimal trait edits to fit the auto-heavy target): `snowpelt_cub`
+gains **Skirmisher**, `granite_gorilla` gains **Bruiser** — both Beast pieces, both
+auto-Callings, lore-natural (young striker / brawler). No other traits change.
 
-**Verification (post-a → moves → target):** str/auto 9+3=**12**; str/ability 3+3=**6**; str/hybrid 6−2=**4**; int/auto 5+1=**6**; int/ability 19−7=**12**; int/hybrid 3+1=**4**; hybrid/auto 4+2=**6**; hybrid/ability 4+2=**6**; hybrid/hybrid 7−3=**4**. ✅ exact.
+**Stays `hybrid/hybrid` (target 4):** **Aurion** (king) + `champ_goldhide_rhino`, `champ_marshghast_boar`, `champ_glacierback_mammoth`.
+
+**Verification — destination cell multiset is identical to the earlier draft** (only WHICH
+piece fills each cell changed + 2 cells swapped playstyle: eclipse_jaguar auto→ability,
+grovekeeper ability→auto), so the per-cell deltas are unchanged: str/auto 9+3=**12**;
+str/ability 3+3=**6**; str/hybrid 6−2=**4**; int/auto 5+1=**6**; int/ability 19−7=**12**;
+int/hybrid 3+1=**4**; hybrid/auto 4+2=**6**; hybrid/ability 4+2=**6**; hybrid/hybrid 7−3=**4**. ✅ exact.
+
+**Stat marginal check:** str ×6 (#1-6), int ×2 (#7-8), hybrid ×4 (#9-12) — matches the required 6/2/4 fills.
 
 ### Coeff guidance per landing cell
 - **str/auto, hybrid/auto** — autos carry; ability coeffs modest (utility/steroid). hybrid/auto: STR base + on-hit-INT `Magnitude` (both referenced → V.47).
@@ -248,7 +268,7 @@ gate is the engine's V.33 ±10% HP·DPS proxy + `stat_edge.py` sims at build.*
 4. Snapshots/role-matrix regen; full suite green; sims byte-identical post-rebaseline.
 
 **T.36b:**
-1. The 12 §5 moves applied; live matrix equals the **target grid exactly** (verified by the new distribution guard).
+1. The 12 §5 moves applied; live matrix equals the **target grid exactly** (verified by the new distribution guard). Every move's playstyle honors its Calling; the 2 Calling tweaks (`snowpelt_cub`+Skirmisher, `granite_gorilla`+Bruiser) are the only trait edits, and the overall auto/cast Calling balance does not degrade.
 2. Every re-axised int/hybrid piece passes V.47; str/ability pieces follow the revised guideline — **ability is the main value, STR coeff below the INT baseline** (parity formula §5), not "empowers autos" (review).
 3. Proxy band, V.46, determinism, snapshots all green.
 4. `stat_edge` STR/INT gap does not widen vs pre-T.36 baseline (recorded, non-gating).
@@ -256,10 +276,11 @@ gate is the engine's V.33 ±10% HP·DPS proxy + `stat_edge.py` sims at build.*
 ## 10. SPEC changes needed (apply via `/spec` after approval)
 
 - **New §T.36a** — *Primordial diversification — re-axis + kit-rewrite the 6 T10 kings into 6 distinct apex archetypes (Calling-honest: Aurion keeps hybrid/hybrid, Nerei int/ability, Borealis hybrid/ability, Umbra str/auto, Mournhollow str/ability, Aerion hybrid/auto); extend the V.47 guard to enforce hybrid→both STR+INT; fix stale 0.2 test comment.* Files: `game/content.py`, `game/abilities/champions.py`, `tests/game/test_content.py`, `tests/game/test_role_intent.py`, snapshots. Depends: T.32, T.35a, T.35b. Est: M. Status: 📋 Plan.
-- **New §T.36b** — *Roster distribution re-axis — re-axis + kit-rewrite 12 non-king champs to land the 22/22/16 target grid; add the self-documenting distribution guard test.* Files: `game/content.py`, `game/abilities/champions.py`, `tests/game/test_content.py`, `docs/design/tasks/t32_role_matrix.txt`, `tests/game/test_role_intent.py`, snapshots. Depends: T.36a. Est: L. Status: 📋 Plan.
+- **New §T.36b** — *Roster distribution re-axis — Calling-honest re-axis + kit-rewrite of 12 non-king champs to land the 22/22/16 target grid; add 2 minimal Calling tweaks (`snowpelt_cub`+Skirmisher, `granite_gorilla`+Bruiser) so the cast-skewed pool fills the auto-heavy cells without playstyle-vs-Calling misfits; add the self-documenting distribution guard test.* Files: `game/content.py`, `game/abilities/champions.py`, `tests/game/test_content.py`, `docs/design/tasks/t32_role_matrix.txt`, `tests/game/test_role_intent.py`, snapshots. Depends: T.36a. Est: L. Status: 📋 Plan.
 - **Amend V.37** — append: Primordials are no longer pinned to a shared `hybrid` axis; each T10 is a distinct apex archetype (still exactly one per Kinship + Primordial trait). (T.36a)
 - **Amend V.47** — note the guard now enforces `hybrid`→**both** STR+INT (was INT-only); cite `TestAxisScalingAlignment` covering str-hybrid + int-hybrid. (T.36a)
 - **§B backprop** — new entry: "V.47 guard under-enforced — checked INT only, never verified hybrid pieces reference STR (since T.35b); T.36a closes it." Optionally cite the stale `0.2` comment.
+- **New §V (candidate)** — *piece stat stacking is in-combat only; cross-`Run` permastacking is augment-exclusive.* Holds today by V.2 pure-combat construction (runtime state rebuilds per `resolve_combat`); lock it + reword the two "permanent" blurbs (`champions.py:559`/`:1146`) to "until end of battle". Add a blurb-wording guard. (User-noted; see §6.4.)
 - **§D.25** — mark consumed/closed by T.36 (the tuned coeffs are now spent in the redesigned kits); D.26 stays open.
 - **Implementation Order** — place T.36a then T.36b after T.35b.
 
