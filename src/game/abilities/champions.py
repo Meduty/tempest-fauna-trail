@@ -2386,7 +2386,7 @@ ABILITY_META["champ_will_o_fawn.passive"] = AbilityMeta(
 # `soul_charged` marker status.
 PHANTOM_LYNX_PEN = ScalingTerm("penetration", 0.0, "intelligence*0.12")
 PHANTOM_LYNX_ONHIT = ScalingTerm("bonus", 0.0, "intelligence*0.8")
-PHANTOM_LYNX_REAP = ScalingTerm("reap", 0.0, "intelligence*1.8")
+PHANTOM_LYNX_REAP = ScalingTerm("reap", 0.0, "intelligence*2.5")
 _PHANTOM_LYNX_LIFESTEAL = 0.35
 
 
