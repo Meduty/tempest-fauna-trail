@@ -167,7 +167,7 @@ Aurion (not Umbra) is the one that stays in `hybrid/hybrid`.
 
 | # | piece | Kinship · Calling | from | → to | Calling fit |
 |---|---|---|---|---|---|
-| 1 | `champ_snowpelt_cub` | Beast · Guardian·Packmate | str/hybrid | **str/auto** | **tweak +Skirmisher** (young beast striker; Guardian alone leans cast) |
+| 1 | `champ_snowpelt_cub` | Beast · Guardian·Packmate | str/hybrid | **str/auto** | **tweak +Bruiser** (tanky frontline brawler — Bruiser fits the tank role better than Skirmisher's mobile-damage pull) |
 | 2 | `champ_granite_gorilla` | Beast · Guardian | int/ability | **str/auto** | **tweak +Bruiser** (gorilla brawler — natural auto) |
 | 3 | `champ_dusk_bat` | Swarm · Trickster·**Hunter** | int/ability | **str/auto** | ✓ Hunter=auto (was the ✗✗ Hunter-in-ability) |
 | 4 | `champ_pebbleback_pangolin` | Scaled · **Guardian**·Packmate | str/hybrid | **str/ability** | ✓ Guardian→ability (tank casts) |
@@ -176,19 +176,22 @@ Aurion (not Umbra) is the one that stays in `hybrid/hybrid`.
 | 7 | `champ_phantom_lynx` | Spirit · **Stalker**·Packmate | int/ability | **int/auto** | ✓ Stalker=auto (INT-fed assassin autos) |
 | 8 | `champ_tempest_eel` | Tidekin · Mystic·**Multicaster** | int/ability | **int/hybrid** | ~ soft (caster; hybrid-playstyle still casts) |
 | 9 | `champ_marsh_thrush` | Skyborn · Warden·Mystic·Multicaster | int/ability | **hybrid/ability** | ✓ all-cast → ability |
-| 10 | `champ_eclipse_jaguar` | Beast · **Channeler** | hybrid/hybrid | **hybrid/ability** | ✓ Channeler=cast (was the ✗✗ Channeler-in-auto) |
+| 10 | `champ_eclipse_jaguar` | Beast · **Stalker**·Channeler | hybrid/hybrid | **hybrid/auto** | ✓ **tweak: restore Stalker** (in the roster doc, dropped from code) — kit-soul is alternating STR/INT autos → role `spellblade`; Channeler justifies the twin-cast active |
 | 11 | `champ_voltmane_jackal` | Beast · **Skirmisher**·Channeler | hybrid/hybrid | **hybrid/auto** | ✓ Skirmisher=auto |
-| 12 | `champ_grovekeeper_tapir` | Tidekin · **Bruiser**·Mender | hybrid/hybrid | **hybrid/auto** | ✓ Bruiser=auto (was hybrid/ability) |
+| 12 | `champ_grovekeeper_tapir` | Tidekin · Bruiser·**Mender** | hybrid/hybrid | **hybrid/ability** | ✓ Mender=cast (caster-mender tank; was hybrid/auto — swapped with eclipse to preserve its auto-soul) |
 
-**The 2 Calling tweaks** (the minimal trait edits to fit the auto-heavy target): `snowpelt_cub`
-gains **Skirmisher**, `granite_gorilla` gains **Bruiser** — both Beast pieces, both
-auto-Callings, lore-natural (young striker / brawler). No other traits change.
+**The 3 Calling tweaks** (minimal trait edits to fit the cells): `snowpelt_cub` gains
+**Bruiser** (tanky brawler), `granite_gorilla` gains **Bruiser** (gorilla brawler),
+`eclipse_jaguar` **restores Stalker** (it is in the roster doc, dropped from code — this
+tweak doubles as a doc/code drift fix). All Beast pieces, all auto-Callings, lore-natural.
+No other traits change.
 
 **Stays `hybrid/hybrid` (target 4):** **Aurion** (king) + `champ_goldhide_rhino`, `champ_marshghast_boar`, `champ_glacierback_mammoth`.
 
 **Verification — destination cell multiset is identical to the earlier draft** (only WHICH
-piece fills each cell changed + 2 cells swapped playstyle: eclipse_jaguar auto→ability,
-grovekeeper ability→auto), so the per-cell deltas are unchanged: str/auto 9+3=**12**;
+piece fills each cell changed; eclipse_jaguar takes hybrid/**auto** to keep its alternating-
+auto soul and grovekeeper takes hybrid/**ability** for its Mender cast — the two just swap
+hybrid cells), so the per-cell deltas are unchanged: str/auto 9+3=**12**;
 str/ability 3+3=**6**; str/hybrid 6−2=**4**; int/auto 5+1=**6**; int/ability 19−7=**12**;
 int/hybrid 3+1=**4**; hybrid/auto 4+2=**6**; hybrid/ability 4+2=**6**; hybrid/hybrid 7−3=**4**. ✅ exact.
 
@@ -206,6 +209,44 @@ identity is preserved** (the recurring lesson: flex stat+playstyle, hold intent)
 | `champ_dusk_bat` | str/auto · **utility** → role `support` (unchanged) | *Blinding Flurry* passive (was +move_speed): each auto shreds target `attack_speed` (flat/stacking — the harrying flurry); STR autos chip + deliver the shred. *Dusk Swarm* active (was single-target blind): AoE blind/AS-shred r1-2 + **minimal** STR strike (low coeff — it's a support; autos+debuff are the value). **Don't erase the debuff — relocate it onto the autos.** A Hunter that isn't a dealer (intent=utility holds the support role). |
 | `champ_phantom_lynx` | int/auto · damage → role `swashbuckler` | *Phantom Claw* passive (was flat pen%): flat **`penetration = INT·0.12`** (the shred, INT-scaled — sized vs max-res 359 so it never zeroes the midfield; old INT·0.3 did); each auto +`INT·0.8` **magic** on-hit (the carry, split phys/magic vs base auto). On `soul_charged`: that auto instead adds `INT·1.8` **TRUE** + **heals self 35%** of it (soul reap). *Soul Reap* active (Yorick-Q style): lunge + apply self `soul_charged` — no direct damage; the payoff lands **on the next auto**. INT does quadruple duty (proc / pen / true-strike / reap-heal); the *active resolves through an auto* = the cleanest int/auto in the roster. Sustain is **scoped to its own burst** (squishy diver survives the commit; no free omni-lifesteal). |
 | `champ_granite_gorilla` | str/auto + **Bruiser** tweak · utility → role `tank` (unchanged) | *Stone Charge* passive (replaces instant % reflect): damage taken **banks** `charge += STR·0.08` **per blow** (flat-per-blow, ignore magnitude), **hard cap `charge ≤ STR·1.5`**; autos discharge `charge·0.5` each as bonus physical on the gorilla's *own* target; depletes. *Ground Slam* active: `70 + STR·1.2` AoE r1 + stun 2s + **dumps remaining charge** AoE. **Avoids the asymmetric-reflect death-trap** (no instant %-of-incoming reflect → squishies don't suicide poking it) AND **makes autos the point** (str/auto honored — discharge flows through autos). STR keyed to the gorilla's *own* stat (not enemy damage), cap kills the hidden `k·N` hit-count multiplier → linear STR scaling, no stealth gem. |
+
+### T.36b batch sketch — the other 9 (coeff retune + faults caught by the skeptical pass)
+
+Verified each role-code holds (`build_role_code`/`classify_role`) and scanned every coeff
+against the conventions doc. Findings:
+
+| piece | →cell · role | coeff action | note |
+|---|---|---|---|
+| `snowpelt_cub` | str/auto · tank | keep `STR·0.96` active | fine — modest cub slam; +Bruiser tweak |
+| `pebbleback_pangolin` | str/ability · tank | (no damage coeff) | pure-utility roll/shield tank; add token STR scaling if needed |
+| `mirewarden_toad` | str/ability · tank | **`INT·3.29` → `STR·~1.0`** | 🔴 naive swap = 2-3× over parity; it's a utility tank — ability is CC/peel, damage minimal |
+| `hollow_elk` | str/ability · tank | **`INT·3.93` → `STR·~1.2`** | 🔴 same landmine (conventions #4); restat low |
+| `grovekeeper_tapir` | hybrid/ability · tank | keep `STR·0.8+INT·1.9` | already both-coeff modest cast; V.47-hybrid ✓ |
+| `voltmane_jackal` | hybrid/auto · spellblade | **demote `INT·2.28`** | 🟡 ability-nuke lean; hybrid/auto wants autos to carry → push INT onto on-hit, modest active |
+| `eclipse_jaguar` | hybrid/auto · spellblade | keep passive `STR·0.24/INT·0.64`; trim twin-cast `INT·2.38` | 🟢 alternating-auto passive *is* the carry; minor trim |
+| `marsh_thrush` | hybrid/ability · support | **needs a STR reference** | 🔴 V.47-hybrid tension (decision below) |
+| `tempest_eel` | int/hybrid · **marksman** | keep `INT·4.37` chain, add INT auto-zaps | 🔴 role betrayal (decision below) |
+
+**The recurring landmine:** every `int/ability → str/ability` move with an existing INT nuke
+(`mirewarden`, `hollow_elk`) must drop the coeff hard on the stat swap — naive `INT·K →
+STR·K` is the Mournhollow fault repeated. These are *utility tanks*, so the ability is
+CC/peel and the damage coeff should be `~STR·1.0`, well under even the str/ability parity band.
+
+**Two open decisions (genuine forks):**
+
+1. **`tempest_eel` → `int/hybrid` rolls to role `marksman`** — but it's a Mystic·**Multicaster**
+   (the roster's chain-lightning caster). The int/ability quadrant is *shrinking* (19→12), so an
+   int caster has nowhere caster-shaped to land; int/hybrid is the only non-auto int cell, and
+   it classifies auto-leaning. Options: **(a)** accept it as an INT *battlemage/APC* — keep the
+   chain-lightning cast primary, add INT-fed auto-zaps for the hybrid playstyle; "marksman" is
+   just the classifier's name for an INT auto+cast dealer; **(b)** drop Multicaster (keep Mystic)
+   to lighten the cast identity; **(c)** revisit the grid's int/hybrid requirement.
+2. **`marsh_thrush` → `hybrid/ability` fails V.47-hybrid** — a pure-INT buff-support has no STR
+   to reference, but hybrid-stat *requires* both STR+INT (the guard T.36a adds). Options:
+   **(a)** give it a token STR-scaled effect (e.g. a small STR-scaled shield/strike on its
+   buff); **(b)** keep it `int/ability` instead and move a *different* piece into hybrid/ability
+   (re-solve the bijection — but no clean hybrid-stat support exists in the pool); **(c)** make
+   one of its buffs scale `STR+INT`.
 
 ### Coeff guidance per landing cell
 - **str/auto, hybrid/auto** — autos carry; ability coeffs modest (utility/steroid). hybrid/auto: STR base + on-hit-INT `Magnitude` (both referenced → V.47).
