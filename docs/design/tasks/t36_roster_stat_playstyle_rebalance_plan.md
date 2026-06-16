@@ -1,16 +1,15 @@
 # T.36 Plan — Roster stat/playstyle rebalance + Primordial diversification
 
-> **Status:** ✅ **BUILD-READY (2026-06-16, rev 4)** — **rev 4 REFRAMES the
-> distribution approach (see §13, which supersedes the §5 T.36b table + §12 T.36c):**
-> stop fighting two grids; **optimize the axis marginals directly** (role is a pure
-> function of the axes, V.32) via one unified solve (marginals + soft role floors).
-> Fixes the real ad-hoc artifact — the `durability` skew — and yields an all-roles-
-> populated, frontline-weighted emergent role distro in ~20 curated re-axes. New task
-> shape: **T.36a** (6 kings, unchanged) → **T.36b** (unified roster axis-distribution
-> solve; T.36c folded in). rev 3 locked the 6 king kits + 3 flip kits +
-> `Spellslinger` role; conventions in `docs/live/systems/kit_design_conventions.md`.
-> §2–§12 below are the rev 2/3 record (kings + the now-superseded ad-hoc T.36b/c
-> tables) — read §13 for the current distribution plan.
+> **Status:** ✅ **BUILD-READY (2026-06-16, rev 5)** — **rev 5 = full roster-wide
+> build, split 3 ways: T.36a (kings) / T.36b (champions) / T.36c (enemies)** — see
+> **§14 (build structure)** + **§13 (the curated solve for both rosters).** Both
+> rosters fit all 3 distros (axis marginals · roles all ≥4 · Calling/lore-honest)
+> within ±1; combined ~66 axis edits / ~39 kit rebuilds (~30 new beyond kings+flips).
+> rev 4 reframed to the **unified axis-distribution solve** (role derives from axes,
+> V.32 — stop fighting two grids; fixes the `durability` skew). rev 3 locked the 6
+> king kits + 3 flip kits + `Spellslinger` role; conventions in
+> `docs/live/systems/kit_design_conventions.md`. **Read §13–§14 for the current plan;**
+> §2–§12 are the rev 2/3 record (now-superseded ad-hoc grid/role tables).
 
 - **Status:** two NEW §T rows — **T.36a** (`📋 Plan`) + **T.36b** (`📋 Plan`, depends T.36a).
 - **Depends:** T.32 (role/intent axes, `classify_role`), T.33a/b (stat scaling), T.34a–c (`AbilityMeta`/`Magnitude`), T.35a (closed `Magnitude` family + V.46 orphan-stat guard), T.35b (V.47 axis↔scaling + INT coeffs). All built ✅ — no unbuilt gate.
@@ -666,3 +665,60 @@ This is a **roster-wide rebalance** — far beyond the original 18-piece T.36 �
 deriving the whole roster from a principled axis distribution + fixing the durability skew +
 populating every role lore-honestly. Both rosters now fit all 3 distros within ±1, lore-honest.
 **Remaining = the per-piece kit rebuilds** (the build itself) + snapshot/role-matrix regen.
+
+## 14. Build structure — the 3-task split + what needs doing
+
+Full roster-wide build (user-confirmed). Split along the cleanest seam — **kings / champions
+/ enemies** — separate files, each ships green + tests independently, each is one deterministic
+re-baseline.
+
+### T.36a — Primordial kings (6) · Est M
+
+The 6 designed king kits (plan §5 "T.36a CORRECTED" table). Self-contained, highest-identity.
+- **Axis edits:** the 5 king stat/playstyle moves (Aurion stays h/h) in `content.py`.
+- **Kit rebuilds (6):** Aurion *Ascendance*, Nerei *Grudge of the Flood* (+`nerei_grudge` status),
+  Borealis *Blizzard* (frozen +15%), Umbra *Hungering Shadow*, Mournhollow *Haunting Mist*
+  (+`grief` DoT status), Aerion *Overcharge*/*Skybreaker*.
+- **Guards:** extend V.47 (hybrid→both STR+INT) + dead-STR-hybrid test (B.24); fix stale `0.2`
+  comment; new `grief`/`nerei_grudge` StatusDefs.
+- **Regen:** snapshots + role-matrix; `stat_edge` read. **Ships:** kings rebuilt, suite green.
+
+### T.36b — Champion roster rebalance (~36 axis edits, ~15 new kit rebuilds) · Est L
+
+Apply the curated champion assignment (§13) — hits the target marginals + role floors. The 9
+kings+flips are already designed (T.36a + flip kits); this is the **other ~15 kit rebuilds**,
+organized by **role-batch** (each batch shares one identity rule from
+`docs/live/systems/kit_design_conventions.md`):
+
+| batch | pieces (reference — finalize at build) | rule |
+|---|---|---|
+| **bruiser** (6) | sunmane_lion, glacierback_mammoth, marshghast_boar, thunderclap_gorilla, thunderhide_bison, wraithorn_stag | Bruiser-calling; intent→damage (+dur→tanky); melee STR brawler, ability = modest |
+| **assassin** (4) | mirage_caracal, nightglass_mantis, voltscale_mamba, riptide_caiman | Stalker squishy; playstyle→ability = the ambush burst; scoped sustain (conventions #10) |
+| **spellslinger** (4) | storm_eagle, voltmane_jackal, tempest_eel, cliffeyrie_eagle | ranged hybrid-play; cast primary + on-hit/auto tail (battlemage) |
+| **spellblade** (4) | aurion*, eclipse_jaguar, aerion*, thunderhoof_colt | dual-stat both-coeff (V.47-hybrid) |
+| **relabels** (~12) | intent/durability/reach-only movers | NO kit-scaling change — statline + role relabel only |
+
+- **Protect casters** (Menders/Mystics stay ranged+ability — don't let the data edit push
+  healers to auto/melee). **marsh_thrush** utility-INT/damage-STR. **2 honesty fixes**
+  (torrent→mage, coral→Guardian-tank).
+- **New `Spellslinger` role** (amends V.32) + soft **axis-marginal/distribution guard** (not §V).
+- **Regen** snapshots + role-matrix; `stat_edge` champ read. **Ships:** champ roster fits all 3
+  distros (±1), V.33/V.46/V.47 green, enemies untouched.
+
+### T.36c — Enemy roster rebalance (~30 axis edits, ~15 kit rebuilds) · Est L
+
+Same method on the 60 enemies (§13 enemy curation) — curated by **name/lore** (opaque tags,
+V.22; no D.25 parity). Bruiser fills from brutes (berserker/hulk/behemoth), spellslinger from
+battlemage-types, caster-named protected. Hits the same marginals + floors.
+- **Kit rebuilds (~15)** in `abilities/enemies.py` (same role-batch rules). **Regen** snapshots
+  + role-matrix; `stat_edge` full read. **Ships:** enemy roster fits; full suite green.
+
+### Order, determinism, acceptance
+
+**Order:** T.36a → T.36b → T.36c (enemies last — sims run champ-vs-enemy, so stabilize champs
+first). Each = **one re-baseline** (snapshots/sims byte-identical after the intended shift; no
+RNG, V.2/V.14). **Per-task acceptance:** target marginals hit (±1); all roles ≥4; V.33 ±10%
+HP·DPS band holds; V.46 (no orphan stat reads) + V.47 (axis↔scaling, incl. hybrid→both) green;
+role-matrix regenerated; `stat_edge` STR/INT gap not widened. **Per-piece axes are the §13
+reference solve** — build may swap occupants within the marginal/floor constraints + the
+conventions-doc identity rules (the solve is a feasibility proof + target, not frozen).
