@@ -200,6 +200,26 @@ SUDDEN_DEATH = _register(StatusDef(
     dot_true_damage=True,  # Bypasses all mitigation — unstoppable timeout mechanic
 ))
 
+# Grief — Mournhollow's lingering DoT (T.36a). BURN-family: REFRESH, no gate,
+# potency-driven (caster passes STR·0.4 per DOT tick; dot_per_tick=0 is the
+# inert fallback). Mitigated magic damage, on the standard 1s DOT clock.
+GRIEF = _register(StatusDef(
+    id="grief",
+    display_name="Grief",
+    stack_behaviour=StackBehaviour.REFRESH,
+    dot_per_tick=0.0,  # Always caster-supplied via potency (STR·0.4)
+    dot_scales_with_stacks=False,
+))
+
+# Nerei's Grudge — pure marker (no gate, no DOT). Stacks (cap enforced at the
+# application site in nerei_passive, max 5); Nerei's on_damage_pre reads the
+# stack count to amplify her damage vs the grudge-bearer (T.36a).
+NEREI_GRUDGE = _register(StatusDef(
+    id="nerei_grudge",
+    display_name="Grudge of the Flood",
+    stack_behaviour=StackBehaviour.STACK,
+))
+
 
 # ---------------------------------------------------------------------------
 # StatusInstance — runtime instance on a piece

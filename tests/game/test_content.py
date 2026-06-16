@@ -311,12 +311,18 @@ class TestComposeStats:
 #
 # A unit whose `stat` axis is INT-heavy must actually *read* INT in its kit, or
 # the INT-heavy statline is dead weight (#42 Finding B). The universal auto-attack
-# (1.0·STR + 0.2·INT) counts for STR, so `str` units are auto-satisfied; `int` and
+# (1.0·STR + 0.25·INT) counts for STR, so `str` units are auto-satisfied; `int` and
 # `hybrid` units must reference INT via a Magnitude on their active/passive meta.
+#
+# B.24 (T.36a): the guard now also enforces the STR side for `hybrid` — a hybrid
+# statline elevates BOTH stats, so its kit must read STR too or the STR half is
+# dead. Exception: a hybrid with live autos (playstyle auto/hybrid) earns its STR
+# through the universal auto (1.0·STR), the same reason `str` units are auto-
+# satisfied. So only `hybrid` + playstyle `ability` must reference STR by Magnitude.
 
 
-def _meta_references_int(ability_id: str) -> bool:
-    """True if any Magnitude on this ability's meta scales from intelligence."""
+def _meta_references(ability_id: str, stat_words: tuple[str, ...], word: str) -> bool:
+    """True if any Magnitude on this ability's meta scales from the given stat."""
     from src.game.registries import (
         ABILITY_META,
         MaxOfTerm,
@@ -332,12 +338,22 @@ def _meta_references_int(ability_id: str) -> bool:
     for t in terms:
         if isinstance(t, ScalingTerm):
             s = t.scaling
-            if "intelligence" in s or re.search(r"\bint\b", s):
+            if stat_words[0] in s or re.search(rf"\b{word}\b", s):
                 return True
         elif isinstance(t, MaxOfTerm):
-            if any(st in ("intelligence", "int") for st in t.stats):
+            if any(st in stat_words for st in t.stats):
                 return True
     return False
+
+
+def _meta_references_int(ability_id: str) -> bool:
+    """True if any Magnitude on this ability's meta scales from intelligence."""
+    return _meta_references(ability_id, ("intelligence", "int"), "int")
+
+
+def _meta_references_str(ability_id: str) -> bool:
+    """True if any Magnitude on this ability's meta scales from strength."""
+    return _meta_references(ability_id, ("strength", "str"), "str")
 
 
 # INT flows through a non-meta channel (a summon's SummonSpec stat-fraction), so a
@@ -360,7 +376,7 @@ class TestAxisScalingAlignment:
         offenders = []
         for d in self._defs():
             if d.stat not in ("int", "hybrid"):
-                continue  # str auto-satisfied via the auto-attack (1.0 STR + 0.2 INT)
+                continue  # str auto-satisfied via the auto-attack (1.0 STR + 0.25 INT)
             if d.id in _V47_SUMMON_INT_ALLOWLIST:
                 continue
             # T.29d: a piece may have multiple discovered actives — INT may be
@@ -388,3 +404,38 @@ class TestAxisScalingAlignment:
             assert _meta_references_int("__test_dead_int__") is False
         finally:
             del ABILITY_META["__test_dead_int__"]
+
+    def test_hybrid_ability_units_reference_str(self) -> None:
+        # B.24: a `hybrid` statline elevates BOTH stats, so its kit must read STR
+        # too — or the STR half is dead. A hybrid with live autos (playstyle
+        # auto/hybrid) earns its STR through the universal auto, so only
+        # `hybrid` + playstyle `ability` must reference STR via a Magnitude.
+        offenders = []
+        for d in self._defs():
+            if d.stat != "hybrid":
+                continue
+            if d.playstyle in ("auto", "hybrid"):
+                continue  # live autos satisfy the STR side (V.47)
+            active_ids = d.abilities if d.abilities is not None else discover_abilities(d.id)
+            if not (
+                any(_meta_references_str(aid) for aid in active_ids)
+                or _meta_references_str(d.passive_ability)
+            ):
+                offenders.append(f"{d.id} (stat=hybrid, playstyle={d.playstyle})")
+        assert not offenders, (
+            "V.47/B.24: these hybrid ability-users never read STR in their kit "
+            "(dead STR half):\n" + "\n".join(sorted(offenders))
+        )
+
+    def test_guard_detects_a_dead_str_meta(self) -> None:
+        # Negative control: a meta with no STR magnitude must read as non-referencing.
+        from src.game.registries import ABILITY_META, AbilityMeta, ScalingTerm
+
+        ABILITY_META["__test_dead_str__"] = AbilityMeta(
+            name="Dead", kind="active", blurb="x",
+            terms=(ScalingTerm("damage", 10.0, "intelligence*1.0"),),
+        )
+        try:
+            assert _meta_references_str("__test_dead_str__") is False
+        finally:
+            del ABILITY_META["__test_dead_str__"]
