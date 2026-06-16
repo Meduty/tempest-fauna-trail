@@ -1705,43 +1705,63 @@ ABILITY_META["champ_pebbleback_pangolin.active"] = AbilityMeta(
 )
 
 
-# --- Dusk Bat (T2, Trickster) ---
-# Active: blind one enemy (reduce AS)
-# T.35b: blind strength scales with the bat's INT (V.47 dead-INT fix).
-DUSK_BAT_BLIND = ScalingTerm("blind", 30.0, "intelligence*0.24")
-
-
-@register_active("champ_dusk_bat.active")
-def dusk_bat_active(ctx: Any, actor: Any, targets: list) -> None:
-    target = primary_target(actor, ctx)
-    if not target:
-        return
-    ctx.apply_modifier(target, Modifier(
-        "attack_speed", "add", -DUSK_BAT_BLIND.eval(actor), Lifetime.TIMED,
-        "ability:champ_dusk_bat.blind",
-        expires_at_tick=ctx.current_tick + 400,
-    ))
-
-
-ABILITY_META["champ_dusk_bat.active"] = AbilityMeta(
-    name="Blinding Screech", kind="active",
-    blurb="Blind the primary target for 4s.",
-    clauses=(Clause(template="Cuts {blind} Attack Speed.", terms=(DUSK_BAT_BLIND,)),),
-    tags=("debuff", "control"),
-)
+# --- Dusk Bat (T2, Swarm/Hunter — str/auto SUPPORT) ---
+# Flip (T.36b): an auto-attacker whose value is debuff, not damage — intent=utility
+# holds it support (kit conventions #2: a Hunter at utility is still a support that
+# autos). Blinding Flurry shreds the target's attack speed on every auto; Dusk
+# Swarm is the AoE version + minimal STR. STR-scaled (str/auto), no INT. The shred
+# is a real `attack_speed` Modifier (the `slow` status is cosmetic — move_speed is
+# not yet consumed by pathing, map_effects.py); bounded by the TIMED window.
+_DUSK_BAT_SHRED = 12.0          # attack_speed cut per auto
+_DUSK_BAT_SHRED_TICKS = 200     # 2s window — bounds the per-auto accumulation
 
 
 @register_passive("champ_dusk_bat.passive")
 def dusk_bat_passive(owner: Any) -> EffectBundle:
-    return EffectBundle(modifiers=[
-        Modifier("move_speed", "add", 10.0, Lifetime.COMBAT, "passive:champ_dusk_bat"),
+    def on_attack(ctx: Any, event: Any) -> None:
+        if event.attacker is not owner:
+            return
+        ctx.apply_modifier(event.target, Modifier(
+            "attack_speed", "add", -_DUSK_BAT_SHRED, Lifetime.TIMED,
+            "passive:champ_dusk_bat.flurry",
+            expires_at_tick=ctx.current_tick + _DUSK_BAT_SHRED_TICKS,
+        ))
+
+    return EffectBundle(hooks=[
+        Hook("on_attack_landed", on_attack, scope=HookScope.PER_HIT),
     ])
 
 
 ABILITY_META["champ_dusk_bat.passive"] = AbilityMeta(
-    name="Nightwing", kind="passive",
-    blurb="Grants +10 Move Speed for the whole battle.",
-    tags=("buff",),
+    name="Blinding Flurry", kind="passive",
+    blurb=f"Each auto-attack cuts the target's Attack Speed by {int(_DUSK_BAT_SHRED)} for 2s.",
+    tags=("debuff", "control"),
+)
+
+
+DUSK_BAT_DMG = ScalingTerm("damage", 20.0, "strength*0.4")
+_DUSK_BAT_SWARM_SHRED = 25.0
+
+
+@register_active("champ_dusk_bat.active")
+def dusk_bat_active(ctx: Any, actor: Any, targets: list) -> None:
+    amount = DUSK_BAT_DMG.eval(actor)
+    hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 2, actor, ctx)
+    for t in hit_targets:
+        ctx.deal_damage(actor, t, amount, SourceTag.ABILITY)
+        ctx.apply_modifier(t, Modifier(
+            "attack_speed", "add", -_DUSK_BAT_SWARM_SHRED, Lifetime.TIMED,
+            "ability:champ_dusk_bat.swarm",
+            expires_at_tick=ctx.current_tick + secs(4),
+        ))
+
+
+ABILITY_META["champ_dusk_bat.active"] = AbilityMeta(
+    name="Dusk Swarm", kind="active",
+    blurb="Swarm all enemies within 2 hexes for {damage} magic damage.",
+    terms=(DUSK_BAT_DMG,),
+    clauses=(Clause(f"Cuts {int(_DUSK_BAT_SWARM_SHRED)} Attack Speed for 4s."),),
+    tags=("magic", "aoe", "debuff"),
 )
 
 
@@ -1908,45 +1928,63 @@ ABILITY_META["champ_duskstep_marten.active"] = AbilityMeta(
 )
 
 
-# --- Granite Gorilla (T6, Tank-INT) ---
-# Passive: returns a share of damage taken as INT-magic damage.
-_GORILLA_REFLECT_PCT = 0.15
+# --- Granite Gorilla (T6, Beast/Guardian+Bruiser — str/auto TANK) ---
+# Flip (T.36b): a capacitor tank. Stone Charge banks a slice of STR per blow taken
+# (hard-capped — conventions #6: bound the accumulator so the per-event×count ramp
+# can't run) and discharges half the bank through each auto. Replaces the old
+# Stone Recoil %-of-incoming reflect, which punished squishies for attacking the
+# tank (conventions #9 — worst case a squishy died faster than the tank). str/auto,
+# STR throughout (auto-satisfied, V.47); +Bruiser Calling makes the auto playstyle
+# Calling-honest. The §7 active "dump" is dropped: dumping the bank from the active
+# needs cross-function piece state (an engine/model change) — the bank discharges
+# through autos only. The closure owns the bank, so both hooks live in the passive.
+GORILLA_CHARGE_PER_BLOW = ScalingTerm("charge", 0.0, "strength*0.08")
+GORILLA_CHARGE_CAP = ScalingTerm("cap", 0.0, "strength*1.5")
+_GORILLA_DISCHARGE_PCT = 0.5
 
 
 @register_passive("champ_granite_gorilla.passive")
 def granite_gorilla_passive(owner: Any) -> EffectBundle:
-    def hook(ctx: Any, event: Any) -> None:
+    state = {"charge": 0.0}
+
+    def on_taken(ctx: Any, event: Any) -> None:
         if event.target is not owner:
             return
         if event.tag == SourceTag.REFLECT.value:
-            return  # never reflect a reflection — prevents mutual-reflect recursion
-        if not hasattr(event, "attacker") or event.attacker is None:
             return
-        if not event.attacker.alive:
+        cap = GORILLA_CHARGE_CAP.eval(owner)
+        state["charge"] = min(state["charge"] + GORILLA_CHARGE_PER_BLOW.eval(owner), cap)
+
+    def on_attack(ctx: Any, event: Any) -> None:
+        if event.attacker is not owner:
             return
-        reflect_amount = event.amount * _GORILLA_REFLECT_PCT
-        if reflect_amount > 0:
-            ctx.deal_damage(owner, event.attacker, reflect_amount, SourceTag.REFLECT)
+        if state["charge"] <= 0.0:
+            return
+        release = state["charge"] * _GORILLA_DISCHARGE_PCT
+        state["charge"] -= release
+        ctx.deal_damage(owner, event.target, release, SourceTag.ABILITY)
 
     return EffectBundle(hooks=[
-        Hook("on_damage_taken", hook, scope=HookScope.PER_HIT, priority=-10),
+        Hook("on_damage_taken", on_taken, scope=HookScope.PER_HIT),
+        Hook("on_attack_landed", on_attack, scope=HookScope.PER_HIT),
     ])
 
 
 ABILITY_META["champ_granite_gorilla.passive"] = AbilityMeta(
-    name="Stone Recoil", kind="passive",
-    blurb="Returns a share of damage taken back to the attacker as magic damage.",
-    clauses=(Clause(f"Reflects {int(_GORILLA_REFLECT_PCT * 100)}% of damage taken."),),
-    tags=("magic", "reflect"),
+    name="Stone Charge", kind="passive",
+    blurb="Banks {charge} Strength damage each time it is struck, up to {cap}; "
+          "each auto-attack discharges half the bank as bonus magic damage.",
+    terms=(GORILLA_CHARGE_PER_BLOW, GORILLA_CHARGE_CAP),
+    tags=("scaling", "tempo"),
 )
 
 
-GRANITE_GORILLA_DMG = ScalingTerm("damage", 70.0, "intelligence*3.93")
+GRANITE_GORILLA_DMG = ScalingTerm("damage", 70.0, "strength*1.2")
 
 
 @register_active("champ_granite_gorilla.active")
 def granite_gorilla_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Ground slam: INT damage AOE + stun
+    # Ground slam: STR damage AOE + stun
     amount = GRANITE_GORILLA_DMG.eval(actor)
     hit_targets = enemies_in_radius(actor.position_q, actor.position_r, 1, actor, ctx)
     for t in hit_targets:
@@ -1958,7 +1996,7 @@ ABILITY_META["champ_granite_gorilla.active"] = AbilityMeta(
     name="Ground Slam", kind="active",
     blurb="Slam the ground for {damage} magic damage to all adjacent enemies.",
     terms=(GRANITE_GORILLA_DMG,),
-    clauses=(Clause("Stuns struck enemies for 1s."),), tags=("magic", "aoe", "stun"),
+    clauses=(Clause("Stuns struck enemies for 2s."),), tags=("magic", "aoe", "stun"),
 )
 
 
@@ -2326,46 +2364,66 @@ ABILITY_META["champ_will_o_fawn.passive"] = AbilityMeta(
 )
 
 
-# --- Phantom Lynx (T3, APC-INT Assassin) ---
-# Cast: phases through target for INT damage, with penetration.
-PHANTOM_LYNX_DMG = ScalingTerm("damage", 90.0, "intelligence*4.82")
-
-
-@register_active("champ_phantom_lynx.active")
-def phantom_lynx_active(ctx: Any, actor: Any, targets: list) -> None:
-    target = lowest_hp_enemy(actor, ctx)
-    if not target:
-        return
-    # Use pen_pct parameter for resistance ignore
-    ctx.deal_damage(actor, target, PHANTOM_LYNX_DMG.eval(actor), SourceTag.ABILITY,
-                    damage_type="magical")
-    # Apply temporary pen boost
-    ctx.apply_modifier(actor, Modifier(
-        "penetration_pct", "add", 0.3, Lifetime.TIMED,
-        "ability:champ_phantom_lynx.pen",
-        expires_at_tick=ctx.current_tick + 200,
-    ))
-
-
-ABILITY_META["champ_phantom_lynx.active"] = AbilityMeta(
-    name="Phase Strike", kind="active",
-    blurb="Phase through the lowest-HP enemy for {damage} magic damage.",
-    terms=(PHANTOM_LYNX_DMG,),
-    clauses=(Clause("Gain +30% magic penetration for 2s."),), tags=("magic", "penetration"),
-)
+# --- Phantom Lynx (T3, Spirit/Stalker — int/auto SWASHBUCKLER) ---
+# Flip (T.36b): a ghost-pierce auto-carry. Phantom Claw grants flat penetration
+# (a *global* attacker stat sized vs the 359 max-res ceiling — conventions #7,
+# INT·0.12 peaks ~14% of max res) and laces every auto with bonus INT magic. Soul
+# Reap empowers the next auto into a true-damage soul-reap with lifesteal scoped
+# to that committed strike (Yorick-style, conventions #5/#10). int/auto, INT
+# throughout (V.47). The empower crosses the active→passive boundary via the
+# `soul_charged` marker status.
+PHANTOM_LYNX_PEN = ScalingTerm("penetration", 0.0, "intelligence*0.12")
+PHANTOM_LYNX_ONHIT = ScalingTerm("bonus", 0.0, "intelligence*0.8")
+PHANTOM_LYNX_REAP = ScalingTerm("reap", 0.0, "intelligence*1.8")
+_PHANTOM_LYNX_LIFESTEAL = 0.35
 
 
 @register_passive("champ_phantom_lynx.passive")
 def phantom_lynx_passive(owner: Any) -> EffectBundle:
-    return EffectBundle(modifiers=[
-        Modifier("penetration_pct", "add", 0.15, Lifetime.COMBAT, "passive:champ_phantom_lynx"),
-    ])
+    def on_attack(ctx: Any, event: Any) -> None:
+        if event.attacker is not owner:
+            return
+        if owner.has_status("soul_charged"):
+            ctx.remove_status(owner, "soul_charged")
+            dealt = ctx.deal_damage(owner, event.target, PHANTOM_LYNX_REAP.eval(owner),
+                                    SourceTag.TRUE)
+            if dealt > 0:
+                ctx.heal(owner, owner, dealt * _PHANTOM_LYNX_LIFESTEAL)
+        else:
+            ctx.deal_damage(owner, event.target, PHANTOM_LYNX_ONHIT.eval(owner),
+                            SourceTag.ABILITY)
+
+    return EffectBundle(
+        modifiers=[Modifier(
+            "penetration", "add", PHANTOM_LYNX_PEN.eval(owner), Lifetime.COMBAT,
+            "passive:champ_phantom_lynx.claw",
+        )],
+        hooks=[Hook("on_attack_landed", on_attack, scope=HookScope.PER_HIT)],
+    )
 
 
 ABILITY_META["champ_phantom_lynx.passive"] = AbilityMeta(
-    name="Ghostpierce", kind="passive",
-    blurb="Grants +15% magic penetration for the whole battle.",
-    tags=("penetration",),
+    name="Phantom Claw", kind="passive",
+    blurb="Each auto-attack deals {bonus} bonus magic damage.",
+    terms=(PHANTOM_LYNX_ONHIT, PHANTOM_LYNX_PEN, PHANTOM_LYNX_REAP),
+    clauses=(
+        Clause(template="Grants {penetration} flat penetration.", terms=(PHANTOM_LYNX_PEN,)),
+        Clause(template="While Soul Charged, the next auto instead rips for {reap} true "
+               "damage and heals you for 35% of it.", terms=(PHANTOM_LYNX_REAP,)),
+    ),
+    tags=("magic", "penetration", "true", "lifesteal"),
+)
+
+
+@register_active("champ_phantom_lynx.active")
+def phantom_lynx_active(ctx: Any, actor: Any, targets: list) -> None:
+    ctx.apply_status(actor, "soul_charged", duration_ticks=secs(5), source_id=actor.id)
+
+
+ABILITY_META["champ_phantom_lynx.active"] = AbilityMeta(
+    name="Soul Reap", kind="active",
+    blurb="Charge your claws — your next auto-attack becomes a soul-reap (see Phantom Claw).",
+    tags=("empower", "buff"),
 )
 
 

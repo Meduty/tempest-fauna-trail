@@ -211,6 +211,15 @@ GRIEF = _register(StatusDef(
     dot_scales_with_stacks=False,
 ))
 
+# Soul Charged — pure marker (no gate, no DOT). Phantom Lynx's Soul Reap applies
+# it to self; the next auto consumes it for the empowered true-strike + lifesteal
+# (T.36b, Yorick-style empower-next-auto across the active→passive boundary).
+SOUL_CHARGED = _register(StatusDef(
+    id="soul_charged",
+    display_name="Soul Charged",
+    stack_behaviour=StackBehaviour.REFRESH,
+))
+
 # Nerei's Grudge — pure marker (no gate, no DOT). Stacks (cap enforced at the
 # application site in nerei_passive, max 5); Nerei's on_damage_pre reads the
 # stack count to amplify her damage vs the grudge-bearer (T.36a).
