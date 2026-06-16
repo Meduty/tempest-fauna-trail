@@ -1,13 +1,15 @@
 # T.36 Plan — Roster stat/playstyle rebalance + Primordial diversification
 
-> **Status:** ✅ **BUILD-READY (2026-06-15, rev 2)** — supersedes the
-> 2026-06-15 first-pass draft. Decisions ratified with the user: full draft grid
-> (22/22/16), split **T.36a** (Primordials) / **T.36b** (distribution), and a
-> **self-documenting distribution guard test** (pins the target but is explicitly
-> *not* a true invariant — see §8). Per-piece moves are now fully enumerated and
-> delta-verified to land the target grid exactly. **Per-piece axis assignments
-> remain tunable** (lore/kit fit) — the cell *counts* are the contract, the
-> *which-piece* is the proposal.
+> **Status:** ✅ **BUILD-READY (2026-06-16, rev 3)** — rev 3 adds the full
+> live-brainstorm lock-in: all **6 king kits** (T.36a) + the **3 caster→auto flip
+> kits** + the **6 moderate** sketches (T.36b), the **Calling-honest reshuffle**
+> (corrects 3 kings + the 12 distribution moves that had playstyle fighting their
+> Calling), the new **`Spellslinger`** role (taxonomy hole), and the
+> `marsh_thrush` utility-INT/damage-STR resolution. Conventions distilled to
+> `docs/live/systems/kit_design_conventions.md`. rev 2 (2026-06-15) ratified the
+> grid (22/22/16), the **T.36a/T.36b** split, and the self-documenting
+> distribution guard (§8). Cell *counts* are the contract; per-piece kits are
+> locked but coeffs stay sim-tunable at build.
 
 - **Status:** two NEW §T rows — **T.36a** (`📋 Plan`) + **T.36b** (`📋 Plan`, depends T.36a).
 - **Depends:** T.32 (role/intent axes, `classify_role`), T.33a/b (stat scaling), T.34a–c (`AbilityMeta`/`Magnitude`), T.35a (closed `Magnitude` family + V.46 orphan-stat guard), T.35b (V.47 axis↔scaling + INT coeffs). All built ✅ — no unbuilt gate.
@@ -254,6 +256,37 @@ CC/peel and the damage coeff should be `~STR·1.0`, well under even the str/abil
    (measured +5.5/s L1 → +18.5/s L3 vs an INT peer), so Galecrash comes *down* to keep marsh at
    support budget, not up to match the old INT·6.55 (which sat on the higher 1.8 INT weight).
    Sim-verify at build.
+
+### Role-dependency impact (adding `Spellslinger` + the T.36 role changes)
+
+Audited every consumer of the content `role`/`role_code` (V.32). **No game-logic system
+branches on the role value** — it's computed + stored + displayed, never used for selection
+or balance:
+
+| consumer | reads content `role`? | impact |
+|---|---|---|
+| `content.py`/`encounter.py`/`models.py` | computes + stores on pieces | additive (new string only) |
+| `formation.py` (enemy placement) | **No** — own `classify_role`→`PlacementRole` (durability+reach) | **unaffected** |
+| `bosses/data.py` | hardcodes `role="boss"` | unaffected |
+| `tools/gen_role_matrix.py` + `t32_role_matrix.txt` | enumerates combos→role | **regen** (in scope) |
+| `tests/game/test_role_intent.py` | asserts the matrix | **update** (in scope) |
+| `report.py` / `inspect.py --role` / `ui/` | display + substring filter | safe |
+
+**Two parallel role taxonomies, both pure axis-functions, deliberately decoupled:**
+- **content `role`** (V.32) — 9-role *identity* label (all 6 axes) → display / role-matrix / sim.
+- **formation `PlacementRole`** (`formation.py:69`) — 4-bucket *tactical placement*
+  (`durability`+`reach` only): tanky→FRONTLINE, melee+squishy→FLANK, melee→MIDLINE,
+  ranged→BACKLINE. Consumed by `plan_enemy_formation` (enemy squad only).
+
+So a `Spellslinger` (ranged) places BACKLINE like any mage/marksman — **no formation change.**
+And T.36 changes stat/playstyle/intent but **not durability/reach**, so **every enemy's
+PlacementRole is unchanged.** The identity taxonomy can grow (new roles, re-axis) without ever
+perturbing placement. Net: Spellslinger + all T.36 role shifts are **display + matrix-regen
+only, zero game-logic risk.**
+
+**Note:** `Spellslinger` currently has **1 occupant** (tempest_eel) — thin but kept
+(taxonomy completeness + honest home; future int/hybrid & hybrid/hybrid ranged dealers
+populate it). Revisit populating it when identities are next tuned.
 
 ### Coeff guidance per landing cell
 - **str/auto, hybrid/auto** — autos carry; ability coeffs modest (utility/steroid). hybrid/auto: STR base + on-hit-INT `Magnitude` (both referenced → V.47).
