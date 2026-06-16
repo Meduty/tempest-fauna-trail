@@ -224,29 +224,36 @@ against the conventions doc. Findings:
 | `grovekeeper_tapir` | hybrid/ability · tank | keep `STR·0.8+INT·1.9` | already both-coeff modest cast; V.47-hybrid ✓ |
 | `voltmane_jackal` | hybrid/auto · spellblade | **demote `INT·2.28`** | 🟡 ability-nuke lean; hybrid/auto wants autos to carry → push INT onto on-hit, modest active |
 | `eclipse_jaguar` | hybrid/auto · spellblade | keep passive `STR·0.24/INT·0.64`; trim twin-cast `INT·2.38` | 🟢 alternating-auto passive *is* the carry; minor trim |
-| `marsh_thrush` | hybrid/ability · support | **needs a STR reference** | 🔴 V.47-hybrid tension (decision below) |
-| `tempest_eel` | int/hybrid · **marksman** | keep `INT·4.37` chain, add INT auto-zaps | 🔴 role betrayal (decision below) |
+| `marsh_thrush` | hybrid/ability · support | utility=INT (Trill/Wings), **damage=STR**: Galecrash `INT·6.55 → STR·~4-5` (discounted) | ✅ resolved — see below |
+| `tempest_eel` | int/hybrid · **Spellslinger** (new role) | keep `INT·4.37` chain primary, add INT auto-zaps | ✅ resolved — new role, see below |
 
 **The recurring landmine:** every `int/ability → str/ability` move with an existing INT nuke
 (`mirewarden`, `hollow_elk`) must drop the coeff hard on the stat swap — naive `INT·K →
 STR·K` is the Mournhollow fault repeated. These are *utility tanks*, so the ability is
 CC/peel and the damage coeff should be `~STR·1.0`, well under even the str/ability parity band.
 
-**Two open decisions (genuine forks):**
+**Two decisions — RESOLVED (user-ratified):**
 
-1. **`tempest_eel` → `int/hybrid` rolls to role `marksman`** — but it's a Mystic·**Multicaster**
-   (the roster's chain-lightning caster). The int/ability quadrant is *shrinking* (19→12), so an
-   int caster has nowhere caster-shaped to land; int/hybrid is the only non-auto int cell, and
-   it classifies auto-leaning. Options: **(a)** accept it as an INT *battlemage/APC* — keep the
-   chain-lightning cast primary, add INT-fed auto-zaps for the hybrid playstyle; "marksman" is
-   just the classifier's name for an INT auto+cast dealer; **(b)** drop Multicaster (keep Mystic)
-   to lighten the cast identity; **(c)** revisit the grid's int/hybrid requirement.
-2. **`marsh_thrush` → `hybrid/ability` fails V.47-hybrid** — a pure-INT buff-support has no STR
-   to reference, but hybrid-stat *requires* both STR+INT (the guard T.36a adds). Options:
-   **(a)** give it a token STR-scaled effect (e.g. a small STR-scaled shield/strike on its
-   buff); **(b)** keep it `int/ability` instead and move a *different* piece into hybrid/ability
-   (re-solve the bijection — but no clean hybrid-stat support exists in the pool); **(c)** make
-   one of its buffs scale `STR+INT`.
+1. **`tempest_eel` → new role `Spellslinger`.** The role taxonomy had a hole: a **ranged +
+   playstyle-`hybrid` damage dealer** (casts *and* autos) is neither a pure `mage`
+   (ability-only) nor a true `marksman` (auto ADC) — `classify_role` collapsed it into
+   marksman because `caster = (playstyle == "ability")` lumps hybrid-playstyle with auto
+   (`content.py:184,193`). This is the **ranged analog of the melee-side gap**, but keyed on
+   *playstyle*-hybrid (≠ `spellblade`, which is *stat*-hybrid + intent-hybrid). **Add
+   `Spellslinger`** = `reach==ranged AND playstyle=="hybrid" AND intent==damage` (checked
+   before the final mage/marksman line). tempest_eel keeps its chain-lightning cast as primary
+   value + gains INT-fed auto-zaps (the hybrid playstyle) → lands `Spellslinger` honestly.
+   *Taxonomy change: `ROLE_TITLES`, `classify_role`, V.32, regen `t32_role_matrix.txt` + role
+   tests.*
+2. **`marsh_thrush` → `hybrid/ability`, utility=INT / damage=STR.** Clean per-ability stat
+   split: the support magnitudes stay INT (*Quickening Trill* buff INT·0.25, *Restless Wings*
+   MS INT·0.17), and the **damage** ult *Galecrash* swaps `INT·6.55 → STR·~4-5` (the gale's
+   physical force = STR, the support cleverness = INT). Satisfies V.47-hybrid honestly (both
+   stats do real work, neither token). **STR coeff is *discounted*** — even though marsh is a
+   caster (low attack_speed), its STR-stat autos still out-chip every INT support **for free**
+   (measured +5.5/s L1 → +18.5/s L3 vs an INT peer), so Galecrash comes *down* to keep marsh at
+   support budget, not up to match the old INT·6.55 (which sat on the higher 1.8 INT weight).
+   Sim-verify at build.
 
 ### Coeff guidance per landing cell
 - **str/auto, hybrid/auto** — autos carry; ability coeffs modest (utility/steroid). hybrid/auto: STR base + on-hit-INT `Magnitude` (both referenced → V.47).
@@ -294,7 +301,7 @@ gate is the engine's V.33 ±10% HP·DPS proxy + `stat_edge.py` sims at build.*
 ## 7. Open questions
 
 **Resolved here (overridable):**
-- Per-piece assignments in §5 (esp. #6 `dusk_bat`→str/ability is the biggest lore stretch — swap candidate: `coppercrest_stork`).
+- Per-piece assignments in §5 — the Calling-honest reshuffle (T.36b table) + the 3 caster→auto flip kits + the 2 role decisions (`Spellslinger` for tempest_eel, utility-INT/damage-STR for marsh_thrush) are all locked via live brainstorm.
 - **Aurion** is the kept-hybrid king (Channeler — keeps a cast in a mixed kit). *(Corrected from the earlier draft, which kept Umbra; Umbra is a Stalker = auto-Calling → `str/auto`.)*
 
 **Still open / deferred:**
@@ -322,7 +329,7 @@ gate is the engine's V.33 ±10% HP·DPS proxy + `stat_edge.py` sims at build.*
 4. Snapshots/role-matrix regen; full suite green; sims byte-identical post-rebaseline.
 
 **T.36b:**
-1. The 12 §5 moves applied; live matrix equals the **target grid exactly** (verified by the new distribution guard). Every move's playstyle honors its Calling; the 2 Calling tweaks (`snowpelt_cub`+Skirmisher, `granite_gorilla`+Bruiser) are the only trait edits, and the overall auto/cast Calling balance does not degrade.
+1. The 12 §5 moves applied; live matrix equals the **target grid exactly** (verified by the new distribution guard). Every move's playstyle honors its Calling; the 3 Calling tweaks (`snowpelt_cub`+Bruiser, `granite_gorilla`+Bruiser, `eclipse_jaguar` restore Stalker) are the only trait edits, and the overall auto/cast Calling balance does not degrade.
 2. Every re-axised int/hybrid piece passes V.47; str/ability pieces follow the revised guideline — **ability is the main value, STR coeff below the INT baseline** (parity formula §5), not "empowers autos" (review).
 3. Proxy band, V.46, determinism, snapshots all green.
 4. `stat_edge` STR/INT gap does not widen vs pre-T.36 baseline (recorded, non-gating).
@@ -330,7 +337,8 @@ gate is the engine's V.33 ±10% HP·DPS proxy + `stat_edge.py` sims at build.*
 ## 10. SPEC changes needed (apply via `/spec` after approval)
 
 - **New §T.36a** — *Primordial diversification — re-axis + kit-rewrite the 6 T10 kings into 6 distinct apex archetypes (Calling-honest: Aurion keeps hybrid/hybrid, Nerei int/ability, Borealis hybrid/ability, Umbra str/auto, Mournhollow str/ability, Aerion hybrid/auto); extend the V.47 guard to enforce hybrid→both STR+INT; fix stale 0.2 test comment.* Files: `game/content.py`, `game/abilities/champions.py`, `tests/game/test_content.py`, `tests/game/test_role_intent.py`, snapshots. Depends: T.32, T.35a, T.35b. Est: M. Status: 📋 Plan.
-- **New §T.36b** — *Roster distribution re-axis — Calling-honest re-axis + kit-rewrite of 12 non-king champs to land the 22/22/16 target grid; add 2 minimal Calling tweaks (`snowpelt_cub`+Skirmisher, `granite_gorilla`+Bruiser) so the cast-skewed pool fills the auto-heavy cells without playstyle-vs-Calling misfits; add the self-documenting distribution guard test.* Files: `game/content.py`, `game/abilities/champions.py`, `tests/game/test_content.py`, `docs/design/tasks/t32_role_matrix.txt`, `tests/game/test_role_intent.py`, snapshots. Depends: T.36a. Est: L. Status: 📋 Plan.
+- **New §T.36b** — *Roster distribution re-axis — Calling-honest re-axis + kit-rewrite of 12 non-king champs to land the 22/22/16 target grid; add 3 minimal Calling tweaks (`snowpelt_cub`+Bruiser, `granite_gorilla`+Bruiser, `eclipse_jaguar` restore Stalker [doc/code drift fix]) so the cast-skewed pool fills the auto-heavy cells without playstyle-vs-Calling misfits; add the new `Spellslinger` role (below); add the self-documenting distribution guard test.* Files: `game/content.py`, `game/abilities/champions.py`, `tests/game/test_content.py`, `docs/design/tasks/t32_role_matrix.txt`, `tests/game/test_role_intent.py`, snapshots. Depends: T.36a. Est: L. Status: 📋 Plan.
+- **New role `Spellslinger` + amend V.32** — add `Spellslinger` to `ROLE_TITLES` and a branch in `classify_role`: `reach==ranged AND playstyle=="hybrid" AND intent=="damage"` (checked before the final mage/marksman line). Fills the ranged playstyle-hybrid hole (the ranged analog of `spellblade`'s stat-hybrid catch). Regen `t32_role_matrix.txt` + role tests. (T.36b — `tempest_eel` is the first occupant.)
 - **Amend V.37** — append: Primordials are no longer pinned to a shared `hybrid` axis; each T10 is a distinct apex archetype (still exactly one per Kinship + Primordial trait). (T.36a)
 - **Amend V.47** — note the guard now enforces `hybrid`→**both** STR+INT (was INT-only); cite `TestAxisScalingAlignment` covering str-hybrid + int-hybrid. (T.36a)
 - **§B backprop** — new entry: "V.47 guard under-enforced — checked INT only, never verified hybrid pieces reference STR (since T.35b); T.36a closes it." Optionally cite the stale `0.2` comment.

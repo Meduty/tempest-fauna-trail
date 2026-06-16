@@ -41,6 +41,21 @@ below was paid for by a real misfit caught mid-design. Read before authoring or 
    `coeff_str ≈ coeff_int − 0.667·(autos_per_cast)` → a ranged caster lands ~1.1–1.7; AoE+CC
    sits at the low end (the CC is the payoff). **Not** the old "ability empowers autos"
    steroid. (Mournhollow's naive `STR·2.7` was ~2× over.)
+   **The free-auto subsidy is universal — it applies to casters and supports too, not just
+   carries.** Any STR- or hybrid-*stat* piece has live autos (`1.0·STR` base) that out-chip an
+   INT peer's dead `0.2·STR` autos *for free*, even at a caster's low attack_speed (measured: a
+   hybrid-stat support out-chips an INT support by ~5–18 DPS from the stat alone). So a
+   STR/hybrid-stat **support's** ability-*damage* coeff must also be discounted vs its INT
+   peers, or it out-budgets them (marsh_thrush's STR Galecrash is discounted for this). The
+   naive `int/ability → str/ability` stat-swap that keeps the old INT coeff (mirewarden,
+   hollow_elk had `INT·3.3–3.9`) is the same landmine — drop the coeff hard on the swap.
+
+4b. **When a re-axis produces a role that *misrepresents* the piece, suspect a taxonomy hole —
+   don't force a misfit.** A ranged playstyle-`hybrid` damage dealer (casts *and* autos)
+   classified as `marksman` because `classify_role` lumps hybrid-playstyle with auto
+   (`content.py:184`). That was a real hole — the ranged analog of `spellblade` (which is
+   *stat*-hybrid). Fix = a new role (`Spellslinger`), not a contorted axis. Check
+   `build_role_code`/`classify_role` on every re-axis; an off-reading role is a signal.
 
 5. **`*/auto` (str/auto, int/auto, hybrid/auto): the autos must carry — fold the active's
    payoff *into* an auto.** Patterns: on-hit proc (`int/auto` = on-hit-INT, no STR),
