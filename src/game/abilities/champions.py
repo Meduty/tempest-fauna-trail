@@ -152,7 +152,7 @@ ABILITY_META["champ_veldt_pronghorn.active"] = AbilityMeta(
 
 # --- Ember Salamander (T3, APC-INT Mage) ---
 # Cast: line of kindling light, burns ground for several ticks.
-EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "strength*2.5")
+EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "strength*1.95")
 
 
 @register_active("champ_ember_salamander.active", mana_cost=230_000, priority=2)
@@ -173,7 +173,7 @@ ABILITY_META["champ_ember_salamander.active"] = AbilityMeta(
 
 
 # --- Ember Salamander — Magma Burst (INT splash) ---
-EMBER_MAGMA_BURST = ScalingTerm("damage", 60.0, "strength*1.58")
+EMBER_MAGMA_BURST = ScalingTerm("damage", 60.0, "strength*1.2")
 
 
 @register_active("champ_ember_salamander.active2", mana_cost=150_000)
@@ -193,7 +193,7 @@ ABILITY_META["champ_ember_salamander.active2"] = AbilityMeta(
 )
 
 
-EMBER_SALAMANDER_BONUS = ScalingTerm("bonus", 0.0, "strength*0.38")
+EMBER_SALAMANDER_BONUS = ScalingTerm("bonus", 0.0, "strength*0.29")
 
 
 @register_passive("champ_ember_salamander.passive")
@@ -2361,7 +2361,7 @@ ABILITY_META["champ_will_o_fawn.active"] = AbilityMeta(
 
 
 # --- Will-o-Fawn — Wisp Lure (INT dmg + threat drop, primary target) ---
-WILL_WISP_LURE = ScalingTerm("damage", 50.0, "intelligence*1.75")
+WILL_WISP_LURE = ScalingTerm("damage", 50.0, "intelligence*2.45")
 
 
 @register_active("champ_will_o_fawn.active2", mana_cost=130_000)
