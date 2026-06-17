@@ -524,10 +524,10 @@ def _enemy_def(
 
 
 _CHAMPION_DEFS: tuple[ChampionDef, ...] = (
-    _champion_def("champ_dawnwisp", "Dawnwisp", WeatherState.CLEAR, 1, "ranged", ["Spirit", "Mender"], stat="int", playstyle="ability", intent="utility", speed="hybrid"),
+    _champion_def("champ_dawnwisp", "Dawnwisp", WeatherState.CLEAR, 1, "ranged", ["Spirit", "Mender"], stat="str", playstyle="ability", intent="utility", speed="hybrid"),
     _champion_def("champ_veldt_pronghorn", "Veldt Pronghorn", WeatherState.CLEAR, 2, "melee", ["Beast", "Skirmisher", "Packmate"], stat="str", durability="tanky_arm", playstyle="auto", intent="utility", speed="brisk"),
-    _champion_def("champ_ember_salamander", "Ember Salamander", WeatherState.CLEAR, 3, "ranged", ["Scaled", "Mystic", "Multicaster"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="steady"),
-    _champion_def("champ_goldcrest_lark", "Goldcrest Lark", WeatherState.CLEAR, 4, "ranged", ["Skyborn", "Warden"], stat="int", playstyle="ability", intent="utility", speed="hybrid"),
+    _champion_def("champ_ember_salamander", "Ember Salamander", WeatherState.CLEAR, 3, "ranged", ["Scaled", "Mystic", "Multicaster"], stat="str", durability="squishy", playstyle="ability", intent="hybrid", speed="steady"),
+    _champion_def("champ_goldcrest_lark", "Goldcrest Lark", WeatherState.CLEAR, 4, "ranged", ["Skyborn", "Warden"], stat="hybrid", playstyle="ability", intent="hybrid", speed="hybrid"),
     _champion_def("champ_aegis_tortoise", "Aegis Tortoise", WeatherState.CLEAR, 5, "melee", ["Scaled", "Guardian"], stat="str", durability="tanky_arm", playstyle="auto", intent="utility", speed="leaden"),
     _champion_def("champ_sunmane_lion", "Sunmane Lion", WeatherState.CLEAR, 6, "melee", ["Beast", "Bruiser"], stat="str", durability="tanky_hp", playstyle="auto", intent="damage", speed="heavy"),
     _champion_def("champ_goldhide_rhino", "Goldhide Rhino", WeatherState.CLEAR, 7, "melee", ["Scaled", "Bruiser", "Mender"], durability="tanky_arm", playstyle="auto", speed="heavy"),

@@ -52,7 +52,7 @@ from src.game.targeting import (
 
 # --- Dawnwisp (T1, SUP-Heal) ---
 # Cast: knit a wound on the lowest-HP ally, INT-scaled heal.
-DAWNWISP_HEAL = ScalingTerm("heal", 40.0, "intelligence*4.55")
+DAWNWISP_HEAL = ScalingTerm("heal", 40.0, "strength*3.6")
 
 
 @register_active("champ_dawnwisp.active")
@@ -71,7 +71,7 @@ ABILITY_META["champ_dawnwisp.active"] = AbilityMeta(
 
 
 # Passive: heal-over-time ticks on heal target (periodic tick effect every 100 ticks)
-DAWNWISP_HOT = ScalingTerm("bonus", 0.0, "intelligence*0.47")
+DAWNWISP_HOT = ScalingTerm("bonus", 0.0, "strength*0.38")
 
 
 @register_passive("champ_dawnwisp.passive")
@@ -152,7 +152,7 @@ ABILITY_META["champ_veldt_pronghorn.active"] = AbilityMeta(
 
 # --- Ember Salamander (T3, APC-INT Mage) ---
 # Cast: line of kindling light, burns ground for several ticks.
-EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "intelligence*3.14")
+EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "strength*2.5")
 
 
 @register_active("champ_ember_salamander.active", mana_cost=230_000, priority=2)
@@ -173,7 +173,7 @@ ABILITY_META["champ_ember_salamander.active"] = AbilityMeta(
 
 
 # --- Ember Salamander — Magma Burst (INT splash) ---
-EMBER_MAGMA_BURST = ScalingTerm("damage", 60.0, "intelligence*1.97")
+EMBER_MAGMA_BURST = ScalingTerm("damage", 60.0, "strength*1.58")
 
 
 @register_active("champ_ember_salamander.active2", mana_cost=150_000)
@@ -193,7 +193,7 @@ ABILITY_META["champ_ember_salamander.active2"] = AbilityMeta(
 )
 
 
-EMBER_SALAMANDER_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.47")
+EMBER_SALAMANDER_BONUS = ScalingTerm("bonus", 0.0, "strength*0.38")
 
 
 @register_passive("champ_ember_salamander.passive")
@@ -221,7 +221,7 @@ ABILITY_META["champ_ember_salamander.passive"] = AbilityMeta(
 # --- Goldcrest Lark (T4, SUP-Buff) ---
 # Cast: allies gain damage and Attack Speed for one round (600 ticks).
 # T.35b: the STR buff scales with the lark's INT (V.47 dead-INT fix).
-GOLDCREST_LARK_BUFF = ScalingTerm("strength", 20.0, "intelligence*0.24")
+GOLDCREST_LARK_BUFF = ScalingTerm("strength", 20.0, "strength*0.12+intelligence*0.12")
 
 
 @register_active("champ_goldcrest_lark.active")
