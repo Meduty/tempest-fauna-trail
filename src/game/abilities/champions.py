@@ -152,10 +152,10 @@ ABILITY_META["champ_veldt_pronghorn.active"] = AbilityMeta(
 
 # --- Ember Salamander (T3, APC-INT Mage) ---
 # Cast: line of kindling light, burns ground for several ticks.
-EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "intelligence*3.93")
+EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "intelligence*3.14")
 
 
-@register_active("champ_ember_salamander.active", priority=2)
+@register_active("champ_ember_salamander.active", mana_cost=230_000, priority=2)
 def ember_salamander_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
@@ -173,10 +173,10 @@ ABILITY_META["champ_ember_salamander.active"] = AbilityMeta(
 
 
 # --- Ember Salamander — Magma Burst (INT splash) ---
-EMBER_MAGMA_BURST = ScalingTerm("damage", 60.0, "intelligence*3.93")
+EMBER_MAGMA_BURST = ScalingTerm("damage", 60.0, "intelligence*1.97")
 
 
-@register_active("champ_ember_salamander.active2")
+@register_active("champ_ember_salamander.active2", mana_cost=150_000)
 def ember_salamander_active2(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:
@@ -1189,10 +1189,10 @@ ABILITY_META["champ_snowpelt_cub.active"] = AbilityMeta(
 
 # --- Wintermoth (T2, SUP-Buff) ---
 # Active: grant ally AS buff
-WINTERMOTH_HEAL = ScalingTerm("heal", 20.0, "intelligence*1.82")
+WINTERMOTH_HEAL = ScalingTerm("heal", 20.0, "intelligence*1.46")
 
 
-@register_active("champ_wintermoth.active", priority=2)
+@register_active("champ_wintermoth.active", mana_cost=220_000, priority=2)
 def wintermoth_active(ctx: Any, actor: Any, targets: list) -> None:
     ally = lowest_hp_ally(actor, ctx)
     if not ally:
@@ -1213,10 +1213,10 @@ ABILITY_META["champ_wintermoth.active"] = AbilityMeta(
 
 
 # --- Wintermoth — Frost Pollen (chill/slow enemies in radius) ---
-WINTERMOTH_FROST = ScalingTerm("damage", 30.0, "intelligence*2.18")
+WINTERMOTH_FROST = ScalingTerm("damage", 30.0, "intelligence*1.09")
 
 
-@register_active("champ_wintermoth.active2")
+@register_active("champ_wintermoth.active2", mana_cost=150_000)
 def wintermoth_active2(ctx: Any, actor: Any, targets: list) -> None:
     for e in enemies_in_radius(actor.position_q, actor.position_r, 3, actor, ctx):
         ctx.deal_damage(actor, e, WINTERMOTH_FROST.eval(actor), SourceTag.ABILITY, damage_type="magical")
@@ -1812,11 +1812,11 @@ ABILITY_META["champ_boulderhide_skink.passive"] = AbilityMeta(
 # --- Geode Beetle (T4, SUP-Shield) ---
 # Active: ally shield (large armor buff that blocks next big hit)
 # T.35b: shield magnitude scales with the beetle's INT (V.47 dead-INT fix).
-GEODE_BEETLE_ARMOR = ScalingTerm("armor", 80.0, "intelligence*0.55")
-GEODE_BEETLE_RES = ScalingTerm("resistance", 40.0, "intelligence*0.32")
+GEODE_BEETLE_ARMOR = ScalingTerm("armor", 80.0, "intelligence*0.47")
+GEODE_BEETLE_RES = ScalingTerm("resistance", 40.0, "intelligence*0.27")
 
 
-@register_active("champ_geode_beetle.active", priority=2)
+@register_active("champ_geode_beetle.active", mana_cost=230_000, priority=2)
 def geode_beetle_active(ctx: Any, actor: Any, targets: list) -> None:
     ally = lowest_hp_ally(actor, ctx)
     if not ally:
@@ -1843,10 +1843,10 @@ ABILITY_META["champ_geode_beetle.active"] = AbilityMeta(
 
 
 # --- Geode Beetle — Crystal Lattice (shield lowest-HP ally) ---
-GEODE_SHIELD = ScalingTerm("shield", 80.0, "intelligence*3.65")
+GEODE_SHIELD = ScalingTerm("shield", 80.0, "intelligence*1.83")
 
 
-@register_active("champ_geode_beetle.active2")
+@register_active("champ_geode_beetle.active2", mana_cost=160_000)
 def geode_beetle_active2(ctx: Any, actor: Any, targets: list) -> None:
     ally = lowest_hp_ally(actor, ctx)
     if not ally:
@@ -2315,10 +2315,10 @@ ABILITY_META["champ_lostlight_wisp.passive"] = AbilityMeta(
 # Active: conjure ally-auto double (grant ally bonus attack)
 # T.35b: haste scales with the fawn's INT (V.47 dead-INT fix). NB: authored as a
 # mage but ships a pure support kit — role mismatch flagged for a later content pass.
-WILL_O_FAWN_HASTE = ScalingTerm("haste", 40.0, "intelligence*0.32")
+WILL_O_FAWN_HASTE = ScalingTerm("haste", 40.0, "intelligence*0.27")
 
 
-@register_active("champ_will_o_fawn.active", priority=2)
+@register_active("champ_will_o_fawn.active", mana_cost=210_000, priority=2)
 def will_o_fawn_active(ctx: Any, actor: Any, targets: list) -> None:
     # Grant an ally a temporary attack speed buff (simulates double attack)
     allies = [a for a in ctx.allies_of(actor) if a is not actor]
@@ -2341,10 +2341,10 @@ ABILITY_META["champ_will_o_fawn.active"] = AbilityMeta(
 
 
 # --- Will-o-Fawn — Wisp Lure (INT dmg + threat drop, primary target) ---
-WILL_WISP_LURE = ScalingTerm("damage", 50.0, "intelligence*3.5")
+WILL_WISP_LURE = ScalingTerm("damage", 50.0, "intelligence*1.75")
 
 
-@register_active("champ_will_o_fawn.active2")
+@register_active("champ_will_o_fawn.active2", mana_cost=130_000)
 def will_o_fawn_active2(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
     if not target:

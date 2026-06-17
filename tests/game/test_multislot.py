@@ -68,10 +68,26 @@ def test_ults_are_high_cost():
         assert m.priority == 2  # priority ∝ cost so it stays castable
 
 
-def test_non_ult_secondaries_default_cost():
-    for cid in ("champ_ember_salamander", "champ_wintermoth"):
-        m = ability_mana(f"{cid}.active2")
-        assert m.mana_cost == 300_000  # same cost; distinguished by priority
+def test_non_ult_secondaries_cheaper_and_coprime():
+    # T.36b: the lower-tier multicaster secondaries were the SAME cost as the
+    # primary (300k) but charge at the lower priority-weighted rate (1/3), so they
+    # rarely reached threshold before a fight ended — effectively dead. Fix (cost
+    # knob only, not priority/MR): make the secondary significantly cheaper so it
+    # fires in fight-length, and pick costs whose ratio to the primary is coprime
+    # so the two slots' cast cadences don't lock in step.
+    from math import gcd
+    expected = {
+        "champ_ember_salamander": (230_000, 150_000),
+        "champ_wintermoth": (220_000, 150_000),
+        "champ_geode_beetle": (230_000, 160_000),
+        "champ_will_o_fawn": (210_000, 130_000),
+    }
+    for cid, (pri, sec) in expected.items():
+        assert ability_mana(f"{cid}.active").mana_cost == pri
+        assert ability_mana(f"{cid}.active2").mana_cost == sec
+        assert sec < pri, f"{cid} secondary must be cheaper than primary (so it fires)"
+        # Coprime in lowest terms (ratio realigns only every q casts → no lockstep).
+        assert gcd(pri // 10_000, sec // 10_000) == 1, f"{cid} costs not coprime"
 
 
 # --- Multicaster Calling -----------------------------------------------------
