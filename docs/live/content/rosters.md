@@ -53,6 +53,36 @@ per-role INT coefficients added to ~14 carriers' ability outlets (authored as
 `str` is auto-satisfied by the auto-attack. `enemy_steam_engineer` is allowlisted
 (its INT sizes the turret `SummonSpec`, not a meta outlet).
 
+## Axis-distribution rebalance (T.36)
+
+The roster axes were rebalanced to principled marginals (a unified solve — role is
+a pure fn of axes, V.32, so the marginals + soft role floors are the target and the
+role distribution is derived). Live counts (recompute from `_CHAMPION_DEFS` /
+`_ENEMY_DEFS`; ±2 of target is in-band):
+
+| axis | champions | enemies |
+|---|---|---|
+| **stat** | str 22 · int 22 · hybrid 16 | str 22 · int 22 · hybrid 16 |
+| **playstyle** | auto 24 · ability 24 · hybrid 12 | auto 22 · ability 22 · hybrid 16 |
+| **reach** | melee 28 · ranged 32 | melee 30 · ranged 30 |
+| **durability** | thp 11 · tarm 6 · squishy 13 · hybrid 30 | thp 11 · tarm 7 · squishy 13 · hybrid 29 |
+| **intent** | damage 28 · utility 20 · hybrid 12 | damage 29 · utility 19 · hybrid 12 |
+
+**Emergent enemy roles** (T.36c — curated by name/lore, opaque tags V.22): tank 12 ·
+support 11 · spellblade 6 · bruiser 6 · mage 6 · swashbuckler 6 · marksman 5 ·
+assassin 4 · spellslinger 4. New `Spellslinger` role (V.32, T.36b). All roles ≥4.
+Re-axised kits honor V.46/V.47 (every int/hybrid enemy reads its primary stat;
+hybrid ability-users read both). Combined champ-vs-enemy **sim balance-validation
+DONE** [2026-06-17] (`tools/simulation/stat_edge.py`, team sims 2–5v5 × all weathers,
+`results/stat_edge_t36c.csv` n=8000 + iterate `_t36d.csv` n=1500): **zero champs over
+the `|wr_delta|>0.10` contract bar** after a 5-champ tune (mournhollow/veilfang_wolf/
+ember_salamander trimmed; aurion/will_o_fawn buffed — `champions.py`). 44/60 inside
+±0.05; the ±0.05 stretch on 3 stubborn over-performers (ember/mournhollow/veilfang
+~+0.085, within n=1500 noise) is deferred to the full random-vs-random power sim.
+**D.25 reframe:** the residual STR-ability edge (+0.035) is STR-ability *over*-budget
+(free auto-tagalong `1·STR+0.25·INT`), not INT-ability under — no further global INT
+bump warranted.
+
 ## Invariants
 
 - Counts above hold (per the §T content budget); `/check` recomputes them.

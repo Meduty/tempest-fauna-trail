@@ -61,6 +61,27 @@ def test_every_multicaster_has_distinct_slots():
         )
 
 
+def test_all_multi_slot_pieces_have_unique_priorities():
+    """T.36b strict guard: every piece with >1 active slot must have DISTINCT
+    priorities across its slots. Priority is the cast tie-break (process_casts),
+    so duplicate priorities fall back to slot index — a hidden, fragile tiebreak.
+    Distinct priorities keep the cast pick deterministic and intentional. Applies
+    to the whole roster (champions + enemies), not just the showcase multicasters."""
+    from src.game.content import _CHAMPION_DEFS, _ENEMY_DEFS
+    offenders = []
+    for d in _CHAMPION_DEFS:
+        p = piece_from_champion(get_champion(d.id))
+        prios = [s.priority for s in p.actives]
+        if len(p.actives) > 1 and len(set(prios)) != len(prios):
+            offenders.append(f"{d.id} {prios}")
+    for d in _ENEMY_DEFS:
+        p = piece_from_enemy(get_enemy(d.id))
+        prios = [s.priority for s in p.actives]
+        if len(p.actives) > 1 and len(set(prios)) != len(prios):
+            offenders.append(f"{d.id} {prios}")
+    assert not offenders, "multi-slot pieces with non-unique slot priorities:\n" + "\n".join(offenders)
+
+
 def test_ults_are_high_cost():
     for cid in _ULTS:
         m = ability_mana(f"{cid}.active2")
@@ -68,10 +89,26 @@ def test_ults_are_high_cost():
         assert m.priority == 2  # priority ∝ cost so it stays castable
 
 
-def test_non_ult_secondaries_default_cost():
-    for cid in ("champ_ember_salamander", "champ_wintermoth"):
-        m = ability_mana(f"{cid}.active2")
-        assert m.mana_cost == 300_000  # same cost; distinguished by priority
+def test_non_ult_secondaries_cheaper_and_coprime():
+    # T.36b: the lower-tier multicaster secondaries were the SAME cost as the
+    # primary (300k) but charge at the lower priority-weighted rate (1/3), so they
+    # rarely reached threshold before a fight ended — effectively dead. Fix (cost
+    # knob only, not priority/MR): make the secondary significantly cheaper so it
+    # fires in fight-length, and pick costs whose ratio to the primary is coprime
+    # so the two slots' cast cadences don't lock in step.
+    from math import gcd
+    expected = {
+        "champ_ember_salamander": (230_000, 150_000),
+        "champ_wintermoth": (220_000, 150_000),
+        "champ_geode_beetle": (230_000, 160_000),
+        "champ_will_o_fawn": (210_000, 130_000),
+    }
+    for cid, (pri, sec) in expected.items():
+        assert ability_mana(f"{cid}.active").mana_cost == pri
+        assert ability_mana(f"{cid}.active2").mana_cost == sec
+        assert sec < pri, f"{cid} secondary must be cheaper than primary (so it fires)"
+        # Coprime in lowest terms (ratio realigns only every q casts → no lockstep).
+        assert gcd(pri // 10_000, sec // 10_000) == 1, f"{cid} costs not coprime"
 
 
 # --- Multicaster Calling -----------------------------------------------------

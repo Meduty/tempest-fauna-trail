@@ -52,13 +52,15 @@ define_trait(
     (8, _TEAM, {"armor": 0.08, "hp": 0.06}, {}, [m.start_shield(0.25), m.periodic_shield(600, 0.15, 600, allies=True)]),
 )
 
-# Bruiser — pool 8, @2/4/6/8. @6 attack-lifesteal, @8 team-wide lifesteal.
+# Bruiser — pool 10, @2/4/6/10. @6 attack-lifesteal, @10 team-wide lifesteal.
+# T.36b grew the pool 8→10 (granite_gorilla, snowpelt_cub joined on the re-axis);
+# apex moved 8→10 = min(pool, board-cap 10) per V.37 (own all carriers / mono-board).
 define_trait(
     "Bruiser",
     (2, _PER, {"hp": 0.10}),
     (4, _PER, {"hp": 0.10, "strength": 0.08}),
     (6, _PER, {"hp": 0.12, "strength": 0.12}, {}, [m.attack_lifesteal(0.12)]),
-    (8, _TEAM, {"hp": 0.08, "strength": 0.08}, {}, [m.attack_lifesteal(0.12)]),
+    (10, _TEAM, {"hp": 0.08, "strength": 0.08}, {}, [m.attack_lifesteal(0.12)]),
 )
 
 # Skirmisher — pool 8, @2/3/4/5/8. AS ramp (@2, COMBAT-lifetime → never decays) +
@@ -72,14 +74,16 @@ define_trait(
     (8, _TEAM, {"attack_speed": 0.10}, {}, [m.time_ramp(), m.dodge()]),
 )
 
-# Stalker — pool 7, @2/3/5/7. Backline target-priority (@2); @5 hi-HP bonus dmg +
-# mana on takedown; @7 brief hexproof after a takedown. PER apex (no team).
+# Stalker — pool 8, @2/3/5/8. Backline target-priority (@2); @5 hi-HP bonus dmg +
+# mana on takedown; @8 brief hexproof after a takedown. PER apex (no team).
+# T.36b grew the pool 7→8 (eclipse_jaguar joined on the re-axis); apex moved 7→8
+# = min(pool, board-cap 10) per V.37.
 define_trait(
     "Stalker",
     (2, _PER, {"move_speed": 0.10, "strength": 0.06}, {}, [m.backline_seeker()]),
     (3, _PER, {"strength": 0.08}, {}, [m.backline_seeker()]),
     (5, _PER, {"strength": 0.12}, {}, [m.backline_seeker(), m.high_hp_bonus(0.20, 0.6), m.mana_on_kill()]),
-    (7, _PER, {"strength": 0.14}, {}, [m.backline_seeker(), m.high_hp_bonus(0.25, 0.6), m.mana_on_kill(), m.hexproof_after_kill(120)]),
+    (8, _PER, {"strength": 0.14}, {}, [m.backline_seeker(), m.high_hp_bonus(0.25, 0.6), m.mana_on_kill(), m.hexproof_after_kill(120)]),
 )
 
 # Channeler — pool 7, @1/2/4/7. @4 free-cast cadence; @7 first cast triggers twice

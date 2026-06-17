@@ -38,6 +38,12 @@ class CastEvent:
     caster: Any  # Piece
     ability_id: str
     cast_id: int
+    # Mana telemetry (T.36b) — which slot cast, the cost spent, and the slot's
+    # current mana *after* the spend. Surfaced to the combat log for the mana-bar
+    # UI + cast-cadence instrumentation.
+    slot_idx: int = 0
+    mana_cost: int = 0
+    mana_after: float = 0.0
 
 
 @dataclass(slots=True)

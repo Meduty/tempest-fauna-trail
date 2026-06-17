@@ -50,9 +50,13 @@ def _format_event(
     # Ability-framework casts (T.29c): amount 0, note = ability_id, possibly no
     # target → render the activation cleanly without a fake "0 damage" suffix.
     if event.event_type == EVENT_CAST and not event.amount:
+        # Mana telemetry (T.36b): show which slot fired + the post-spend mana.
+        mana = ""
+        if event.slot_idx >= 0:
+            mana = f" [slot {event.slot_idx}: -{event.mana_spent} → {event.mana_after} mana]"
         if event.target_id:
-            return f"{event.actor_id} casts {event.note} at {event.target_id}"
-        return f"{event.actor_id} casts {event.note}"
+            return f"{event.actor_id} casts {event.note} at {event.target_id}{mana}"
+        return f"{event.actor_id} casts {event.note}{mana}"
 
     if event.event_type in (EVENT_ATTACK, EVENT_CAST):
         verb = "attacks" if event.event_type == EVENT_ATTACK else "casts at"

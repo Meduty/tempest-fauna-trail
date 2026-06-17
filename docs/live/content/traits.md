@@ -1,7 +1,7 @@
 # Traits — kinships, callings, breakpoints
 
 > **Status: LIVING** — must match `src/game/traits/` + `content.py` trait vocab.
-> Audited by `/check`. **Reconciled:** 2026-06-06 (T.28c).
+> Audited by `/check`. **Reconciled:** 2026-06-16 (T.28d + T.29d Multicaster).
 >
 > 🔶 **PARTIAL** — T.28a/b/c/d built the framework + stat packs + the full
 > reachable combat surface. T.28b combat primitives (second-wind, tidal HoT,
@@ -32,16 +32,16 @@
   `attack_speed` mul moves tie-order on its own now that AS is a float, V.34 /
   T.29-pre — no `milli_AS` rider) + `define_trait` shorthand (registers a trait
   from `(count, scope, muls, adds)` rungs).
-- `game/traits/{affinities,kinships,callings}.py` — the 24 trait factories
+- `game/traits/{affinities,kinships,callings}.py` — the 25 trait factories
   (declarative stat-pack rungs). Imported by `traits/__init__`, which registers
   them into `TRAIT_REGISTRY` as a side effect.
 - `game/traits/__init__.py` — `affinity_trait` (affinity → derived tag),
   `_resolve_traits`, `resolve_and_apply_traits`.
 - `game/registries.py` — `TRAIT_REGISTRY` + `@register_trait`.
-- `content.py` — `KINSHIP_TAGS` (6) / `CALLING_TAGS` (12) / `ALL_TRAIT_TAGS`;
+- `content.py` — `KINSHIP_TAGS` (6) / `CALLING_TAGS` (13) / `ALL_TRAIT_TAGS`;
   `Champion.traits`.
 
-## The 24 traits
+## The 25 traits
 - **6 Kinships** (`KINSHIP_TAGS`): Beast, Spirit, Skyborn, Scaled, Tidekin, Swarm.
 - **6 Affinities** (derived from `affinity`, never stored): Sunlit/Overcast/
   Shrouded/Stormfed/Frostbound/Galvanized = Clear/Cloudy/Mist/Rain/Snow/Thunder.

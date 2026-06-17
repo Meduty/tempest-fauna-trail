@@ -29,7 +29,7 @@ decorator, populating the registries before any combat.
 
 ## Counts (verified; `/check` re-checks)
 
-- `len(ABILITY_REGISTRY)` = **135**, `len(PASSIVE_REGISTRY)` = **147** (shared
+- `len(ABILITY_REGISTRY)` = **144**, `len(PASSIVE_REGISTRY)` = **147** (shared
   handlers serve multiple roster ids; the guarantee below is per-roster-id, not
   per-handler).
 
@@ -94,8 +94,9 @@ from here) converts. A coverage guard + golden formula snapshot
 (`tests/game/ability_formulas.snapshot.json`) pin every rendered id; regenerate
 with `UPDATE_ABILITY_SNAPSHOT=1 uv run pytest tests/game/test_ability_text.py`.
 
-Meta coverage spans **all 276 roster ability ids** (120 champion T.34a + 120
-enemy T.34b + 36 boss T.34c — all done). `tools/export_roster.py` serializes the
+Meta coverage spans **all 285 roster ability ids** (120 champion T.34a + 120
+enemy T.34b + 36 boss T.34c = 276 base, + 9 T.29d multicaster `.active2`
+secondaries — all done). `tools/export_roster.py` serializes the
 champion/enemy (and optional boss) rosters with rendered descriptions to JSON.
 
 ## File map

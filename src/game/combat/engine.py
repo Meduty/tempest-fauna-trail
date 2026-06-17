@@ -481,9 +481,11 @@ def _resolve_action(
                 piece, target, raw, SourceTag.ABILITY,
                 crit=None, damage_type=DMG_MAGICAL,
             )
-            if recorder:
-                recorder.record_cast(piece.id, target.id, tick, int(final), DMG_MAGICAL, False)
             slot.current_mana -= slot.mana_cost  # overflow carries (V.48)
+            if recorder:
+                recorder.record_cast(piece.id, target.id, tick, int(final), DMG_MAGICAL, False,
+                                     slot_idx=0, mana_spent=slot.mana_cost,
+                                     mana_after=int(slot.current_mana))
             piece.action_energy -= ENERGY_THRESHOLD
             return
 

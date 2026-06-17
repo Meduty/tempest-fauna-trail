@@ -160,8 +160,10 @@ class TestClassifyRealRoster:
         d = ENEMY_DEF_BY_ID["enemy_heavy_knight"]
         assert classify_role(d) == PlacementRole.FRONTLINE
 
-    def test_conscript_is_midline(self):
-        d = ENEMY_DEF_BY_ID["enemy_conscript"]
+    def test_hexblade_officer_is_midline(self):
+        # T.36c: conscript re-axised int/squishy melee → flank; hexblade_officer
+        # (int melee ability damage) is the stable midline representative.
+        d = ENEMY_DEF_BY_ID["enemy_hexblade_officer"]
         assert classify_role(d) == PlacementRole.MIDLINE
 
     def test_spymaster_is_flank(self):
@@ -184,8 +186,10 @@ class TestClassifyRealRoster:
         d = ENEMY_DEF_BY_ID["enemy_dredge_hulk"]
         assert classify_role(d) == PlacementRole.FRONTLINE
 
-    def test_picket_is_backline(self):
-        d = ENEMY_DEF_BY_ID["enemy_picket"]
+    def test_crossbow_levy_is_backline(self):
+        # T.36c: picket re-axised ranged→melee → flank; crossbow_levy (ranged
+        # squishy auto marksman) is the stable backline representative.
+        d = ENEMY_DEF_BY_ID["enemy_crossbow_levy"]
         assert classify_role(d) == PlacementRole.BACKLINE
 
 

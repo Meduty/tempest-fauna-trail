@@ -102,10 +102,13 @@ class BattleResultRecorder:
             note=f"{dest_q},{dest_r}",
         ))
 
-    def record_cast(self, actor_id: str, target_id: str, tick: int, amount: int, damage_type: str, is_crit: bool = False) -> None:
+    def record_cast(self, actor_id: str, target_id: str, tick: int, amount: int, damage_type: str, is_crit: bool = False,
+                    slot_idx: int = -1, mana_spent: int = 0, mana_after: int = 0) -> None:
         """Record a cast event (called by the engine for cast recording).
 
         Note: damage stats are tracked via _on_damage_dealt from the bus.
+        Mana telemetry (T.36b) is optional — the unregistered-ability fallback
+        path passes it; registered casts carry it on the `on_cast` event instead.
         """
         self._events.append(BattleEvent(
             tick=tick,
@@ -115,6 +118,9 @@ class BattleResultRecorder:
             amount=amount,
             note=damage_type,
             is_crit=is_crit,
+            slot_idx=slot_idx,
+            mana_spent=mana_spent,
+            mana_after=mana_after,
         ))
 
     def record_attack(self, actor_id: str, target_id: str, tick: int, amount: int, damage_type: str, is_crit: bool = False) -> None:
@@ -187,6 +193,9 @@ class BattleResultRecorder:
             event_type=EVENT_CAST,
             amount=0,
             note=event.ability_id,
+            slot_idx=event.slot_idx,
+            mana_spent=int(event.mana_cost),
+            mana_after=int(event.mana_after),
         ))
 
     def _on_combat_end(self, ctx: Any, event: CombatEndEvent) -> None:

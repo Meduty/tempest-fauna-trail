@@ -436,8 +436,13 @@ class CombatContext:
         old_cast_id = self._current_cast_id
         self._current_cast_id = cast_id
 
-        # Fire on_cast
-        cast_event = CastEvent(caster=actor, ability_id=ability_id, cast_id=cast_id)
+        # Fire on_cast — carry mana telemetry (slot + cost spent + mana left).
+        # process_casts has already deducted mana_cost before calling, so
+        # slot.current_mana is the post-spend reading.
+        cast_event = CastEvent(
+            caster=actor, ability_id=ability_id, cast_id=cast_id,
+            slot_idx=slot_idx, mana_cost=slot.mana_cost, mana_after=slot.current_mana,
+        )
         self._bus.fire("on_cast", cast_event, cast_id=cast_id, ctx=self)
 
         # Resolve targets and execute handler

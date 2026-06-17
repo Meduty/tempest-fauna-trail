@@ -223,7 +223,10 @@ def test_kite_reward_bonus_vs_unreachable_target():
 def test_ally_tidal_heals_lowest_ally():
     owner = _piece("champ_springfrog", 0, 0, False)
     hurt = _piece("champ_sunmane_lion", 0, 1, False)
-    hurt.hp = hurt.max_hp * 0.5
+    # A small absolute HP keeps `hurt` unambiguously the lowest-HP ally regardless
+    # of roster stat drift (T.36b made sunmane tanky_hp, so 50%·max_hp now exceeds
+    # springfrog's full HP and the heal would correctly pick the owner instead).
+    hurt.hp = 10.0
     ctx = _ctx([owner, hurt])
     [h] = m.ally_tidal(interval=1, heal_frac=0.1)(owner, "trait:Tidekin@3")
     before = hurt.hp

@@ -139,13 +139,14 @@ directly. It plugs in through three declarative primitives, then reacts through 
   `on_cast` / `on_cast_complete`, `on_death`, `on_kill`, `on_heal`, `on_tick`,
   `on_status_applied` / `on_status_expired`, `on_spawn`, `on_combat_start` /
   `on_combat_end`. Typed payloads live in `events.py` (`AttackEvent`, `DamageEvent`, …).
-- **Registries** (`registries.py`) — `ABILITY_REGISTRY` (135) + `PASSIVE_REGISTRY` (147)
-  + `TRAIT_REGISTRY` (24, T.28) + `ITEM_REGISTRY` (24, T.29a) populated; `AUGMENT_REGISTRY`
+- **Registries** (`registries.py`) — `ABILITY_REGISTRY` (144) + `PASSIVE_REGISTRY` (147)
+  + `TRAIT_REGISTRY` (25, T.28+Multicaster) + `ITEM_REGISTRY` (50, T.29a-d)
+  + `RUN_ACTION_REGISTRY` (5, T.29b) populated; `AUGMENT_REGISTRY`
   is still an empty scaffold awaiting its content (T.31). Content factories self-register
   via `@register_*` decorators; importing the content package triggers them. Lookups are
   by **string id**.
 - **Presentation layer** (`registries.py` + `ability_text.py`, T.34/T.35) — a parallel
-  `ABILITY_META` (276 ids) gives every roster ability a tooltip. Numeric outlets flow
+  `ABILITY_META` (285 ids) gives every roster ability a tooltip. Numeric outlets flow
   through the **closed `Magnitude` family** (`ScalingTerm` linear / `PctResource` /
   `MaxOfTerm` / `SetByCaller`, GAS-modeled, V.46): the handler reads the number via
   `term.eval(...)` and `ability_text.render` renders the *same* object (source-of-truth B,
@@ -210,7 +211,7 @@ inert in both. The 6 weather states (V.5) map 1:1 to OpenWeather id groups.
 | Boss **map effects** (decoupled board hazards) | `src/game/map_effects.py`, `src/game/board.py` |
 | Ability tooltips — `AbilityMeta` + `Magnitude` family + renderer (T.34/T.35) | `src/game/registries.py`, `src/game/ability_text.py` |
 | Synergy traits (Kinship / Calling / Affinity) | `docs/design/content/trait_catalog.md` → `game/traits/` (T.28 ✅) |
-| Items | `game/items/` (T.29a ✅; T.29b remaining 📋) |
+| Items | `game/items/` (T.29a-d ✅ — components, combined, emblems, special run-actions, mana primitive, multi-slot) |
 | Augments | `game/augments.py` (T.31 📋 — planned) |
 
 Content **vocabulary lives with content** (V.8): synergy tags are open-ended strings the

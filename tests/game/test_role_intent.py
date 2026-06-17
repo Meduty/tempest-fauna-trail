@@ -61,7 +61,8 @@ def _all_combos():
 
 
 class TestClassifyRole:
-    def test_all_eight_roles_reachable(self) -> None:
+    def test_all_roles_reachable(self) -> None:
+        # 9 roles since T.36b added spellslinger (V.32).
         seen = {classify_role(*c) for c in _all_combos()}
         assert seen == set(ROLE_TITLES)
 
@@ -81,10 +82,23 @@ class TestClassifyRole:
             (("str", "melee", "squishy", "auto", "speedy", "damage"), "swashbuckler"),
             (("int", "ranged", "hybrid", "ability", "hybrid", "utility"), "support"),
             (("hybrid", "ranged", "hybrid", "hybrid", "hybrid", "hybrid"), "spellblade"),
+            # Spellslinger (T.36b): ranged + playstyle-hybrid + damage. Distinct
+            # from marksman (auto, line above) and mage (ability).
+            (("int", "ranged", "squishy", "hybrid", "speedy", "damage"), "spellslinger"),
+            (("hybrid", "ranged", "hybrid", "hybrid", "hybrid", "damage"), "spellslinger"),
         ],
     )
     def test_split_spot_checks(self, axes, expected) -> None:
         assert classify_role(*axes) == expected
+
+    def test_spellslinger_vs_neighbours(self) -> None:
+        # The three ranged-dealer playstyles split cleanly by playstyle axis.
+        base = ("int", "ranged", "squishy", None, "speedy", "damage")
+        def role(play):
+            return classify_role(base[0], base[1], base[2], play, base[4], base[5])
+        assert role("hybrid") == "spellslinger"  # casts AND autos
+        assert role("ability") == "mage"          # casts only
+        assert role("auto") == "marksman"         # autos only
 
     def test_tank_bruiser_split_is_intent(self) -> None:
         base = ("str", "melee", "tanky_hp", "auto", "heavy")
