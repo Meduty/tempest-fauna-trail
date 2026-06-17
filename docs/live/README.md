@@ -68,6 +68,8 @@ Status: ✅ written & `/check`-clean · 🔶 stub (header + scope + anchors, pro
 | [scaling.md](systems/scaling.md) | `game/scaling.py`, `content.py` stat curves | ✅ |
 | [weather_api.md](systems/weather_api.md) | `api/weather.py`, `api/cache.py`, `api/refresher.py` | ✅ |
 | [save.md](systems/save.md) | `Run`/`BattleResult` serialization in `models.py` (+ planned save.py, T.14) | ✅ |
+| [items.md](systems/items.md) | `game/items/`, `loadout.py` equip, `registries.py` (`ITEM_REGISTRY`/`RUN_ACTION_REGISTRY`) | ✅ |
+| [kit_design_conventions.md](systems/kit_design_conventions.md) | `abilities/`, kit-authoring conventions (Calling-honest casts) | ✅ |
 
 ### Content — `docs/live/content/`
 | Doc | Source of truth (code) | Status |
@@ -76,7 +78,7 @@ Status: ✅ written & `/check`-clean · 🔶 stub (header + scope + anchors, pro
 | [abilities.md](content/abilities.md) | `abilities/`, `registries.py` (id resolution) | ✅ |
 | [traits.md](content/traits.md) | `traits/`, `content.py` trait vocab | 🔶 |
 | [augments.md](content/augments.md) | planned (T.31, augments.py) | 🔶 |
-| [items.md](content/items.md) | planned items (T.22) | 🔶 |
+| [items.md](content/items.md) | pointer → `systems/items.md`, `game/items/` (T.29a-d) | ✅ |
 
 Content living docs are **thin source-of-truth pointers**: stats/IDs/counts
 live in code (and `/check` verifies the counts); lore and as-designed intent

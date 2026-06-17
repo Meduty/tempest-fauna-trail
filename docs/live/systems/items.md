@@ -2,7 +2,8 @@
 
 > **Status: LIVING** — must match `src/game/items/`, `src/game/loadout.py`,
 > `src/game/models.py`, `src/game/encounter.py`, `src/game/registries.py`.
-> Audited by `/check`. **Last reconciled: 2026-06-13** (T.29a complete).
+> Audited by `/check`. **Last reconciled: 2026-06-16** (T.29a-d complete —
+> components, combined, emblems, special run-actions, mana primitive, multi-slot).
 >
 > Design rationale (frozen): `docs/design/tasks/t29_item_engine_plan.md`.
 > Content roster (frozen): `docs/design/content/item_catalog.md`.
@@ -15,7 +16,10 @@ src/game/items/
                     importing this module triggers all @register_item side-effects
   base.py         — BASE_COMPONENTS: frozenset[str] (8 component IDs), SPIRIT_GEM
   recipes.py      — RECIPE_MAP: dict[frozenset[str], str] (36 entries), combine()
-  combined.py     — @register_item factories for 8 raw components + 16 core items
+  combined.py     — @register_item factories: 8 raw components + 16 core + 20
+                    combined (T.29b) = 44 in ITEM_REGISTRY
+  emblems.py      — 6 Kinship emblems (T.29b; ITEM_REGISTRY total = 50)
+  special.py      — 5 RUN_ACTION_REGISTRY special items (T.29b, operate on Run)
 ```
 
 `ITEM_REGISTRY` (in `src/game/registries.py`) maps `item_id → Callable[[Piece], EffectBundle]`.
