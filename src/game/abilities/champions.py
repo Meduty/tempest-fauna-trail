@@ -152,7 +152,7 @@ ABILITY_META["champ_veldt_pronghorn.active"] = AbilityMeta(
 
 # --- Ember Salamander (T3, APC-INT Mage) ---
 # Cast: line of kindling light, burns ground for several ticks.
-EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "strength*1.95")
+EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "strength*1.65")
 
 
 @register_active("champ_ember_salamander.active", mana_cost=230_000, priority=2)
@@ -173,7 +173,7 @@ ABILITY_META["champ_ember_salamander.active"] = AbilityMeta(
 
 
 # --- Ember Salamander — Magma Burst (INT splash) ---
-EMBER_MAGMA_BURST = ScalingTerm("damage", 60.0, "strength*1.2")
+EMBER_MAGMA_BURST = ScalingTerm("damage", 60.0, "strength*1.0")
 
 
 @register_active("champ_ember_salamander.active2", mana_cost=150_000)
@@ -576,7 +576,7 @@ ABILITY_META["champ_aurion.passive"] = AbilityMeta(
 
 
 # Active: nova that disarms all enemies in radius 2
-AURION_DMG = ScalingTerm("damage", 100.0, "strength*1.2+intelligence*2.86")
+AURION_DMG = ScalingTerm("damage", 100.0, "strength*1.2+intelligence*3.25")
 
 
 @register_active("champ_aurion.active")
@@ -2361,7 +2361,7 @@ ABILITY_META["champ_will_o_fawn.active"] = AbilityMeta(
 
 
 # --- Will-o-Fawn — Wisp Lure (INT dmg + threat drop, primary target) ---
-WILL_WISP_LURE = ScalingTerm("damage", 50.0, "intelligence*2.45")
+WILL_WISP_LURE = ScalingTerm("damage", 50.0, "intelligence*2.8")
 
 
 @register_active("champ_will_o_fawn.active2", mana_cost=130_000)
@@ -2385,13 +2385,13 @@ ABILITY_META["champ_will_o_fawn.active2"] = AbilityMeta(
 @register_passive("champ_will_o_fawn.passive")
 def will_o_fawn_passive(owner: Any) -> EffectBundle:
     return EffectBundle(modifiers=[
-        Modifier("intelligence", "add", 8.0, Lifetime.COMBAT, "passive:champ_will_o_fawn"),
+        Modifier("intelligence", "add", 12.0, Lifetime.COMBAT, "passive:champ_will_o_fawn"),
     ])
 
 
 ABILITY_META["champ_will_o_fawn.passive"] = AbilityMeta(
     name="Wandering Light", kind="passive",
-    blurb="Grants +8 Intelligence for the whole battle.",
+    blurb="Grants +12 Intelligence for the whole battle.",
     tags=("buff",),
 )
 
@@ -2656,7 +2656,7 @@ ABILITY_META["champ_marshghast_boar.active"] = AbilityMeta(
 
 # --- Veilfang Wolf (T8, INT Skirmisher) ---
 # Passive: autos deal bonus INT + shred resistance
-VEILFANG_WOLF_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.55")
+VEILFANG_WOLF_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.45")
 
 
 @register_passive("champ_veilfang_wolf.passive")
@@ -2687,7 +2687,7 @@ ABILITY_META["champ_veilfang_wolf.passive"] = AbilityMeta(
 # Hybrid auto-int (T.29d): the on-auto INT/res-shred passive carries DPS; active
 # is lighter damage + a self attack-speed buff (value from autos + utility cast).
 VEILFANG_WOLF_DMG = ScalingTerm("damage", 50.0, "intelligence*2.47")
-VEILFANG_WOLF_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.64")
+VEILFANG_WOLF_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.42")
 _VEILFANG_WOLF_HASTE_SRC = "ability:champ_veilfang_wolf.active"
 
 
@@ -2798,8 +2798,8 @@ ABILITY_META["champ_mournhollow.passive"] = AbilityMeta(
 # (str/ability mage): the ability is the value, the STR coeff sits below the INT
 # baseline it replaces (free-auto subsidy; kit conventions #4). grief is BURN-
 # convention (STR·0.4 per 1s DOT tick over 4s, potency-driven).
-MOURNHOLLOW_DMG = ScalingTerm("damage", 80.0, "strength*1.0")
-MOURNHOLLOW_GRIEF = ScalingTerm("grief", 0.0, "strength*0.4")
+MOURNHOLLOW_DMG = ScalingTerm("damage", 80.0, "strength*0.8")
+MOURNHOLLOW_GRIEF = ScalingTerm("grief", 0.0, "strength*0.3")
 _MOURNHOLLOW_AOE_MULT = 0.6
 
 

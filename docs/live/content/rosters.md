@@ -72,8 +72,16 @@ role distribution is derived). Live counts (recompute from `_CHAMPION_DEFS` /
 support 11 · spellblade 6 · bruiser 6 · mage 6 · swashbuckler 6 · marksman 5 ·
 assassin 4 · spellslinger 4. New `Spellslinger` role (V.32, T.36b). All roles ≥4.
 Re-axised kits honor V.46/V.47 (every int/hybrid enemy reads its primary stat;
-hybrid ability-users read both). Combined champ-vs-enemy **sim balance-validation is
-deferred** (a follow-up `stat_edge` sweep, as with T.36b).
+hybrid ability-users read both). Combined champ-vs-enemy **sim balance-validation
+DONE** [2026-06-17] (`tools/simulation/stat_edge.py`, team sims 2–5v5 × all weathers,
+`results/stat_edge_t36c.csv` n=8000 + iterate `_t36d.csv` n=1500): **zero champs over
+the `|wr_delta|>0.10` contract bar** after a 5-champ tune (mournhollow/veilfang_wolf/
+ember_salamander trimmed; aurion/will_o_fawn buffed — `champions.py`). 44/60 inside
+±0.05; the ±0.05 stretch on 3 stubborn over-performers (ember/mournhollow/veilfang
+~+0.085, within n=1500 noise) is deferred to the full random-vs-random power sim.
+**D.25 reframe:** the residual STR-ability edge (+0.035) is STR-ability *over*-budget
+(free auto-tagalong `1·STR+0.25·INT`), not INT-ability under — no further global INT
+bump warranted.
 
 ## Invariants
 
