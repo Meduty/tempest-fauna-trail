@@ -1963,7 +1963,10 @@ def granite_gorilla_passive(owner: Any) -> EffectBundle:
     def on_taken(ctx: Any, event: Any) -> None:
         if event.target is not owner:
             return
-        if event.tag == SourceTag.REFLECT.value:
+        # Only charge on direct hits — ignore DOT, STATUS, and REFLECT
+        if event.tag not in (SourceTag.BASIC_ATTACK.value,
+                             SourceTag.ABILITY.value,
+                             SourceTag.ITEM_PROC.value):
             return
         if owner.status_stacks("stone_charge") < _GORILLA_CAP_STACKS:
             ctx.apply_status(owner, "stone_charge", duration_ticks=_GORILLA_CHARGE_TICKS,
