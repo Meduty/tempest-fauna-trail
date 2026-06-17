@@ -61,6 +61,27 @@ def test_every_multicaster_has_distinct_slots():
         )
 
 
+def test_all_multi_slot_pieces_have_unique_priorities():
+    """T.36b strict guard: every piece with >1 active slot must have DISTINCT
+    priorities across its slots. Priority is the cast tie-break (process_casts),
+    so duplicate priorities fall back to slot index — a hidden, fragile tiebreak.
+    Distinct priorities keep the cast pick deterministic and intentional. Applies
+    to the whole roster (champions + enemies), not just the showcase multicasters."""
+    from src.game.content import _CHAMPION_DEFS, _ENEMY_DEFS
+    offenders = []
+    for d in _CHAMPION_DEFS:
+        p = piece_from_champion(get_champion(d.id))
+        prios = [s.priority for s in p.actives]
+        if len(p.actives) > 1 and len(set(prios)) != len(prios):
+            offenders.append(f"{d.id} {prios}")
+    for d in _ENEMY_DEFS:
+        p = piece_from_enemy(get_enemy(d.id))
+        prios = [s.priority for s in p.actives]
+        if len(p.actives) > 1 and len(set(prios)) != len(prios):
+            offenders.append(f"{d.id} {prios}")
+    assert not offenders, "multi-slot pieces with non-unique slot priorities:\n" + "\n".join(offenders)
+
+
 def test_ults_are_high_cost():
     for cid in _ULTS:
         m = ability_mana(f"{cid}.active2")
