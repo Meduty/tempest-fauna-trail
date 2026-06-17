@@ -579,7 +579,7 @@ _CHAMPION_DEFS: tuple[ChampionDef, ...] = (
     _champion_def("champ_voltscale_mamba", "Voltscale Mamba", WeatherState.THUNDER, 3, "melee", ["Scaled", "Stalker"], stat="str", durability="squishy", playstyle="ability", intent="damage", speed="blinding"),
     _champion_def("champ_coppercrest_stork", "Coppercrest Stork", WeatherState.THUNDER, 4, "ranged", ["Skyborn", "Warden"], stat="int", playstyle="ability", intent="utility", speed="speedy"),
     _champion_def("champ_thunderhide_bison", "Thunderhide Bison", WeatherState.THUNDER, 5, "melee", ["Beast", "Guardian", "Bruiser"], stat="str", durability="tanky_arm", intent="damage", speed="heavy"),
-    _champion_def("champ_tempest_eel", "Tempest Eel", WeatherState.THUNDER, 6, "ranged", ["Tidekin", "Mystic", "Multicaster"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="speedy"),
+    _champion_def("champ_tempest_eel", "Tempest Eel", WeatherState.THUNDER, 6, "ranged", ["Tidekin", "Mystic", "Multicaster"], stat="int", durability="squishy", playstyle="hybrid", intent="damage", speed="speedy"),
     _champion_def("champ_voltmane_jackal", "Voltmane Jackal", WeatherState.THUNDER, 7, "ranged", ["Beast", "Skirmisher", "Channeler"], intent="damage", speed="brisk"),
     _champion_def("champ_thunderclap_gorilla", "Thunderclap Gorilla", WeatherState.THUNDER, 8, "melee", ["Beast", "Bruiser"], stat="str", durability="tanky_hp", playstyle="auto", intent="damage", speed="heavy"),
     _champion_def("champ_storm_eagle", "Storm Eagle", WeatherState.THUNDER, 9, "ranged", ["Skyborn", "Hunter", "Channeler"], stat="int", playstyle="hybrid", intent="damage", speed="brisk"),

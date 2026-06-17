@@ -3096,17 +3096,29 @@ ABILITY_META["champ_tempest_eel.active2"] = AbilityMeta(
 )
 
 
+# Spellslinger auto-tail (T.36b): tempest_eel is now playstyle=hybrid — it casts
+# (Chain Lightning + the Maelstrom ult) AND autos. The autos carry the between-cast
+# damage (its casts are rare at 300k/600k), making it a true cast-and-auto
+# battlemage. INT on-hit (V.47: int unit reads INT here + in both actives).
+TEMPEST_EEL_ONHIT = ScalingTerm("bonus", 0.0, "intelligence*0.5")
+
+
 @register_passive("champ_tempest_eel.passive")
 def tempest_eel_passive(owner: Any) -> EffectBundle:
-    return EffectBundle(modifiers=[
-        Modifier("intelligence", "add", 10.0, Lifetime.COMBAT, "passive:champ_tempest_eel"),
+    def on_attack(ctx: Any, event: Any) -> None:
+        if event.attacker is not owner:
+            return
+        ctx.deal_damage(owner, event.target, TEMPEST_EEL_ONHIT.eval(owner), SourceTag.ABILITY)
+
+    return EffectBundle(hooks=[
+        Hook("on_attack_landed", on_attack, scope=HookScope.PER_HIT),
     ])
 
 
 ABILITY_META["champ_tempest_eel.passive"] = AbilityMeta(
-    name="Storm Charge", kind="passive",
-    blurb="Grants +10 Intelligence for the whole battle.",
-    tags=("buff",),
+    name="Static Lacing", kind="passive",
+    blurb="Each auto-attack lashes for {bonus} bonus magic damage.",
+    terms=(TEMPEST_EEL_ONHIT,), tags=("magic",),
 )
 
 

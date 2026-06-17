@@ -98,7 +98,7 @@
   "champ_sunspear_falcon.passive": "59 = 28% STR  (STR 0.28\u00d7212)",
   "champ_tempest_eel.active": "1000 = 100 + 437% INT  (INT 4.37\u00d7206)",
   "champ_tempest_eel.active2": "1459 = 110 + 655% INT  (INT 6.55\u00d7206)",
-  "champ_tempest_eel.passive": "",
+  "champ_tempest_eel.passive": "103 = 50% INT  (INT 0.5\u00d7206)",
   "champ_thunderclap_gorilla.active": "280 = 90 + 176% STR  (STR 1.76\u00d7108)",
   "champ_thunderclap_gorilla.passive": "",
   "champ_thunderhide_bison.active": "171 = 60 + 144% STR  (STR 1.44\u00d777)",
