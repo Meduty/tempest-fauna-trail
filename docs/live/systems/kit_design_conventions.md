@@ -45,10 +45,11 @@ below was paid for by a real misfit caught mid-design. Read before authoring or 
    carries.** Any STR- or hybrid-*stat* piece has live autos (`1.0·STR` base) that out-chip an
    INT peer's dead `0.2·STR` autos *for free*, even at a caster's low attack_speed (measured: a
    hybrid-stat support out-chips an INT support by ~5–18 DPS from the stat alone). So a
-   STR/hybrid-stat **support's** ability-*damage* coeff must also be discounted vs its INT
-   peers, or it out-budgets them (marsh_thrush's STR Galecrash is discounted for this). The
-   naive `int/ability → str/ability` stat-swap that keeps the old INT coeff (mirewarden,
-   hollow_elk had `INT·3.3–3.9`) is the same landmine — drop the coeff hard on the swap.
+   STR/hybrid-stat **support's** ability coeff must also be discounted vs its INT peers, or it
+   out-budgets them (T.36b: `dawnwisp` flipped int→str support with its heal discounted
+   `INT·4.55→STR·3.6`, ~0.8× for the subsidy). The naive `int/ability → str/ability` stat-swap
+   that keeps the old INT coeff (mirewarden, hollow_elk had `INT·3.3–3.9`) is the same landmine
+   — drop the coeff hard on the swap.
 
 4b. **When a re-axis produces a role that *misrepresents* the piece, suspect a taxonomy hole —
    don't force a misfit.** A ranged playstyle-`hybrid` damage dealer (casts *and* autos)

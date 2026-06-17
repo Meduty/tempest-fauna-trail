@@ -70,7 +70,7 @@
   "champ_mournhollow.passive": "",
   "champ_nerei.active": "1192 = 90 + 380% INT  (INT 3.8\u00d7290)",
   "champ_nerei.passive": "",
-  "champ_nightglass_mantis.active": "801 = 60 + 286% INT  (INT 2.86\u00d7259)",
+  "champ_nightglass_mantis.active": "801 = 60 + 286% INT  (INT 2.86\u00d7259)\n388 = 150% INT  (INT 1.5\u00d7259)\n388 = 150% INT  (INT 1.5\u00d7259)",
   "champ_nightglass_mantis.passive": "326 = 126% INT  (INT 1.26\u00d7259)",
   "champ_pebbleback_pangolin.active": "",
   "champ_pebbleback_pangolin.passive": "",

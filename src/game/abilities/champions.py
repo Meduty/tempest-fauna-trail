@@ -434,14 +434,20 @@ def mirage_caracal_active(ctx: Any, actor: Any, targets: list) -> None:
         amount *= _CARACAL_EXECUTE_MULT
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
     ctx.apply_status(target, "grievous", duration_ticks=secs(4), source_id=actor.id)
+    # Survival (T.36b): the mirage blinks away untargetable briefly — a scoped
+    # diver escape tied to the commit (conventions #10), thematic illusion.
+    ctx.apply_status(actor, "hexproof", duration_ticks=secs(1.2), source_id=actor.id)
 
 
 ABILITY_META["champ_mirage_caracal.active"] = AbilityMeta(
     name="Blink Mark", kind="active",
     blurb="Blink to the lowest-HP enemy for {damage} magic damage and inflict grievous wounds.",
     terms=(MIRAGE_CARACAL_DMG,),
-    clauses=(Clause(f"Deals +{int((_CARACAL_EXECUTE_MULT - 1) * 100)}% to targets below 30% HP; halves their healing for 4s."),),
-    tags=("magic", "execute", "antiheal"),
+    clauses=(
+        Clause(f"Deals +{int((_CARACAL_EXECUTE_MULT - 1) * 100)}% to targets below 30% HP; halves their healing for 4s."),
+        Clause("Become untargetable for 1.2s after blinking."),
+    ),
+    tags=("magic", "execute", "antiheal", "evasion"),
 )
 
 
@@ -1033,19 +1039,28 @@ ABILITY_META["champ_glade_heron.active"] = AbilityMeta(
 RIPTIDE_CAIMAN_DMG = ScalingTerm("damage", 100.0, "strength*2")
 
 
+_RIPTIDE_LIFESTEAL = 0.3
+
+
 @register_active("champ_riptide_caiman.active")
 def riptide_caiman_active(ctx: Any, actor: Any, targets: list) -> None:
     target = lowest_hp_enemy(actor, ctx)
     if not target:
         return
-    ctx.deal_damage(actor, target, RIPTIDE_CAIMAN_DMG.eval(actor), SourceTag.ABILITY,
-                    damage_type="physical")
+    dealt = ctx.deal_damage(actor, target, RIPTIDE_CAIMAN_DMG.eval(actor), SourceTag.ABILITY,
+                            damage_type="physical")
+    # Survival (T.36b): blood-scented sustain scoped to the Death Roll commit —
+    # heal a share of the lunge's damage (conventions #10), thematic to Bloodscent.
+    if dealt > 0:
+        ctx.heal(actor, actor, dealt * _RIPTIDE_LIFESTEAL)
 
 
 ABILITY_META["champ_riptide_caiman.active"] = AbilityMeta(
     name="Death Roll", kind="active",
     blurb="Lunge at the lowest-HP enemy for {damage} physical damage.",
-    terms=(RIPTIDE_CAIMAN_DMG,), tags=("physical",),
+    terms=(RIPTIDE_CAIMAN_DMG,),
+    clauses=(Clause(f"Heal for {int(_RIPTIDE_LIFESTEAL * 100)}% of the damage dealt."),),
+    tags=("physical", "lifesteal"),
 )
 
 
@@ -2074,6 +2089,7 @@ ABILITY_META["champ_eclipse_jaguar.active"] = AbilityMeta(
 # Hybrid auto-int (T.29d): on-auto INT passive carries DPS; active is lighter
 # damage + a slow debuff (value from autos + utility cast).
 NIGHTGLASS_MANTIS_DMG = ScalingTerm("damage", 60.0, "intelligence*2.86")
+MANTIS_BARRIER = ScalingTerm("shield", 0.0, "intelligence*1.5")
 _MANTIS_EXECUTE_MULT = 1.6
 
 
@@ -2087,13 +2103,17 @@ def nightglass_mantis_active(ctx: Any, actor: Any, targets: list) -> None:
         amount *= _MANTIS_EXECUTE_MULT
     ctx.deal_damage(actor, target, amount, SourceTag.ABILITY)
     ctx.apply_status(target, "slow", duration_ticks=secs(3), stacks=2, source_id=actor.id)
+    # Survival (T.36b): the ambush carapace absorbs the retaliation it commits
+    # into — a scoped diver shield tied to the strike (conventions #10).
+    ctx.grant_barrier(actor, MANTIS_BARRIER.eval(actor), duration_ticks=secs(3))
 
 
 ABILITY_META["champ_nightglass_mantis.active"] = AbilityMeta(
     name="Vanishing Cut", kind="active",
     blurb="Vanish and strike the lowest-HP enemy for {damage} magic damage, slowing it.",
-    terms=(NIGHTGLASS_MANTIS_DMG,),
-    clauses=(Clause(f"Deals +{int((_MANTIS_EXECUTE_MULT - 1) * 100)}% to targets below 30% HP; slows for 3s."),),
+    terms=(NIGHTGLASS_MANTIS_DMG, MANTIS_BARRIER),
+    clauses=(Clause(f"Deals +{int((_MANTIS_EXECUTE_MULT - 1) * 100)}% to targets below 30% HP; slows for 3s."),
+             Clause(template="Gain a {shield} barrier for 3s.", terms=(MANTIS_BARRIER,))),
     tags=("magic", "execute", "slow"),
 )
 
@@ -2911,6 +2931,10 @@ ABILITY_META["champ_thunderhoof_colt.active"] = AbilityMeta(
 VOLTSCALE_MAMBA_DMG = ScalingTerm("damage", 55.0, "strength*1.44")
 
 
+_MAMBA_HASTE = 25.0
+_MAMBA_HASTE_TICKS = 200  # 2s hit-and-run window
+
+
 @register_active("champ_voltscale_mamba.active")
 def voltscale_mamba_active(ctx: Any, actor: Any, targets: list) -> None:
     target = primary_target(actor, ctx)
@@ -2920,13 +2944,22 @@ def voltscale_mamba_active(ctx: Any, actor: Any, targets: list) -> None:
                     damage_type="physical")
     # Electric trail: apply burn to target (represents trail damage)
     ctx.apply_status(target, "burn", duration_ticks=secs(4), source_id=actor.id)
+    # Survival (T.36b): hit-and-run — a brief attack-speed + move-speed surge after
+    # the dash lets the darting mamba reposition/escape (scoped to the commit, #10).
+    exp = ctx.current_tick + _MAMBA_HASTE_TICKS
+    ctx.apply_modifier(actor, Modifier("attack_speed", "add", _MAMBA_HASTE, Lifetime.TIMED,
+                                       "ability:champ_voltscale_mamba.dash", expires_at_tick=exp))
+    ctx.apply_modifier(actor, Modifier("move_speed", "add", _MAMBA_HASTE, Lifetime.TIMED,
+                                       "ability:champ_voltscale_mamba.dash", expires_at_tick=exp))
 
 
 ABILITY_META["champ_voltscale_mamba.active"] = AbilityMeta(
     name="Electric Dash", kind="active",
     blurb="Dash through the primary target for {damage} physical damage.",
     terms=(VOLTSCALE_MAMBA_DMG,),
-    clauses=(Clause("Leaves a trail that burns for 2s."),), tags=("physical", "burn"),
+    clauses=(Clause("Leaves a trail that burns for 2s."),
+             Clause(f"Surge +{int(_MAMBA_HASTE)} Attack & Move Speed for 2s (hit-and-run)."),),
+    tags=("physical", "burn", "haste"),
 )
 
 
