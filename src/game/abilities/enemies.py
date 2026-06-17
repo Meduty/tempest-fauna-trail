@@ -46,7 +46,7 @@ from src.game.targeting import (
 
 
 # --- Conscript (T1) --- every 4th auto heavier
-CONSCRIPT_BONUS = ScalingTerm("bonus", 0.0, "strength*0.4")
+CONSCRIPT_BONUS = ScalingTerm("bonus", 0.0, "intelligence*0.5")  # T.36c: int swashbuckler — on-hit magic (V.47)
 
 
 @register_passive("enemy_conscript.passive")
@@ -59,7 +59,7 @@ def conscript_passive(owner: Any) -> EffectBundle:
         state["count"] += 1
         if state["count"] % 4 == 0:
             ctx.deal_damage(owner, event.target, CONSCRIPT_BONUS.eval(owner),
-                          SourceTag.BASIC_ATTACK, damage_type="physical")
+                          SourceTag.BASIC_ATTACK, damage_type="magic")
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
@@ -67,13 +67,13 @@ def conscript_passive(owner: Any) -> EffectBundle:
 
 
 ABILITY_META["enemy_conscript.passive"] = AbilityMeta(
-    name="Heavy Swing", kind="passive",
-    blurb="Every 4th auto-attack deals {bonus} bonus physical damage.",
-    terms=(CONSCRIPT_BONUS,), tags=("physical",),
+    name="Warded Edge", kind="passive",
+    blurb="Every 4th auto-attack deals {bonus} bonus magic damage.",
+    terms=(CONSCRIPT_BONUS,), tags=("magic",),
 )
 
 
-CONSCRIPT_DMG = ScalingTerm("damage", 30.0, "strength*1.2")
+CONSCRIPT_DMG = ScalingTerm("damage", 30.0, "intelligence*1.2")  # T.36c: int swashbuckler (V.47)
 
 
 @register_active("enemy_conscript.active")
@@ -82,13 +82,13 @@ def conscript_active(ctx: Any, actor: Any, targets: list) -> None:
     if not target:
         return
     ctx.deal_damage(actor, target, CONSCRIPT_DMG.eval(actor), SourceTag.ABILITY,
-                    damage_type="physical")
+                    damage_type="magic")
 
 
 ABILITY_META["enemy_conscript.active"] = AbilityMeta(
-    name="Thrust", kind="active",
-    blurb="Strike the primary target for {damage} physical damage.",
-    terms=(CONSCRIPT_DMG,), tags=("physical",),
+    name="Runed Thrust", kind="active",
+    blurb="Strike the primary target for {damage} magic damage.",
+    terms=(CONSCRIPT_DMG,), tags=("magic",),
 )
 
 
@@ -115,7 +115,7 @@ ABILITY_META["enemy_levyman.passive"] = AbilityMeta(
 )
 
 
-LEVYMAN_DMG = ScalingTerm("damage", 25.0, "strength*1.04")
+LEVYMAN_DMG = ScalingTerm("damage", 25.0, "intelligence*1.04")  # T.36c: int tank (V.47)
 
 
 @register_active("enemy_levyman.active")
@@ -124,13 +124,13 @@ def levyman_active(ctx: Any, actor: Any, targets: list) -> None:
     if not target:
         return
     ctx.deal_damage(actor, target, LEVYMAN_DMG.eval(actor), SourceTag.ABILITY,
-                    damage_type="physical")
+                    damage_type="magic")
 
 
 ABILITY_META["enemy_levyman.active"] = AbilityMeta(
-    name="Cudgel", kind="active",
-    blurb="Strike the primary target for {damage} physical damage.",
-    terms=(LEVYMAN_DMG,), tags=("physical",),
+    name="Sigil Strike", kind="active",
+    blurb="Strike the primary target for {damage} magic damage.",
+    terms=(LEVYMAN_DMG,), tags=("magic",),
 )
 
 
@@ -1767,7 +1767,7 @@ ABILITY_META["enemy_maw_of_the_drowned.passive"] = AbilityMeta(
 )
 
 
-MAW_DMG = ScalingTerm("damage", 80.0, "intelligence*3.8")
+MAW_DMG = ScalingTerm("damage", 80.0, "strength*1.9+intelligence*1.9")  # T.36c: hybrid tank reads both (V.47/B.24)
 _MAW_AOE = 0.6
 
 
@@ -1814,7 +1814,7 @@ ABILITY_META["enemy_flood_tyrant.passive"] = AbilityMeta(
 )
 
 
-FLOOD_TYRANT_DMG = ScalingTerm("damage", 90.0, "intelligence*4.19")
+FLOOD_TYRANT_DMG = ScalingTerm("damage", 90.0, "strength*2.1+intelligence*2.09")  # T.36c: hybrid mage reads both (V.47/B.24)
 _FLOOD_TYRANT_AOE = 0.6
 
 
