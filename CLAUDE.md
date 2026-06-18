@@ -90,7 +90,7 @@ src/
 │   │   └── recorder.py     #   BattleResultRecorder (T.26)
 │   ├── combat_log.py       # Render BattleResult → text lines
 │   ├── content.py          # Champion / enemy rosters (T.5)
-│   ├── scaling.py          # Power scaling P = 1.5^((T-1)/2 + (L-1)) (T.18)
+│   ├── scaling.py          # Power scaling P = 2^((T-1)/3 + triplings(L)) (T.18)
 │   ├── route.py            # 50-city route, 6 stages (T.4)
 │   ├── weather_effects.py  # Stat packs + affinity damage triangle (T.2)
 │   ├── encounter.py        # Seed-deterministic encounter gen (T.19, T.21)

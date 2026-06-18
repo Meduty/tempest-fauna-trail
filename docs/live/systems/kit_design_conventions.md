@@ -110,7 +110,7 @@ below was paid for by a real misfit caught mid-design. Read before authoring or 
     off-budget (it caught Mournhollow at ~147k). The real gate is the V.33 ±10% HP·DPS proxy
     + `tools/simulation/stat_edge.py` teamfight sims.
 
-13. **"power" is reserved.** `scaling.power(T,L) = 1.5^((T-1)/2 + (L-1))` is the abstract
+13. **"power" is reserved.** `scaling.power(T,L) = 2^((T-1)/3 + triplings(L))` is the abstract
     power scalar. The survivability×damage worth proxy is **HP·DPS** — never call it "power."
 
 14. **Determinism is non-negotiable (V.2/V.14).** Every "every Nth" / "chance" / ramp uses a

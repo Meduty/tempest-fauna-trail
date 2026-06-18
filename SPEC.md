@@ -219,8 +219,10 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 
 ### T.18-T.31 Planning Notes (Systems Expansion)
 
-- T.18 power scalar `P = 1.5 ** ((T-1)/2 + (L-1))` drives encounter budgets and
-  piece stat generation; "two tiers == one level".
+- T.18 power scalar `P = 2 ** ((T-1)/3 + triplings(L))`, `triplings = {L1:0, L2:1, L3:3}`
+  (retuned from the original `1.5 ** ((T-1)/2 + (L-1))` — commits 7c9eb14/6acbd5c —
+  to a `cbrt(2)` per-tier step + tripling level mechanic), drives encounter budgets and
+  piece stat generation; "three tiers == one tripling step in power".
 - T.19 generates encounters deterministically from `Run.seed` via per-node
   sub-seeds; squads/offers are regenerated lazily, not stored.
 - T.20 builds the ability/passive/status framework (resolves D.3-D.5); bosses
