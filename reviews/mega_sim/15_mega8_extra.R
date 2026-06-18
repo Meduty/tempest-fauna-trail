@@ -125,10 +125,13 @@ flier_rows <- function(v, g){
 }
 collect <- function(plot_id, panel, v, g){
   fi <- flier_rows(v, g); if(!length(fi)) return(NULL)
-  # cohort (box-group) min/mean/max so a reader can gauge how extreme the flier is
+  # Cohort box range EXCLUDING fliers — matches what the boxplot draws:
+  # min/max = whisker ends (boxplot.stats$stats[1]/[5]), mean over non-flier body.
+  # So a flier sits visibly OUTSIDE [cohort_min, cohort_max].
   cmn <- cmean <- cmx <- numeric(length(fi))
   for(j in seq_along(fi)){ gv <- v[g==g[fi[j]]]
-    cmn[j]<-min(gv); cmean[j]<-mean(gv); cmx[j]<-max(gv) }
+    bs <- boxplot.stats(gv); lo <- bs$stats[1]; hi <- bs$stats[5]
+    cmn[j]<-lo; cmx[j]<-hi; cmean[j]<-mean(gv[gv>=lo & gv<=hi]) }
   data.frame(plot=plot_id, panel=panel, group=as.character(g[fi]),
              name=CB$name[fi], tier=CB$tier[fi], level=CB$level[fi],
              role=CB$role[fi], value=round(v[fi],4), win_rate=round(CB$win_rate[fi],3),

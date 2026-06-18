@@ -300,46 +300,46 @@ This sweep adds a per-piece view of win rate against the power scalar that drive
 \end{quotebox}
 \medskip
 
-\textit{win\_rate panel --- deviates from cohort win rate at the same power.} The \textbf{cohort} column gives the box's min\,/\,mean\,/\,max win rate, so the gap between a flier's \textbf{wr} and the cohort mean shows how extreme it is:\\
+\textit{win\_rate panel --- deviates from cohort win rate at the same power.} The \textbf{cohort} column gives the box's min\,/\,mean\,/\,max win rate \emph{excluding the fliers} (i.e. the whisker range and body mean), so every flier here sits \emph{outside} its [min, max] --- the gap shows how far:\\
 {\small
 \begin{tabularx}{\linewidth}{rlrlL}
 \toprule
 $P$ & \textbf{piece} (role) & \textbf{wr} & \textbf{cohort min/$\mu$/max} & \textbf{why a flier / what it could mean} \\
 \midrule
-2.5 & Frostplate Tortoise T5/L1 (tank) & 0.352 & .35\,/\,.41\,/\,.51 & CH-low --- a tank at low power loses more than its peers; durability buys little when base stats are small. \\
-2.5 & Veldt Pronghorn T2/L2 (tank) & 0.511 & .35\,/\,.41\,/\,.51 & CH-high --- over-performs the low-$P$ field; cheap kit punches up. \\
-3.2 & Hollowed Wisp T3/L2 (assassin) & 0.356 & .36\,/\,.42\,/\,.50 & CH-low --- fragile assassin folds against the same-$P$ cohort before it can burst. \\
-3.2 & Iron-Collared Hound T3/L2 (swash) & 0.498 & .36\,/\,.42\,/\,.50 & CH-high --- wins more than its P3.2 peers. \\
-4.0 & Drowned Siren T4/L2 (mage) & 0.371 & .37\,/\,.44\,/\,.48 & CH-low / early under --- mid mage under-delivers (also a residual flier). \\
-8.0 & Borealis T10/L1 (mage) & 0.613 & .41\,/\,.49\,/\,.64 & CH-high --- a T10 king already beats its P8 peers at L1; king kit front-loaded. \\
-8.0 & Springfrog T1/L3 (support) & 0.642 & .41\,/\,.49\,/\,.64 & EB --- a T1 piece winning 64\% at P8 (the cohort max) is over-scaled for its tier. \\
-16 & Steam Engineer T4/L3 (mage) & 0.377 & .38\,/\,.54\,/\,.65 & DA --- the cohort \emph{minimum}: an L3 mage 16pp below its peers' mean, kit not converting. \\
-32 & Mirewarden Toad T7/L3 (tank) & 0.565 & .57\,/\,.63\,/\,.70 & AG (CH-low) --- apex tank grinds; the P32 cohort floor. \\
-32 & Marshghast Boar T7/L3 (bruiser) & 0.571 & .57\,/\,.63\,/\,.70 & AG (CH-low) --- apex bruiser stalls. \\
-32 & Thunder Bull T7/L3 (support) & 0.700 & .57\,/\,.63\,/\,.70 & CH-high --- the cohort max; unusually strong apex support for P32. \\
-40 & Glade Heron T8/L3 (marksman) & 0.833 & .62\,/\,.72\,/\,.83 & CH-high --- cohort max / top apex finisher; wins big but on-budget (fast, not a grinder). \\
+2.5 & Frostplate Tortoise T5/L1 (tank) & 0.352 & .35\,/\,.41\,/\,.44 & CH-low --- below the box; a tank at low power loses more than its peers, durability buys little when base stats are small. \\
+2.5 & Veldt Pronghorn T2/L2 (tank) & 0.511 & .35\,/\,.41\,/\,.44 & CH-high --- above the box; over-performs the low-$P$ field. \\
+3.2 & Hollowed Wisp T3/L2 (assassin) & 0.356 & .37\,/\,.42\,/\,.48 & CH-low --- below the box; fragile assassin folds before it can burst. \\
+3.2 & Iron-Collared Hound T3/L2 (swash) & 0.498 & .37\,/\,.42\,/\,.48 & CH-high --- above the box; wins more than its P3.2 peers. \\
+4.0 & Drowned Siren T4/L2 (mage) & 0.371 & .39\,/\,.44\,/\,.48 & CH-low / early under --- below the box; mid mage under-delivers. \\
+8.0 & Borealis T10/L1 (mage) & 0.613 & .41\,/\,.49\,/\,.56 & CH-high --- above the box; a T10 king already beats its P8 peers at L1. \\
+8.0 & Springfrog T1/L3 (support) & 0.642 & .41\,/\,.49\,/\,.56 & EB --- above the box; a T1 piece winning 64\% at P8 is over-scaled for its tier. \\
+16 & Steam Engineer T4/L3 (mage) & 0.377 & .43\,/\,.54\,/\,.65 & DA --- far below the box; an L3 mage $\sim$16pp under its peers' mean, kit not converting. \\
+32 & Mirewarden Toad T7/L3 (tank) & 0.565 & .61\,/\,.63\,/\,.66 & AG (CH-low) --- below the box; apex tank grinds. \\
+32 & Marshghast Boar T7/L3 (bruiser) & 0.571 & .61\,/\,.63\,/\,.66 & AG (CH-low) --- below the box; apex bruiser stalls. \\
+32 & Thunder Bull T7/L3 (support) & 0.700 & .61\,/\,.63\,/\,.66 & CH-high --- above the box; unusually strong apex support for P32. \\
+40 & Glade Heron T8/L3 (marksman) & 0.833 & .62\,/\,.71\,/\,.82 & CH-high --- above the box / top apex finisher; wins big but on-budget (fast, not a grinder). \\
 \bottomrule
 \end{tabularx}
 }
 \medskip
 
-\textit{wr\_delta panel --- residual after the power curve is removed} (cohort = box min\,/\,mean\,/\,max residual):\\
+\textit{wr\_delta panel --- residual after the power curve is removed} (cohort = box min\,/\,mean\,/\,max \emph{excluding fliers}; every flier sits outside it):\\
 {\small
 \begin{tabularx}{\linewidth}{rlrlL}
 \toprule
 $P$ & \textbf{piece} (role) & \textbf{$\Delta$} & \textbf{cohort min/$\mu$/max} & \textbf{why a flier / what it could mean} \\
 \midrule
-2.0 & Conscript T1/L2 (swash) & $-$0.074 & $-$.07/+.01/+.10 & Early under --- cohort floor; weak starter kit even after adjusting for power. \\
-2.0 & Springfrog T1/L2 (support) & +0.102 & $-$.07/+.01/+.10 & EB --- cohort max; over-budget at T1 already. \\
-5.0 & Coral Colossus T5/L2 (tank) & +0.051 & $-$.04/.00/+.07 & Over --- tank punching above its P5 budget. \\
-5.0 & Hierarch T8/L1 (support) & +0.059 & $-$.04/.00/+.07 & LF --- Hierarch is \emph{over} at L1 but the worst apex \emph{under} at L3: level scaling mis-shaped. \\
-5.0 & Caged Banshee T5/L2 (support) & +0.071 & $-$.04/.00/+.07 & Over --- cohort max; mid support above budget. \\
-8.0 & Borealis T10/L1 (mage) & +0.114 & $-$.06/+.02/+.14 & Over --- king kit already over-budget at L1 (cf. its win\_rate flier above). \\
-8.0 & Springfrog T1/L3 (support) & +0.140 & $-$.06/+.02/+.14 & EB --- cohort max and the largest positive residual in the sweep; clearest over-scaled low-tier kit. \\
-10 & Powder Sapper T2/L3 (support) & $-$0.046 & $-$.05/+.01/+.06 & Under --- cohort floor; a low-tier L3 support that lags. \\
-10 & Veilfang Wolf T8/L2 (swash) & +0.064 & $-$.05/+.01/+.06 & Over --- cohort max; swashbuckler above budget. \\
-13 & Ember Salamander T3/L3 (mage) & +0.077 & $-$.05/+.01/+.09 & EB --- low-tier mage over its budget. \\
-13 & Arcanist T9/L2 (mage) & +0.091 & $-$.05/+.01/+.09 & Over --- cohort max; high-tier mage above budget (a healthy over-performer). \\
+2.0 & Conscript T1/L2 (swash) & $-$0.074 & $-$.03/+.01/+.04 & Early under --- below the box; weak starter kit even after adjusting for power. \\
+2.0 & Springfrog T1/L2 (support) & +0.102 & $-$.03/+.01/+.04 & EB --- above the box; over-budget at T1 already. \\
+5.0 & Coral Colossus T5/L2 (tank) & +0.051 & $-$.04/$-$.01/+.03 & Over --- above the box; tank punching above its P5 budget. \\
+5.0 & Hierarch T8/L1 (support) & +0.059 & $-$.04/$-$.01/+.03 & LF --- above the box; Hierarch is \emph{over} at L1 but the worst apex \emph{under} at L3: level scaling mis-shaped. \\
+5.0 & Caged Banshee T5/L2 (support) & +0.071 & $-$.04/$-$.01/+.03 & Over --- above the box; mid support above budget. \\
+8.0 & Borealis T10/L1 (mage) & +0.114 & $-$.06/+.02/+.09 & Over --- above the box; king kit already over-budget at L1. \\
+8.0 & Springfrog T1/L3 (support) & +0.140 & $-$.06/+.02/+.09 & EB --- above the box and the largest positive residual in the sweep; clearest over-scaled low-tier kit. \\
+10 & Powder Sapper T2/L3 (support) & $-$0.046 & $-$.03/+.01/+.05 & Under --- below the box; a low-tier L3 support that lags. \\
+10 & Veilfang Wolf T8/L2 (swash) & +0.064 & $-$.03/+.01/+.05 & Over --- above the box; swashbuckler above budget. \\
+13 & Ember Salamander T3/L3 (mage) & +0.077 & $-$.05/+.01/+.05 & EB --- above the box; low-tier mage over its budget. \\
+13 & Arcanist T9/L2 (mage) & +0.091 & $-$.05/+.01/+.05 & Over --- above the box; high-tier mage above budget (a healthy over-performer). \\
 \bottomrule
 \end{tabularx}
 }
@@ -375,50 +375,50 @@ tank & 0.191 & 0.126 & 0.109 & 0.103 \\
 
 \textbf{Named fliers (1.5$\times$IQR) for both boxplots} (tags as defined in \S{}7). The unlabelled dots above, recovered --- the pieces most out of line with their \emph{role} cohort and their \emph{tier} cohort. These are the same names that dominate \S{}9.2, now attributed to the cohort that flags them.\\
 
-\textit{by role --- residual vs others in the same role} (cohort = the role box's min\,/\,mean\,/\,max residual):\\
+\textit{by role --- residual vs others in the same role} (cohort = the role box's min\,/\,mean\,/\,max \emph{excluding fliers}):\\
 {\small
 \begin{tabularx}{\linewidth}{llrlL}
 \toprule
 \textbf{role} & \textbf{piece} & \textbf{$\Delta$} & \textbf{cohort min/$\mu$/max} & \textbf{why a flier / what it could mean} \\
 \midrule
-bruiser & Dredge-Hulk T7/L3 & $-$0.098 & $-$.10/$-$.01/+.04 & AG --- cohort floor; apex bruiser stalls toward the cap. \\
-bruiser & Marshghast Boar T7/L3 & $-$0.093 & $-$.10/$-$.01/+.04 & AG --- second apex bruiser grinder; the role's L3 ceiling drags. \\
-mage & Steam Engineer T4/L3 & $-$0.114 & $-$.11/+.02/+.11 & DA --- cohort floor; worst mage, loses on raw win rate too. \\
-marksman & Voltaic Diviner T5/L3 & $-$0.068 & $-$.07/+.01/+.08 & Under --- cohort floor; apex marksman lagging an over-budget role. \\
-marksman & Umbra T10/L1 & +0.077 & $-$.07/+.01/+.08 & Over --- cohort max; king over-budget at L1. \\
-spellblade & Aurion T10/L3 & $-$0.151 & $-$.15/$-$.01/+.06 & AG --- cohort floor; the single worst piece in the sweep, apex king that grinds. \\
-support & Hierarch T8/L3 & $-$0.128 & $-$.13/+.01/+.14 & AG --- near cohort floor; on-death barrier helps allies not itself. \\
-support & Coppercrest Stork T4/L3 & $-$0.081 & $-$.13/+.01/+.14 & Under --- mid support lagging its role. \\
-support & Hoarfrost Owl T4/L3 & $-$0.065 & $-$.13/+.01/+.14 & Under --- mid support lagging its role. \\
-support & Lostlight Wisp T1/L3 & +0.094 & $-$.13/+.01/+.14 & EB --- over-scaled T1 support. \\
-support & Springfrog T1/L2 & +0.102 & $-$.13/+.01/+.14 & EB --- over-scaled T1 support. \\
-support & Springfrog T1/L3 & +0.140 & $-$.13/+.01/+.14 & EB --- cohort max; T1 kit far above its band. \\
-tank & Maw of the Drowned T9/L3 & $-$0.131 & $-$.13/$-$.01/+.06 & AG --- cohort floor; durable apex tank wins by grinding. \\
-tank & Stone Warden T10/L3 & $-$0.124 & $-$.13/$-$.01/+.06 & AG --- apex tank grinder. \\
-tank & Mirewarden Toad T7/L3 & $-$0.105 & $-$.13/$-$.01/+.06 & AG --- apex tank grinder. \\
-tank & Inquisitor T6/L3 & $-$0.076 & $-$.13/$-$.01/+.06 & AG --- milder apex tank grinder. \\
+bruiser & Dredge-Hulk T7/L3 & $-$0.098 & $-$.08/$-$.01/+.04 & AG --- below the box; apex bruiser stalls toward the cap. \\
+bruiser & Marshghast Boar T7/L3 & $-$0.093 & $-$.08/$-$.01/+.04 & AG --- below the box; second apex bruiser grinder. \\
+mage & Steam Engineer T4/L3 & $-$0.114 & $-$.08/+.02/+.11 & DA --- below the box; worst mage, loses on raw win rate too. \\
+marksman & Voltaic Diviner T5/L3 & $-$0.068 & $-$.04/+.01/+.06 & Under --- below the box; apex marksman lagging an over-budget role. \\
+marksman & Umbra T10/L1 & +0.077 & $-$.04/+.01/+.06 & Over --- above the box; king over-budget at L1. \\
+spellblade & Aurion T10/L3 & $-$0.151 & $-$.09/.00/+.06 & AG --- well below the box; the single worst piece in the sweep, apex king that grinds. \\
+support & Hierarch T8/L3 & $-$0.128 & $-$.06/+.01/+.07 & AG --- below the box; on-death barrier helps allies not itself. \\
+support & Coppercrest Stork T4/L3 & $-$0.081 & $-$.06/+.01/+.07 & Under --- below the box; mid support lagging its role. \\
+support & Hoarfrost Owl T4/L3 & $-$0.065 & $-$.06/+.01/+.07 & Under --- below the box; mid support lagging its role. \\
+support & Lostlight Wisp T1/L3 & +0.094 & $-$.06/+.01/+.07 & EB --- above the box; over-scaled T1 support. \\
+support & Springfrog T1/L2 & +0.102 & $-$.06/+.01/+.07 & EB --- above the box; over-scaled T1 support. \\
+support & Springfrog T1/L3 & +0.140 & $-$.06/+.01/+.07 & EB --- well above the box; T1 kit far above its band. \\
+tank & Maw of the Drowned T9/L3 & $-$0.131 & $-$.06/.00/+.06 & AG --- below the box; durable apex tank wins by grinding. \\
+tank & Stone Warden T10/L3 & $-$0.124 & $-$.06/.00/+.06 & AG --- below the box; apex tank grinder. \\
+tank & Mirewarden Toad T7/L3 & $-$0.105 & $-$.06/.00/+.06 & AG --- below the box; apex tank grinder. \\
+tank & Inquisitor T6/L3 & $-$0.076 & $-$.06/.00/+.06 & AG --- below the box; milder apex tank grinder. \\
 \bottomrule
 \end{tabularx}
 }
 \medskip
 
-\textit{by tier --- residual vs others in the same tier} (cohort = the tier box's min\,/\,mean\,/\,max residual):\\
+\textit{by tier --- residual vs others in the same tier} (cohort = the tier box's min\,/\,mean\,/\,max \emph{excluding fliers}):\\
 {\small
 \begin{tabularx}{\linewidth}{llrlL}
 \toprule
 \textbf{tier} & \textbf{piece} (role) & \textbf{$\Delta$} & \textbf{cohort min/$\mu$/max} & \textbf{why a flier / what it could mean} \\
 \midrule
-1 & Springfrog (support) & +0.140 & $-$.07/+.01/+.14 & EB --- cohort max; T1 kit over-scaled, the strongest piece vs its tier. \\
-3 & Ember Salamander (mage) & +0.077 & $-$.05/.00/+.08 & EB --- cohort max; low-tier mage above its tier cohort. \\
-4 & Steam Engineer (mage) & $-$0.114 & $-$.11/$-$.01/+.04 & DA --- cohort floor; breaks below T4 and loses raw; kit under-built. \\
-7 & Mirewarden Toad (tank) & $-$0.105 & $-$.11/$-$.01/+.06 & AG --- cohort floor; apex grinder, worst of its tier. \\
-7 & Dredge-Hulk (bruiser) & $-$0.098 & $-$.11/$-$.01/+.06 & AG --- apex grinder, drags T7. \\
-8 & Hierarch (support) & $-$0.128 & $-$.13/.00/+.06 & AG --- cohort floor; apex grinder, worst of T8. \\
-9 & Maw of the Drowned (tank) & $-$0.131 & $-$.13/.00/+.09 & AG --- cohort floor; apex grinder, worst of T9. \\
-9 & Cliffeyrie Eagle (sslinger) & $-$0.097 & $-$.13/.00/+.09 & AG --- spellslinger that stalls at apex. \\
-10 & Aurion (spellblade) & $-$0.151 & $-$.15/+.01/+.11 & AG --- cohort floor; apex king, worst of T10 and the sweep. \\
-10 & Stone Warden (tank) & $-$0.124 & $-$.15/+.01/+.11 & AG --- apex tank king, drags T10. \\
-10 & Aerion (spellblade) & $-$0.088 & $-$.15/+.01/+.11 & AG --- second apex spellblade king grinder. \\
+1 & Springfrog (support) & +0.140 & $-$.07/.00/+.10 & EB --- above the box; T1 kit over-scaled, the strongest piece vs its tier. \\
+3 & Ember Salamander (mage) & +0.077 & $-$.05/.00/+.05 & EB --- above the box; low-tier mage above its tier cohort. \\
+4 & Steam Engineer (mage) & $-$0.114 & $-$.08/$-$.01/+.04 & DA --- below the box; breaks below T4 and loses raw; kit under-built. \\
+7 & Mirewarden Toad (tank) & $-$0.105 & $-$.09/$-$.01/+.06 & AG --- below the box; apex grinder, worst of its tier. \\
+7 & Dredge-Hulk (bruiser) & $-$0.098 & $-$.09/$-$.01/+.06 & AG --- below the box; apex grinder, drags T7. \\
+8 & Hierarch (support) & $-$0.128 & $-$.08/+.01/+.06 & AG --- below the box; apex grinder, worst of T8. \\
+9 & Maw of the Drowned (tank) & $-$0.131 & $-$.08/+.01/+.09 & AG --- below the box; apex grinder, worst of T9. \\
+9 & Cliffeyrie Eagle (sslinger) & $-$0.097 & $-$.08/+.01/+.09 & AG --- below the box; spellslinger that stalls at apex. \\
+10 & Aurion (spellblade) & $-$0.151 & $-$.07/+.03/+.11 & AG --- well below the box; apex king, worst of T10 and the sweep. \\
+10 & Stone Warden (tank) & $-$0.124 & $-$.07/+.03/+.11 & AG --- below the box; apex tank king, drags T10. \\
+10 & Aerion (spellblade) & $-$0.088 & $-$.07/+.03/+.11 & AG --- below the box; second apex spellblade king grinder. \\
 \bottomrule
 \end{tabularx}
 }
