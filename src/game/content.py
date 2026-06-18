@@ -533,7 +533,7 @@ _CHAMPION_DEFS: tuple[ChampionDef, ...] = (
     _champion_def("champ_goldhide_rhino", "Goldhide Rhino", WeatherState.CLEAR, 7, "melee", ["Scaled", "Bruiser", "Mender"], durability="tanky_arm", playstyle="auto", speed="heavy"),
     _champion_def("champ_mirage_caracal", "Mirage Caracal", WeatherState.CLEAR, 8, "melee", ["Spirit", "Stalker"], stat="int", durability="squishy", playstyle="ability", intent="damage", speed="blinding"),
     _champion_def("champ_sunspear_falcon", "Sunspear Falcon", WeatherState.CLEAR, 9, "ranged", ["Skyborn", "Hunter"], stat="str", durability="squishy", playstyle="auto", intent="hybrid", speed="blinding"),
-    _champion_def("champ_aurion", "Aurion, the First Dawn", WeatherState.CLEAR, 10, "ranged", ["Spirit", "Primordial", "Channeler"], speed="steady"),
+    _champion_def("champ_aurion", "Aurion, the First Dawn", WeatherState.CLEAR, 10, "ranged", ["Spirit", "Primordial", "Channeler"], speed="steady", stat_overrides={"strength": 12, "intelligence": 12}),  # T.36c: under its T10L3 cohort (Ascendance flat ramp under-scales at apex)
     _champion_def("champ_springfrog", "Springfrog", WeatherState.RAIN, 1, "ranged", ["Tidekin", "Mender", "Packmate"], stat="int", playstyle="ability", intent="utility", speed="steady"),
     _champion_def("champ_reedbank_otter", "Reedbank Otter", WeatherState.RAIN, 2, "melee", ["Tidekin", "Skirmisher"], stat="str", playstyle="auto", intent="hybrid", speed="speedy"),
     _champion_def("champ_torrent_heron", "Torrent Heron", WeatherState.RAIN, 3, "ranged", ["Tidekin", "Mystic"], stat="hybrid", durability="squishy", playstyle="ability", intent="hybrid", speed="hybrid"),
@@ -570,7 +570,7 @@ _CHAMPION_DEFS: tuple[ChampionDef, ...] = (
     _champion_def("champ_hollow_elk", "Hollow Elk", WeatherState.MIST, 4, "melee", ["Spirit", "Guardian", "Channeler"], stat="int", durability="tanky_hp", playstyle="ability", intent="utility", speed="steady"),
     _champion_def("champ_fogveil_moth", "Fogveil Moth", WeatherState.MIST, 5, "ranged", ["Swarm", "Trickster"], stat="hybrid", playstyle="ability", intent="utility", speed="hybrid"),
     _champion_def("champ_wraithorn_stag", "Wraithorn Stag", WeatherState.MIST, 6, "melee", ["Spirit", "Bruiser", "Skirmisher"], stat="hybrid", durability="tanky_hp", playstyle="auto", intent="damage", speed="steady"),
-    _champion_def("champ_marshghast_boar", "Marshghast Boar", WeatherState.MIST, 7, "melee", ["Spirit", "Bruiser"], durability="tanky_hp", intent="damage", speed="steady"),
+    _champion_def("champ_marshghast_boar", "Marshghast Boar", WeatherState.MIST, 7, "melee", ["Spirit", "Bruiser"], durability="tanky_hp", intent="damage", speed="steady", stat_overrides={"intelligence": 5}),  # T.36c: under T7L3 cohort
     _champion_def("champ_veilfang_wolf", "Veilfang Wolf", WeatherState.MIST, 8, "melee", ["Spirit", "Skirmisher"], stat="int", playstyle="hybrid", intent="damage", speed="brisk"),
     _champion_def("champ_spectral_heron", "Spectral Heron", WeatherState.MIST, 9, "ranged", ["Spirit", "Hunter"], stat="int", playstyle="auto", intent="damage", speed="steady"),
     _champion_def("champ_mournhollow", "Mournhollow, the Pale Stag", WeatherState.MIST, 10, "ranged", ["Beast", "Primordial", "Channeler"], stat="str", playstyle="ability", intent="damage", speed="hybrid"),
@@ -621,8 +621,8 @@ _ENEMY_DEFS: tuple[EnemyDef, ...] = (
     _enemy_def("enemy_blight_lurker", "Blight Lurker", WeatherState.RAIN, 3, "melee", frozenset({"corrupted", "beast"}), stat="str", durability="tanky_hp", intent="damage", speed="heavy"),
     _enemy_def("enemy_drowned_siren", "Drowned Siren", WeatherState.RAIN, 4, "ranged", frozenset({"corrupted", "spirit"}), stat="int", durability="squishy", playstyle="ability", intent="damage", speed="hybrid"),
     _enemy_def("enemy_brineblight_berserker", "Brineblight Berserker", WeatherState.RAIN, 5, "melee", frozenset({"corrupted", "beast"}), stat="str", durability="tanky_hp", playstyle="auto", intent="damage", speed="speedy"),
-    _enemy_def("enemy_dredge_hulk", "Dredge-Hulk", WeatherState.RAIN, 7, "melee", frozenset({"corrupted", "beast", "machine"}), durability="tanky_hp", intent="damage", speed="leaden"),
-    _enemy_def("enemy_maw_of_the_drowned", "Maw of the Drowned", WeatherState.RAIN, 9, "ranged", frozenset({"corrupted", "beast"}), durability="tanky_arm", playstyle="ability", speed="heavy"),
+    _enemy_def("enemy_dredge_hulk", "Dredge-Hulk", WeatherState.RAIN, 7, "melee", frozenset({"corrupted", "beast", "machine"}), durability="tanky_hp", intent="damage", speed="leaden", stat_overrides={"intelligence": 5}),  # T.36c: under T7L3 cohort
+    _enemy_def("enemy_maw_of_the_drowned", "Maw of the Drowned", WeatherState.RAIN, 9, "ranged", frozenset({"corrupted", "beast"}), durability="tanky_arm", playstyle="ability", speed="heavy", stat_overrides={"intelligence": 8}),  # T.36c: under T9L3 cohort
     _enemy_def("enemy_flood_tyrant", "Flood Tyrant", WeatherState.RAIN, 10, "ranged", frozenset({"corrupted", "beast"}), playstyle="ability", speed="heavy"),
     _enemy_def("enemy_iron_collared_hound", "Iron-Collared Hound", WeatherState.SNOW, 3, "melee", frozenset({"corrupted", "beast"}), stat="str", playstyle="auto", intent="damage", speed="speedy"),
     _enemy_def("enemy_cold_iron_yeti", "Cold-Iron Yeti", WeatherState.SNOW, 4, "melee", frozenset({"corrupted", "beast", "machine"}), stat="str", durability="tanky_hp", intent="damage", speed="leaden"),
@@ -635,7 +635,7 @@ _ENEMY_DEFS: tuple[EnemyDef, ...] = (
     _enemy_def("enemy_shaftmaw", "Shaftmaw", WeatherState.CLOUDY, 5, "melee", frozenset({"corrupted", "beast"}), stat="int", durability="squishy", playstyle="ability", intent="damage", speed="brisk"),
     _enemy_def("enemy_reaver_of_the_reach", "Reaver of the Reach", WeatherState.CLOUDY, 7, "ranged", frozenset({"corrupted", "beast"}), playstyle="hybrid", intent="damage", speed="brisk"),
     _enemy_def("enemy_quarried_behemoth", "Quarried Behemoth", WeatherState.CLOUDY, 9, "melee", frozenset({"corrupted", "machine"}), durability="tanky_hp", intent="damage", speed="leaden"),
-    _enemy_def("enemy_stone_warden", "Stone Warden", WeatherState.CLOUDY, 10, "melee", frozenset({"corrupted", "machine"}), durability="tanky_hp", speed="leaden"),
+    _enemy_def("enemy_stone_warden", "Stone Warden", WeatherState.CLOUDY, 10, "melee", frozenset({"corrupted", "machine"}), durability="tanky_hp", speed="leaden", stat_overrides={"strength": 6}),  # T.36c: under T10L3 cohort (tank under-converts at apex)
     _enemy_def("enemy_hollowed_wisp", "Hollowed Wisp", WeatherState.MIST, 3, "melee", frozenset({"corrupted", "spirit"}), stat="int", durability="squishy", playstyle="ability", intent="damage", speed="brisk"),
     _enemy_def("enemy_drained_stalker", "Drained Stalker", WeatherState.MIST, 4, "ranged", frozenset({"corrupted", "beast"}), stat="int", playstyle="hybrid", intent="damage", speed="speedy"),
     _enemy_def("enemy_caged_banshee", "Caged Banshee", WeatherState.MIST, 5, "ranged", frozenset({"corrupted", "spirit"}), stat="int", playstyle="ability", intent="utility", speed="hybrid"),

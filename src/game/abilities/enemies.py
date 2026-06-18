@@ -651,13 +651,31 @@ ABILITY_META["enemy_steam_engineer.active"] = AbilityMeta(
 )
 
 
+# B-fix: Steam Engineer shipped with an EMPTY passive (a wasted slot) — a squishy
+# T4 int caster whose only kit was one turret, so it lost on raw win rate (DA). Give
+# it a real INT outlet: each cast also vents superheated steam at the primary target.
+STEAM_ENGINEER_VENT = ScalingTerm("damage", 0.0, "intelligence*1.4")
+
+
 @register_passive("enemy_steam_engineer.passive")
 def steam_engineer_passive(owner: Any) -> EffectBundle:
-    return EffectBundle()
+    def on_cast(ctx: Any, event: Any) -> None:
+        if event.caster is not owner:
+            return
+        target = primary_target(owner, ctx)
+        if target:
+            ctx.deal_damage(owner, target, STEAM_ENGINEER_VENT.eval(owner),
+                            SourceTag.ABILITY, damage_type="magical")
+
+    return EffectBundle(hooks=[
+        Hook("on_cast_complete", on_cast, scope=HookScope.PER_HIT),
+    ])
 
 
 ABILITY_META["enemy_steam_engineer.passive"] = AbilityMeta(
-    name="None", kind="passive", blurb="No passive effect.", tags=(),
+    name="Steam Vent", kind="passive",
+    blurb="Each cast vents steam, dealing {damage} magic damage to the primary target.",
+    terms=(STEAM_ENGINEER_VENT,), tags=("magic",),
 )
 
 
@@ -1309,31 +1327,52 @@ HIERARCH_ARMOR = ScalingTerm("armor", 20.0, "intelligence*0.64")
 HIERARCH_RES = ScalingTerm("res", 10.0, "intelligence*0.32")
 
 
+# T.36c: Hierarch was 100% defensive (team shield + on-death barrier) with no
+# outlet that converts its big L3 INT → fine at L1 but cratered at L3 (a level-flip).
+# Keep it a PURE support: add MORE utility, not damage. Sanctuary now also empowers
+# the team's STR and INT (an INT-scaled blessing) — allies hit harder, the Hierarch
+# stays a support, and because the buff scales with INT (hence level) it closes the
+# L3 gap without inflating L1. (Value reads the Hierarch's INT, snapshot at cast —
+# it buffs ally STR/INT but never reads them, so no self-feeding loop, V.44.)
+HIERARCH_EMPOWER = ScalingTerm("empower", 0.0, "intelligence*0.4")
+
+
 @register_active("enemy_hierarch.active")
 def hierarch_active(ctx: Any, actor: Any, targets: list) -> None:
     allies = list(ctx.allies_of(actor))
     # Shield magnitude scales from INT — stronger shields for higher-tier/better-geared mages
     armor_bonus = HIERARCH_ARMOR.eval(actor)
     resistance_bonus = HIERARCH_RES.eval(actor)
+    empower_bonus = HIERARCH_EMPOWER.eval(actor)
     for ally in allies:
         ctx.apply_modifier(ally, Modifier(
             "armor", "add", armor_bonus, Lifetime.TIMED,
             "ability:enemy_hierarch.shield",
-            expires_at_tick=ctx.current_tick + 500,
+            expires_at_tick=ctx.current_tick + secs(5),
         ))
         ctx.apply_modifier(ally, Modifier(
             "resistance", "add", resistance_bonus, Lifetime.TIMED,
             "ability:enemy_hierarch.shield",
-            expires_at_tick=ctx.current_tick + 500,
+            expires_at_tick=ctx.current_tick + secs(5),
+        ))
+        ctx.apply_modifier(ally, Modifier(
+            "strength", "add", empower_bonus, Lifetime.TIMED,
+            "ability:enemy_hierarch.blessing",
+            expires_at_tick=ctx.current_tick + secs(5),
+        ))
+        ctx.apply_modifier(ally, Modifier(
+            "intelligence", "add", empower_bonus, Lifetime.TIMED,
+            "ability:enemy_hierarch.blessing",
+            expires_at_tick=ctx.current_tick + secs(5),
         ))
 
 
 ABILITY_META["enemy_hierarch.active"] = AbilityMeta(
     name="Sanctuary", kind="active",
-    blurb="Shield the whole team for 5s.",
-    clauses=(Clause(template="Grants Armor ({armor}) and Resistance ({res}).",
-                    terms=(HIERARCH_ARMOR, HIERARCH_RES)),),
-    tags=("defense", "team"),
+    blurb="Bless the whole team for 5s.",
+    clauses=(Clause(template="Grants Armor ({armor}), Resistance ({res}), and +{empower} Strength & Intelligence.",
+                    terms=(HIERARCH_ARMOR, HIERARCH_RES, HIERARCH_EMPOWER)),),
+    tags=("defense", "team", "buff"),
 )
 
 

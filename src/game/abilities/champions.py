@@ -152,7 +152,7 @@ ABILITY_META["champ_veldt_pronghorn.active"] = AbilityMeta(
 
 # --- Ember Salamander (T3, APC-INT Mage) ---
 # Cast: line of kindling light, burns ground for several ticks.
-EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "strength*1.65")
+EMBER_SALAMANDER_DMG = ScalingTerm("damage", 60.0, "strength*1.42")  # T.36c: 1.65→1.42, multicaster value compounds at L3
 
 
 @register_active("champ_ember_salamander.active", mana_cost=230_000, priority=2)
@@ -603,7 +603,7 @@ ABILITY_META["champ_aurion.active"] = AbilityMeta(
 
 # --- Springfrog (T1, SUP-Heal) ---
 # Cast: healing rain on lowest-HP ally, restoring health.
-SPRINGFROG_HEAL = ScalingTerm("heal", 30.0, "intelligence*3.65")
+SPRINGFROG_HEAL = ScalingTerm("heal", 30.0, "intelligence*2.9")  # T.36c: 3.65→2.9, heal too hot for T1 (~333 on a ~600 HP pool)
 
 
 @register_active("champ_springfrog.active")
@@ -826,14 +826,15 @@ ABILITY_META["champ_coral_colossus.passive"] = AbilityMeta(
 # Active: shell immunity (invulnerability via massive damage reduction for 300 ticks)
 @register_active("champ_coral_colossus.active")
 def coral_colossus_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Simulate invulnerability: massive armor+resistance buff
+    # Heavy armor+resistance buff. T.36c: flat 200→130 — at T5 (base armor ~44) a
+    # flat +200 was effective invuln and over-budget; +130 is still a strong cooldown.
     ctx.apply_modifier(actor, Modifier(
-        "armor", "add", 200.0, Lifetime.TIMED,
+        "armor", "add", 130.0, Lifetime.TIMED,
         "ability:champ_coral_colossus.invuln",
         expires_at_tick=ctx.current_tick + 300,
     ))
     ctx.apply_modifier(actor, Modifier(
-        "resistance", "add", 200.0, Lifetime.TIMED,
+        "resistance", "add", 130.0, Lifetime.TIMED,
         "ability:champ_coral_colossus.invuln",
         expires_at_tick=ctx.current_tick + 300,
     ))
@@ -842,7 +843,7 @@ def coral_colossus_active(ctx: Any, actor: Any, targets: list) -> None:
 ABILITY_META["champ_coral_colossus.active"] = AbilityMeta(
     name="Shell Bastion", kind="active",
     blurb="Withdraw into the shell for 3s, becoming nearly invulnerable.",
-    clauses=(Clause("Gain +200 Armor and +200 Resistance."),), tags=("defense", "buff"),
+    clauses=(Clause("Gain +130 Armor and +130 Resistance."),), tags=("defense", "buff"),
 )
 
 
@@ -944,27 +945,43 @@ ABILITY_META["champ_mirewarden_toad.active"] = AbilityMeta(
 )
 
 
-# Passive: slow aura — periodic re-application every 300 ticks
+# Passive: slow aura + on-hit INT. Mirewarden is an int/AUTO piece, so its autos
+# are the intended damage outlet but default to STR (which it has almost none of) —
+# it shipped with NO INT-on-auto routing, leaving its autos dead and the piece
+# under-converting at L3. Route INT into the autos (convention #5: */auto must
+# carry) while keeping the Guardian slow-aura identity.
+MIREWARDEN_TOAD_AUTO = ScalingTerm("bonus", 0.0, "intelligence*0.7")
+
+
 @register_passive("champ_mirewarden_toad.passive")
 def mirewarden_toad_passive(owner: Any) -> EffectBundle:
     state = {"last_tick": 0}
 
-    def hook(ctx: Any, event: Any) -> None:
+    def aura(ctx: Any, event: Any) -> None:
         if ctx.current_tick - state["last_tick"] >= 300:
             state["last_tick"] = ctx.current_tick
             enemies = enemies_in_radius(owner.position_q, owner.position_r, 2, owner, ctx)
             for e in enemies:
                 ctx.apply_status(e, "slow", duration_ticks=secs(3.5), stacks=1, source_id=owner.id)
 
+    def on_attack(ctx: Any, event: Any) -> None:
+        if event.attacker is not owner:
+            return
+        ctx.deal_damage(owner, event.target, MIREWARDEN_TOAD_AUTO.eval(owner), SourceTag.BASIC_ATTACK)
+
     return EffectBundle(hooks=[
-        Hook("on_tick", hook, scope=HookScope.PER_HIT),
+        Hook("on_tick", aura, scope=HookScope.PER_HIT),
+        Hook("on_attack_landed", on_attack, scope=HookScope.PER_HIT),
     ])
 
 
 ABILITY_META["champ_mirewarden_toad.passive"] = AbilityMeta(
     name="Mire Aura", kind="passive",
     blurb="Every 3s, slows all enemies within 2 hexes.",
-    clauses=(Clause("Applies 1 stack of slow for 3.5s."),), tags=("slow", "aoe"),
+    clauses=(
+        Clause("Applies 1 stack of slow for 3.5s."),
+        Clause(template="Auto-attacks deal {bonus} bonus magic damage.", terms=(MIREWARDEN_TOAD_AUTO,)),
+    ), tags=("slow", "aoe", "magic"),
 )
 
 
@@ -1014,7 +1031,7 @@ ABILITY_META["champ_glade_heron.passive"] = AbilityMeta(
 # plateau (stacks_eq ≈ apply_rate / frac) instead of running away — the build
 # scales with INT/AS/items, no hard cap. Coeff 0.8 lands L3 DPS at ~T8 peer level.
 # Refresh-replace (strip prior modifier first) so repeated casts never stack.
-GLADE_HERON_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.26")
+GLADE_HERON_HASTE = ScalingTerm("haste", 0.0, "intelligence*1.05")  # T.36c: 1.26→1.05, trim the AS→poison→burst loop (over vs T8L3 cohort)
 
 
 @register_active("champ_glade_heron.active")
@@ -1657,7 +1674,7 @@ ABILITY_META["champ_borealis.passive"] = AbilityMeta(
 # self-combo already compounds, and the stat_edge sweep flagged Borealis at
 # +0.15 wr_delta with the bump — reverting it keeps the freeze-synergy identity
 # while pulling the king back toward budget (T.36a balance pass).
-BOREALIS_DMG = ScalingTerm("damage", 80.0, "strength*0.96+intelligence*2.28")
+BOREALIS_DMG = ScalingTerm("damage", 80.0, "strength*0.96+intelligence*2.05")  # T.36c: INT 2.28→2.05, freeze-amp self-combo still over-budget
 _BOREALIS_FROZEN_AMP = 1.15
 
 
@@ -2161,13 +2178,17 @@ CLIFFEYRIE_EAGLE_BONUS = ScalingTerm("bonus", 0.0, "strength*1.2")
 
 @register_passive("champ_cliffeyrie_eagle.passive")
 def cliffeyrie_eagle_passive(owner: Any) -> EffectBundle:
-    state = {"first_hit": True}
+    # B-fix: Talon Dive used to fire only on the literal first hit of combat (dead
+    # after tick 1 → under-converts at L3), and the active's "reset" combo was never
+    # wired (separate closure). Replaced with a deterministic every-3rd-auto cadence
+    # (convention #14) so the talon recurs through the fight.
+    state = {"count": 0}
 
     def hook(ctx: Any, event: Any) -> None:
         if event.attacker is not owner:
             return
-        if state["first_hit"]:
-            state["first_hit"] = False
+        state["count"] += 1
+        if state["count"] % 3 == 0:
             ctx.deal_damage(owner, event.target, CLIFFEYRIE_EAGLE_BONUS.eval(owner),
                           SourceTag.BASIC_ATTACK, damage_type="physical")
 
@@ -2178,7 +2199,7 @@ def cliffeyrie_eagle_passive(owner: Any) -> EffectBundle:
 
 ABILITY_META["champ_cliffeyrie_eagle.passive"] = AbilityMeta(
     name="Talon Dive", kind="passive",
-    blurb="The first auto-attack deals {bonus} bonus physical damage.",
+    blurb="Every 3rd auto-attack deals {bonus} bonus physical damage.",
     terms=(CLIFFEYRIE_EAGLE_BONUS,), tags=("physical",),
 )
 
@@ -2188,7 +2209,7 @@ CLIFFEYRIE_EAGLE_DMG = ScalingTerm("damage", 80.0, "strength*0.9+intelligence*1.
 
 @register_active("champ_cliffeyrie_eagle.active")
 def cliffeyrie_eagle_active(ctx: Any, actor: Any, targets: list) -> None:
-    # Diving talon: STR damage + reset first-hit passive
+    # Diving talon: hybrid nuke on the primary target.
     target = primary_target(actor, ctx)
     if not target:
         return
@@ -2690,7 +2711,7 @@ ABILITY_META["champ_veilfang_wolf.passive"] = AbilityMeta(
 # Hybrid auto-int (T.29d): the on-auto INT/res-shred passive carries DPS; active
 # is lighter damage + a self attack-speed buff (value from autos + utility cast).
 VEILFANG_WOLF_DMG = ScalingTerm("damage", 50.0, "intelligence*2.47")
-VEILFANG_WOLF_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.42")
+VEILFANG_WOLF_HASTE = ScalingTerm("haste", 0.0, "intelligence*0.34")  # T.36c: 0.42→0.34, trim the auto-INT + self-haste loop (over at L3)
 _VEILFANG_WOLF_HASTE_SRC = "ability:champ_veilfang_wolf.active"
 
 
@@ -2801,7 +2822,7 @@ ABILITY_META["champ_mournhollow.passive"] = AbilityMeta(
 # (str/ability mage): the ability is the value, the STR coeff sits below the INT
 # baseline it replaces (free-auto subsidy; kit conventions #4). grief is BURN-
 # convention (STR·0.4 per 1s DOT tick over 4s, potency-driven).
-MOURNHOLLOW_DMG = ScalingTerm("damage", 80.0, "strength*0.8")
+MOURNHOLLOW_DMG = ScalingTerm("damage", 80.0, "strength*0.68")  # T.36c: 0.8→0.68, free-auto tempo + grief over-scales at L3
 MOURNHOLLOW_GRIEF = ScalingTerm("grief", 0.0, "strength*0.3")
 _MOURNHOLLOW_AOE_MULT = 0.6
 

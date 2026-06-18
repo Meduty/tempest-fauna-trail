@@ -687,8 +687,8 @@ class TestGladeHeronRework:
         ctx = _make_ctx(team=[heron], enemies=[target])
 
         ABILITY_REGISTRY["champ_glade_heron.active"](ctx, heron, [])
-        # base 100 + INT(200)*1.15 = 330
-        assert heron.stat("attack_speed") == 352.0
+        # base 100 + INT(200)*1.05 = 310 (T.36c: haste coeff 1.26→1.05)
+        assert heron.stat("attack_speed") == 310.0
 
     def test_active_refreshes_not_stacks(self):
         heron = self._heron(intelligence=200.0)
@@ -702,7 +702,7 @@ class TestGladeHeronRework:
         # Still a single haste modifier; AS not multiplied by recasts
         haste = [m for m in heron.modifiers if m.source_id == "ability:champ_glade_heron.haste"]
         assert len(haste) == 1
-        assert heron.stat("attack_speed") == 352.0
+        assert heron.stat("attack_speed") == 310.0
 
     def test_passive_applies_poison_per_auto(self):
         heron = self._heron()
