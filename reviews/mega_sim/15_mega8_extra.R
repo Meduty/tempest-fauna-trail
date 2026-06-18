@@ -110,4 +110,33 @@ for(k in 1:K){ cen <- colMeans(pc$x[CB$cluster==k,1:2,drop=FALSE])
        font=2, cex=0.8) }
 dev.off()
 
-cat("\n[extra] wrote m8_13/14/15 + tables/m8_health.csv, m8_archetypes.csv\n")
+# ---- (D) BOXPLOT FLIERS: named outliers under each boxplot ------------------
+# R's boxplot draws fliers (beyond 1.5*IQR per group) as unlabelled dots. These
+# are the pieces deviating most from their cohort = prime tuning candidates.
+# Recover them for all four report boxplots (m8_12 power x2, m8_09 role + tier).
+cat("\n=== (D) BOXPLOT FLIERS ===\n")
+flier_rows <- function(v, g){
+  out <- integer(0)
+  for(lvl in unique(g)){
+    idx <- which(g==lvl); st <- boxplot.stats(v[idx])$out
+    for(o in st){ out <- c(out, idx[which(v[idx]==o)[1]]) }
+  }
+  out
+}
+collect <- function(plot_id, panel, v, g){
+  fi <- flier_rows(v, g); if(!length(fi)) return(NULL)
+  data.frame(plot=plot_id, panel=panel, group=as.character(g[fi]),
+             name=CB$name[fi], tier=CB$tier[fi], level=CB$level[fi],
+             role=CB$role[fi], value=round(v[fi],4), win_rate=round(CB$win_rate[fi],3))
+}
+pbin <- factor(round(CB$expected_power,4))
+flo <- rbind(
+  collect("m8_12","win_rate~power", CB$win_rate, pbin),
+  collect("m8_12","wr_delta~power", CB$wr_delta, pbin),
+  collect("m8_09","wr_delta~role",  CB$wr_delta, CB$role),
+  collect("m8_09","wr_delta~tier",  CB$wr_delta, factor(CB$tier)))
+write.csv(flo, file.path(TABLES,"m8_boxplot_outliers.csv"), row.names=FALSE)
+cat(sprintf("wrote %d named fliers across 4 boxplots -> tables/m8_boxplot_outliers.csv\n", nrow(flo)))
+print(table(flo$plot, flo$panel))
+
+cat("\n[extra] wrote m8_13/14/15 + tables/m8_health.csv, m8_archetypes.csv, m8_boxplot_outliers.csv\n")
