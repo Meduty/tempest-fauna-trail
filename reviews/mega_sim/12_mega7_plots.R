@@ -207,4 +207,46 @@ if (!is.null(sp) && nrow(sp)) {
   dev.off()
 }
 
-cat("[plots] wrote m7_01..m7_11 to", PLOTS, "\n")
+# ---- 12. WIN-RATE & wr_delta vs QUANTIZED POWER (rowed boxplots) ------------
+# Default mega draws teams at random, so high-P pieces meet low-P pieces and
+# win_rate(P) SHOULD climb — that climb is the deterministic power model, not a
+# finding. Left panel overlays expected_wr (the power-threshold prediction) so
+# the boxes can be read against the curve they're supposed to track. Right panel
+# is wr_delta = win_rate - expected_wr: the residual after removing that curve,
+# so it should sit flat on 0 across every P bin if scaling is tuned.
+pdat <- CB[is.finite(CB$expected_power) & CB$expected_power > 0, ]
+# One box per DISTINCT expected_power. P = power(tier,level) = 1.5^((T-1)/2+(L-1)),
+# so tier and level COLLIDE onto shared powers (T3/L1 == T1/L2 == 2.0, etc): the
+# 30 (tier,level) combos map to only ~19 distinct P. That natural quantization is
+# the right x-axis — no arbitrary binning.
+pdat$pbin <- factor(round(pdat$expected_power, 4))
+lvls <- levels(pdat$pbin); at <- seq_along(lvls)
+# Per-bin mean of the model prediction + the bin's exact P, for the overlay.
+exp_by_bin <- tapply(pdat$expected_wr, pdat$pbin, mn)[lvls]
+blab <- sprintf("%.1f", as.numeric(lvls))
+
+png(px("m7_12_wr_vs_power.png"), 1250, 560, res=120)
+par(mfrow=c(1,2), mar=c(5,4,3,1))
+
+# Left: win_rate boxes + expected_wr curve
+boxplot(win_rate~pbin, data=pdat, at=at, col="#c6dbef", xaxt="n",
+        outpch=19, outcex=0.4, outcol="grey40",
+        xlab="expected_power (one box per distinct tier/level power)", ylab="win_rate",
+        main="win_rate vs power, with expected_wr curve (mega7 combined)")
+axis(1, at, blab, las=2, cex.axis=0.6)
+lines(at, exp_by_bin, col="#d62728", lwd=2, type="o", pch=19)
+abline(h=0.5, lty=3, col="grey50")
+legend("topleft", c("expected_wr (power model)","0.5 ref"),
+       col=c("#d62728","grey50"), lwd=2, lty=c(1,3), pch=c(19,NA), bty="n", cex=.8)
+
+# Right: wr_delta boxes — residual after removing the curve, want flat on 0
+boxplot(wr_delta~pbin, data=pdat, at=at, col="#9ecae1", xaxt="n",
+        outpch=19, outcex=0.4, outcol="grey40",
+        xlab="expected_power (one box per distinct tier/level power)",
+        ylab="wr_delta (residual)",
+        main="wr_delta vs power (residual after expected_wr)")
+axis(1, at, blab, las=2, cex.axis=0.6)
+abline(h=0, lty=2, col="#d62728", lwd=2)
+dev.off()
+
+cat("[plots] wrote m7_01..m7_12 to", PLOTS, "\n")
