@@ -355,27 +355,42 @@ class Stage:
 def run_stage(
     stage: Stage,
     pool: ProcessPoolExecutor | None,
+    overall: tqdm | None = None,
 ) -> list[MatchupResult]:
     """Resolve every config in a stage with a tqdm bar.
 
     If pool is None, runs serial (no progress overhead on small stages).
+    The inner per-stage bar (position 1) tracks the current stage @ weather;
+    when ``overall`` is passed it is the outer total-fights bar (position 0)
+    and each resolved fight bumps it too — a stacked two-bar display.
     """
     n = len(stage.configs)
     if n == 0:
         return []
 
     label = f"{stage.name} @ {stage.weather.value}"
-    if pool is None:
-        results: list[MatchupResult] = []
-        for cfg in tqdm(stage.configs, desc=label, total=n, unit="fight", smoothing=0.05):
-            results.append(run_matchup(cfg))
-        return results
-
-    # Submit all configs and stream results back as workers finish.
-    results = []
-    futures = {pool.submit(run_matchup, cfg): cfg for cfg in stage.configs}
-    for fut in tqdm(as_completed(futures), desc=label, total=n, unit="fight", smoothing=0.05):
-        results.append(fut.result())
+    # Inner bar sits below the outer total bar and clears itself on completion
+    # so only the persistent total bar remains between stages.
+    inner = tqdm(total=n, desc=label, unit="fight", smoothing=0.05,
+                 position=1, leave=False)
+    results: list[MatchupResult] = []
+    try:
+        if pool is None:
+            for cfg in stage.configs:
+                results.append(run_matchup(cfg))
+                inner.update(1)
+                if overall is not None:
+                    overall.update(1)
+        else:
+            # Submit all configs and stream results back as workers finish.
+            futures = {pool.submit(run_matchup, cfg): cfg for cfg in stage.configs}
+            for fut in as_completed(futures):
+                results.append(fut.result())
+                inner.update(1)
+                if overall is not None:
+                    overall.update(1)
+    finally:
+        inner.close()
     return results
 
 
@@ -581,6 +596,10 @@ def main(argv: list[str] | None = None) -> int:
     # file. Fed incrementally so we never hold all results at once.
     combined_acc = StatsAccumulator()
 
+    # Outer total-fights bar (position 0) persists across every stage/weather;
+    # run_stage draws its per-stage bar just beneath it (position 1).
+    overall = tqdm(total=total, desc="ALL fights", unit="fight",
+                   smoothing=0.05, position=0, leave=True)
     try:
         for name, group in by_name.items():
             # per-piece win rate keyed by weather, accumulated across the group
@@ -588,11 +607,12 @@ def main(argv: list[str] | None = None) -> int:
             pending: list[tuple[Stage, dict[str, float], dict[str, PieceStats]]] = []
             for stage in group:
                 t_stage = time.monotonic()
-                results = run_stage(stage, pool)
+                results = run_stage(stage, pool, overall)
                 elapsed = time.monotonic() - t_stage
                 rate = len(results) / elapsed if elapsed > 0 else 0.0
-                print(f"[mega] {stage.name} @ {stage.weather.value}: "
-                      f"{len(results):,} battles in {elapsed:.1f}s ({rate:.0f}/s)")
+                # tqdm.write keeps the stacked bars intact instead of print().
+                tqdm.write(f"[mega] {stage.name} @ {stage.weather.value}: "
+                           f"{len(results):,} battles in {elapsed:.1f}s ({rate:.0f}/s)")
                 # Write raw results immediately and free them; keep only the
                 # small per-piece score dicts in memory across the weather loop.
                 wr, stats = write_stage_results(stage, results, args.out)
@@ -609,6 +629,7 @@ def main(argv: list[str] | None = None) -> int:
                 # Per-stage console summary (tier-bucketed)
                 print_summary(win_rates=wr, stats=stats)
     finally:
+        overall.close()
         if pool is not None:
             pool.shutdown(wait=True)
 
