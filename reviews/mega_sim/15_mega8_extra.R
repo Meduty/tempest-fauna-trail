@@ -125,9 +125,14 @@ flier_rows <- function(v, g){
 }
 collect <- function(plot_id, panel, v, g){
   fi <- flier_rows(v, g); if(!length(fi)) return(NULL)
+  # cohort (box-group) min/mean/max so a reader can gauge how extreme the flier is
+  cmn <- cmean <- cmx <- numeric(length(fi))
+  for(j in seq_along(fi)){ gv <- v[g==g[fi[j]]]
+    cmn[j]<-min(gv); cmean[j]<-mean(gv); cmx[j]<-max(gv) }
   data.frame(plot=plot_id, panel=panel, group=as.character(g[fi]),
              name=CB$name[fi], tier=CB$tier[fi], level=CB$level[fi],
-             role=CB$role[fi], value=round(v[fi],4), win_rate=round(CB$win_rate[fi],3))
+             role=CB$role[fi], value=round(v[fi],4), win_rate=round(CB$win_rate[fi],3),
+             cohort_min=round(cmn,4), cohort_mean=round(cmean,4), cohort_max=round(cmx,4))
 }
 pbin <- factor(round(CB$expected_power,4))
 flo <- rbind(
@@ -139,4 +144,39 @@ write.csv(flo, file.path(TABLES,"m8_boxplot_outliers.csv"), row.names=FALSE)
 cat(sprintf("wrote %d named fliers across 4 boxplots -> tables/m8_boxplot_outliers.csv\n", nrow(flo)))
 print(table(flo$plot, flo$panel))
 
-cat("\n[extra] wrote m8_13/14/15 + tables/m8_health.csv, m8_archetypes.csv, m8_boxplot_outliers.csv\n")
+# ---- (E) PROBLEM PIECES: cross-reference of multi-list outliers -------------
+# A piece flagged on ONE list could be sampling noise or a benign extreme. A
+# piece on SEVERAL lists with a consistent direction is a robust tuning target.
+# Six membership lists per piece (name+tier+level):
+#   WP win_rate~power flier   DP wr_delta~power flier
+#   DR wr_delta~role flier    DT wr_delta~tier flier
+#   AB absolute |wr_delta|>0.10 (the band-breakers)   SP spread excess_sd>0
+cat("\n=== (E) PROBLEM PIECES ===\n")
+pid <- function(d) sprintf("%s|T%d|L%d", d$name, d$tier, d$level)
+CB$pid <- pid(CB)
+mem <- data.frame(pid=CB$pid, name=CB$name, tier=CB$tier, level=CB$level,
+                  role=CB$role, wr_delta=CB$wr_delta, win_rate=CB$win_rate)
+flo$pid <- sprintf("%s|T%d|L%d", flo$name, flo$tier, flo$level)
+mem$WP <- mem$pid %in% flo$pid[flo$panel=="win_rate~power"]
+mem$DP <- mem$pid %in% flo$pid[flo$panel=="wr_delta~power"]
+mem$DR <- mem$pid %in% flo$pid[flo$panel=="wr_delta~role"]
+mem$DT <- mem$pid %in% flo$pid[flo$panel=="wr_delta~tier"]
+mem$AB <- abs(CB$wr_delta) > 0.10                      # band-breakers
+sp <- tryCatch(read.csv(file.path(TABLES,"m8_spread_outliers.csv"),
+               stringsAsFactors=FALSE), error=function(e) NULL)
+if(!is.null(sp)){ sp <- sp[sp$excess_sd>0,]
+  mem$SP <- paste(CB$name,CB$tier) %in% paste(sp$name, sp$tier) }
+mem$n_lists <- rowSums(mem[,c("WP","DP","DR","DT","AB","SP")])
+mem$lists <- apply(mem[,c("WP","DP","DR","DT","AB","SP")], 1,
+  function(r) paste(c("WP","DP","DR","DT","AB","SP")[r], collapse="+"))
+mem$dir <- ifelse(mem$wr_delta<0,"UNDER","OVER")
+prob <- mem[mem$n_lists>=2,]
+prob <- prob[order(-prob$n_lists, prob$wr_delta),
+             c("name","tier","level","role","wr_delta","win_rate","n_lists","lists","dir")]
+prob$wr_delta <- round(prob$wr_delta,4); prob$win_rate <- round(prob$win_rate,3)
+write.csv(prob, file.path(TABLES,"m8_problem_pieces.csv"), row.names=FALSE)
+cat(sprintf("%d pieces on >=2 outlier lists -> tables/m8_problem_pieces.csv\n", nrow(prob)))
+print(prob, row.names=FALSE)
+
+cat("\n[extra] wrote m8_13/14/15 + tables/m8_health.csv, m8_archetypes.csv, ",
+    "m8_boxplot_outliers.csv, m8_problem_pieces.csv\n", sep="")

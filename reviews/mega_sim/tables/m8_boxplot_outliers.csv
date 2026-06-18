@@ -1,51 +1,51 @@
-"plot","panel","group","name","tier","level","role","value","win_rate"
-"m8_12","win_rate~power","2.5198","Frostplate Tortoise",5,1,"tank",0.3525,0.352
-"m8_12","win_rate~power","2.5198","Veldt Pronghorn",2,2,"tank",0.5115,0.511
-"m8_12","win_rate~power","8","Borealis, the Pale Aurora",10,1,"mage",0.6128,0.613
-"m8_12","win_rate~power","8","Springfrog",1,3,"support",0.6418,0.642
-"m8_12","win_rate~power","16","Steam Engineer",4,3,"mage",0.3768,0.377
-"m8_12","win_rate~power","3.1748","Hollowed Wisp",3,2,"assassin",0.3563,0.356
-"m8_12","win_rate~power","3.1748","Iron-Collared Hound",3,2,"swashbuckler",0.4985,0.498
-"m8_12","win_rate~power","4","Drowned Siren",4,2,"mage",0.3707,0.371
-"m8_12","win_rate~power","32","Marshghast Boar",7,3,"bruiser",0.5712,0.571
-"m8_12","win_rate~power","32","Mirewarden Toad",7,3,"tank",0.5646,0.565
-"m8_12","win_rate~power","32","Thunder Bull",7,3,"support",0.7003,0.7
-"m8_12","win_rate~power","40.3175","Glade Heron",8,3,"marksman",0.8334,0.833
-"m8_12","wr_delta~power","5.0397","Coral Colossus",5,2,"tank",0.0505,0.402
-"m8_12","wr_delta~power","5.0397","Caged Banshee",5,2,"support",0.071,0.478
-"m8_12","wr_delta~power","5.0397","Hierarch",8,1,"support",0.0595,0.444
-"m8_12","wr_delta~power","8","Borealis, the Pale Aurora",10,1,"mage",0.1142,0.613
-"m8_12","wr_delta~power","8","Springfrog",1,3,"support",0.1402,0.642
-"m8_12","wr_delta~power","12.6992","Ember Salamander",3,3,"mage",0.0775,0.599
-"m8_12","wr_delta~power","12.6992","Arcanist",9,2,"mage",0.0907,0.64
-"m8_12","wr_delta~power","2","Springfrog",1,2,"support",0.1023,0.481
-"m8_12","wr_delta~power","2","Conscript",1,2,"swashbuckler",-0.0743,0.373
-"m8_12","wr_delta~power","10.0794","Veilfang Wolf",8,2,"swashbuckler",0.0642,0.525
-"m8_12","wr_delta~power","10.0794","Powder Sapper",2,3,"support",-0.0461,0.48
-"m8_09","wr_delta~role","tank","Mirewarden Toad",7,3,"tank",-0.1051,0.565
-"m8_09","wr_delta~role","tank","Inquisitor",6,3,"tank",-0.0756,0.574
-"m8_09","wr_delta~role","tank","Maw of the Drowned",9,3,"tank",-0.1312,0.642
-"m8_09","wr_delta~role","tank","Stone Warden",10,3,"tank",-0.1236,0.728
-"m8_09","wr_delta~role","spellblade","Aurion, the First Dawn",10,3,"spellblade",-0.1506,0.753
-"m8_09","wr_delta~role","mage","Steam Engineer",4,3,"mage",-0.1139,0.377
-"m8_09","wr_delta~role","support","Coppercrest Stork",4,3,"support",-0.0812,0.425
-"m8_09","wr_delta~role","support","Hoarfrost Owl",4,3,"support",-0.0649,0.511
-"m8_09","wr_delta~role","support","Lostlight Wisp",1,3,"support",0.0943,0.559
-"m8_09","wr_delta~role","support","Springfrog",1,2,"support",0.1023,0.481
-"m8_09","wr_delta~role","support","Springfrog",1,3,"support",0.1402,0.642
-"m8_09","wr_delta~role","support","Hierarch",8,3,"support",-0.1283,0.618
-"m8_09","wr_delta~role","marksman","Umbra, the Mountain's Shadow",10,1,"marksman",0.0771,0.484
-"m8_09","wr_delta~role","marksman","Voltaic Diviner",5,3,"marksman",-0.0679,0.527
-"m8_09","wr_delta~role","bruiser","Marshghast Boar",7,3,"bruiser",-0.0931,0.571
-"m8_09","wr_delta~role","bruiser","Dredge-Hulk",7,3,"bruiser",-0.0977,0.611
-"m8_09","wr_delta~tier","10","Aerion, the Skybreaker",10,3,"spellblade",-0.0882,0.759
-"m8_09","wr_delta~tier","10","Aurion, the First Dawn",10,3,"spellblade",-0.1506,0.753
-"m8_09","wr_delta~tier","10","Stone Warden",10,3,"tank",-0.1236,0.728
-"m8_09","wr_delta~tier","3","Ember Salamander",3,3,"mage",0.0775,0.599
-"m8_09","wr_delta~tier","9","Cliffeyrie Eagle",9,3,"spellslinger",-0.0973,0.719
-"m8_09","wr_delta~tier","9","Maw of the Drowned",9,3,"tank",-0.1312,0.642
-"m8_09","wr_delta~tier","4","Steam Engineer",4,3,"mage",-0.1139,0.377
-"m8_09","wr_delta~tier","1","Springfrog",1,3,"support",0.1402,0.642
-"m8_09","wr_delta~tier","7","Mirewarden Toad",7,3,"tank",-0.1051,0.565
-"m8_09","wr_delta~tier","7","Dredge-Hulk",7,3,"bruiser",-0.0977,0.611
-"m8_09","wr_delta~tier","8","Hierarch",8,3,"support",-0.1283,0.618
+"plot","panel","group","name","tier","level","role","value","win_rate","cohort_min","cohort_mean","cohort_max"
+"m8_12","win_rate~power","2.5198","Frostplate Tortoise",5,1,"tank",0.3525,0.352,0.3525,0.4073,0.5115
+"m8_12","win_rate~power","2.5198","Veldt Pronghorn",2,2,"tank",0.5115,0.511,0.3525,0.4073,0.5115
+"m8_12","win_rate~power","8","Borealis, the Pale Aurora",10,1,"mage",0.6128,0.613,0.4047,0.4943,0.6418
+"m8_12","win_rate~power","8","Springfrog",1,3,"support",0.6418,0.642,0.4047,0.4943,0.6418
+"m8_12","win_rate~power","16","Steam Engineer",4,3,"mage",0.3768,0.377,0.3768,0.5361,0.6481
+"m8_12","win_rate~power","3.1748","Hollowed Wisp",3,2,"assassin",0.3563,0.356,0.3563,0.421,0.4985
+"m8_12","win_rate~power","3.1748","Iron-Collared Hound",3,2,"swashbuckler",0.4985,0.498,0.3563,0.421,0.4985
+"m8_12","win_rate~power","4","Drowned Siren",4,2,"mage",0.3707,0.371,0.3707,0.4364,0.4821
+"m8_12","win_rate~power","32","Marshghast Boar",7,3,"bruiser",0.5712,0.571,0.5646,0.6262,0.7003
+"m8_12","win_rate~power","32","Mirewarden Toad",7,3,"tank",0.5646,0.565,0.5646,0.6262,0.7003
+"m8_12","win_rate~power","32","Thunder Bull",7,3,"support",0.7003,0.7,0.5646,0.6262,0.7003
+"m8_12","win_rate~power","40.3175","Glade Heron",8,3,"marksman",0.8334,0.833,0.6184,0.7203,0.8334
+"m8_12","wr_delta~power","5.0397","Coral Colossus",5,2,"tank",0.0505,0.402,-0.0413,0.0032,0.071
+"m8_12","wr_delta~power","5.0397","Caged Banshee",5,2,"support",0.071,0.478,-0.0413,0.0032,0.071
+"m8_12","wr_delta~power","5.0397","Hierarch",8,1,"support",0.0595,0.444,-0.0413,0.0032,0.071
+"m8_12","wr_delta~power","8","Borealis, the Pale Aurora",10,1,"mage",0.1142,0.613,-0.0583,0.0207,0.1402
+"m8_12","wr_delta~power","8","Springfrog",1,3,"support",0.1402,0.642,-0.0583,0.0207,0.1402
+"m8_12","wr_delta~power","12.6992","Ember Salamander",3,3,"mage",0.0775,0.599,-0.0448,0.0116,0.0907
+"m8_12","wr_delta~power","12.6992","Arcanist",9,2,"mage",0.0907,0.64,-0.0448,0.0116,0.0907
+"m8_12","wr_delta~power","2","Springfrog",1,2,"support",0.1023,0.481,-0.0743,0.0076,0.1023
+"m8_12","wr_delta~power","2","Conscript",1,2,"swashbuckler",-0.0743,0.373,-0.0743,0.0076,0.1023
+"m8_12","wr_delta~power","10.0794","Veilfang Wolf",8,2,"swashbuckler",0.0642,0.525,-0.0461,0.0099,0.0642
+"m8_12","wr_delta~power","10.0794","Powder Sapper",2,3,"support",-0.0461,0.48,-0.0461,0.0099,0.0642
+"m8_09","wr_delta~role","tank","Mirewarden Toad",7,3,"tank",-0.1051,0.565,-0.1312,-0.0058,0.0551
+"m8_09","wr_delta~role","tank","Inquisitor",6,3,"tank",-0.0756,0.574,-0.1312,-0.0058,0.0551
+"m8_09","wr_delta~role","tank","Maw of the Drowned",9,3,"tank",-0.1312,0.642,-0.1312,-0.0058,0.0551
+"m8_09","wr_delta~role","tank","Stone Warden",10,3,"tank",-0.1236,0.728,-0.1312,-0.0058,0.0551
+"m8_09","wr_delta~role","spellblade","Aurion, the First Dawn",10,3,"spellblade",-0.1506,0.753,-0.1506,-0.0087,0.0624
+"m8_09","wr_delta~role","mage","Steam Engineer",4,3,"mage",-0.1139,0.377,-0.1139,0.0154,0.1142
+"m8_09","wr_delta~role","support","Coppercrest Stork",4,3,"support",-0.0812,0.425,-0.1283,0.0084,0.1402
+"m8_09","wr_delta~role","support","Hoarfrost Owl",4,3,"support",-0.0649,0.511,-0.1283,0.0084,0.1402
+"m8_09","wr_delta~role","support","Lostlight Wisp",1,3,"support",0.0943,0.559,-0.1283,0.0084,0.1402
+"m8_09","wr_delta~role","support","Springfrog",1,2,"support",0.1023,0.481,-0.1283,0.0084,0.1402
+"m8_09","wr_delta~role","support","Springfrog",1,3,"support",0.1402,0.642,-0.1283,0.0084,0.1402
+"m8_09","wr_delta~role","support","Hierarch",8,3,"support",-0.1283,0.618,-0.1283,0.0084,0.1402
+"m8_09","wr_delta~role","marksman","Umbra, the Mountain's Shadow",10,1,"marksman",0.0771,0.484,-0.0679,0.0091,0.0771
+"m8_09","wr_delta~role","marksman","Voltaic Diviner",5,3,"marksman",-0.0679,0.527,-0.0679,0.0091,0.0771
+"m8_09","wr_delta~role","bruiser","Marshghast Boar",7,3,"bruiser",-0.0931,0.571,-0.0977,-0.0111,0.0345
+"m8_09","wr_delta~role","bruiser","Dredge-Hulk",7,3,"bruiser",-0.0977,0.611,-0.0977,-0.0111,0.0345
+"m8_09","wr_delta~tier","10","Aerion, the Skybreaker",10,3,"spellblade",-0.0882,0.759,-0.1506,0.0137,0.1142
+"m8_09","wr_delta~tier","10","Aurion, the First Dawn",10,3,"spellblade",-0.1506,0.753,-0.1506,0.0137,0.1142
+"m8_09","wr_delta~tier","10","Stone Warden",10,3,"tank",-0.1236,0.728,-0.1506,0.0137,0.1142
+"m8_09","wr_delta~tier","3","Ember Salamander",3,3,"mage",0.0775,0.599,-0.0448,0.0045,0.0775
+"m8_09","wr_delta~tier","9","Cliffeyrie Eagle",9,3,"spellslinger",-0.0973,0.719,-0.1312,0.0016,0.0907
+"m8_09","wr_delta~tier","9","Maw of the Drowned",9,3,"tank",-0.1312,0.642,-0.1312,0.0016,0.0907
+"m8_09","wr_delta~tier","4","Steam Engineer",4,3,"mage",-0.1139,0.377,-0.1139,-0.0129,0.0432
+"m8_09","wr_delta~tier","1","Springfrog",1,3,"support",0.1402,0.642,-0.0743,0.0081,0.1402
+"m8_09","wr_delta~tier","7","Mirewarden Toad",7,3,"tank",-0.1051,0.565,-0.1051,-0.012,0.0624
+"m8_09","wr_delta~tier","7","Dredge-Hulk",7,3,"bruiser",-0.0977,0.611,-0.1051,-0.012,0.0624
+"m8_09","wr_delta~tier","8","Hierarch",8,3,"support",-0.1283,0.618,-0.1283,0.0013,0.0642
