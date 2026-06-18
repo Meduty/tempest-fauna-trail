@@ -1,0 +1,31 @@
+"name","affinity","role","tier","level","win_rate","wr_delta","wd_z","n_matches"
+"Aurion, the First Dawn","clear","spellblade",10,3,0.7526,-0.1506,-2.81274025669214,2466
+"Springfrog","rain","support",1,3,0.6418,0.1402,2.9111516948104,1722
+"Maw of the Drowned","rain","tank",9,3,0.6419,-0.1312,-2.95371809330266,1932
+"Hierarch","clear","support",8,3,0.6184,-0.1283,-2.95780665681083,1968
+"Stone Warden","cloudy","tank",10,3,0.7282,-0.1236,-2.35052833285363,2712
+"Borealis, the Pale Aurora","snow","mage",10,1,0.6128,0.1142,1.72036038895365,1884
+"Steam Engineer","clear","mage",4,3,0.3768,-0.1139,-2.99522599866988,2490
+"Mirewarden Toad","rain","tank",7,3,0.5646,-0.1051,-2.47119549823394,2340
+"Springfrog","rain","support",1,2,0.4806,0.1023,2.07614173593063,1980
+"Mournhollow, the Pale Stag","mist","mage",10,2,0.6481,0.1006,1.48754253102018,2256
+"Battlemage","clear","spellslinger",5,3,0.4938,-0.0977,-2.77787720927848,3198
+"Dredge-Hulk","rain","bruiser",7,3,0.6114,-0.0977,-2.27485505643504,2556
+"Cliffeyrie Eagle","cloudy","spellslinger",9,3,0.7193,-0.0973,-2.19967559563801,1722
+"Lostlight Wisp","mist","support",1,3,0.5594,0.0943,1.89988633563938,2376
+"Marshghast Boar","mist","bruiser",7,3,0.5712,-0.0931,-2.15280559261411,2694
+"Arcanist","clear","mage",9,2,0.6404,0.0907,1.9820350108798,2214
+"Aerion, the Skybreaker","thunder","spellblade",10,3,0.759,-0.0882,-1.74451714382093,2016
+"Nerei, the Floodmother","rain","mage",10,2,0.6268,0.0878,1.26841984120044,1560
+"Mournhollow, the Pale Stag","mist","mage",10,1,0.5362,0.0868,1.25130088105827,2484
+"Iceclaw Lynx","snow","swashbuckler",6,3,0.7178,0.0825,2.37023123053609,2358
+"Coppercrest Stork","thunder","support",4,3,0.4253,-0.0812,-2.02534732969897,2670
+"Storm Eagle","thunder","spellslinger",9,3,0.8326,0.0793,1.72846319750585,2088
+"Drowned Siren","rain","mage",4,3,0.4598,-0.0789,-1.95712956399154,1944
+"Ember Salamander","clear","mage",3,3,0.5993,0.0775,2.87453408843397,2034
+"Voltmane Jackal","thunder","spellslinger",7,3,0.6314,-0.0773,-1.73359221688133,2604
+"Umbra, the Mountain's Shadow","cloudy","marksman",10,1,0.4837,0.0771,1.08524696767926,2064
+"Borealis, the Pale Aurora","snow","mage",10,2,0.5988,0.0761,1.06812800753709,2286
+"Inquisitor","clear","tank",6,3,0.5738,-0.0756,-2.28484401850436,2046
+"Spymaster","clear","assassin",8,3,0.6901,-0.0755,-1.75253320534605,2394
+"Quarried Behemoth","cloudy","bruiser",9,3,0.6911,-0.0746,-1.69475628304251,2184

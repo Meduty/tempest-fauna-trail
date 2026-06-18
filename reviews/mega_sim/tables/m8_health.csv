@@ -1,0 +1,7 @@
+"metric","value"
+"within +/-0.05 (tuned)","84.2%"
+"within +/-0.10 (acceptable)","97.2%"
+"beyond +/-0.10 (outlier)","2.8% (10 pieces)"
+"sd(wr_delta)","0.039"
+"sd(win_rate)","0.114"
+"Gini(win_rate)","0.121"
