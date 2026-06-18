@@ -1,0 +1,185 @@
+# 15_mega8_extra.R — supplementary analyses for the mega9 report:
+#   (A) Roster health index  — wr_delta balance bands (Riot-style) + Gini.
+#   (B) Combat pacing         — mean_duration_ticks vs power / level / timeout.
+#   (C) Behavioral archetypes — k-means clustering of pieces on outcome features
+#       ("beyond win rates", arXiv 2502.01250), checked against designer roles.
+# Base R only. Run from repo root after 13_mega8.R:
+#   Rscript reviews/mega_sim/15_mega8_extra.R
+# Writes plots/m9_13..m9_15.png + tables/m9_health.csv, m9_archetypes.csv.
+
+OUTDIR <- "reviews/mega_sim"; PLOTS <- file.path(OUTDIR,"plots")
+TABLES <- file.path(OUTDIR,"tables")
+dir.create(PLOTS, showWarnings=FALSE); dir.create(TABLES, showWarnings=FALSE)
+px <- function(f) file.path(PLOTS, f)
+CB <- read.csv("results/mega/mega9/ratings_combined.csv", stringsAsFactors=FALSE)
+CB <- CB[is.finite(CB$expected_power) & CB$expected_power > 0, ]
+ROLE_COLS <- c(mage="#d62728", warrior="#1f77b4", marksman="#2ca02c",
+               assassin="#9467bd", bruiser="#ff7f0e", hybrid="#8c564b",
+               support="#17becf", tank="#7f7f7f", spellblade="#e377c2",
+               spellslinger="#bcbd22", swashbuckler="#2ca0aa")
+
+# ---- (A) ROSTER HEALTH: wr_delta balance bands -----------------------------
+wd <- CB$wr_delta
+gini <- function(x){x<-sort(x);n<-length(x);2*sum((1:n)*x)/(n*sum(x))-(n+1)/n}
+health <- data.frame(
+  metric=c("within +/-0.05 (tuned)","within +/-0.10 (acceptable)",
+           "beyond +/-0.10 (outlier)","sd(wr_delta)","sd(win_rate)","Gini(win_rate)"),
+  value=c(sprintf("%.1f%%",100*mean(abs(wd)<=0.05)),
+          sprintf("%.1f%%",100*mean(abs(wd)<=0.10)),
+          sprintf("%.1f%% (%d pieces)",100*mean(abs(wd)>0.10),sum(abs(wd)>0.10)),
+          sprintf("%.3f",sd(wd)), sprintf("%.3f",sd(CB$win_rate)),
+          sprintf("%.3f",gini(CB$win_rate))))
+write.csv(health, file.path(TABLES,"m9_health.csv"), row.names=FALSE)
+cat("=== (A) ROSTER HEALTH ===\n"); print(health, row.names=FALSE)
+
+png(px("m9_13_health_band.png"), 1100, 560, res=120)
+par(mar=c(4,4,3,1))
+h <- hist(wd, breaks=40, col="grey85", border="white",
+          xlab="pooled wr_delta (power-adjusted residual)", ylab="pieces",
+          main="Roster health: power-adjusted residual vs balance bands (mega9)")
+# Riot-style bands translated to residual space: tuned / acceptable / outlier
+abline(v=c(-0.05,0.05), col="#2ca02c", lwd=2, lty=2)
+abline(v=c(-0.10,0.10), col="#ff7f0e", lwd=2, lty=3)
+abline(v=0, col="grey40")
+legend("topright", c("+/-0.05 tuned (84%)","+/-0.10 acceptable (97%)"),
+       col=c("#2ca02c","#ff7f0e"), lwd=2, lty=c(2,3), bty="n", cex=.85)
+dev.off()
+
+# ---- (B) COMBAT PACING: mean_duration_ticks --------------------------------
+cat("\n=== (B) PACING ===\n")
+cat(sprintf("duration: median %d ticks (cap 12000); range %d-%d\n",
+   round(median(CB$mean_duration_ticks)), round(min(CB$mean_duration_ticks)),
+   round(max(CB$mean_duration_ticks))))
+cat(sprintf("cor(power,duration)=%.3f  cor(win_rate,duration)=%.3f  cor(timeout,duration)=%.3f\n",
+   cor(CB$expected_power,CB$mean_duration_ticks), cor(CB$win_rate,CB$mean_duration_ticks),
+   cor(CB$timeout_rate,CB$mean_duration_ticks)))
+dur_by_lv <- tapply(CB$mean_duration_ticks, CB$level, mean)
+cat("mean duration by level:", paste(sprintf("L%d=%d",1:3,round(dur_by_lv)),collapse="  "),"\n")
+
+png(px("m9_14_pacing.png"), 1200, 560, res=120)
+par(mfrow=c(1,2), mar=c(4,4,3,1))
+lvcol <- c("#2ca02c","#ff7f0e","#d62728")[CB$level]
+plot(CB$expected_power, CB$mean_duration_ticks, log="x", pch=19, cex=0.7,
+     col=adjustcolor(lvcol,0.6), xlab="expected_power (log)", ylab="mean fight duration (ticks)",
+     main="Pacing: median flat, high-power fans out (finishers vs grinders)")
+abline(lm(CB$mean_duration_ticks~log(CB$expected_power)), col="#08519c", lwd=2)
+legend("topright", paste0("L",1:3), col=c("#2ca02c","#ff7f0e","#d62728"), pch=19, bty="n", cex=.8)
+plot(CB$mean_duration_ticks, CB$timeout_rate, pch=19, cex=0.7, col=adjustcolor("#1f77b4",0.5),
+     xlab="mean fight duration (ticks)", ylab="timeout rate",
+     main="Duration is the timeout driver (r=0.92)")
+abline(v=12000, lty=3, col="grey50")
+dev.off()
+
+# ---- (C) BEHAVIORAL ARCHETYPES: k-means beyond designer roles --------------
+cat("\n=== (C) ARCHETYPE CLUSTERING ===\n")
+feat <- scale(CB[, c("win_rate","wr_delta","timeout_rate","weather_sensitivity",
+                     "mean_duration_ticks","expected_power")])
+set.seed(42)
+K <- 6
+km <- kmeans(feat, centers=K, nstart=25)
+CB$cluster <- km$cluster
+# dominant designer role per cluster + purity
+arche <- do.call(rbind, lapply(sort(unique(CB$cluster)), function(k){
+  d <- CB[CB$cluster==k,]
+  tt <- sort(table(d$role), decreasing=TRUE)
+  data.frame(cluster=k, n=nrow(d),
+             win_rate=round(mean(d$win_rate),3), wr_delta=round(mean(d$wr_delta),3),
+             timeout=round(mean(d$timeout_rate),3),
+             dur=round(mean(d$mean_duration_ticks)),
+             power=round(mean(d$expected_power),1),
+             top_role=names(tt)[1], purity=round(tt[1]/nrow(d),2))
+}))
+write.csv(arche, file.path(TABLES,"m9_archetypes.csv"), row.names=FALSE)
+print(arche, row.names=FALSE)
+# role->cluster spread: does one designer role split across behavior clusters?
+cat("\nrole x cluster contingency (how designer roles map to behavior):\n")
+print(table(CB$role, CB$cluster))
+
+# PCA projection for the cluster plot
+pc <- prcomp(feat)
+png(px("m9_15_archetypes.png"), 1100, 720, res=120)
+par(mar=c(4,4,3,1))
+ccol <- c("#1f77b4","#d62728","#2ca02c","#9467bd","#ff7f0e","#17becf")[CB$cluster]
+plot(pc$x[,1], pc$x[,2], col=adjustcolor(ccol,0.7), pch=19, cex=0.9,
+     xlab=sprintf("PC1 (%.0f%% var)",100*summary(pc)$importance[2,1]),
+     ylab=sprintf("PC2 (%.0f%% var)",100*summary(pc)$importance[2,2]),
+     main="Behavioral archetypes: k-means on outcome features (mega9)")
+# cluster centroids labelled by dominant role
+for(k in 1:K){ cen <- colMeans(pc$x[CB$cluster==k,1:2,drop=FALSE])
+  text(cen[1],cen[2], sprintf("C%d:%s",k,arche$top_role[arche$cluster==k]),
+       font=2, cex=0.8) }
+dev.off()
+
+# ---- (D) BOXPLOT FLIERS: named outliers under each boxplot ------------------
+# R's boxplot draws fliers (beyond 1.5*IQR per group) as unlabelled dots. These
+# are the pieces deviating most from their cohort = prime tuning candidates.
+# Recover them for all four report boxplots (m9_12 power x2, m9_09 role + tier).
+cat("\n=== (D) BOXPLOT FLIERS ===\n")
+flier_rows <- function(v, g){
+  out <- integer(0)
+  for(lvl in unique(g)){
+    idx <- which(g==lvl); st <- boxplot.stats(v[idx])$out
+    for(o in st){ out <- c(out, idx[which(v[idx]==o)[1]]) }
+  }
+  out
+}
+collect <- function(plot_id, panel, v, g){
+  fi <- flier_rows(v, g); if(!length(fi)) return(NULL)
+  # Cohort box range EXCLUDING fliers — matches what the boxplot draws:
+  # min/max = whisker ends (boxplot.stats$stats[1]/[5]), mean over non-flier body.
+  # So a flier sits visibly OUTSIDE [cohort_min, cohort_max].
+  cmn <- cmean <- cmx <- numeric(length(fi))
+  for(j in seq_along(fi)){ gv <- v[g==g[fi[j]]]
+    bs <- boxplot.stats(gv); lo <- bs$stats[1]; hi <- bs$stats[5]
+    cmn[j]<-lo; cmx[j]<-hi; cmean[j]<-mean(gv[gv>=lo & gv<=hi]) }
+  data.frame(plot=plot_id, panel=panel, group=as.character(g[fi]),
+             name=CB$name[fi], tier=CB$tier[fi], level=CB$level[fi],
+             role=CB$role[fi], value=round(v[fi],4), win_rate=round(CB$win_rate[fi],3),
+             cohort_min=round(cmn,4), cohort_mean=round(cmean,4), cohort_max=round(cmx,4))
+}
+pbin <- factor(round(CB$expected_power,4))
+flo <- rbind(
+  collect("m9_12","win_rate~power", CB$win_rate, pbin),
+  collect("m9_12","wr_delta~power", CB$wr_delta, pbin),
+  collect("m9_09","wr_delta~role",  CB$wr_delta, CB$role),
+  collect("m9_09","wr_delta~tier",  CB$wr_delta, factor(CB$tier)))
+write.csv(flo, file.path(TABLES,"m9_boxplot_outliers.csv"), row.names=FALSE)
+cat(sprintf("wrote %d named fliers across 4 boxplots -> tables/m9_boxplot_outliers.csv\n", nrow(flo)))
+print(table(flo$plot, flo$panel))
+
+# ---- (E) PROBLEM PIECES: cross-reference of multi-list outliers -------------
+# A piece flagged on ONE list could be sampling noise or a benign extreme. A
+# piece on SEVERAL lists with a consistent direction is a robust tuning target.
+# Six membership lists per piece (name+tier+level):
+#   WP win_rate~power flier   DP wr_delta~power flier
+#   DR wr_delta~role flier    DT wr_delta~tier flier
+#   AB absolute |wr_delta|>0.10 (the band-breakers)   SP spread excess_sd>0
+cat("\n=== (E) PROBLEM PIECES ===\n")
+pid <- function(d) sprintf("%s|T%d|L%d", d$name, d$tier, d$level)
+CB$pid <- pid(CB)
+mem <- data.frame(pid=CB$pid, name=CB$name, tier=CB$tier, level=CB$level,
+                  role=CB$role, wr_delta=CB$wr_delta, win_rate=CB$win_rate)
+flo$pid <- sprintf("%s|T%d|L%d", flo$name, flo$tier, flo$level)
+mem$WP <- mem$pid %in% flo$pid[flo$panel=="win_rate~power"]
+mem$DP <- mem$pid %in% flo$pid[flo$panel=="wr_delta~power"]
+mem$DR <- mem$pid %in% flo$pid[flo$panel=="wr_delta~role"]
+mem$DT <- mem$pid %in% flo$pid[flo$panel=="wr_delta~tier"]
+mem$AB <- abs(CB$wr_delta) > 0.10                      # band-breakers
+sp <- tryCatch(read.csv(file.path(TABLES,"m9_spread_outliers.csv"),
+               stringsAsFactors=FALSE), error=function(e) NULL)
+if(!is.null(sp)){ sp <- sp[sp$excess_sd>0,]
+  mem$SP <- paste(CB$name,CB$tier) %in% paste(sp$name, sp$tier) }
+mem$n_lists <- rowSums(mem[,c("WP","DP","DR","DT","AB","SP")])
+mem$lists <- apply(mem[,c("WP","DP","DR","DT","AB","SP")], 1,
+  function(r) paste(c("WP","DP","DR","DT","AB","SP")[r], collapse="+"))
+mem$dir <- ifelse(mem$wr_delta<0,"UNDER","OVER")
+prob <- mem[mem$n_lists>=2,]
+prob <- prob[order(-prob$n_lists, prob$wr_delta),
+             c("name","tier","level","role","wr_delta","win_rate","n_lists","lists","dir")]
+prob$wr_delta <- round(prob$wr_delta,4); prob$win_rate <- round(prob$win_rate,3)
+write.csv(prob, file.path(TABLES,"m9_problem_pieces.csv"), row.names=FALSE)
+cat(sprintf("%d pieces on >=2 outlier lists -> tables/m9_problem_pieces.csv\n", nrow(prob)))
+print(prob, row.names=FALSE)
+
+cat("\n[extra] wrote m9_13/14/15 + tables/m9_health.csv, m9_archetypes.csv, ",
+    "m9_boxplot_outliers.csv, m9_problem_pieces.csv\n", sep="")
