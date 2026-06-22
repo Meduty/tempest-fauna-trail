@@ -135,6 +135,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - V.52: **Piece stat-stacking is in-combat only; cross-`Run` permastacking is augment-exclusive.** No champion/enemy kit grants stat stacks that persist across battles — holds **by construction** of V.2 (combat is pure; all `Piece` runtime state rebuilds per `resolve_combat` from the `ChampionDef`, so any in-combat ramp — Aurion *Ascendance* cast-stacks, `grief`/`nerei_grudge`, granite_gorilla *Stone Charge* — resets each fight). Only **augments** (T.31, `RUN` scope) may accumulate across a `Run`. Ability/passive blurbs MUST say "until end of battle", never "permanently" (a "permanent" wording mislabels an in-combat ramp). Blurb-wording guard. (T.36a)
 - V.54: **Combat event-stream completeness — every visible-state-changing beat emits exactly one `BattleEvent`.** The animation-facing event taxonomy is `move`/`attack`/`cast`/`death` **+ `heal`/`dot`/`status`(apply+expire)/`spawn`/`despawn`**; each beat has **one** producer path in `BattleResultRecorder` (no double-count, no silent drop). HP-changing beats (`attack`/`cast`/`heal`/`dot`) carry `hp_after`/`barrier_after` = the engine's post-event `target.hp`/barrier truth (read after `deal_damage` applies `to_hp`, `context.py:272-283`), so **HP/barrier bars reconstruct from `BattleResult` alone** — correct under V.28 barriers (full pre-barrier `amount` still fired for DPS accounting) + DOT + heals + `grievous`. `expire_summon` fires a new `on_despawn` so summon removal is distinguishable from `death` (fade vs death-anim). Generalizes V.50 ("one cast = one event") to the whole stream. The recorder is **observer-only** — new subscriptions/events/fields never feed combat math ⇒ damage totals + `turns` unchanged ⇒ sims byte-identical (V.2/V.14); only `combat_log` golden snapshots re-baseline. (T.37a, fixes B.26/B.27)
 - V.55: **Combat state for the view is recomputed by replay, never recorded as per-tick keyframes.** The engine exposes a **stepper** (the `engine.run` tick loop made drivable); `resolve_combat`/`resolve_boss_combat` are reimplemented on it **byte-identically** (single public entry preserved, V.2 — same loop body, no determinism re-baseline). `inspect_at_tick(team, enemies, weather, run_mods, tick) -> list[PieceView]` is **pure + UI-free** (extends V.1): it re-runs the deterministic engine to `tick` on a **deep clone** of `run_mods` (the mutable `augment_state` quest trackers ⇒ zero side effects on the caller) and returns **read-only value structs** (hp/barriers/per-slot mana/effective stats via `piece.stat()` incl. STR/AS ramp/statuses/position). Raw `Piece` and Flet types **never escape `src/game/`** (V.1/V.14). Per-tick state is **never** persisted into `BattleResult` (would bloat T.14 saves + re-introduce stat-drift). (T.37b)
+- V.56: **The combat view is pure presentation over the replay backend.** `ui/views/combat.py` renders a fight **only** through `resolve_combat` + `inspect_at_tick` + the recorded `BattleResult` stream — it implements **no** combat math (extends V.1: `ui/` imports `game/`, never the reverse; `game/` never imports `ui/`). It is **interactive but read-only**, fed one **`CombatSession`** input bundle (`team`/`enemies`/`weather`/`run_mods`/`node_id`) built **identically** by the dev harness (now) and the Prep/Trail `Start Combat` flow (T.15/T.23, later) — one view, swappable producers. Playback is **event-paced** (default = manual event-step; autoplay is an opt-in mode), **not** tick=second real-time; `TICKS_PER_SECOND` (V.39) renders *durations as text* only, never playback timing. Board/bars/action-queue read the recorded stream (`hp_after`/`barrier_after`/move beats; round = `ROUND_TICKS`), not a re-sim. The boss path resolves through `src/game/combat/` (never `tools/`). (T.12)
 
 ## T. Tasks
 
@@ -153,7 +154,8 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.9 | Main menu view — new game, load game, quit | `ui/views/menu.py`, `main.py` | T.8 | S | 📋 Plan |
 | T.10 | Run-start flow — initial champion pick (1-of-3 offer), first shop population, starting Amber/Tempest state init | `game/run_init.py`, `ui/views/trail.py` | T.5, T.8, T.22 | S | 📋 Plan |
 | T.11 | Route map visualization — Canvas with city nodes + weather icons | `viz/route_map.py`, `ui/views/trail.py` | T.4, T.6, T.8 | L | 📋 Plan |
-| T.12 | Combat view — animated battle log, HP bars | `ui/views/combat.py` | T.3, T.8, T.37 | L | 📋 Plan |
+| T.12a | Combat view core + dev harness — flet.canvas hex board (10×7), pieces at coords, **DEFAULT manual event-step** playback (+ optional autoplay/fast-fwd) over the T.37 stream, per-event animations + live HP/mana bars + floating damage/heal numbers + death/despawn; action-queue with 2-round projection + round markers (entries = moves + attacks/casts; moves smaller + movement-iconed); click-to-inspect (live stats via `inspect_at_tick` + equipped items + traits; global active augments); combat-end panel; dev-harness launcher (FIGHT/CHALLENGE/REWARD all combats, REWARD = easy fight + team/weather/augments/items → `CombatSession`) + minimal `main.py` dev entry (`TEMPEST_DEV=1`); pure Flet-free `combat_playback` model (frames + queue projection, tested) | `ui/views/combat.py`, `ui/views/dev_harness.py`, `ui/combat_playback.py`, `main.py`, `docs/live/systems/ui.md`, `tests/ui/test_combat_playback.py`, `docs/design/tasks/t12_combat_view_plan.md` | T.3, T.8, T.37 | L | 📋 Plan |
+| T.12b | Combat view boss + polish — boss support (promote `resolve_boss_combat` `tools/`→`src/game/combat/resolve.py` + boss-aware `inspect_at_tick` + map-effect overlay), real-time-scaled autoplay pacing, status-icon row, keyboard shortcuts, tick-by-tick admin mode, sprites | `ui/views/combat.py`, `ui/combat_playback.py`, `game/combat/resolve.py`, `game/combat/replay.py`, `tools/playtest/_common.py`, `tests/` | T.12a | M | 📋 Plan |
 | T.13 | Run summary visualization — BarChart of damage per battle | `viz/run_summary.py`, `ui/views/summary.py` | T.3, T.8 | M | 📋 Plan |
 | T.14 | Save/load — JSON serialization of Run state | `game/save.py` | T.1 | S | ✅ Done |
 | T.15 | Routing + app wiring — connect all views in main.py | `main.py` | T.9-T.13 | M | 📋 Plan |
@@ -812,7 +814,9 @@ in their T-task plan docs; what remains here is genuinely undecided.
   `/recruit` and `/map` routes are retired; initial champion pick is handled
   inline during run-start (first Prep node). `views_spec.md` §11 node-type set
   updated to match `NodeType` enum (`fight`, `reward`, `augment`, `supply`,
-  `challenge`, `boss_fight`).
+  `challenge`, `boss_fight`). **T.12 note:** the `/combat` view ships first behind a
+  dev harness (`TEMPEST_DEV=1`) ahead of T.15 routing — same view, later fed by the
+  real Prep/Trail `Start Combat` producer (V.56).
 - D.17 Cache health UX: warn indicator surface when any node is `substitute`
   or any `live` weather aged > 2h; hover shows affected cities; smart
   failsafe copy when many nodes degraded. Polish layer over T.7 cache states.
@@ -835,7 +839,7 @@ LIVING snapshot — refresh via `/spec` whenever a §T status flips. Last: 2026-
 5. ~~**T.29d** multi-slot + Multicaster — `active_abilities: list` + convention discovery, `Multicaster` Calling + `cast_momentum`, 9 showcase pieces (6 champs + 3 enemies; T6 ults), distinct-slot rule, priority-weighted start-mana.~~ ✅ Done
 6. **T.31** augments — ~50 catalog, `RunModifiers` seam, `sim_run` augment policies; carries 3 paired Primordial-unlock RUN-augments + Primordial @1 signatures + @3 tier-up (D.20).
 
-**Then — UI phase:** T.9 → T.10 → T.15 → T.23 → **T.37a → T.37b** → T.12; viz T.11/T.13; polish T.34a/b/c (ability tooltips) → **T.35a (Magnitude family) → T.35b (dead-stat balance)** + T.17.
+**Then — UI phase:** T.9 → T.10 → T.15 → T.23 → **T.37a → T.37b → T.12a → T.12b**; viz T.11/T.13; polish T.34a/b/c (ability tooltips) → **T.35a (Magnitude family) → T.35b (dead-stat balance)** + T.17.
 
 **Independent now (post-T.34, no UI dep):** T.35a (#42 Finding A — Magnitude-family refactor, byte-identical) can run any time after T.34c; T.35b (#42 Finding B — balance re-tune) after T.35a. **T.36a (kings) → T.36b (champion roster rebalance) → T.36c (enemy roster rebalance)** run after T.35b — pure content/classification re-axis + kit rewrites; no UI/engine dep (new `Spellslinger` role + V.47-guard extension only). The unified axis-distribution solve (role derives from axes, V.32 — plan §13/§14) fixes the durability skew + populates all roles; combined ~66 axis edits / ~39 kit rebuilds across both rosters, split kings/champions/enemies so each ships green independently (enemies last — sims run champ-vs-enemy).
 
@@ -851,7 +855,7 @@ T.33a (3-class scaling + #39 baseline parity + fair total order) → T.33b (spee
 T.6 → T.7 → T.16 (API tests)
 
 ### Phase 3: UI + Combat (Week 4-6)
-T.8 → T.9 → T.10 → T.15 → T.23 → T.37a → T.37b → T.12
+T.8 → T.9 → T.10 → T.15 → T.23 → T.37a → T.37b → T.12a → T.12b
 
 ### Phase 4: Visualizations (Week 6-7)
 T.11 → T.13
