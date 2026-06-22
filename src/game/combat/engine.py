@@ -18,6 +18,7 @@ The loop implements:
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Generator
 from dataclasses import dataclass
 
 from src.game.bosses.data import BOSS_DEFS
@@ -805,21 +806,24 @@ def assign_spawns(pieces: list[Piece]) -> None:
 # ---------------------------------------------------------------------------
 
 
-def run(
+def _step_combat(
     ctx: CombatContext,
     recorder: BattleResultRecorder | None = None,
-    *,
-    stop_after_tick: int | None = None,
-) -> str:
-    """Run the combat loop. Returns winner: 'team', 'enemy', or 'draw'.
+) -> Generator[int, None, str]:
+    """The **single** combat loop body (V.29), shaped as a generator so it can be
+    driven two ways without duplicating the loop:
 
-    If a recorder is provided, records all events for BattleResult construction.
+    - `run` **drains** it to completion (the resolve path) — byte-identical to the
+      pre-T.37c monolithic loop, since this is the same statements in the same
+      order (V.2/V.14); the extra `yield`s are no-ops for a draining consumer.
+    - `CombatReplay` (`combat/replay.py`, T.37c) **steps** it forward one tick at
+      a time, reading live `PieceView`s between yields — O(total ticks) playback.
 
-    `stop_after_tick` (T.37b) drives the loop to a tick and stops — the engine's
-    single drivable hook for the replay/inspect API (`combat/replay.py`). It only
-    bounds the tick range, never alters per-tick logic, so the default `None`
-    path is byte-identical to pre-T.37b (V.55, V.2). `stop_after_tick=0` runs zero
-    ticks (state right after `on_combat_start`); `=N` runs ticks 1..N inclusive.
+    Yields the current tick **after** that tick is fully processed (`yield 0` =
+    state right after `on_combat_start`, before tick 1; `yield N` = after ticks
+    1..N), so a consumer that stops pulling holds the engine paused mid-fight,
+    **before** the post-loop finalize runs (no `end_combat`/`on_combat_end`
+    mutating the inspected state). Returns the winner via `StopIteration.value`.
     """
     pieces = ctx.all_pieces()
 
@@ -839,24 +843,12 @@ def run(
     timed_out = False
     ended_early = False
 
-    for tick in range(1, HARD_CAP_TICKS + 1):
-        # Replay/inspect bound (T.37b): stop before processing tick > target, so
-        # `ctx.current_tick` stays at the requested tick. Return *immediately* —
-        # do NOT fall into the post-loop finalize, which would mark the run timed
-        # out and fire `ctx.end_combat`/`on_combat_end`, mutating the very state
-        # the caller is inspecting mid-fight. Dead when None (the resolve_combat
-        # path) ⇒ byte-identical (V.55).
-        if stop_after_tick is not None and tick > stop_after_tick:
-            if recorder is not None:
-                recorder.set_duration(duration, timed_out=False)
-            return ctx.winner or "draw"
-        ctx.current_tick = tick
-        duration = tick
+    # Stepper anchor (T.37c): tick-0 state = after `on_combat_start`, before any
+    # tick processes. A draining consumer ignores this yield ⇒ byte-identical.
+    yield 0
 
-        if ctx.combat_ended:
-            ended_early = True
-            break
-
+    def _run_tick(tick: int) -> bool:
+        """Process exactly one tick. Returns True iff combat ended this tick."""
         # Fire on_tick (for hooks/abilities listening to tick events)
         ctx.bus.fire("on_tick", TickEvent(tick=tick), ctx=ctx)
 
@@ -882,8 +874,7 @@ def run(
                     ctx.expire_summon(piece)
 
         if not ctx.both_sides_alive():
-            ended_early = True
-            break
+            return True
 
         # Step 1: advance every living meter.
         for piece in pieces:
@@ -934,10 +925,7 @@ def run(
             else:
                 _resolve_action(piece, pieces, tick, recorder, ctx)
             if not ctx.both_sides_alive():
-                ended_early = True
-                break
-        if ended_early:
-            break
+                return True
 
         # Cast resolution for registered abilities (T20 ability framework)
         for piece in pieces:
@@ -945,8 +933,23 @@ def run(
                 continue
             process_casts(ctx, piece)
             if not ctx.both_sides_alive():
-                ended_early = True
-                break
+                return True
+
+        return False
+
+    for tick in range(1, HARD_CAP_TICKS + 1):
+        ctx.current_tick = tick
+        duration = tick
+
+        if ctx.combat_ended:
+            ended_early = True
+            break
+
+        ended_early = _run_tick(tick)
+
+        # Yield the fully-processed tick (incl. the killing tick) so a stepping
+        # consumer can render it, *then* break into finalize.
+        yield tick
 
         if ended_early:
             break
@@ -977,3 +980,24 @@ def run(
 
     ctx.end_combat(winner)
     return winner
+
+
+def run(
+    ctx: CombatContext,
+    recorder: BattleResultRecorder | None = None,
+) -> str:
+    """Run the combat loop to completion. Returns winner: 'team', 'enemy', or
+    'draw'. If a recorder is provided, records all events for BattleResult
+    construction.
+
+    Thin **drain** driver over the single `_step_combat` generator (V.29) — pulls
+    every tick and surfaces the generator's return value. Byte-identical to the
+    pre-T.37c monolithic loop (V.2/V.14). The forward-stepping counterpart lives
+    in `combat/replay.py` (`CombatReplay`, T.37c).
+    """
+    gen = _step_combat(ctx, recorder)
+    try:
+        while True:
+            next(gen)
+    except StopIteration as exc:
+        return exc.value if exc.value is not None else "draw"

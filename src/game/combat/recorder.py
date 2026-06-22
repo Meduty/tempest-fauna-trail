@@ -171,13 +171,17 @@ class BattleResultRecorder:
         ))
 
     def record_move(self, piece_id: str, tick: int, dest_q: int, dest_r: int) -> None:
-        """Record a movement event (called directly by the loop, not via bus)."""
+        """Record a movement event (called directly by the loop, not via bus).
+
+        Destination travels in structured `dest_q`/`dest_r` int fields (T.37c),
+        not a parsed `note` string (B.28)."""
         self._events.append(BattleEvent(
             tick=tick,
             actor_id=piece_id,
             target_id=None,
             event_type=EVENT_MOVE,
-            note=f"{dest_q},{dest_r}",
+            dest_q=dest_q,
+            dest_r=dest_r,
         ))
 
     def record_cast(self, actor_id: str, target_id: str, tick: int, amount: int, damage_type: str, is_crit: bool = False,
@@ -340,7 +344,8 @@ class BattleResultRecorder:
             actor_id=event.piece.id,
             target_id=None,
             event_type=EVENT_SPAWN,
-            note=f"{q},{r}",
+            dest_q=q,
+            dest_r=r,
         ))
         self._initial_pieces.append(_snapshot_piece(event.piece, spawn_tick=tick))
 

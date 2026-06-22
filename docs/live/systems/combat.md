@@ -23,8 +23,9 @@ return recorder.build_result(winner)                                           #
 `build_combat` is reused (no parallel setup, T.37b) by:
 - **`resolve_boss_combat`** (`tools/playtest/_common.py`) — same `build_combat`, then
   `attach_map_effect(ctx)` before `run` (its only difference; takes a `seed`/`run_seed`).
-- **`inspect_at_tick`** (`combat/replay.py`) — `build_combat(..., with_recorder=False)`,
-  then `run(ctx, None, stop_after_tick=T)` to read live state (see [Replay](#replay)).
+- **`CombatReplay` / `inspect_at_tick`** (`combat/replay.py`) — `build_combat(...,
+  with_recorder=False)`, then steps the `_step_combat` generator to read live
+  state (see [Replay](#replay)).
 
 ## The pieces
 
@@ -160,21 +161,40 @@ subtraction for legacy events. Used by the playtest CLIs and golden-snapshot
 tests.
 
 <a id="replay"></a>
-## Replay / inspect-at-tick (T.37b)
+## Replay / forward stepper / inspect-at-tick (T.37b, T.37c)
 
-Continuous combat state for a view is **recomputed, not recorded** (V.55). Since
-combat is byte-identical for the same inputs, `inspect_at_tick(team, enemies,
-weather, *, run_mods=None, tick) -> list[PieceView]` (`combat/replay.py`) re-runs
-the engine via the drivable `run(..., stop_after_tick=tick)` hook and reads each
-piece's live state — hp, barriers, per-slot mana, **effective stats** via
-`piece.stat()` (STR/AS ramp included), statuses, position — into frozen
-read-only `PieceView`/`SlotView`/`StatusView` value structs. `tick=0` is the
-initial board (after `on_combat_start`); `tick=N` is after ticks 1..N. The
-`run_mods` is **cloned** (deep-copy of the mutable `augment_state`) so the replay
-never mutates the caller. Raw `Piece`/Flet never escape `src/game/` (V.1). No
-per-tick state is stored in `BattleResult` (avoids T.14 save bloat + stat-drift).
+Continuous combat state for a view is **recomputed, not recorded** (V.55). The
+engine loop is the **single** `_step_combat` generator (`combat/engine.py`, V.29),
+driven two ways — no parallel loop:
 
-The `stop_after_tick` hook is dead on the `None` (resolve) path ⇒ byte-identical.
+- **`run(ctx, recorder=None)`** *drains* it to completion (the resolve path) —
+  byte-identical to the pre-T.37c monolithic loop (V.2/V.14).
+- **`CombatReplay(team, enemies, weather, *, run_mods=None)`** *steps* it
+  **forward** (`.step_to(tick)`, `.pieces() -> list[PieceView]`, `.tick`,
+  `.winner`) for sequential playback — drives one instance once, O(total ticks).
+  Forward-only; `step_to` to an earlier tick raises.
+
+The generator yields once per fully-processed tick (`yield 0` = after
+`on_combat_start`; `yield N` = after ticks 1..N), so a stepping consumer pauses
+mid-fight **before** the post-loop finalize (`end_combat`/`on_combat_end` never
+mutate the inspected state).
+
+`inspect_at_tick(team, enemies, weather, *, run_mods=None, tick) -> list[PieceView]`
+is a random/backward-access wrapper (re-run from 0) **over `CombatReplay`** — one
+driver, two shapes. Each reads hp, barriers, per-slot mana, **effective stats**
+via `piece.stat()` (STR/AS ramp included), statuses, position into frozen
+read-only `PieceView`/`SlotView`/`StatusView` structs. `run_mods` is **cloned**
+(deep-copy of mutable `augment_state`) so replay never mutates the caller. Raw
+`Piece`/Flet never escape `src/game/` (V.1). No per-tick state is stored in
+`BattleResult` (avoids T.14 save bloat + stat-drift).
+
+**This live state is the combat view's resource-truth source (V.56/V.57), NOT
+the recorded event stream** — the stream's `hp_after`/`barrier_after` are stamped
+only on basic-attack/DOT/heal beats, **not** registered-ability burst (`_on_cast`
+→ `hp_after=-1`, B.28), so a bar built from the stream would freeze through a
+nuke. The stream is **animation cues + action-queue projection** only. `move`/
+`spawn` beats carry structured `dest_q`/`dest_r` int coords (T.37c), not a parsed
+`note` string.
 
 ## Invariants this system owns
 
@@ -185,16 +205,20 @@ The `stop_after_tick` hook is dead on the `None` (resolve) path ⇒ byte-identic
   (`crit_counter`), never RNG.
 - **V.54** — event-stream completeness: every visible-state-changing beat emits
   exactly one `BattleEvent` (T.37a).
-- **V.55** — view state is recomputed by replay (`inspect_at_tick`), never
-  recorded as per-tick keyframes; inspect is pure + clones `run_mods` (T.37b).
+- **V.55** — view state is recomputed by replay, never recorded as per-tick
+  keyframes; the forward `CombatReplay` stepper + `inspect_at_tick` are pure +
+  clone `run_mods` (T.37b, forward stepper T.37c).
+- **V.56/V.57** — the combat view's resource truth (hp/mana/stats/position) is the
+  live replay, **never** the event stream's partial `hp_after` fields (incomplete
+  for ability burst, B.28); the stream is animation cues + queue projection (T.12).
 
 ## File map
 
 | Concern | File |
 |---|---|
 | Public entry + shared `build_combat` wiring | `combat/resolve.py` |
-| Tick loop, pathing, damage, spawns, constants, `stop_after_tick` hook | `combat/engine.py` |
-| Replay / `inspect_at_tick` (recompute state at a tick) | `combat/replay.py` |
+| Single tick loop (`_step_combat` generator) + `run` drain, pathing, damage, spawns, constants | `combat/engine.py` |
+| Forward stepper `CombatReplay` + `inspect_at_tick` (recompute state at a tick) | `combat/replay.py` |
 | Mutator API (the only way to touch the world) | `combat/context.py` |
 | Event → `BattleResult` | `combat/recorder.py` |
 | Model → `Piece` compile + weather + passives | `loadout.py` |

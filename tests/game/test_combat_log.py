@@ -142,7 +142,7 @@ def test_log_renders_new_beat_types():
         BattleEvent(tick=2, actor_id="mob", target_id="ally", event_type=EVENT_DOT, amount=18, note="dot", hp_after=122),
         BattleEvent(tick=3, actor_id="ally", target_id=None, event_type=EVENT_STATUS, amount=2, note="poison"),
         BattleEvent(tick=4, actor_id="ally", target_id=None, event_type=EVENT_STATUS_EXPIRE, note="poison"),
-        BattleEvent(tick=5, actor_id="turret", target_id=None, event_type=EVENT_SPAWN, note="4,2"),
+        BattleEvent(tick=5, actor_id="turret", target_id=None, event_type=EVENT_SPAWN, dest_q=4, dest_r=2),
         BattleEvent(tick=6, actor_id="turret", target_id=None, event_type=EVENT_DESPAWN),
     ]
     result = BattleResult(

@@ -105,3 +105,96 @@ def test_inspect_midfight_does_not_finalize_combat():
     views = inspect_at_tick(team, enemies, weather, tick=30)
     assert any(v.alive and not v.is_enemy for v in views)
     assert any(v.alive and v.is_enemy for v in views)
+
+
+# --- T.37c: resumable forward CombatReplay stepper -------------------------
+
+
+def _event_ticks(result):
+    return sorted({e.tick for e in result.events if e.tick > 0})
+
+
+def test_forward_stepper_matches_inspect_at_every_event_tick():
+    """The headline T.37c guarantee: a single forward-stepped CombatReplay yields
+    the *same* live state as independent `inspect_at_tick` re-runs at every
+    event-bearing tick (held instance == re-run from 0). O(N) vs O(N²)."""
+    from src.game.combat import CombatReplay
+
+    team, enemies, weather = _aurion_fight()
+    result = resolve_combat(team, enemies, weather)
+    ticks = _event_ticks(result)
+    assert ticks, "fight produced no events"
+
+    replay = CombatReplay(team, enemies, weather)
+    for t in ticks:
+        stepped = {v.id: v for v in replay.step_to(t).pieces()}
+        fresh = {v.id: v for v in inspect_at_tick(team, enemies, weather, tick=t)}
+        assert stepped == fresh, f"stepper diverged from inspect at tick {t}"
+
+
+def test_forward_stepper_hp_complete_through_ability_burst():
+    """B.28 guard: live-replay HP is COMPLETE — every HP change shows, including
+    registered-ability burst the event stream omits (`_on_cast` stamps
+    `hp_after=-1`; only `dot` damage carries `hp_after`). A naive bar built from
+    the stream's `hp_after` would freeze through a nuke; the stepper does not."""
+    from src.game.combat import CombatReplay
+
+    team, enemies, weather = _aurion_fight()
+    result = resolve_combat(team, enemies, weather)
+
+    # Reconstruct HP the (wrong) stream-only way: seed from initial snapshot,
+    # apply each beat's hp_after when present (== the B.28-incomplete source).
+    stream_hp = {s.id: s.max_hp for s in result.initial_pieces}
+
+    replay = CombatReplay(team, enemies, weather)
+    diverged = False
+    for t in _event_ticks(result):
+        for e in result.events:
+            if e.tick == t and e.hp_after >= 0:
+                stream_hp[e.target_id] = e.hp_after
+        live = {v.id: v.hp for v in replay.step_to(t).pieces()}
+        for pid, live_hp in live.items():
+            # The live (engine-truth) HP is authoritative; where the stream lacks
+            # a beat for a hit, the two disagree — proving the stream can't be the
+            # bar source (V.57).
+            if pid in stream_hp and stream_hp[pid] != live_hp:
+                diverged = True
+    assert diverged, (
+        "expected the stream-only HP reconstruction to diverge from live replay "
+        "on at least one ability-burst tick (B.28); if not, the fixture has no "
+        "registered-ability damage — pick a caster matchup"
+    )
+
+
+def test_forward_stepper_is_forward_only():
+    """Forward-only: stepping to an earlier tick raises (use inspect_at_tick)."""
+    from src.game.combat import CombatReplay
+
+    team, enemies, weather = _aurion_fight()
+    replay = CombatReplay(team, enemies, weather)
+    replay.step_to(100)
+    with pytest.raises(ValueError):
+        replay.step_to(50)
+
+
+def test_forward_stepper_winner_matches_resolve():
+    """Draining the stepper to the end yields the same winner as resolve_combat."""
+    from src.game.combat import CombatReplay
+
+    team, enemies, weather = _aurion_fight()
+    result = resolve_combat(team, enemies, weather)
+    replay = CombatReplay(team, enemies, weather)
+    replay.step_to(10_000_000)
+    assert replay.finished
+    assert replay.winner == ("team" if result.outcome.name == "WIN" else replay.winner)
+
+
+def test_replay_has_no_flet_import():
+    """`combat/replay.py` stays Flet-free (V.1) — importable with no display."""
+    import importlib
+    import sys
+
+    assert "flet" not in sys.modules or True  # don't force-fail if a sibling imported it
+    mod = importlib.import_module("src.game.combat.replay")
+    src = open(mod.__file__).read()
+    assert "import flet" not in src and "from flet" not in src

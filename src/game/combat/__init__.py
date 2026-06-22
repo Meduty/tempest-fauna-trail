@@ -34,6 +34,7 @@ from src.game.combat.recorder import (  # noqa: F401
 )
 from src.game.combat.resolve import resolve_combat
 from src.game.combat.replay import (  # noqa: F401
+    CombatReplay,
     inspect_at_tick,
     PieceView,
     SlotView,
@@ -46,6 +47,7 @@ __all__ = [
     "hex_distance",
     "resolve_combat",
     "inspect_at_tick",
+    "CombatReplay",
     "PieceView",
     "SlotView",
     "StatusView",

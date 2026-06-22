@@ -420,6 +420,13 @@ class BattleEvent:
     # view reconstructs HP/barrier bars from these without re-summing damage.
     hp_after: int = -1
     barrier_after: int = 0
+    # Structured board coords (T.37c) — on a `move`/`spawn` beat these carry the
+    # destination/spawn `(q, r)`, replacing the fragile `note=f"{q},{r}"` string
+    # parse (B.28). `-1` marks a non-positional beat. The combat view reads
+    # piece positions from the live replay (V.57); these let any stream consumer
+    # get robust coords without string-splitting.
+    dest_q: int = -1
+    dest_r: int = -1
 
     def __post_init__(self) -> None:
         if self.tick < 0:
@@ -439,6 +446,8 @@ class BattleEvent:
             "mana_after": self.mana_after,
             "hp_after": self.hp_after,
             "barrier_after": self.barrier_after,
+            "dest_q": self.dest_q,
+            "dest_r": self.dest_r,
         }
 
     @classmethod
@@ -456,6 +465,8 @@ class BattleEvent:
             mana_after=payload.get("mana_after", 0),
             hp_after=payload.get("hp_after", -1),
             barrier_after=payload.get("barrier_after", 0),
+            dest_q=payload.get("dest_q", -1),
+            dest_r=payload.get("dest_r", -1),
         )
 
 

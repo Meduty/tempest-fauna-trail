@@ -50,7 +50,7 @@ def _format_event(
     event: BattleEvent, current_hp: dict[str, int], track_hp: bool
 ) -> str:
     if event.event_type == EVENT_MOVE:
-        return f"{event.actor_id} moves to ({event.note})"
+        return f"{event.actor_id} moves to ({event.dest_q},{event.dest_r})"
 
     if event.event_type == EVENT_DEATH:
         killer = ""
@@ -91,7 +91,7 @@ def _format_event(
         return f"{event.actor_id} loses {event.note}"
 
     if event.event_type == EVENT_SPAWN:
-        return f"{event.actor_id} spawns at ({event.note})"
+        return f"{event.actor_id} spawns at ({event.dest_q},{event.dest_r})"
 
     if event.event_type == EVENT_DESPAWN:
         return f"{event.actor_id} expires"

@@ -462,6 +462,32 @@ def test_recorder_emits_heal_dot_status_spawn_despawn_beats():
     assert heal.amount == 40 and heal.hp_after == 140
     dot = next(e for e in rec._events if e.event_type == EVENT_DOT)
     assert dot.hp_after == int(tgt.hp)
+    # T.37c: spawn carries structured coords, not a parsed `note` string (B.28).
+    spawn = next(e for e in rec._events if e.event_type == EVENT_SPAWN)
+    assert (spawn.dest_q, spawn.dest_r) == (4, 2)
+
+
+def test_move_and_spawn_carry_structured_coords():
+    """T.37c: `move`/`spawn` beats expose `dest_q`/`dest_r` int fields (B.28)."""
+    from src.game.combat.recorder import EVENT_MOVE
+    ctx, rec, src, tgt = _recorder_harness()
+    rec.record_move("hero", tick=7, dest_q=3, dest_r=5)
+    mv = next(e for e in rec._events if e.event_type == EVENT_MOVE)
+    assert (mv.dest_q, mv.dest_r) == (3, 5)
+    assert mv.note == ""  # destination no longer hidden in the note string
+
+
+def test_battle_event_dest_coords_round_trip_and_legacy_default():
+    """`dest_q`/`dest_r` survive serialization; legacy payloads default to -1."""
+    from src.game.models import BattleEvent
+    from src.game.combat.recorder import EVENT_MOVE
+    ev = BattleEvent(tick=2, actor_id="hero", target_id=None,
+                     event_type=EVENT_MOVE, dest_q=4, dest_r=1)
+    back = BattleEvent.from_dict(ev.to_dict())
+    assert (back.dest_q, back.dest_r) == (4, 1)
+    legacy = BattleEvent.from_dict({"tick": 1, "actor_id": "x",
+                                    "target_id": None, "event_type": EVENT_MOVE})
+    assert (legacy.dest_q, legacy.dest_r) == (-1, -1)
 
 
 def test_attack_beat_hp_after_is_exact_under_barrier():
