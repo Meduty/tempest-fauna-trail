@@ -81,7 +81,9 @@ the slow ~5 s action cadence (`60000/attack_speed`).
   no separate `milli_AS`), then identity, then the seeded `load_order` (never
   team-then-enemy → no side-A bias, B.14), then movement before action. Cadence
   reads `int(attack_speed)`. No RNG in the loop; `load_order` is a one-time
-  seeded permutation (V.2/V.14).
+  seeded permutation (V.2/V.14). **Soft-CC:** `slow` stacks throttle action +
+  movement meter *gain* by `_slow_factor` = `max(0.40, 1 − 0.15·stacks)` (V.53,
+  B.25) — not a gate, not the `stat`.
 - **Movement** — `_resolve_movement`: hold at threshold if in range or no
   enemies; else one BFS step toward the nearest in-range cell
   (`_next_step_toward`), carrying overflow; hold if no path. Gated by

@@ -84,6 +84,23 @@ def _effective_stat(piece: Piece, stat: str) -> float:
     return piece.stat(stat)
 
 
+# Soft-CC: `slow` throttles meter advancement (action + movement), scaling with
+# stacks (SLOW.stack_behaviour = STACK). 15%/stack, floored at 0.40 so soft CC
+# never becomes a hard lock (that is stun/frozen's job, via gates). Applied to
+# the meter *gain*, not `piece.stat(...)`, so tiebreak/other AS reads stay clean.
+# RNG-free, deterministic (V.2/V.14).
+_SLOW_PER_STACK = 0.15
+_SLOW_FLOOR = 0.40
+
+
+def _slow_factor(piece: Piece) -> float:
+    """Meter-advance multiplier from `slow` stacks (1.0 = unslowed)."""
+    stacks = piece.status_stacks("slow")
+    if stacks <= 0:
+        return 1.0
+    return max(_SLOW_FLOOR, 1.0 - _SLOW_PER_STACK * stacks)
+
+
 def _opponents(piece: Piece, pieces: list[Piece]) -> list[Piece]:
     """All living, targetable enemies of the given piece.
 
@@ -857,6 +874,12 @@ def run(ctx: CombatContext, recorder: BattleResultRecorder | None = None) -> str
             as_val = int(piece.stat("attack_speed"))
             ms_val = int(piece.stat("move_speed"))
             mr_val = int(piece.stat("mana_regen"))
+
+            # Soft-CC: `slow` throttles action + movement cadence (B.25 fix).
+            slow = _slow_factor(piece)
+            if slow != 1.0:
+                as_val = int(as_val * slow)
+                ms_val = int(ms_val * slow)
 
             piece.action_energy += as_val
             piece.movement_energy += ms_val
