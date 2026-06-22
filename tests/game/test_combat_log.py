@@ -126,3 +126,35 @@ def test_log_is_deterministic():
     first = render_combat_log(result, team=team, enemies=enemies)
     second = render_combat_log(result, team=team, enemies=enemies)
     assert first == second
+
+
+# --- T.37a: new beats render in the log --------------------------------------
+
+
+def test_log_renders_new_beat_types():
+    from src.game.models import BattleEvent, BattleResult, CombatOutcome
+    from src.game.combat import (
+        EVENT_HEAL, EVENT_DOT, EVENT_STATUS, EVENT_STATUS_EXPIRE,
+        EVENT_SPAWN, EVENT_DESPAWN,
+    )
+    events = [
+        BattleEvent(tick=1, actor_id="medic", target_id="ally", event_type=EVENT_HEAL, amount=40, hp_after=140),
+        BattleEvent(tick=2, actor_id="mob", target_id="ally", event_type=EVENT_DOT, amount=18, note="dot", hp_after=122),
+        BattleEvent(tick=3, actor_id="ally", target_id=None, event_type=EVENT_STATUS, amount=2, note="poison"),
+        BattleEvent(tick=4, actor_id="ally", target_id=None, event_type=EVENT_STATUS_EXPIRE, note="poison"),
+        BattleEvent(tick=5, actor_id="turret", target_id=None, event_type=EVENT_SPAWN, note="4,2"),
+        BattleEvent(tick=6, actor_id="turret", target_id=None, event_type=EVENT_DESPAWN),
+    ]
+    result = BattleResult(
+        node_id="n", weather=WeatherState.CLEAR, outcome=CombatOutcome.WIN,
+        rounds=1, turns=0, duration_ticks=6,
+        team_damage_dealt={}, team_damage_taken={},
+        surviving_team_ids=["ally"], surviving_enemy_ids=[], events=events,
+    )
+    text = render_combat_log(result)
+    assert "medic heals ally — +40" in text
+    assert "mob burns ally — 18 dot" in text
+    assert "ally gains poison x2" in text
+    assert "ally loses poison" in text
+    assert "turret spawns at (4,2)" in text
+    assert "turret expires" in text

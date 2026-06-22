@@ -502,7 +502,9 @@ def _resolve_action(
             if recorder:
                 recorder.record_cast(piece.id, target.id, tick, int(final), DMG_MAGICAL, False,
                                      slot_idx=0, mana_spent=slot.mana_cost,
-                                     mana_after=int(slot.current_mana))
+                                     mana_after=int(slot.current_mana),
+                                     hp_after=int(target.hp),
+                                     barrier_after=int(target.barrier_total))
             piece.action_energy -= ENERGY_THRESHOLD
             return
 
@@ -804,10 +806,21 @@ def assign_spawns(pieces: list[Piece]) -> None:
 # ---------------------------------------------------------------------------
 
 
-def run(ctx: CombatContext, recorder: BattleResultRecorder | None = None) -> str:
+def run(
+    ctx: CombatContext,
+    recorder: BattleResultRecorder | None = None,
+    *,
+    stop_after_tick: int | None = None,
+) -> str:
     """Run the combat loop. Returns winner: 'team', 'enemy', or 'draw'.
 
     If a recorder is provided, records all events for BattleResult construction.
+
+    `stop_after_tick` (T.37b) drives the loop to a tick and stops — the engine's
+    single drivable hook for the replay/inspect API (`combat/replay.py`). It only
+    bounds the tick range, never alters per-tick logic, so the default `None`
+    path is byte-identical to pre-T.37b (V.55, V.2). `stop_after_tick=0` runs zero
+    ticks (state right after `on_combat_start`); `=N` runs ticks 1..N inclusive.
     """
     pieces = ctx.all_pieces()
 
@@ -828,6 +841,16 @@ def run(ctx: CombatContext, recorder: BattleResultRecorder | None = None) -> str
     ended_early = False
 
     for tick in range(1, HARD_CAP_TICKS + 1):
+        # Replay/inspect bound (T.37b): stop before processing tick > target, so
+        # `ctx.current_tick` stays at the requested tick. Return *immediately* —
+        # do NOT fall into the post-loop finalize, which would mark the run timed
+        # out and fire `ctx.end_combat`/`on_combat_end`, mutating the very state
+        # the caller is inspecting mid-fight. Dead when None (the resolve_combat
+        # path) ⇒ byte-identical (V.55).
+        if stop_after_tick is not None and tick > stop_after_tick:
+            if recorder is not None:
+                recorder.set_duration(duration, timed_out=False)
+            return ctx.winner or "draw"
         ctx.current_tick = tick
         duration = tick
 

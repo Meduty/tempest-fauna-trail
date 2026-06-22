@@ -26,6 +26,7 @@ from src.game.events import (
     CombatStartEvent,
     DamageEvent,
     DeathEvent,
+    DespawnEvent,
     HealEvent,
     KillEvent,
     ManaEvent,
@@ -495,6 +496,9 @@ class CombatContext:
             self._alive_enemy -= 1
         else:
             self._alive_team -= 1
+        # Fire on_despawn so a combat view can fade the summon off the board —
+        # distinct from on_death (no death-anim, no kill credit). (T.37a, B.26)
+        self._bus.fire("on_despawn", DespawnEvent(piece=piece), ctx=self)
 
     def kill(self, target: Piece, killer: Piece | None = None) -> None:
         """Kill a piece. Fires on_kill and on_death."""
