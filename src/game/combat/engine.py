@@ -842,10 +842,15 @@ def run(
 
     for tick in range(1, HARD_CAP_TICKS + 1):
         # Replay/inspect bound (T.37b): stop before processing tick > target, so
-        # `ctx.current_tick` stays at the requested tick. Dead when None (the
-        # resolve_combat path) ⇒ byte-identical (V.55).
+        # `ctx.current_tick` stays at the requested tick. Return *immediately* —
+        # do NOT fall into the post-loop finalize, which would mark the run timed
+        # out and fire `ctx.end_combat`/`on_combat_end`, mutating the very state
+        # the caller is inspecting mid-fight. Dead when None (the resolve_combat
+        # path) ⇒ byte-identical (V.55).
         if stop_after_tick is not None and tick > stop_after_tick:
-            break
+            if recorder is not None:
+                recorder.set_duration(duration, timed_out=False)
+            return ctx.winner or "draw"
         ctx.current_tick = tick
         duration = tick
 

@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
-from typing import Any
+from types import MappingProxyType
+from typing import Any, Mapping
 
 from src.game.models import Champion, Enemy, WeatherState
 
@@ -58,7 +59,7 @@ class PieceView:
     hp: int
     max_hp: int
     barrier_total: int
-    stats: dict[str, float]
+    stats: Mapping[str, float]   # read-only (MappingProxyType) — honours frozen
     mana: tuple[SlotView, ...]
     statuses: tuple[StatusView, ...]
 
@@ -75,7 +76,7 @@ def _view(piece: Any) -> PieceView:
         hp=int(piece.hp),
         max_hp=int(piece.max_hp),
         barrier_total=int(piece.barrier_total),
-        stats={k: piece.stat(k) for k in _STAT_KEYS},
+        stats=MappingProxyType({k: piece.stat(k) for k in _STAT_KEYS}),
         mana=tuple(
             SlotView(int(s.current_mana), s.mana_cost, s.max_mana, s.priority)
             for s in piece.actives

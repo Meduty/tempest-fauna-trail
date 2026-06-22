@@ -91,5 +91,17 @@ def test_inspect_returns_readonly_value_structs():
     team, enemies, weather = _aurion_fight()
     views = inspect_at_tick(team, enemies, weather, tick=50)
     assert views and all(isinstance(v, PieceView) for v in views)
-    with pytest.raises((AttributeError, TypeError)):  # frozen
+    with pytest.raises((AttributeError, TypeError)):  # frozen field
         views[0].hp = 0
+    with pytest.raises(TypeError):  # stats is a read-only MappingProxyType
+        views[0].stats["strength"] = 0.0
+
+
+def test_inspect_midfight_does_not_finalize_combat():
+    """Stopping mid-fight must return without firing end-combat finalization —
+    both sides still have living pieces at an early tick (regression: the stop
+    used to fall into the post-loop `ctx.end_combat`, mutating the snapshot)."""
+    team, enemies, weather = _aurion_fight()
+    views = inspect_at_tick(team, enemies, weather, tick=30)
+    assert any(v.alive and not v.is_enemy for v in views)
+    assert any(v.alive and v.is_enemy for v in views)

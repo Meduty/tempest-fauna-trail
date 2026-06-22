@@ -137,10 +137,15 @@ spawn tick for mid-combat summons; `board_width`/`board_height`).
 
 **Beat taxonomy (V.54, T.37a).** Every visible-state-changing beat emits exactly
 one `BattleEvent` from a single producer path: `move`/`attack`/`cast`/`death`
-plus `heal`/`dot`/`status`(applied)/`status_expire`/`spawn`/`despawn`. HP-changing
-beats (`attack`/`cast`/`heal`/`dot`) carry `hp_after`/`barrier_after` = the
-engine's post-event truth (read after `deal_damage` applies, V.28-correct: the
-`amount` is the full pre-barrier figure for DPS accounting). `expire_summon`
+plus `heal`/`dot`/`status`(applied)/`status_expire`/`spawn`/`despawn`. Beats that
+actually change HP carry `hp_after`/`barrier_after` = the engine's post-event
+truth (read after `deal_damage` applies, V.28-correct: the `amount` is the full
+pre-barrier figure for DPS accounting): always on `attack`/`dot`/`heal`, and on a
+damaging `cast` (the engine's unregistered-ability fallback). Registered-ability
+**cast activation markers** (`amount=0`, the ability's per-hit damage attributed
+separately) are *not* HP-changing and keep the `hp_after=-1` / `barrier_after=0`
+sentinels — the view reads ability-hit HP from replay, not from the cast marker.
+`expire_summon`
 fires `on_despawn` (distinct from `death`). The recorder is observer-only ⇒ sims
 byte-identical; only `combat_log` golden text re-baselines. `record_attack` (a
 dead parallel path) was removed — `_on_attack_landed` is the sole attack producer.
