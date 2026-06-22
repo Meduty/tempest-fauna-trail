@@ -20,10 +20,8 @@ from src.game.effects import (
     Modifier,
     SourceTag,
 )
-from src.game.models import WeatherState
 from src.game.registries import (
     ABILITY_META,
-    ABILITY_REGISTRY,
     AbilityMeta,
     Clause,
     MaxOfTerm,
@@ -38,10 +36,8 @@ from src.game.targeting import (
     lowest_hp_enemy,
     primary_target,
     neighbors_of,
-    allies_in_radius,
     enemies_in_radius,
     furthest_enemy,
-    random_enemy,
 )
 
 
@@ -2285,7 +2281,7 @@ _UMBRA_CLONE = SummonSpec(stats={
 # Active: summon shadow clones (spawn real flagged pieces)
 @register_active("champ_umbra.active")
 def umbra_active(ctx: Any, actor: Any, targets: list) -> None:
-    from src.game.piece import Piece, ActiveSlot
+    from src.game.piece import Piece
     # Spawn 2 shadow clones as real Piece objects with summon flag
     for i in range(2):
         clone = Piece(

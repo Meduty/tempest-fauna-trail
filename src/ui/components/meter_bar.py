@@ -40,8 +40,6 @@ def meter_bar(
     else:
         fill_color = color
 
-    fill_width = ratio  # Used as fraction for expand-based layout
-
     inner_bar = ft.Container(
         bgcolor=fill_color,
         border_radius=height // 2,

@@ -8,11 +8,10 @@ It is built from Champion/Enemy models by the loadout compiler.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from src.game.effects import Modifier, compute_stat
 from src.game.models import WeatherState
-from src.game.status import StatusGate, StatusInstance, STATUS_DEFS, StackBehaviour
+from src.game.status import StatusGate, StatusInstance
 
 
 @dataclass

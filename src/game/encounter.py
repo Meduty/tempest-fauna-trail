@@ -685,36 +685,8 @@ def _champion_def_to_enemy(d: ChampionDef, level: int = 1) -> "Enemy":
 
 
 # ---------------------------------------------------------------------------
-# Champion affinity slot assignment for challenges
+# Champion challenge squad — 50/30/20 affinity distribution
 # ---------------------------------------------------------------------------
-
-
-def _challenge_affinity_slots(
-    team_size: int,
-    stage_affinity: WeatherState,
-    live_weather: WeatherState,
-) -> list[WeatherState]:
-    """Return a list of target affinities per slot following the 50/30/20 rule.
-
-    50% stage affinity (challenge identity), 30% live weather affinity
-    (weather-driven variety), 20% random (any affinity).
-    """
-    random_slots = max(1, round(0.20 * team_size))
-    live_wx_slots = max(1, round(0.30 * team_size))
-    stage_slots = team_size - random_slots - live_wx_slots
-
-    slots: list[WeatherState] = []
-    slots.extend([stage_affinity] * stage_slots)
-    slots.extend([live_weather] * live_wx_slots)
-
-    # Random slots: one of the 6 affinities (decided during generation)
-    all_affinities = list(WeatherState)
-    slots.extend([_rng_affinity_placeholder] * random_slots)  # filled during roll
-    return slots
-
-
-# Sentinel to mark "random affinity" slots (replaced during squad build)
-_rng_affinity_placeholder = WeatherState.CLEAR  # overridden by rng.choice
 
 
 def _roll_challenge_squad(

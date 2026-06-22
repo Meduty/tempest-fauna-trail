@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-from typing import Callable
 
 import flet as ft
 
@@ -18,7 +17,6 @@ from src.ui.theme import (
     SPACING_SM,
     SPACING_XS,
     SURFACE,
-    TEXT_MUTED,
     TEXT_PRIMARY,
     WARNING,
 )
@@ -134,11 +132,9 @@ def weather_badge(
         )
 
     # Staleness dot
-    is_stale = False
     if fetched_at is not None:
         age = time.time() - fetched_at
         if age > _STALE_THRESHOLD_S:
-            is_stale = True
             controls.append(
                 ft.Container(
                     width=6,

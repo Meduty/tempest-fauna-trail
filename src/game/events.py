@@ -7,11 +7,8 @@ no logic, no methods beyond __init__.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from src.game.piece import Piece
+from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(slots=True)

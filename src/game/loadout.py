@@ -15,11 +15,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.game.effects import EffectBundle, EventBus, Hook, Modifier, Lifetime
+from src.game.effects import EffectBundle, EventBus, Modifier, Lifetime
 from src.game.models import Champion, Enemy, WeatherState
 from src.game.piece import ActiveSlot, Piece
 from src.game.registries import (
-    ABILITY_REGISTRY,
     PASSIVE_REGISTRY,
     ability_mana,
 )

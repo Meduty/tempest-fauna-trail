@@ -50,7 +50,6 @@ from src.game.weather_effects import (
 
 if TYPE_CHECKING:
     from src.game.models import Run
-    from src.game.piece import Piece
 
 
 # ---------------------------------------------------------------------------
@@ -953,7 +952,6 @@ def _dominant_tag(run: Run, vocab: Any) -> str | None:
 
 def _echo_of(victim: Any) -> Any:
     """A weaker fighting echo of a dying piece (Endless Swarm). Half stats, no items."""
-    import dataclasses
     from src.game.piece import Piece
 
     echo = Piece(
