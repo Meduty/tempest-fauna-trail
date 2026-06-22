@@ -43,7 +43,8 @@ also spelled out by hand there — keep the two in sync.
   tick engine (V.29); there is no second `run`.
 - **`BattleResultRecorder`** (`combat/recorder.py`) — subscribes to bus events
   and reconstructs `BattleResult` (outcome, survivors, damage, event stream,
-  `piece_max_hp`).
+  `piece_max_hp`, plus the `initial_pieces` board snapshot + board dims, T.37a).
+  Observer-only: it never feeds combat math, so sims stay byte-identical (V.54).
 
 ## Tick model
 
@@ -127,16 +128,30 @@ final = max(1, round(mitigated))                              # true damage skip
 
 `BattleResultRecorder.build_result` emits `BattleResult` with: outcome
 (WIN/LOSS/DRAW), `rounds`/`turns`/`duration_ticks`, `team_damage_dealt`/`_taken`,
-survivor id lists, `events` (full tick-ordered `BattleEvent` stream), and
-`piece_max_hp` (`{id: int(max_hp)}` captured from the engine's pieces — the
-single source for the combat-log HP trace; see [the log](#rendering)).
+survivor id lists, `events` (full tick-ordered `BattleEvent` stream),
+`piece_max_hp` (`{id: int(max_hp)}` captured from the engine's pieces), and the
+combat-view layout (`initial_pieces`: per-piece `PieceSnapshot` identity +
+spawn-time position + mana profile, with `spawn_tick=0` for starters and the
+spawn tick for mid-combat summons; `board_width`/`board_height`).
+
+**Beat taxonomy (V.54, T.37a).** Every visible-state-changing beat emits exactly
+one `BattleEvent` from a single producer path: `move`/`attack`/`cast`/`death`
+plus `heal`/`dot`/`status`(applied)/`status_expire`/`spawn`/`despawn`. HP-changing
+beats (`attack`/`cast`/`heal`/`dot`) carry `hp_after`/`barrier_after` = the
+engine's post-event truth (read after `deal_damage` applies, V.28-correct: the
+`amount` is the full pre-barrier figure for DPS accounting). `expire_summon`
+fires `on_despawn` (distinct from `death`). The recorder is observer-only ⇒ sims
+byte-identical; only `combat_log` golden text re-baselines. `record_attack` (a
+dead parallel path) was removed — `_on_attack_landed` is the sole attack producer.
 
 <a id="rendering"></a>
 ## Rendering
 
 `combat_log.py` turns a `BattleResult` into text purely from the result (it does
-**not** recompute anything): the HP trace reads `result.piece_max_hp`. Used by
-the playtest CLIs and golden-snapshot tests.
+**not** recompute anything): the HP trace prefers each event's `hp_after`
+(barrier/DOT/heal-correct, T.37a) and falls back to `piece_max_hp` + damage
+subtraction for legacy events. Used by the playtest CLIs and golden-snapshot
+tests.
 
 ## Invariants this system owns
 

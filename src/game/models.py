@@ -412,6 +412,14 @@ class BattleEvent:
     slot_idx: int = -1
     mana_spent: int = 0
     mana_after: int = 0
+    # Post-event resource truth (T.37a) — on an HP-changing beat (attack/cast/
+    # heal/dot) these carry the target's `hp`/`barrier_total` *after* the beat
+    # applied, read from the engine's own piece (V.28-correct: `amount` is the
+    # full pre-barrier figure for DPS accounting, `hp_after` is the real HP).
+    # `hp_after = -1` marks a non-HP beat (move/status/spawn/despawn). The combat
+    # view reconstructs HP/barrier bars from these without re-summing damage.
+    hp_after: int = -1
+    barrier_after: int = 0
 
     def __post_init__(self) -> None:
         if self.tick < 0:
@@ -429,6 +437,8 @@ class BattleEvent:
             "slot_idx": self.slot_idx,
             "mana_spent": self.mana_spent,
             "mana_after": self.mana_after,
+            "hp_after": self.hp_after,
+            "barrier_after": self.barrier_after,
         }
 
     @classmethod
@@ -444,6 +454,79 @@ class BattleEvent:
             slot_idx=payload.get("slot_idx", -1),
             mana_spent=payload.get("mana_spent", 0),
             mana_after=payload.get("mana_after", 0),
+            hp_after=payload.get("hp_after", -1),
+            barrier_after=payload.get("barrier_after", 0),
+        )
+
+
+@dataclass(slots=True)
+class ManaProfile:
+    """A piece's mana shape at combat start (T.37a) — lets a view fill mana bars.
+
+    `slots` is one `(mana_cost, max_mana, priority, start_mana)` tuple per
+    `ActiveSlot`; `mana_regen` is the piece-level charge rate (V.48). Pieces with
+    no active slots have `mana = None` on their snapshot (no mana bar).
+    """
+    mana_regen: int
+    slots: list[tuple[int, int, int, int]] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"mana_regen": self.mana_regen, "slots": [list(s) for s in self.slots]}
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> ManaProfile:
+        return cls(
+            mana_regen=payload["mana_regen"],
+            slots=[tuple(s) for s in payload.get("slots", [])],
+        )
+
+
+@dataclass(slots=True)
+class PieceSnapshot:
+    """Identity + spawn-time board state of one combat piece (T.37a).
+
+    Captured in `BattleResultRecorder` so a combat view can lay out the board
+    without re-deriving formation. Start-of-combat pieces have `spawn_tick = 0`;
+    mid-combat summons are appended with their spawn tick + spawn position (the
+    `spawn`/`despawn` events drive their board entry/exit). `affinity`/`is_enemy`/
+    `max_hp` are immutable identity; live HP/stats come from replay (T.37b).
+    """
+    id: str
+    is_enemy: bool
+    affinity: WeatherState
+    q: int
+    r: int
+    max_hp: int
+    mana: ManaProfile | None = None
+    summon: bool = False
+    spawn_tick: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "is_enemy": self.is_enemy,
+            "affinity": self.affinity.value,
+            "q": self.q,
+            "r": self.r,
+            "max_hp": self.max_hp,
+            "mana": self.mana.to_dict() if self.mana is not None else None,
+            "summon": self.summon,
+            "spawn_tick": self.spawn_tick,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> PieceSnapshot:
+        mana = payload.get("mana")
+        return cls(
+            id=payload["id"],
+            is_enemy=payload["is_enemy"],
+            affinity=_parse_enum(WeatherState, payload["affinity"], "affinity"),
+            q=payload["q"],
+            r=payload["r"],
+            max_hp=payload["max_hp"],
+            mana=ManaProfile.from_dict(mana) if mana is not None else None,
+            summon=payload.get("summon", False),
+            spawn_tick=payload.get("spawn_tick", 0),
         )
 
 
@@ -469,6 +552,13 @@ class BattleResult:
     # count, cleared threshold). Surfaced from compile_loadout; empty for
     # enemy-only or pre-field results.
     trait_activations: list[tuple[str, int, int]] = field(default_factory=list)
+    # Combat-view board layout (T.37a): identity + spawn-time positions of every
+    # piece (start pieces `spawn_tick=0`; summons appended at their spawn tick) +
+    # the board dimensions, so a view renders the board without re-deriving
+    # formation. Empty/0 for results deserialized from pre-T.37 saves.
+    initial_pieces: list[PieceSnapshot] = field(default_factory=list)
+    board_width: int = 0
+    board_height: int = 0
 
     def __post_init__(self) -> None:
         if self.rounds < 0 or self.turns < 0 or self.duration_ticks < 0:
@@ -492,6 +582,9 @@ class BattleResult:
             "events": [event.to_dict() for event in self.events],
             "piece_max_hp": dict(self.piece_max_hp),
             "trait_activations": [list(t) for t in self.trait_activations],
+            "initial_pieces": [p.to_dict() for p in self.initial_pieces],
+            "board_width": self.board_width,
+            "board_height": self.board_height,
         }
 
     @classmethod
@@ -517,6 +610,12 @@ class BattleResult:
                 (str(t[0]), int(t[1]), int(t[2]))
                 for t in payload.get("trait_activations", [])
             ],
+            initial_pieces=[
+                PieceSnapshot.from_dict(raw)
+                for raw in payload.get("initial_pieces", [])
+            ],
+            board_width=payload.get("board_width", 0),
+            board_height=payload.get("board_height", 0),
         )
 
 

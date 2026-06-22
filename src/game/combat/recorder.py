@@ -8,18 +8,26 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.game.effects import EventBus, Hook, HookScope
+from src.game.effects import EventBus, Hook, HookScope, SourceTag
 from src.game.events import (
     AttackEvent,
     CastEvent,
     CombatEndEvent,
     DamageEvent,
     DeathEvent,
+    DespawnEvent,
     HealEvent,
     SpawnEvent,
     StatusEvent,
 )
-from src.game.models import BattleEvent, BattleResult, CombatOutcome, WeatherState
+from src.game.models import (
+    BattleEvent,
+    BattleResult,
+    CombatOutcome,
+    ManaProfile,
+    PieceSnapshot,
+    WeatherState,
+)
 from src.game.piece import Piece
 
 
@@ -29,12 +37,40 @@ EVENT_ATTACK = "attack"
 EVENT_CAST = "cast"
 EVENT_DEATH = "death"
 EVENT_HEAL = "heal"
-EVENT_STATUS = "status"
+EVENT_DOT = "dot"
+EVENT_STATUS = "status"            # status applied
+EVENT_STATUS_EXPIRE = "status_expire"
 EVENT_SPAWN = "spawn"
+EVENT_DESPAWN = "despawn"          # summon expired (NOT a death)
 
 ROUND_TICKS = 600
 
 DMG_PHYSICAL = "physical"
+DMG_DOT = "dot"
+
+
+def _snapshot_piece(piece: Piece, spawn_tick: int) -> PieceSnapshot:
+    """Capture a piece's identity + board state for the combat view (T.37a)."""
+    mana: ManaProfile | None = None
+    if piece.actives:
+        mana = ManaProfile(
+            mana_regen=int(piece.stat("mana_regen")),
+            slots=[
+                (s.mana_cost, s.max_mana, s.priority, s.start_mana)
+                for s in piece.actives
+            ],
+        )
+    return PieceSnapshot(
+        id=piece.id,
+        is_enemy=piece.is_enemy,
+        affinity=piece.affinity,
+        q=piece.position_q,
+        r=piece.position_r,
+        max_hp=int(piece.max_hp),
+        mana=mana,
+        summon=piece.summon,
+        spawn_tick=spawn_tick,
+    )
 
 
 class BattleResultRecorder:
@@ -58,6 +94,16 @@ class BattleResultRecorder:
         self._timed_out: bool = False
         self._outcome: CombatOutcome | None = None
         self._current_tick: int = 0
+        # Board layout snapshot (T.37a). Positions are final here — assign_spawns
+        # ran before the recorder is constructed in every resolve path. Summons
+        # are appended by `_on_spawn` at their spawn tick. Board dims via deferred
+        # import (avoids a context↔recorder import cycle).
+        from src.game.combat.context import BOARD_HEIGHT, BOARD_WIDTH
+        self._board_width = BOARD_WIDTH
+        self._board_height = BOARD_HEIGHT
+        self._initial_pieces: list[PieceSnapshot] = [
+            _snapshot_piece(p, spawn_tick=0) for p in pieces
+        ]
 
     def register(self, bus: EventBus) -> None:
         """Subscribe to all relevant events on the bus."""
@@ -91,6 +137,38 @@ class BattleResultRecorder:
             priority=-1000,
             scope=HookScope.ONCE_PER_COMBAT,
         ))
+        # T.37a — the previously-dropped beats (heals/statuses/summons) the
+        # combat view needs. All observer-only at lowest priority (V.54).
+        bus.subscribe(Hook(
+            event="on_heal",
+            handler=self._on_heal,
+            priority=-1000,
+            scope=HookScope.PER_HIT,
+        ))
+        bus.subscribe(Hook(
+            event="on_status_applied",
+            handler=self._on_status_applied,
+            priority=-1000,
+            scope=HookScope.PER_HIT,
+        ))
+        bus.subscribe(Hook(
+            event="on_status_expired",
+            handler=self._on_status_expired,
+            priority=-1000,
+            scope=HookScope.PER_HIT,
+        ))
+        bus.subscribe(Hook(
+            event="on_spawn",
+            handler=self._on_spawn,
+            priority=-1000,
+            scope=HookScope.PER_HIT,
+        ))
+        bus.subscribe(Hook(
+            event="on_despawn",
+            handler=self._on_despawn,
+            priority=-1000,
+            scope=HookScope.PER_HIT,
+        ))
 
     def record_move(self, piece_id: str, tick: int, dest_q: int, dest_r: int) -> None:
         """Record a movement event (called directly by the loop, not via bus)."""
@@ -103,12 +181,14 @@ class BattleResultRecorder:
         ))
 
     def record_cast(self, actor_id: str, target_id: str, tick: int, amount: int, damage_type: str, is_crit: bool = False,
-                    slot_idx: int = -1, mana_spent: int = 0, mana_after: int = 0) -> None:
-        """Record a cast event (called by the engine for cast recording).
+                    slot_idx: int = -1, mana_spent: int = 0, mana_after: int = 0,
+                    hp_after: int = -1, barrier_after: int = 0) -> None:
+        """Record a cast event (engine's unregistered-ability fallback path only).
 
-        Note: damage stats are tracked via _on_damage_dealt from the bus.
-        Mana telemetry (T.36b) is optional — the unregistered-ability fallback
-        path passes it; registered casts carry it on the `on_cast` event instead.
+        Registered casts emit their activation via `_on_cast`; this path is the
+        single producer for *unregistered* fallback casts (V.50 — the two never
+        both fire). Damage totals are tracked via `_on_damage_dealt`; `hp_after`/
+        `barrier_after` carry the single target's post-hit resource truth (T.37a).
         """
         self._events.append(BattleEvent(
             tick=tick,
@@ -121,21 +201,8 @@ class BattleResultRecorder:
             slot_idx=slot_idx,
             mana_spent=mana_spent,
             mana_after=mana_after,
-        ))
-
-    def record_attack(self, actor_id: str, target_id: str, tick: int, amount: int, damage_type: str, is_crit: bool = False) -> None:
-        """Record an attack event (called by the engine for attack recording).
-
-        Note: damage stats are tracked via _on_damage_dealt from the bus.
-        """
-        self._events.append(BattleEvent(
-            tick=tick,
-            actor_id=actor_id,
-            target_id=target_id,
-            event_type=EVENT_ATTACK,
-            amount=amount,
-            note=damage_type,
-            is_crit=is_crit,
+            hp_after=hp_after,
+            barrier_after=barrier_after,
         ))
 
     def set_duration(self, ticks: int, timed_out: bool = False) -> None:
@@ -144,7 +211,9 @@ class BattleResultRecorder:
         self._timed_out = timed_out
 
     def _on_attack_landed(self, ctx: Any, event: AttackEvent) -> None:
-        """Record attack event (for bus-driven basic attacks from ability framework)."""
+        """Record the single attack beat (every basic attack flows through here —
+        `ctx.trigger_basic_attack` fires `on_attack_landed` *after* applying
+        damage, so `target.hp`/barrier are post-hit truth, T.37a)."""
         tick = ctx.current_tick if ctx else 0
         amount = int(event.amount) if event.amount else 0
         self._events.append(BattleEvent(
@@ -154,16 +223,37 @@ class BattleResultRecorder:
             event_type=EVENT_ATTACK,
             amount=amount,
             note=DMG_PHYSICAL,
+            hp_after=int(event.target.hp),
+            barrier_after=int(event.target.barrier_total),
         ))
 
     def _on_damage_dealt(self, ctx: Any, event: DamageEvent) -> None:
-        """Track damage for ability-driven damage not recorded elsewhere."""
+        """Track damage totals + emit a `dot` beat for damage-over-time ticks.
+
+        Fires for *all* damage (post-HP-apply). Attack/ability hits already get
+        their beat (`_on_attack_landed` / `_on_cast`); DOT ticks had no beat at
+        all (B.27) → emit one here so a view shows the bleed + HP drop. No
+        double-count: only `tag == dot` produces an event."""
         amount = int(event.amount) if event.amount else 0
         # Environmental damage (hazard tiles, map effects) has no attacker — it
         # is not attributed to any dealer, but is still counted as taken.
         if event.attacker is not None:
             self._damage_dealt[event.attacker.id] = self._damage_dealt.get(event.attacker.id, 0) + amount
         self._damage_taken[event.target.id] = self._damage_taken.get(event.target.id, 0) + amount
+
+        if event.tag == SourceTag.DOT.value:
+            tick = ctx.current_tick if ctx else 0
+            self._events.append(BattleEvent(
+                tick=tick,
+                actor_id=event.attacker.id if event.attacker is not None else "",
+                target_id=event.target.id,
+                event_type=EVENT_DOT,
+                amount=amount,
+                note=DMG_DOT,
+                is_crit=event.is_crit,
+                hp_after=int(event.target.hp),
+                barrier_after=int(event.target.barrier_total),
+            ))
 
     def _on_death(self, ctx: Any, event: DeathEvent) -> None:
         """Record death event."""
@@ -196,6 +286,72 @@ class BattleResultRecorder:
             slot_idx=event.slot_idx,
             mana_spent=int(event.mana_cost),
             mana_after=int(event.mana_after),
+        ))
+
+    def _on_heal(self, ctx: Any, event: HealEvent) -> None:
+        """Record a heal beat (`ctx.heal` fires `on_heal` after applying, so
+        `target.hp` is post-heal truth — T.37a). `amount` is the actual amount
+        healed (post-`grievous` reduction, V.51)."""
+        amount = int(event.amount) if event.amount else 0
+        if amount <= 0:
+            return  # no-op heal (dead/at-cap/0) — not a visible beat
+        tick = ctx.current_tick if ctx else 0
+        self._events.append(BattleEvent(
+            tick=tick,
+            actor_id=event.source.id,
+            target_id=event.target.id,
+            event_type=EVENT_HEAL,
+            amount=amount,
+            hp_after=int(event.target.hp),
+            barrier_after=int(event.target.barrier_total),
+        ))
+
+    def _on_status_applied(self, ctx: Any, event: StatusEvent) -> None:
+        """Record a status-applied beat (icon appears). `amount` = stacks."""
+        tick = ctx.current_tick if ctx else 0
+        self._events.append(BattleEvent(
+            tick=tick,
+            actor_id=event.target.id,
+            target_id=None,
+            event_type=EVENT_STATUS,
+            amount=int(event.stacks),
+            note=event.status_id,
+        ))
+
+    def _on_status_expired(self, ctx: Any, event: StatusEvent) -> None:
+        """Record a status-expired beat (icon clears)."""
+        tick = ctx.current_tick if ctx else 0
+        self._events.append(BattleEvent(
+            tick=tick,
+            actor_id=event.target.id,
+            target_id=None,
+            event_type=EVENT_STATUS_EXPIRE,
+            note=event.status_id,
+        ))
+
+    def _on_spawn(self, ctx: Any, event: SpawnEvent) -> None:
+        """Record a summon entering the board (T.37a): a `spawn` beat (tick +
+        position) for the timeline, plus the summon's `PieceSnapshot` (identity +
+        spawn position + mana profile) so the view can render the new piece."""
+        tick = ctx.current_tick if ctx else 0
+        q, r = event.position
+        self._events.append(BattleEvent(
+            tick=tick,
+            actor_id=event.piece.id,
+            target_id=None,
+            event_type=EVENT_SPAWN,
+            note=f"{q},{r}",
+        ))
+        self._initial_pieces.append(_snapshot_piece(event.piece, spawn_tick=tick))
+
+    def _on_despawn(self, ctx: Any, event: DespawnEvent) -> None:
+        """Record a summon leaving the board (expiry, not death — T.37a, B.26)."""
+        tick = ctx.current_tick if ctx else 0
+        self._events.append(BattleEvent(
+            tick=tick,
+            actor_id=event.piece.id,
+            target_id=None,
+            event_type=EVENT_DESPAWN,
         ))
 
     def _on_combat_end(self, ctx: Any, event: CombatEndEvent) -> None:
@@ -232,4 +388,7 @@ class BattleResultRecorder:
             events=self._events,
             piece_max_hp={p.id: int(p.max_hp) for p in self._pieces},
             trait_activations=list(self._trait_activations),
+            initial_pieces=list(self._initial_pieces),
+            board_width=self._board_width,
+            board_height=self._board_height,
         )

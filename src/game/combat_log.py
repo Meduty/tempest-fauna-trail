@@ -11,7 +11,18 @@ No Flet imports, no I/O — the log is a deterministic function of the result.
 
 from __future__ import annotations
 
-from src.game.combat import EVENT_ATTACK, EVENT_CAST, EVENT_DEATH, EVENT_MOVE
+from src.game.combat import (
+    EVENT_ATTACK,
+    EVENT_CAST,
+    EVENT_DEATH,
+    EVENT_DESPAWN,
+    EVENT_DOT,
+    EVENT_HEAL,
+    EVENT_MOVE,
+    EVENT_SPAWN,
+    EVENT_STATUS,
+    EVENT_STATUS_EXPIRE,
+)
 from src.game.models import BattleEvent, BattleResult, Champion, Enemy
 
 
@@ -58,21 +69,54 @@ def _format_event(
             return f"{event.actor_id} casts {event.note} at {event.target_id}{mana}"
         return f"{event.actor_id} casts {event.note}{mana}"
 
-    if event.event_type in (EVENT_ATTACK, EVENT_CAST):
-        verb = "attacks" if event.event_type == EVENT_ATTACK else "casts at"
+    if event.event_type in (EVENT_ATTACK, EVENT_CAST, EVENT_DOT):
+        verb = {EVENT_ATTACK: "attacks", EVENT_CAST: "casts at", EVENT_DOT: "burns"}[event.event_type]
         line = (
             f"{event.actor_id} {verb} {event.target_id} "
             f"— {event.amount} {event.note}"
         )
-        if track_hp and event.target_id in current_hp:
-            before = current_hp[event.target_id]
-            after = max(0, before - event.amount)
-            current_hp[event.target_id] = after
-            line += f" ({event.target_id}: {before} -> {after})"
+        line += _hp_trace(event, current_hp, track_hp)
         return line
+
+    if event.event_type == EVENT_HEAL:
+        line = f"{event.actor_id} heals {event.target_id} — +{event.amount}"
+        line += _hp_trace(event, current_hp, track_hp)
+        return line
+
+    if event.event_type == EVENT_STATUS:
+        stacks = f" x{event.amount}" if event.amount > 1 else ""
+        return f"{event.actor_id} gains {event.note}{stacks}"
+
+    if event.event_type == EVENT_STATUS_EXPIRE:
+        return f"{event.actor_id} loses {event.note}"
+
+    if event.event_type == EVENT_SPAWN:
+        return f"{event.actor_id} spawns at ({event.note})"
+
+    if event.event_type == EVENT_DESPAWN:
+        return f"{event.actor_id} expires"
 
     # Unknown event type — render defensively rather than dropping it.
     return f"{event.actor_id} {event.event_type}"
+
+
+def _hp_trace(event: BattleEvent, current_hp: dict[str, int], track_hp: bool, *, target: str | None = None) -> str:
+    """`(target: before -> after)` suffix. Prefers the event's `hp_after`
+    (engine truth — barrier/DOT/heal-correct, T.37a) over damage subtraction;
+    falls back to subtraction for legacy events (`hp_after == -1`). `target`
+    overrides whose HP changed (heals change the heal's *target*, not actor)."""
+    tid = target if target is not None else event.target_id
+    if not track_hp or tid not in current_hp:
+        return ""
+    before = current_hp[tid]
+    if event.hp_after >= 0:
+        after = event.hp_after
+    elif event.event_type == EVENT_HEAL:
+        after = before + event.amount
+    else:
+        after = max(0, before - event.amount)
+    current_hp[tid] = after
+    return f" ({tid}: {before} -> {after})"
 
 
 def format_combat_log(

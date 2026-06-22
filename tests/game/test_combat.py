@@ -401,3 +401,115 @@ def test_cast_path_consumes_mana_and_deals_magic_damage():
 def test_board_constants():
     assert BOARD_WIDTH * BOARD_HEIGHT == 70
     assert ENERGY_THRESHOLD == 60_000
+
+
+# --- T.37a: combat-view replay backend — event stream + initial snapshot -----
+
+
+def _recorder_harness():
+    """A CombatContext + registered recorder over two live pieces (src, tgt)."""
+    from src.game.effects import EventBus
+    from src.game.combat.context import CombatContext
+    from src.game.combat.recorder import BattleResultRecorder
+
+    src = Piece(id="src", base_stats={"strength": 50.0, "attack_range": 1.0},
+                hp=200.0, max_hp=200.0, position_q=0, position_r=0)
+    tgt = Piece(id="tgt", base_stats={"attack_range": 1.0}, is_enemy=True,
+                hp=200.0, max_hp=200.0, position_q=1, position_r=0)
+    pieces = [src, tgt]
+    bus = EventBus()
+    rec = BattleResultRecorder(pieces, WeatherState.CLEAR, node_id="n")
+    rec.register(bus)
+    ctx = CombatContext(pieces, bus, WeatherState.CLEAR, seed=1)
+    ctx.current_tick = 5
+    return ctx, rec, src, tgt
+
+
+def _types(rec):
+    return [e.event_type for e in rec._events]
+
+
+def test_recorder_emits_heal_dot_status_spawn_despawn_beats():
+    from src.game.effects import SourceTag
+    from src.game.combat.recorder import (
+        EVENT_HEAL, EVENT_DOT, EVENT_STATUS, EVENT_STATUS_EXPIRE,
+        EVENT_SPAWN, EVENT_DESPAWN,
+    )
+    ctx, rec, src, tgt = _recorder_harness()
+
+    tgt.hp = 100.0
+    ctx.heal(src, tgt, 40.0)                       # heal beat (+40 → hp_after 140)
+    ctx.deal_damage(src, tgt, 30.0, SourceTag.DOT)  # dot beat
+    ctx.apply_status(tgt, "burn", duration_ticks=300)  # status apply
+    ctx.remove_status(tgt, "burn")                  # status expire
+
+    summon = Piece(id="turret", base_stats={"attack_range": 1.0}, is_enemy=True,
+                   hp=50.0, max_hp=50.0, summon=True)
+    ctx.spawn(summon, 4, 2)                          # spawn beat
+    ctx.expire_summon(summon)                        # despawn beat (NOT death)
+
+    types = _types(rec)
+    # exactly one beat per kind, no drops, no death for the expiry
+    assert types.count(EVENT_HEAL) == 1
+    assert types.count(EVENT_DOT) == 1
+    assert types.count(EVENT_STATUS) == 1
+    assert types.count(EVENT_STATUS_EXPIRE) == 1
+    assert types.count(EVENT_SPAWN) == 1
+    assert types.count(EVENT_DESPAWN) == 1
+    assert "death" not in types
+
+    heal = next(e for e in rec._events if e.event_type == EVENT_HEAL)
+    assert heal.amount == 40 and heal.hp_after == 140
+    dot = next(e for e in rec._events if e.event_type == EVENT_DOT)
+    assert dot.hp_after == int(tgt.hp)
+
+
+def test_attack_beat_hp_after_is_exact_under_barrier():
+    """V.54 guard: `amount` is full pre-barrier damage (DPS accounting), but
+    `hp_after` is the real HP — so a barrier makes amount != HP-delta, yet the
+    bar still reconstructs exactly."""
+    from src.game.combat.recorder import EVENT_ATTACK
+    ctx, rec, src, tgt = _recorder_harness()
+
+    before = tgt.hp
+    ctx.grant_barrier(tgt, 10_000.0)   # soaks everything
+    ctx.trigger_basic_attack(src, tgt)
+
+    atk = next(e for e in rec._events if e.event_type == EVENT_ATTACK)
+    assert atk.amount > 0                # pre-barrier damage was dealt for accounting
+    assert tgt.hp == before             # but barrier ate it — no HP lost
+    assert atk.hp_after == int(tgt.hp)  # hp_after is exact (subtraction would drift)
+    assert atk.barrier_after == int(tgt.barrier_total)
+
+
+def test_initial_pieces_snapshot_and_board_dims():
+    team = [_champ(id="hero", strength=40)]
+    enemies = [_enemy(id="mob", max_hp=60)]
+    result = resolve_combat(team, enemies, WeatherState.CLEAR)
+
+    ids = {s.id for s in result.initial_pieces}
+    assert ids == {"hero", "mob"}
+    assert result.board_width == BOARD_WIDTH
+    assert result.board_height == BOARD_HEIGHT
+    hero = next(s for s in result.initial_pieces if s.id == "hero")
+    assert hero.is_enemy is False and hero.spawn_tick == 0
+    assert (hero.q, hero.r) == (0, 0)          # assign_spawns left-column pack
+    mob = next(s for s in result.initial_pieces if s.id == "mob")
+    assert mob.is_enemy is True
+
+
+def test_battleresult_roundtrip_with_snapshot_and_legacy_default():
+    team = [_champ(id="hero", strength=40)]
+    enemies = [_enemy(id="mob", max_hp=60)]
+    result = resolve_combat(team, enemies, WeatherState.CLEAR)
+
+    from src.game.models import BattleResult
+    assert BattleResult.from_dict(result.to_dict()).to_dict() == result.to_dict()
+
+    # Pre-T.37 saves have no initial_pieces/board dims → empty/0 defaults.
+    legacy = result.to_dict()
+    del legacy["initial_pieces"]
+    del legacy["board_width"]
+    del legacy["board_height"]
+    loaded = BattleResult.from_dict(legacy)
+    assert loaded.initial_pieces == [] and loaded.board_width == 0

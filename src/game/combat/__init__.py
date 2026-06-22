@@ -26,8 +26,11 @@ from src.game.combat.recorder import (  # noqa: F401
     EVENT_CAST,
     EVENT_DEATH,
     EVENT_HEAL,
+    EVENT_DOT,
     EVENT_STATUS,
+    EVENT_STATUS_EXPIRE,
     EVENT_SPAWN,
+    EVENT_DESPAWN,
 )
 from src.game.combat.resolve import resolve_combat
 
@@ -48,6 +51,9 @@ __all__ = [
     "EVENT_CAST",
     "EVENT_DEATH",
     "EVENT_HEAL",
+    "EVENT_DOT",
     "EVENT_STATUS",
+    "EVENT_STATUS_EXPIRE",
     "EVENT_SPAWN",
+    "EVENT_DESPAWN",
 ]

@@ -502,7 +502,9 @@ def _resolve_action(
             if recorder:
                 recorder.record_cast(piece.id, target.id, tick, int(final), DMG_MAGICAL, False,
                                      slot_idx=0, mana_spent=slot.mana_cost,
-                                     mana_after=int(slot.current_mana))
+                                     mana_after=int(slot.current_mana),
+                                     hp_after=int(target.hp),
+                                     barrier_after=int(target.barrier_total))
             piece.action_energy -= ENERGY_THRESHOLD
             return
 

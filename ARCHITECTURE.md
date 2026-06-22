@@ -404,7 +404,10 @@ depend on it:
    their cadence; barriers soak; map effects fire; sudden-death timeout guards stalls.
    Every action emits a typed event onto the bus.
 6. `BattleResultRecorder` (subscribed to the bus) reconstructs a `BattleResult` —
-   outcome, survivors, full event stream.
+   outcome, survivors, the full beat stream (move/attack/cast/death + heal/dot/
+   status/spawn/despawn, each beat one event with `hp_after`/`barrier_after` for
+   HP-changing ones, T.37a) and an `initial_pieces` board snapshot + board dims so
+   a combat view can lay out and animate the fight without re-deriving formation.
 7. The result flows to `Run.battle_log`; rewards (Amber / items / Tempest) are applied;
    the next node opens.
 

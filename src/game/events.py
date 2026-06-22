@@ -116,3 +116,9 @@ class SpawnEvent:
     """Fires on on_spawn."""
     piece: Any  # Piece
     position: tuple[int, int]
+
+
+@dataclass(slots=True)
+class DespawnEvent:
+    """Fires on on_despawn — a summon expiring (G6 lifecycle, NOT a death)."""
+    piece: Any  # Piece
