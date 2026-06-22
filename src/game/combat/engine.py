@@ -19,17 +19,16 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
-from typing import Any
 
 from src.game.bosses.data import BOSS_DEFS
 from src.game.combat.context import CombatContext, hex_distance, HEX_DIRECTIONS, BOARD_WIDTH, BOARD_HEIGHT
 from src.game.combat.recorder import BattleResultRecorder
 from src.game.content import ENEMY_DEF_BY_ID
-from src.game.effects import EventBus, Lifetime, SourceTag
-from src.game.events import CombatStartEvent, DeathEvent, TickEvent
+from src.game.effects import Lifetime, SourceTag
+from src.game.events import CombatStartEvent, TickEvent
 from src.game.formation import plan_enemy_formation
-from src.game.piece import Piece, ActiveSlot
-from src.game.status import STATUS_DEFS, StatusGate, StatusInstance
+from src.game.piece import Piece
+from src.game.status import STATUS_DEFS, StatusGate
 from src.game.weather_effects import damage_modifier
 
 

@@ -14,7 +14,7 @@ No Flet imports (V.1). No I/O.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 # ---------------------------------------------------------------------------

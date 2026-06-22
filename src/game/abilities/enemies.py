@@ -36,7 +36,6 @@ from src.game.targeting import (
     lowest_hp_enemy,
     neighbors_of,
     primary_target,
-    furthest_enemy,
 )
 
 

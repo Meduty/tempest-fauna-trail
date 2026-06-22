@@ -35,9 +35,7 @@ from src.game.registries import (
     register_passive,
 )
 from src.game.targeting import (
-    allies_in_radius,
     enemies_in_radius,
-    lowest_hp_ally,
     lowest_hp_enemy,
     neighbors_of,
     primary_target,

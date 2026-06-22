@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 from src.game.status import StatusGate
 
 if TYPE_CHECKING:
-    from src.game.piece import Piece
+    pass
 
 
 def _filter_hexproof(actor: Any, enemies: list) -> list:
@@ -147,7 +147,6 @@ def furthest_enemy(actor: Any, ctx: Any) -> Any | None:
 
 def line_targets(actor: Any, direction: tuple[int, int], length: int, ctx: Any) -> list:
     """All pieces along a line from actor in the given direction."""
-    from src.game.combat import hex_distance
     result = []
     q, r = actor.position_q, actor.position_r
     dq, dr = direction

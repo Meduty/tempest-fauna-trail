@@ -15,7 +15,7 @@ Different statuses handle stacking differently:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 # Authoring sugar for durations. Tick = 10 ms (TICK_MS), so SECS = 100 ticks = 1 s.

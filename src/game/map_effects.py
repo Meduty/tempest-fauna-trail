@@ -21,16 +21,13 @@ No Flet imports (V.1). No I/O. All randomness via ctx.rng (V.2 determinism).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from random import Random
 from typing import Any
 
 from src.game.board import BoardState, CellModifier
 from src.game.effects import (
-    EffectBundle,
     EventBus,
     Hook,
-    HookScope,
     Lifetime,
     Modifier,
     SourceTag,

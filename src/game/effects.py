@@ -6,7 +6,6 @@ This module has zero game-specific logic — it is the vocabulary.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Literal
@@ -220,7 +219,7 @@ class EventBus:
 
     def unsubscribe(self, hook_id: str) -> None:
         """Remove a hook by its id."""
-        for event_name, hooks in self._hooks.items():
+        for hooks in self._hooks.values():
             for i, hook in enumerate(hooks):
                 if hook.hook_id == hook_id:
                     hooks.pop(i)

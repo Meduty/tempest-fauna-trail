@@ -17,9 +17,7 @@ from src.game.effects import (
     Lifetime,
     Modifier,
     SourceTag,
-    compute_stat,
 )
-from src.game.events import AttackEvent, DamageEvent
 from src.game.models import WeatherState
 from src.game.registries import (
     ABILITY_REGISTRY,
@@ -28,7 +26,7 @@ from src.game.registries import (
     register_active_simple,
     register_passive,
 )
-from src.game.targeting import lowest_hp_ally, lowest_hp_enemy, primary_target
+from src.game.targeting import lowest_hp_ally, primary_target
 
 
 # ---------------------------------------------------------------------------
