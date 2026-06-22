@@ -267,11 +267,12 @@ def _pick_from_offer(offer: list, policy: str, rng) -> object | None:
         return offer[0]
     if policy == "random":
         return offer[rng.randint(0, len(offer) - 1)]
-    # highest-quality: rank by quality, ties broken by seeded order then id.
+    # highest-quality: rank by quality, ties broken by the seeded offer order
+    # (first-offered wins) so the pick honors the deterministic offer the player saw.
     from src.game.augments import AugmentQuality
     order = {q: i for i, q in enumerate(
         (AugmentQuality.COMMON, AugmentQuality.RARE, AugmentQuality.EPIC, AugmentQuality.PRISMATIC))}
-    return max(offer, key=lambda a: (order[a.quality], a.id))
+    return max(enumerate(offer), key=lambda iv: (order[iv[1].quality], -iv[0]))[1]
 
 
 def _resolve_augment_node(run, stage_idx: int, node_index: int, policy: str, interactive: bool) -> str:
@@ -295,8 +296,10 @@ def _resolve_augment_node(run, stage_idx: int, node_index: int, policy: str, int
 
 
 def _prompt_augment(run, stage_idx: int, node_index: int, offer: list):
-    """Interactive 1/2/3/r/s augment prompt — rudimentary CLI mirror of the view."""
-    from src.game.augments import apply_augment, generate_augment_offer
+    """Interactive 1/2/3/r/s augment prompt — rudimentary CLI mirror of the view.
+
+    Returns the chosen `Augment` (or None to skip); the caller applies it."""
+    from src.game.augments import generate_augment_offer
 
     rerolled = False
     while True:
@@ -356,6 +359,10 @@ def main(argv: list[str] | None = None) -> int:
     for stage_idx, stage in enumerate(STAGES, start=1):
         for position, _ in enumerate(stage.node_cities):
             node_index += 1
+            # Advance the walk Run's position so RUN-augment seeds (Forage's
+            # `_run_action_seed`) vary per node and future quest trackers can read
+            # the live node off `run.current_node()`.
+            run.current_node_index = node_index
             city_id = stage.node_cities[position]
             weather = _pick_weather(args.weather_strategy, stage_idx, city_id)
             node_type = stage.node_types[position]

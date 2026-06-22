@@ -98,14 +98,15 @@ def test_slow_factor_scales_with_stacks_and_floors():
 
 
 def test_slow_changes_combat_outcome_end_to_end():
-    # A fight where slow is applied (SNOW Living World) differs from the unslowed
-    # baseline — proves `slow` is no longer a dead marker (B.25).
+    # Keep weather FIXED (SNOW) and toggle only Living World, whose sole SNOW effect
+    # is applying `slow` to enemies — so any diff is attributable to `slow`, not to
+    # Weather Favor (B.25). Comparing CLEAR vs SNOW would be confounded by weather.
     from src.game.augments import RunModifiers
     from src.game.content import CHAMPION_ROSTER, ENEMY_ROSTER
 
     team = list(CHAMPION_ROSTER.values())[:6]
     enemies = list(ENEMY_ROSTER.values())[:6]
-    base = resolve_combat(team, enemies, WeatherState.CLEAR)
+    base = resolve_combat(team, enemies, WeatherState.SNOW)
     slowed = resolve_combat(team, enemies, WeatherState.SNOW,
                             run_mods=RunModifiers(augments=["living_world"], augment_state={}))
     assert base.to_dict() != slowed.to_dict()

@@ -344,6 +344,15 @@ def compile_loadout(
     if run_mods is not None:
         import src.game.augments as _augments  # noqa: F401 — populates AUGMENT_REGISTRY
         _augments.apply_run_augments(pieces, bus, run_mods)
+        # Re-seed team max_hp/hp so augment `hp` muls actually bite: the engine
+        # reads the cached `max_hp`/`hp` fields, not `stat("hp")` (same reason the
+        # weather + trait passes resync). Augments touch the player team only
+        # (V.22). Gated on run_mods so the non-augment path stays byte-identical.
+        for piece in pieces:
+            if not piece.is_enemy:
+                new_hp = max(1.0, piece.stat("hp"))
+                piece.max_hp = new_hp
+                piece.hp = new_hp
 
     # 7. Apply champion/enemy passive bundles
     for piece in pieces:

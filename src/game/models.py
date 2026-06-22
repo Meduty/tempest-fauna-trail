@@ -574,6 +574,8 @@ class Run:
             raise ValueError("Run active_augments must be non-empty strings.")
         if len(set(self.active_augments)) != len(self.active_augments):
             raise ValueError("Run active_augments must be unique.")
+        if not isinstance(self.augment_state, dict):
+            raise ValueError("Run augment_state must be a dict.")
 
         roster_ids = [champion.id for champion in self.roster]
         if len(roster_ids) != len(set(roster_ids)):

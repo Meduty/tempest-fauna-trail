@@ -272,7 +272,7 @@ def scouts_pay(run: Run) -> None:
 
 
 @register_quest_tracker("scouts_pay_progress", events=["on_combat_end"])
-def scouts_pay_progress(run: Run, event_name: str, event: Any) -> None:
+def scouts_pay_progress(run: Run, event_name: str, event: Any, ctx: Any = None) -> None:
     st = run.augment_state.get("scouts_pay")
     if not st or st["fights"] <= 0:
         return
@@ -296,7 +296,7 @@ def prospector(run: Run) -> None:
 
 
 @register_quest_tracker("prospector_progress", events=["on_combat_end"])
-def prospector_progress(run: Run, event_name: str, event: Any) -> None:
+def prospector_progress(run: Run, event_name: str, event: Any, ctx: Any = None) -> None:
     st = run.augment_state.get("prospector")
     if not st or st["done"]:
         return
@@ -448,18 +448,20 @@ def stormbound_trail(run: Run) -> None:
 
 
 @register_quest_tracker("stormbound_trail_progress", events=["on_combat_end"])
-def stormbound_trail_progress(run: Run, event_name: str, event: Any) -> None:
+def stormbound_trail_progress(run: Run, event_name: str, event: Any, ctx: Any = None) -> None:
     st = run.augment_state.get("stormbound_trail")
     if not st or st["done"]:
         return
-    # The recorder's CombatEndEvent carries no weather; read it off the freshest
-    # battle-log entry the engine just appended (walker appends post-combat). MVP
-    # counts any team win (weather gate applied by the walker, see sim_run).
-    if getattr(event, "winner", None) == "team":
-        st["wins"] += 1
-        if st["wins"] >= st["target"]:
-            run.inventory["emblem_beast"] = run.inventory.get("emblem_beast", 0) + 1
-            st["done"] = True
+    if getattr(event, "winner", None) != "team":
+        return
+    # Only stormy (non-CLEAR) wins count — read the live weather off `ctx`
+    # (CombatEndEvent carries none). If ctx is absent (untracked call), don't count.
+    if ctx is None or ctx.weather is WeatherState.CLEAR:
+        return
+    st["wins"] += 1
+    if st["wins"] >= st["target"]:
+        run.inventory["emblem_beast"] = run.inventory.get("emblem_beast", 0) + 1
+        st["done"] = True
 
 
 # ===========================================================================
@@ -640,7 +642,7 @@ def bloodless_victory(run: Run) -> None:
 
 
 @register_quest_tracker("bloodless_victory_progress", events=["on_death", "on_combat_end"])
-def bloodless_victory_progress(run: Run, event_name: str, event: Any) -> None:
+def bloodless_victory_progress(run: Run, event_name: str, event: Any, ctx: Any = None) -> None:
     st = run.augment_state.get("bloodless_victory")
     if not st or st["done"]:
         return
@@ -673,7 +675,7 @@ def the_uprising(team: list[Any], state: dict[str, Any]) -> EffectBundle:
 
 
 @register_quest_tracker("uprising_progress", events=["on_combat_end"])
-def uprising_progress(run: Run, event_name: str, event: Any) -> None:
+def uprising_progress(run: Run, event_name: str, event: Any, ctx: Any = None) -> None:
     if getattr(event, "winner", None) == "team":
         run.augment_state["uprising_wins"] = run.augment_state.get("uprising_wins", 0) + 1
 
@@ -880,7 +882,7 @@ def the_long_hunt(run: Run) -> None:
 
 
 @register_quest_tracker("the_long_hunt_progress", events=["on_kill"])
-def the_long_hunt_progress(run: Run, event_name: str, event: Any) -> None:
+def the_long_hunt_progress(run: Run, event_name: str, event: Any, ctx: Any = None) -> None:
     st = run.augment_state.get("the_long_hunt")
     if not st or st["done"]:
         return
@@ -1144,7 +1146,7 @@ def wire_quest_trackers(bus: Any, run_mods: RunModifiers | None) -> None:
         for event_name in QUEST_TRACKER_EVENTS.get(aug.quest_tracker, ()):
             bus.subscribe(Hook(
                 event=event_name,
-                handler=lambda ctx, ev, t=tracker, en=event_name: t(run, en, ev),
+                handler=lambda ctx, ev, t=tracker, en=event_name: t(run, en, ev, ctx),
                 priority=-100,
                 scope=HookScope.PER_HIT,
             ))

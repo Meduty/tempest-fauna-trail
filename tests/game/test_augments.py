@@ -207,6 +207,32 @@ def test_quest_tracker_accumulates_across_combats():
 # ---------------------------------------------------------------------------
 
 
+def test_hp_only_augment_actually_affects_combat():
+    # Regression (Copilot review #1): an hp-only augment must shift the fight —
+    # the engine reads cached max_hp/hp, so compile_loadout must re-seed them after
+    # applying augment hp muls.
+    team = list(CHAMPION_ROSTER.values())[:6]
+    enemies = list(ENEMY_ROSTER.values())[:6]
+    base = resolve_combat(team, enemies, WeatherState.CLEAR)
+    buffed = resolve_combat(team, enemies, WeatherState.CLEAR,
+                            run_mods=RunModifiers(augments=["thicker_hides"], augment_state={}))
+    assert base.to_dict() != buffed.to_dict()
+
+
+def test_stormbound_trail_counts_only_stormy_wins():
+    # Regression (Copilot review #5): the quest must gate on non-CLEAR weather,
+    # not count any team win.
+    team = sorted(CHAMPION_ROSTER.values(), key=lambda c: -c.tier)[:6]
+    enemies = sorted(ENEMY_ROSTER.values(), key=lambda e: e.tier)[:2]
+    run = _fresh_run(roster=team)
+    apply_augment(run, AUGMENT_REGISTRY["stormbound_trail"])
+    rm = RunModifiers.from_run(run)
+    resolve_combat(team, enemies, WeatherState.CLEAR, run_mods=rm)
+    assert run.augment_state["stormbound_trail"]["wins"] == 0  # CLEAR win ignored
+    resolve_combat(team, enemies, WeatherState.THUNDER, run_mods=rm)
+    assert run.augment_state["stormbound_trail"]["wins"] == 1  # stormy win counts
+
+
 def test_living_world_active_in_every_weather():
     # The weather-driven Prismatic shifts the fight (or at minimum applies) under
     # each of the 6 weathers — it is never inert (works on all nodes, not bosses).
