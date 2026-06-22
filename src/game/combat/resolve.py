@@ -30,25 +30,50 @@ def resolve_combat(
     `compile_loadout`. The `None` default leaves every non-augment caller —
     including every balance sim — byte-for-byte unchanged (V.2/V.18).
     """
+    from src.game.combat.engine import run as run_combat
+
+    ctx, recorder = build_combat(
+        team, enemies, weather, run_mods=run_mods, node_id=node_id, with_recorder=True
+    )
+    winner = run_combat(ctx, recorder)
+    return recorder.build_result(winner)
+
+
+def build_combat(
+    team: list[Champion],
+    enemies: list[Enemy],
+    weather: WeatherState,
+    *,
+    run_mods: Any = None,
+    node_id: str = "",
+    seed: int = 42,
+    with_recorder: bool = True,
+) -> tuple[Any, Any]:
+    """Build the combat substrate (pieces + bus + context, optionally a wired
+    recorder) up to — but not running — the tick loop. The **single** wiring path
+    shared by `resolve_combat` (records a `BattleResult`), the replay
+    `inspect_at_tick` (no recorder, reads live state), and `resolve_boss_combat`
+    (attaches a map effect to `ctx` before running) — so none of them drift into
+    parallel setups. Returns `(ctx, recorder|None)`.
+    """
     # Deferred imports keep the content↔combat boundary acyclic: loadout pulls
     # in the ability/passive registries, which must finish importing first.
     from src.game.combat.context import CombatContext
-    from src.game.combat.engine import run as run_combat, assign_spawns
+    from src.game.combat.engine import assign_spawns
     from src.game.combat.recorder import BattleResultRecorder
     from src.game.loadout import compile_loadout
 
     # Build pieces with weather favor applied. compile_loadout assigns
     # formation_index (input order) + load_order (seeded, side-independent) — V.34.
-    pieces, bus, trait_activations = compile_loadout(team, enemies, weather, seed=42, run_mods=run_mods)
+    pieces, bus, trait_activations = compile_loadout(team, enemies, weather, seed=seed, run_mods=run_mods)
 
     # Assign spawn positions.
     assign_spawns(pieces)
 
-    # Wire the recorder to the event bus and run the loop.
-    recorder = BattleResultRecorder(pieces, weather, node_id, trait_activations)
-    recorder.register(bus)
+    recorder = None
+    if with_recorder:
+        recorder = BattleResultRecorder(pieces, weather, node_id, trait_activations)
+        recorder.register(bus)
 
-    ctx = CombatContext(pieces, bus, weather, seed=42)
-    winner = run_combat(ctx, recorder)
-
-    return recorder.build_result(winner)
+    ctx = CombatContext(pieces, bus, weather, seed=seed)
+    return ctx, recorder

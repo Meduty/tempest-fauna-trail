@@ -103,11 +103,12 @@ wiring).
 
 | Concern | File |
 |---|---|
-| Public entry (`resolve_combat`) — wires loadout → context → engine → recorder | `src/game/combat/resolve.py` |
-| Package re-exports (`resolve_combat`, `CombatContext`, `run`) | `src/game/combat/__init__.py` |
-| **The tick loop** (energy meters, pathing, attacks, casts, statuses, map effects, sudden death) + tuning constants (coeffs, tick sizes) | `src/game/combat/engine.py` |
+| Public entry (`resolve_combat`) + the shared `build_combat` wiring helper (compile → assign_spawns → context, optional recorder) reused by resolve / boss / replay | `src/game/combat/resolve.py` |
+| Package re-exports (`resolve_combat`, `CombatContext`, `run`, `inspect_at_tick`) | `src/game/combat/__init__.py` |
+| **The tick loop** (energy meters, pathing, attacks, casts, statuses, map effects, sudden death) + tuning constants (coeffs, tick sizes); `run(..., stop_after_tick=)` is the drivable replay hook | `src/game/combat/engine.py` |
 | **Mutator API** — the *only* way content touches the world | `src/game/combat/context.py` |
-| Event → `BattleResult` reconstruction | `src/game/combat/recorder.py` |
+| Event → `BattleResult` reconstruction (beats + `initial_pieces` board snapshot) | `src/game/combat/recorder.py` |
+| **Replay / inspect-at-tick** — `inspect_at_tick` re-runs the engine to a tick (on a cloned `run_mods`) and returns read-only `PieceView`s; recomputes state, records nothing (V.55) | `src/game/combat/replay.py` |
 | Compile models → combat `Piece`s + wire passives/weather/**traits** | `src/game/loadout.py` |
 | **Synergy traits** — `TraitScope`/`TraitBreakpoint`/`DynamicThreshold`, `@register_trait`, `_resolve_traits` (unique-id count, affinity synthesis, apex/dynamic threshold) applied in `compile_loadout` step 3 (T.28a; primitives T.28b/c) | `src/game/traits/` |
 
@@ -363,6 +364,10 @@ depend on it:
 - **`resolve_combat` is pure** — same inputs, byte-identical `BattleResult`. When the
   T.31 `run_mods` arg lands it must default to `None`, leaving every existing caller (and
   every sim) byte-for-byte unchanged (V.2).
+- **State for a view is recomputed, not recorded (V.55).** `inspect_at_tick` re-runs the
+  same engine (via `run(stop_after_tick=)`) to read any piece's live state at any tick —
+  no per-tick keyframes in `BattleResult`. Same purity contract: it clones `run_mods` so
+  the replay can't mutate the caller's quest state.
 - **Verify with:** fixed seed + `workers=1` → identical output across runs.
 
 ---

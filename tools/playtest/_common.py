@@ -11,16 +11,15 @@ from dataclasses import dataclass
 from typing import Iterable, Literal
 
 from src.game.bosses.data import BossEncounterResult
-from src.game.combat.context import CombatContext
-from src.game.combat.engine import assign_spawns, run as run_combat
-from src.game.combat.recorder import BattleResultRecorder
+from src.game.combat.engine import run as run_combat
+from src.game.combat.resolve import build_combat
 from src.game.content import (
     CHAMPION_ROSTER,
     ENEMY_ROSTER,
     get_champion,
     get_enemy,
 )
-from src.game.loadout import attach_map_effect, compile_loadout
+from src.game.loadout import attach_map_effect
 from src.game.models import BattleResult, Champion, Enemy, WeatherState
 from src.game.route import STAGES
 
@@ -122,14 +121,13 @@ def resolve_boss_combat(
     augments; `None` keeps every non-augment caller byte-identical (V.2).
     """
     enemies = encounter.all_enemies
-    # compile_loadout assigns formation_index + load_order (V.34).
-    pieces, bus, trait_activations = compile_loadout(team, enemies, weather, seed=run_seed, run_mods=run_mods)
-    assign_spawns(pieces)
-
-    recorder = BattleResultRecorder(pieces, weather, node_id, trait_activations)
-    recorder.register(bus)
-
-    ctx = CombatContext(pieces, bus, weather, seed=run_seed)
+    # Reuse the single combat-wiring path (`build_combat` — compile_loadout assigns
+    # formation_index + load_order, V.34); a boss fight only differs by attaching a
+    # map effect to `ctx` before the loop runs, so no parallel setup (T.37b).
+    ctx, recorder = build_combat(
+        team, enemies, weather, run_mods=run_mods, node_id=node_id, seed=run_seed,
+        with_recorder=True,
+    )
     if encounter.map_effect_id:
         attach_map_effect(encounter.map_effect_id, ctx, seed=run_seed)
 

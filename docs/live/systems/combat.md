@@ -9,21 +9,22 @@
 
 `resolve_combat(team, enemies, weather, *, node_id="") -> BattleResult` in
 `combat/resolve.py` is the **single public combat entry** (V.2). It is pure and
-deterministic: identical inputs → byte-identical `BattleResult`. It wires:
+deterministic: identical inputs → byte-identical `BattleResult`. It delegates the
+setup to the shared `build_combat(...)` helper (the **one** wiring path) then
+runs the loop:
 
 ```
-compile_loadout(team, enemies, weather, seed) → (pieces, bus)   # loadout.py
-assign_spawns(pieces)                                            # combat/engine.py
-recorder = BattleResultRecorder(pieces, weather, node_id); recorder.register(bus)
-ctx = CombatContext(pieces, bus, weather, seed)                  # combat/context.py
-winner = run(ctx, recorder)                                      # combat/engine.py
-return recorder.build_result(winner)                             # combat/recorder.py
+ctx, recorder = build_combat(team, enemies, weather, run_mods, node_id, seed)  # resolve.py
+#   = compile_loadout (pieces, bus) → assign_spawns → recorder.register → CombatContext
+winner = run(ctx, recorder)                                                    # combat/engine.py
+return recorder.build_result(winner)                                           # combat/recorder.py
 ```
 
-Boss fights can't use `resolve_combat` (it takes no map effect); `resolve_boss_combat`
-in `tools/playtest/_common.py` composes the same primitives plus
-`attach_map_effect` before `run`. That asymmetry is the one reason the wiring is
-also spelled out by hand there — keep the two in sync.
+`build_combat` is reused (no parallel setup, T.37b) by:
+- **`resolve_boss_combat`** (`tools/playtest/_common.py`) — same `build_combat`, then
+  `attach_map_effect(ctx)` before `run` (its only difference; takes a `seed`/`run_seed`).
+- **`inspect_at_tick`** (`combat/replay.py`) — `build_combat(..., with_recorder=False)`,
+  then `run(ctx, None, stop_after_tick=T)` to read live state (see [Replay](#replay)).
 
 ## The pieces
 
@@ -153,6 +154,23 @@ dead parallel path) was removed — `_on_attack_landed` is the sole attack produ
 subtraction for legacy events. Used by the playtest CLIs and golden-snapshot
 tests.
 
+<a id="replay"></a>
+## Replay / inspect-at-tick (T.37b)
+
+Continuous combat state for a view is **recomputed, not recorded** (V.55). Since
+combat is byte-identical for the same inputs, `inspect_at_tick(team, enemies,
+weather, *, run_mods=None, tick) -> list[PieceView]` (`combat/replay.py`) re-runs
+the engine via the drivable `run(..., stop_after_tick=tick)` hook and reads each
+piece's live state — hp, barriers, per-slot mana, **effective stats** via
+`piece.stat()` (STR/AS ramp included), statuses, position — into frozen
+read-only `PieceView`/`SlotView`/`StatusView` value structs. `tick=0` is the
+initial board (after `on_combat_start`); `tick=N` is after ticks 1..N. The
+`run_mods` is **cloned** (deep-copy of the mutable `augment_state`) so the replay
+never mutates the caller. Raw `Piece`/Flet never escape `src/game/` (V.1). No
+per-tick state is stored in `BattleResult` (avoids T.14 save bloat + stat-drift).
+
+The `stop_after_tick` hook is dead on the `None` (resolve) path ⇒ byte-identical.
+
 ## Invariants this system owns
 
 - **V.2** — combat is a pure, seeded function; the ability/passive/status
@@ -160,13 +178,18 @@ tests.
 - **V.29** — exactly one tick loop (`combat/engine.py`); no parallel engine.
 - **V.14** — determinism: every "chance" mechanic uses a cadence counter
   (`crit_counter`), never RNG.
+- **V.54** — event-stream completeness: every visible-state-changing beat emits
+  exactly one `BattleEvent` (T.37a).
+- **V.55** — view state is recomputed by replay (`inspect_at_tick`), never
+  recorded as per-tick keyframes; inspect is pure + clones `run_mods` (T.37b).
 
 ## File map
 
 | Concern | File |
 |---|---|
-| Public entry / pipeline wiring | `combat/resolve.py` |
-| Tick loop, pathing, damage, spawns, constants | `combat/engine.py` |
+| Public entry + shared `build_combat` wiring | `combat/resolve.py` |
+| Tick loop, pathing, damage, spawns, constants, `stop_after_tick` hook | `combat/engine.py` |
+| Replay / `inspect_at_tick` (recompute state at a tick) | `combat/replay.py` |
 | Mutator API (the only way to touch the world) | `combat/context.py` |
 | Event → `BattleResult` | `combat/recorder.py` |
 | Model → `Piece` compile + weather + passives | `loadout.py` |

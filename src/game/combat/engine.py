@@ -806,10 +806,21 @@ def assign_spawns(pieces: list[Piece]) -> None:
 # ---------------------------------------------------------------------------
 
 
-def run(ctx: CombatContext, recorder: BattleResultRecorder | None = None) -> str:
+def run(
+    ctx: CombatContext,
+    recorder: BattleResultRecorder | None = None,
+    *,
+    stop_after_tick: int | None = None,
+) -> str:
     """Run the combat loop. Returns winner: 'team', 'enemy', or 'draw'.
 
     If a recorder is provided, records all events for BattleResult construction.
+
+    `stop_after_tick` (T.37b) drives the loop to a tick and stops — the engine's
+    single drivable hook for the replay/inspect API (`combat/replay.py`). It only
+    bounds the tick range, never alters per-tick logic, so the default `None`
+    path is byte-identical to pre-T.37b (V.55, V.2). `stop_after_tick=0` runs zero
+    ticks (state right after `on_combat_start`); `=N` runs ticks 1..N inclusive.
     """
     pieces = ctx.all_pieces()
 
@@ -830,6 +841,11 @@ def run(ctx: CombatContext, recorder: BattleResultRecorder | None = None) -> str
     ended_early = False
 
     for tick in range(1, HARD_CAP_TICKS + 1):
+        # Replay/inspect bound (T.37b): stop before processing tick > target, so
+        # `ctx.current_tick` stays at the requested tick. Dead when None (the
+        # resolve_combat path) ⇒ byte-identical (V.55).
+        if stop_after_tick is not None and tick > stop_after_tick:
+            break
         ctx.current_tick = tick
         duration = tick
 
