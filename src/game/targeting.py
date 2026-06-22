@@ -7,12 +7,9 @@ here and reuse — never inline into abilities.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from src.game.status import StatusGate
-
-if TYPE_CHECKING:
-    pass
 
 
 def _filter_hexproof(actor: Any, enemies: list) -> list:
