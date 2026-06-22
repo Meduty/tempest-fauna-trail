@@ -543,6 +543,12 @@ class Run:
     champion_copies: dict[str, int] = field(default_factory=dict)
     shop_offers: list[str | None] = field(default_factory=list)
     shop_rerolls: int = 0
+    # Augment system (T.31). active_augments holds picked augment ids in run order;
+    # augment_state carries quest progress + RUN-scope flags (e.g. trait_bonus,
+    # uprising_wins). Combat reads both via RunModifiers (V.18). Registry
+    # resolution of every id is CI-guarded (V.17), not validated here (mirrors V.15).
+    active_augments: list[str] = field(default_factory=list)
+    augment_state: dict[str, Any] = field(default_factory=dict)
     content_version: str = "1.0.0"
     difficulty_coefficient: float = 1.0
 
@@ -560,6 +566,16 @@ class Run:
             raise ValueError("Run shop_rerolls must be >= 0.")
         if any(copies < 1 for copies in self.champion_copies.values()):
             raise ValueError("Run champion_copies values must be >= 1.")
+
+        # Augment shape validation only (T.31) — registry resolution is CI-guarded
+        # (V.17), not here, to avoid an import cycle (mirrors V.15 for abilities).
+        self.active_augments = list(self.active_augments)
+        if any(not isinstance(a, str) or not a for a in self.active_augments):
+            raise ValueError("Run active_augments must be non-empty strings.")
+        if len(set(self.active_augments)) != len(self.active_augments):
+            raise ValueError("Run active_augments must be unique.")
+        if not isinstance(self.augment_state, dict):
+            raise ValueError("Run augment_state must be a dict.")
 
         roster_ids = [champion.id for champion in self.roster]
         if len(roster_ids) != len(set(roster_ids)):
@@ -649,6 +665,8 @@ class Run:
             "champion_copies": dict(self.champion_copies),
             "shop_offers": list(self.shop_offers),
             "shop_rerolls": self.shop_rerolls,
+            "active_augments": list(self.active_augments),
+            "augment_state": self.augment_state,
             "inventory": self.inventory,
             "current_node_index": self.current_node_index,
             "roster": [champion.to_dict() for champion in self.roster],
@@ -685,6 +703,8 @@ class Run:
             champion_copies=dict(payload.get("champion_copies", {})),
             shop_offers=list(payload.get("shop_offers", [])),
             shop_rerolls=payload.get("shop_rerolls", 0),
+            active_augments=list(payload.get("active_augments", [])),
+            augment_state=dict(payload.get("augment_state", {})),
             content_version=payload.get("content_version", "1.0.0"),
             difficulty_coefficient=payload.get("difficulty_coefficient", 1.0),
         )

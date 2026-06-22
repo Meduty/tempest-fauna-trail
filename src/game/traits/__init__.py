@@ -60,24 +60,31 @@ def _piece_tags(piece: Piece) -> set[str]:
 
 
 def _resolve_traits(
-    team_pieces: list[Piece], board_cap: int
+    team_pieces: list[Piece], board_cap: int,
+    bonus_counts: dict[str, int] | None = None,
 ) -> dict[str, tuple[TraitBreakpoint, int, int]]:
     """Map each cleared trait → (breakpoint, unique-carrier count, threshold).
 
     Counts unique champion ids (V.21). Highest cleared rung wins. Dynamic
-    thresholds are resolved against `(team_pieces, board_cap)`.
+    thresholds are resolved against `(team_pieces, board_cap)`. `bonus_counts`
+    (augment Crest/Crown/Worldroot, T.31) adds virtual carriers to a tag's count
+    before breakpoint selection — deterministic, RNG-free (V.2/V.14).
     """
+    bonus_counts = bonus_counts or {}
     carriers: dict[str, set[str]] = defaultdict(set)
     for piece in team_pieces:
         for tag in _piece_tags(piece):
             carriers[tag].add(piece.id)
+    # Augment trait bonuses can light up a tag with zero native carriers.
+    for tag in bonus_counts:
+        carriers.setdefault(tag, set())
 
     cleared: dict[str, tuple[TraitBreakpoint, int, int]] = {}
     for tag, ids in carriers.items():
         factory = TRAIT_REGISTRY.get(tag)
         if factory is None:
             continue
-        count = len(ids)
+        count = len(ids) + bonus_counts.get(tag, 0)
         best: TraitBreakpoint | None = None
         best_thr = -1
         for bp in factory():
@@ -108,19 +115,20 @@ def mark_weather_overrides(pieces: list[Piece]) -> None:
 
 
 def resolve_and_apply_traits(
-    pieces: list[Piece], bus
+    pieces: list[Piece], bus, bonus_counts: dict[str, int] | None = None
 ) -> list[tuple[str, int, int]]:
     """Resolve + apply trait bundles to the player team; return activations.
 
     Player team only (enemies never light up — V.22). `board_cap` for dynamic
-    thresholds is the fielded team size. Returns a sorted
+    thresholds is the fielded team size. `bonus_counts` carries augment Crest/Crown
+    virtual carriers (T.31). Returns a sorted
     `[(trait_id, count, threshold), …]` for the `BattleResult` record.
     """
     from src.game.loadout import apply_bundle  # deferred: loadout imports this module
 
     team = [p for p in pieces if not p.is_enemy]
     board_cap = len(team)
-    cleared = _resolve_traits(team, board_cap)
+    cleared = _resolve_traits(team, board_cap, bonus_counts)
 
     activations: list[tuple[str, int, int]] = []
     for tag in sorted(cleared):

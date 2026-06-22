@@ -7,7 +7,8 @@ from src.game.combat import (
     hex_distance,
     resolve_combat,
 )
-from src.game.combat.engine import _next_step_toward, _select_target
+from src.game.combat.engine import _next_step_toward, _select_target, _slow_factor
+from src.game.status import StatusInstance
 from src.game.models import (
     Champion,
     CombatOutcome,
@@ -80,6 +81,35 @@ def _piece(
         position_q=q,
         position_r=r,
     )
+
+
+# --- Slow soft-CC (B.25): `slow` throttles meter advancement ------------------
+
+
+def test_slow_factor_scales_with_stacks_and_floors():
+    p = _piece("s", 0, 0)
+    assert _slow_factor(p) == 1.0  # no slow
+    p.statuses.append(StatusInstance(status_id="slow", remaining_ticks=99, stacks=1))
+    assert _slow_factor(p) == 0.85
+    p.statuses[0].stacks = 2
+    assert abs(_slow_factor(p) - 0.70) < 1e-9
+    p.statuses[0].stacks = 10  # floored — soft CC never hard-locks
+    assert _slow_factor(p) == 0.40
+
+
+def test_slow_changes_combat_outcome_end_to_end():
+    # Keep weather FIXED (SNOW) and toggle only Living World, whose sole SNOW effect
+    # is applying `slow` to enemies — so any diff is attributable to `slow`, not to
+    # Weather Favor (B.25). Comparing CLEAR vs SNOW would be confounded by weather.
+    from src.game.augments import RunModifiers
+    from src.game.content import CHAMPION_ROSTER, ENEMY_ROSTER
+
+    team = list(CHAMPION_ROSTER.values())[:6]
+    enemies = list(ENEMY_ROSTER.values())[:6]
+    base = resolve_combat(team, enemies, WeatherState.SNOW)
+    slowed = resolve_combat(team, enemies, WeatherState.SNOW,
+                            run_mods=RunModifiers(augments=["living_world"], augment_state={}))
+    assert base.to_dict() != slowed.to_dict()
 
 
 # --- 6.1 Determinism ---------------------------------------------------------

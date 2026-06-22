@@ -263,12 +263,17 @@ def compile_loadout(
     enemies: list[Enemy],
     weather: WeatherState,
     seed: int = 42,
+    run_mods: Any = None,
 ) -> tuple[list[Piece], EventBus, list[tuple[str, int, int]]]:
     """Compile team and enemies into combat-ready Pieces with an EventBus.
 
     Returns (pieces, bus, trait_activations) ready for CombatContext.
     trait_activations is the cleared player-team trait breakpoints (T.28a),
     surfaced for the BattleResult record.
+
+    `run_mods` (a `RunModifiers`, T.31) threads active augments: TEAM/PIECE bundles
+    apply at step 6 (after traits/items), quest trackers wire at step 9. `None`
+    leaves every non-augment caller byte-for-byte unchanged (V.2/V.18).
     """
     from src.game.bosses.data import BOSS_DEFS
     _boss_defs_by_id = {boss.id: boss for boss in BOSS_DEFS.values()}
@@ -315,8 +320,39 @@ def compile_loadout(
     # 3. Resolve + apply synergy trait breakpoints (player team only — V.22).
     # Slots between weather (step 2) and passives (step 7); §10.1 order. Item
     # `granted_traits` (T.29) will apply just before this so emblems are counted.
+    # Augment Crest/Crown/Worldroot bonuses (T.31) inject virtual carriers here.
     from src.game.traits import resolve_and_apply_traits
-    trait_activations = resolve_and_apply_traits(pieces, bus)
+    bonus_counts = None
+    if run_mods is not None and getattr(run_mods, "augment_state", None):
+        bonus_counts = run_mods.augment_state.get("trait_bonus")
+    trait_activations = resolve_and_apply_traits(pieces, bus, bonus_counts)
+
+    # 3.5 Flag pieces with no active synergy breakpoint (augment Built Different
+    # filter, T.31). `_has_active_synergy` is True if the piece carries any tag
+    # that cleared a breakpoint this combat.
+    _active_tags = {tag for tag, _c, _t in trait_activations}
+    from src.game.traits import _piece_tags
+    for piece in pieces:
+        if piece.is_enemy:
+            continue
+        piece._has_active_synergy = bool(_active_tags & set(_piece_tags(piece)))
+
+    # 6. Apply active augment bundles (T.31, V.18) — TEAM/PIECE handlers rebuild
+    # fresh each combat from run_mods.augments; PIECE-filtered then TEAM. Sits after
+    # traits/items so augments are the loudest layer (§10.1). RUN augments already
+    # mutated Run at pick time. `run_mods=None` ⇒ no-op (back-compat).
+    if run_mods is not None:
+        import src.game.augments as _augments  # noqa: F401 — populates AUGMENT_REGISTRY
+        _augments.apply_run_augments(pieces, bus, run_mods)
+        # Re-seed team max_hp/hp so augment `hp` muls actually bite: the engine
+        # reads the cached `max_hp`/`hp` fields, not `stat("hp")` (same reason the
+        # weather + trait passes resync). Augments touch the player team only
+        # (V.22). Gated on run_mods so the non-augment path stays byte-identical.
+        for piece in pieces:
+            if not piece.is_enemy:
+                new_hp = max(1.0, piece.stat("hp"))
+                piece.max_hp = new_hp
+                piece.hp = new_hp
 
     # 7. Apply champion/enemy passive bundles
     for piece in pieces:
@@ -340,6 +376,12 @@ def compile_loadout(
                     bundle = factory(piece)
                     if bundle:
                         apply_bundle(piece, bundle, bus)
+
+    # 9. Wire active quest trackers as Run-level bus subscribers (T.31, §9.3).
+    # No-op unless run_mods carries a live Run (pure sims pass None).
+    if run_mods is not None:
+        import src.game.augments as _augments  # noqa: F401
+        _augments.wire_quest_trackers(bus, run_mods)
 
     # Tie-break setup (V.34): formation_index = input order (enemy formation key);
     # load_order = a seeded, side-independent permutation (NOT team-block-then-enemy)

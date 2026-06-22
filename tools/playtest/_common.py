@@ -113,15 +113,17 @@ def resolve_boss_combat(
     *,
     run_seed: int = 42,
     node_id: str = "",
+    run_mods: object = None,
 ) -> BattleResult:
     """Resolve a boss fight, attaching the encounter's map effect.
 
     `resolve_combat` cannot do this because it doesn't accept a map effect.
-    This composes the same primitives manually.
+    This composes the same primitives manually. `run_mods` (T.31) threads active
+    augments; `None` keeps every non-augment caller byte-identical (V.2).
     """
     enemies = encounter.all_enemies
     # compile_loadout assigns formation_index + load_order (V.34).
-    pieces, bus, trait_activations = compile_loadout(team, enemies, weather, seed=run_seed)
+    pieces, bus, trait_activations = compile_loadout(team, enemies, weather, seed=run_seed, run_mods=run_mods)
     assign_spawns(pieces)
 
     recorder = BattleResultRecorder(pieces, weather, node_id, trait_activations)

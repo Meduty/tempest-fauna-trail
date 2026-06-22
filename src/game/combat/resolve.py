@@ -11,6 +11,8 @@ Weather Favor is folded into piece base stats at compile time; Affinity Clash
 
 from __future__ import annotations
 
+from typing import Any
+
 from src.game.models import BattleResult, Champion, Enemy, WeatherState
 
 
@@ -20,8 +22,14 @@ def resolve_combat(
     weather: WeatherState,
     *,
     node_id: str = "",
+    run_mods: Any = None,
 ) -> BattleResult:
-    """Resolve one battle from start to finish; pure and deterministic."""
+    """Resolve one battle from start to finish; pure and deterministic.
+
+    `run_mods` (a `RunModifiers`, T.31) threads active augments + quest state into
+    `compile_loadout`. The `None` default leaves every non-augment caller —
+    including every balance sim — byte-for-byte unchanged (V.2/V.18).
+    """
     # Deferred imports keep the content↔combat boundary acyclic: loadout pulls
     # in the ability/passive registries, which must finish importing first.
     from src.game.combat.context import CombatContext
@@ -31,7 +39,7 @@ def resolve_combat(
 
     # Build pieces with weather favor applied. compile_loadout assigns
     # formation_index (input order) + load_order (seeded, side-independent) — V.34.
-    pieces, bus, trait_activations = compile_loadout(team, enemies, weather, seed=42)
+    pieces, bus, trait_activations = compile_loadout(team, enemies, weather, seed=42, run_mods=run_mods)
 
     # Assign spawn positions.
     assign_spawns(pieces)

@@ -88,6 +88,16 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Drop into a prep shell (craft/equip/special run-actions) before walking.",
     )
+    parser.add_argument(
+        "--augment-policy",
+        choices=("first", "random", "highest-quality", "none"),
+        default="highest-quality",
+        help=(
+            "How AUGMENT nodes auto-pick from the 1-of-3 offer (T.31): first | "
+            "random (seeded) | highest-quality | none (decline, reproduces the old "
+            "skip baseline). Default: highest-quality. --interactive prompts instead."
+        ),
+    )
     return parser
 
 
@@ -217,8 +227,13 @@ def _resolve_node(
     weather: WeatherState,
     run_seed: int,
     dc: float,
+    run_mods: object = None,
 ) -> tuple[BattleResult | None, NodeType, str]:
-    """Resolve one node. Returns (result_or_None, node_type, city_id)."""
+    """Resolve one node. Returns (result_or_None, node_type, city_id).
+
+    `run_mods` (a `RunModifiers`, T.31) threads active augments into every combat;
+    `None` reproduces the pre-augment walk.
+    """
     stage = STAGES[stage_idx - 1]
     city_id = stage.node_cities[position]
     node_type = stage.node_types[position]
@@ -226,22 +241,88 @@ def _resolve_node(
 
     if node_type == NodeType.FIGHT:
         enemies = generate_fight(run_seed, node_index, stage, dc)
-        return resolve_combat(team, enemies, weather, node_id=node_id), node_type, city_id
+        return resolve_combat(team, enemies, weather, node_id=node_id, run_mods=run_mods), node_type, city_id
     if node_type == NodeType.REWARD:
         enemies = generate_reward(run_seed, node_index, stage, dc)
-        return resolve_combat(team, enemies, weather, node_id=node_id), node_type, city_id
+        return resolve_combat(team, enemies, weather, node_id=node_id, run_mods=run_mods), node_type, city_id
     if node_type == NodeType.CHALLENGE:
         enemies, _reward = generate_challenge(run_seed, node_index, stage, weather, dc)
-        return resolve_combat(team, enemies, weather, node_id=node_id), node_type, city_id
+        return resolve_combat(team, enemies, weather, node_id=node_id, run_mods=run_mods), node_type, city_id
     if node_type == NodeType.BOSS_FIGHT:
         encounter = generate_boss_encounter(run_seed, node_index, stage)
         return (
-            resolve_boss_combat(team, encounter, weather, run_seed=run_seed, node_id=node_id),
+            resolve_boss_combat(team, encounter, weather, run_seed=run_seed, node_id=node_id, run_mods=run_mods),
             node_type,
             city_id,
         )
-    # Non-combat node (AUGMENT / SUPPLY) — skip without resolving anything.
+    # Non-combat node (AUGMENT / SUPPLY) — handled by the caller (augment pick).
     return None, node_type, city_id
+
+
+def _pick_from_offer(offer: list, policy: str, rng) -> object | None:
+    """Auto-pick one augment from a 1-of-3 offer per `--augment-policy` (T.31)."""
+    if not offer or policy == "none":
+        return None
+    if policy == "first":
+        return offer[0]
+    if policy == "random":
+        return offer[rng.randint(0, len(offer) - 1)]
+    # highest-quality: rank by quality, ties broken by the seeded offer order
+    # (first-offered wins) so the pick honors the deterministic offer the player saw.
+    from src.game.augments import AugmentQuality
+    order = {q: i for i, q in enumerate(
+        (AugmentQuality.COMMON, AugmentQuality.RARE, AugmentQuality.EPIC, AugmentQuality.PRISMATIC))}
+    return max(enumerate(offer), key=lambda iv: (order[iv[1].quality], -iv[0]))[1]
+
+
+def _resolve_augment_node(run, stage_idx: int, node_index: int, policy: str, interactive: bool) -> str:
+    """Generate the 1-of-3 offer, pick (policy or prompt), apply. Returns picked id."""
+    from src.game.augments import apply_augment, generate_augment_offer
+    from src.game.rng import SeededRng
+
+    exclude = tuple(run.active_augments)
+    offer = generate_augment_offer(run.seed, node_index, stage_idx, exclude=exclude)
+    if not offer:
+        return ""
+    if interactive:
+        picked = _prompt_augment(run, stage_idx, node_index, offer)
+    else:
+        rng = SeededRng(node_index * 101 + stage_idx)
+        picked = _pick_from_offer(offer, policy, rng)
+    if picked is None:
+        return ""
+    apply_augment(run, picked)
+    return picked.id
+
+
+def _prompt_augment(run, stage_idx: int, node_index: int, offer: list):
+    """Interactive 1/2/3/r/s augment prompt — rudimentary CLI mirror of the view.
+
+    Returns the chosen `Augment` (or None to skip); the caller applies it."""
+    from src.game.augments import generate_augment_offer
+
+    rerolled = False
+    while True:
+        print(f"\n  AUGMENT offer (stage {stage_idx}, node {node_index}):")
+        for i, a in enumerate(offer, 1):
+            print(f"    {i}. {a.name:22} [{a.quality.value:9}|{a.scope.value:5}] {a.blurb}")
+        prompt = "  pick 1/2/3" + ("" if rerolled else " · r reroll") + " · s skip > "
+        try:
+            choice = input(prompt).strip().lower()
+        except EOFError:
+            return None
+        if choice == "s":
+            return None
+        if choice == "r" and not rerolled:
+            rerolled = True
+            offer = generate_augment_offer(run.seed, node_index, stage_idx,
+                                           rerolled=True, exclude=tuple(run.active_augments))
+            continue
+        if choice in ("1", "2", "3"):
+            idx = int(choice) - 1
+            if idx < len(offer):
+                return offer[idx]
+        print("  (invalid)")
 
 
 def _team_alive(result: BattleResult) -> bool:
@@ -262,8 +343,11 @@ def main(argv: list[str] | None = None) -> int:
         print("error: empty team", file=sys.stderr)
         return 2
 
+    # A walk-level Run holds augment state across the route (T.31). roster=team so
+    # Crest/Worldroot dominant-trait picks read the real board.
+    from src.game.augments import RunModifiers
+    run = _new_prep_run(args.run_seed, team)
     if args.interactive:
-        run = _new_prep_run(args.run_seed, team)
         _interactive_prep(run, team)
 
     rows: list[dict[str, object]] = []
@@ -275,11 +359,36 @@ def main(argv: list[str] | None = None) -> int:
     for stage_idx, stage in enumerate(STAGES, start=1):
         for position, _ in enumerate(stage.node_cities):
             node_index += 1
+            # Advance the walk Run's position so RUN-augment seeds (Forage's
+            # `_run_action_seed`) vary per node and future quest trackers can read
+            # the live node off `run.current_node()`.
+            run.current_node_index = node_index
             city_id = stage.node_cities[position]
             weather = _pick_weather(args.weather_strategy, stage_idx, city_id)
+            node_type = stage.node_types[position]
 
+            # AUGMENT node: pick 1-of-3 (policy or interactive), apply to the Run.
+            if node_type == NodeType.AUGMENT:
+                picked = _resolve_augment_node(
+                    run, stage_idx, node_index, args.augment_policy, args.interactive,
+                )
+                rows.append({
+                    "node_index": node_index, "stage": stage_idx, "node_type": node_type.value,
+                    "city_id": city_id, "weather": weather.value,
+                    "outcome": f"augment:{picked}" if picked else "augment:skip",
+                    "ticks": 0, "survivors": "", "damage_dealt": 0, "augment_picked": picked,
+                })
+                if not args.quiet:
+                    label = picked or "(skip)"
+                    print(f"[{node_index:02d}/{stage_idx}] {city_id:25} {node_type.value:9} weather={weather.value:7} → augment {label}")
+                cleared += 1
+                continue
+
+            # Combat / other nodes: thread the current augment set in (rebuilt so
+            # newly-picked augments + shared quest state propagate).
+            run_mods = RunModifiers.from_run(run)
             result, node_type, city_id = _resolve_node(
-                team, stage_idx, node_index, position, weather, args.run_seed, args.dc,
+                team, stage_idx, node_index, position, weather, args.run_seed, args.dc, run_mods,
             )
 
             if result is None:
@@ -293,6 +402,7 @@ def main(argv: list[str] | None = None) -> int:
                     "ticks": 0,
                     "survivors": "",
                     "damage_dealt": 0,
+                    "augment_picked": "",
                 }
                 rows.append(row)
                 if not args.quiet:
@@ -317,6 +427,7 @@ def main(argv: list[str] | None = None) -> int:
                 "ticks": result.duration_ticks,
                 "survivors": survivors,
                 "damage_dealt": dmg,
+                "augment_picked": "",
             }
             rows.append(row)
 
