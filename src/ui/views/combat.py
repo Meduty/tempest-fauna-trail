@@ -15,14 +15,13 @@ only. No combat math here — `ui/` imports `game/`, never the reverse (V.1).
 
 from __future__ import annotations
 
-import threading
-import time
+import asyncio
 from typing import Any, Callable
 
 import flet as ft
 import flet.canvas as cv
 
-from src.game.ability_text import TICKS_PER_SECOND
+from src.game.ability_text import TICKS_PER_SECOND, render_for
 from src.game.combat import (
     BOARD_HEIGHT,
     BOARD_WIDTH,
@@ -102,6 +101,20 @@ def _secs(ticks: int) -> str:
     return f"{ticks / TICKS_PER_SECOND:.1f}s"
 
 
+class _ViewStatSource:
+    """Adapts a `PieceView` to the `.stat(name)` interface `ability_text.render`
+    expects, so ability tooltips show numbers scaled to the piece's *current*
+    effective stats at the cursor tick. Missing keys → 0."""
+
+    __slots__ = ("_stats",)
+
+    def __init__(self, view: PieceView) -> None:
+        self._stats = view.stats
+
+    def stat(self, name: str) -> float:
+        return float(self._stats.get(name, 0.0))
+
+
 def build_combat_view(
     page: ft.Page,
     session: CombatSession,
@@ -119,6 +132,24 @@ def build_combat_view(
     name_by_id: dict[str, str] = {c.id: c.name for c in session.team}
     name_by_id.update({e.id: e.name for e in session.enemies})
     champ_by_id = {c.id: c for c in session.team}
+    # Ability ids per piece (active + passive) for hover tooltips.
+    abilities_by_id: dict[str, list[str]] = {}
+    for _unit in (*session.team, *session.enemies):
+        ids = list(getattr(_unit, "active_abilities", []) or [])
+        if getattr(_unit, "passive_ability", ""):
+            ids.append(_unit.passive_ability)
+        abilities_by_id[_unit.id] = ids
+
+    def _ability_tooltip(pv: PieceView) -> str:
+        """Token hover text: the piece's name + each ability's name + live blurb
+        (rendered against the piece's current effective stats, V.38)."""
+        lines = [name_by_id.get(pv.id, pv.id)]
+        src = _ViewStatSource(pv)
+        for aid in abilities_by_id.get(pv.id, []):
+            rendered = render_for(aid, src)
+            if rendered is not None:
+                lines.append(f"• {rendered.name}: {rendered.text}")
+        return "\n".join(lines)
 
     # --- mutable view state ---
     state: dict[str, Any] = {
@@ -231,12 +262,14 @@ def build_combat_view(
                         height=4, width=_BAR_W,
                     ),
                 ))
-            # transparent click target (robust hit-test, no canvas gesture math)
+            # transparent click target (robust hit-test, no canvas gesture math);
+            # hover tooltip shows the piece's abilities + live blurbs.
             overlays.append(ft.Container(
                 left=cx - _TOKEN_R, top=cy - _TOKEN_R,
                 width=_TOKEN_R * 2, height=_TOKEN_R * 2,
                 border_radius=_TOKEN_R, bgcolor="#00000000",
                 on_click=lambda _e, pid=p.id: _select(pid),
+                tooltip=_ability_tooltip(p),
             ))
 
         # floating damage / heal numbers for this step's beats. Monospaced for
@@ -429,14 +462,17 @@ def build_combat_view(
         _advance_to(_last_cursor())
         _render()
 
-    def _autoplay_loop() -> None:
+    async def _autoplay_loop() -> None:
+        # Async loop driven by the flet event loop (`page.run_task`) — reliable
+        # in flet 0.85 where a bare thread's `page.update()` may not repaint.
         while state["alive"] and state["playing"]:
-            time.sleep(_AUTOPLAY_INTERVAL_S)
+            await asyncio.sleep(_AUTOPLAY_INTERVAL_S)
             if not (state["alive"] and state["playing"]):
                 break
             if state["cursor"] >= _last_cursor():
                 state["playing"] = False
                 autoplay_btn.text = "▶ Autoplay"
+                _render()
                 break
             _advance_to(state["cursor"] + 1)
             _render()
@@ -446,7 +482,7 @@ def build_combat_view(
         autoplay_btn.text = "⏸ Pause" if state["playing"] else "▶ Autoplay"
         page.update()
         if state["playing"]:
-            threading.Thread(target=_autoplay_loop, daemon=True).start()
+            page.run_task(_autoplay_loop)
 
     autoplay_btn = ft.OutlinedButton("▶ Autoplay", on_click=_toggle_autoplay)
 
