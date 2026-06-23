@@ -58,13 +58,13 @@ Two independent seams; each ships + verifies on its own. **B does not depend on 
 - `DamageEvent.is_dot: bool = False` (`events.py`); `process_statuses` sets `is_dot=True` on **both** its DOT `deal_damage` calls (true + magical, `engine.py:606/608`); `ctx.deal_damage(..., is_dot=…)` threads it onto the `dealt_event`.
 - `recorder._on_damage_dealt`: emit the `dot` beat when `tag == DOT` **or** `event.is_dot` (covers sudden-death true-DOT). `turns` still excludes `dot` ⇒ **byte-identical** sims (V.2/V.14); only `combat_log` goldens re-baseline (new sudden-death dot lines). This **does not** make DOTs standalone steps — `combat_playback` absorbs them into the next action's `pre_beats` (T.12a), so they stay the drip ("between two actions"), per the user's "DOTs aren't queue entries" call.
 
-**View fixes (presentation):** (a) the drip also runs under **autoplay**; (b) each revealed DOT gets a brief **on-token flash**; (c) the status row (3.A.5) shows the bleeding status. The reveal order/count stay pure-model truth (`pre_beats`, tested). *Verify: sudden death now ticks visibly (units bleed down over a few reveals) instead of dying instantly; burn/poison drip too.*
+**View fixes (presentation):** (a) the drip runs on manual Next **and autoplay**; (b) each revealed DOT gets a brief **on-token flash**; (c) the status row (3.A.5) shows the bleeding status. **Reveal is grouped by tick + real-time-scaled (user-set):** all DOTs sharing a tick reveal **together**, and the delay before the next DOT tick = `(next_dot_tick − cur_dot_tick) / TICKS_PER_SECOND` real-seconds — so **1 game-second of bleed ≈ 1 real-second** (sudden death ticks once/sec ⇒ ~1 reveal/sec). Model: `reveal` becomes a **tick cutoff** (`state["reveal_tick"]`), render shows `pre_beats` with `beat.tick ≤ reveal_tick` (action shown once `reveal_tick ≥ step.tick`); the drip advances `reveal_tick` through the distinct pre-beat ticks with the scaled sleeps. The grouping + order stay pure-model truth. *Verify: sudden death bleeds down ~1 tick/sec (not instant); same-tick multi-piece bleeds pop together; burn/poison drip too.*
 
 **3.A.4 Sudden-death indicator.** Pure helper `is_sudden_death(tick) -> bool` (`tick >= SUDDEN_DEATH_TICK_START`) in `combat_playback` (tested). View: once the cursor tick crosses it, show a persistent **banner/badge** ("⚠ Sudden Death") in the header + tint the board border; the action queue marks the boundary (a red "Sudden Death" divider, like the round-split marker). *Verify: badge + queue marker appear at tick 12000.*
 
 **3.A.5 Status-icon row.** Under each token, a compact row of status pips (one per `PieceView.statuses` entry: short glyph/initial + stack count, tooltip = `status_id · x{stacks} · {remaining}s`). Read live from the stepper (V.57). *Verify: burn/poison/stun show under the token with remaining time.*
 
-**3.A.6 Real-time-scaled autoplay pacing.** Pace by the **inter-action tick gap**: between step N and N+1, delay `≈ clamp((tick[N+1]-tick[N]) / TICKS_PER_SECOND × SPEED, min, max)` (V.39 — ticks→seconds for *pacing feel* only, still event-paced, not a tick=second sim clock; V.56). `SPEED`/`min`/`max` authored (§5). Pure helper `autoplay_delay_s(prev_tick, tick)` in `combat_playback` (tested). *Verify: bursts of fast actions feel fast; long gaps don't stall forever (clamped).*
+**3.A.6 Real-time-scaled autoplay pacing — unified with the drip (1s ≈ 1s).** Same tick→second mapping as the drip: between successive *moments* (DOT ticks **and** actions) the delay = `clamp((tick − prev_tick) / TICKS_PER_SECOND × SPEED, 0, MAX)` with `SPEED = 1.0` (real-time, user-set) and a `MAX` clamp so a huge idle gap doesn't freeze the loop (V.39 — ticks→seconds for pacing feel; V.56 — event-paced, not a per-tick sim clock). Pure helper `playback_delay_s(prev_tick, tick)` in `combat_playback` (tested), shared by drip + autoplay. *Verify: the fight plays at roughly real combat-time; bursts feel fast, long gaps clamp.*
 
 ### 3.B Boss support (T.12b-B)
 
@@ -97,8 +97,7 @@ resolve_boss_combat(team, enemies, weather, *, map_effect_id="", run_seed=42, no
 ## 5. Authored values (presentation only; tunable)
 - Token tween: `~250 ms` ease-out per move step.
 - Arrow: stroke `~2.5px`, color = damage-type (`_DMG_COLORS`); AoE/self → ring radius `_TOKEN_R+6`.
-- DOT reveal delay: keep `_DOT_REVEAL_DELAY_S ≈ 0.30 s`; token flash `~200 ms`.
-- Autoplay pacing: `delay = clamp(gap_s × 0.5, 0.25 s, 1.5 s)` where `gap_s = (tick−prev_tick)/100`.
+- Drip + autoplay pacing (unified, **1s ≈ 1s**, user-set): `delay = clamp((tick−prev_tick)/100 × SPEED, 0, MAX)`, `SPEED=1.0`, `MAX ≈ 2.5 s` (clamp giant idle gaps). Same-tick beats reveal together (delay 0). Token flash `~200 ms`.
 - Sudden-death: header badge + board border `DANGER`; queue divider `DANGER`.
 No game numbers.
 
@@ -107,7 +106,7 @@ None — no rosters/tags/abilities touched. Map-effect ids (`sunlit_tiles`/`fog`
 
 ## 7. Open questions
 **Resolved here (overridable):** §4.1 (overlay tokens), §4.2 (`map_effect_id` str), §4.4 (pacing formula), §4.6 (A/B split). Arrowhead = short twin lines (simplest in `cv`).
-**Resolved (user-set 2026-06-23):** **DOT drip = every tick, uncapped** — a step reveals *all* its `pre_beats` one-by-one (no cap/batch), even when sudden death absorbs dozens. Accepts longer drips on timeout/long-DoT fights as the faithful read. (Considered: cap-N, per-source batch, banner-only — rejected.)
+**Resolved (user-set 2026-06-23):** **DOT drip = every tick, uncapped, grouped by tick, 1s ≈ 1s.** A step reveals *all* its `pre_beats` (no cap/batch); DOTs sharing a tick reveal **together**; the delay between successive DOT ticks is real-time-scaled (`Δtick/100 s`), so a game-second of bleed takes a real-second. Same mapping paces autoplay (`SPEED=1.0`, real-time, `MAX` clamp). Accepts longer playback on timeout/long-DoT fights as the faithful read. (Considered: cap-N, per-source batch, banner-only — rejected.)
 **Still open / deferred:** tick-by-tick admin scrubber (defer — stepper supports it, small follow-up); sprite art (deferred); whether autoplay should *also* token-flash each DOT or just reveal (refine in build with the user watching).
 
 ## 8. Test plan
