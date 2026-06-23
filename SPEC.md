@@ -140,6 +140,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 - V.58: **`damage_type` is a closed vocabulary — `physical` | `magical` | `true`.** `ctx.deal_damage`'s mitigation switch keys on it: `magical` → `resistance`, `physical` → `armor`, `true` → unmitigated (also reached via `tag == SourceTag.TRUE`). An **unknown string silently mitigated as physical** is forbidden — `deal_damage` **validates** `damage_type` against the frozen set and **raises** on anything else (fail-loud, V.2: a typo can never quietly flip mitigation again). Canonical constants `DMG_PHYSICAL`/`DMG_MAGICAL`/`DMG_TRUE` (`engine.py`); the only legal default is `magical`. (B.29)
 - V.59: **The boss combat path resolves through `src/game/combat/resolve.py::resolve_boss_combat` — the single src-side boss entry.** It composes the same primitives as `resolve_combat` plus a map effect: `build_combat` → `attach_map_effect(map_effect_id, ctx, seed)` when set → `run` → `build_result`. It takes a **`map_effect_id: str`** (never a `bosses/`-content type, so `combat/` stays content-import-free — the package HARD RULE; `attach_map_effect` is a deferred `loadout` import) and is **byte-identical** to the former `tools/playtest/_common` version (V.2 — same primitives, order, default seed); `tools/` now **delegates** to it. `CombatReplay`/`inspect_at_tick` accept the same `map_effect_id` and replay the boss fight identically (V.55). The combat view reaches the boss path **only** via `src/game/combat/` — `ui/` never imports `tools/` (V.1). (T.12b)
 - V.60: **Combat outcome is survivor-based, never forced by `timed_out`.** `CombatOutcome` follows the engine's survivor-based `winner` (`recorder.build_result`): **WIN** = team has ≥1 living piece and enemy none; **LOSS** = enemy survivors and no team; **DRAW** = **neither side has a survivor** — a true mutual wipe, reachable only when one `process_statuses`/sudden-death DOT pass kills the last of both sides in the same tick (action resolution checks `both_sides_alive()` after each action ⇒ a side that wipes first loses, so actions never draw). `timed_out` (incl. sudden-death resolution) is an **independent flag** on `BattleResult` and must **not** change the outcome — the prior override `if self._timed_out: outcome = DRAW` is **removed** (it relabeled real winners — e.g. a boss wipe where the enemy survives — as DRAW). Outcome maps from `winner` only, uniformly. Determinism note: timed-out fights with a survivor now resolve WIN/LOSS not DRAW (no committed sim golden — `results/` gitignored; symmetric mirror-stalemate tests stay DRAW via simultaneous DOT wipe). (T.12b)
+- V.61: **Targeting footprints are observer-only telemetry for the combat view.** Targeting helpers (`enemies_in_radius`/`allies_in_radius`/`neighbors_of` → `circle`; `line_targets` → `line`) record their geometry via `ctx.note_footprint` → `on_footprint` **only when a cast is in flight** (`current_cast_id` set — idle/AI/passive target queries don't record); the recorder stamps `footprint` records on `BattleResult` so the view can draw per-ability shapes. Capture **never changes targeting results or damage** — the helper returns its target list unchanged, and the bus fire no-ops on the sim/inspect path (no subscriber) ⇒ **byte-identical** (V.2/V.14; extends V.54's observer-only recorder). The view reads `BattleResult.footprints` + `AbilityMeta` to animate circle/line VFX — **no combat math** (V.56/V.57). (T.12c)
 
 ## T. Tasks
 
@@ -161,6 +162,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
 | T.37c | Resumable forward combat-replay stepper + move-coords hardening (combat-view prep, headless). Refactor `engine.run`'s `for tick` loop into a **single generator loop body** (`_step_combat`) driven two ways — `run()` **drains** it (byte-identical, V.29 one-loop preserved), `CombatReplay` **steps** it forward (`.step_to(tick)` + `.pieces()` live `PieceView`s) — O(total ticks) playback vs `inspect_at_tick`'s O(N²) per-step re-run (kept for random seek; reimplemented **on** `CombatReplay` ⇒ one read driver, no parallel path). **Drop** the half-built `stop_after_tick` kwarg. Live state complete incl. **registered-ability burst the stream omits** (B.28). Replace `move`+`spawn` `BattleEvent` `note=f"{q},{r}"` string with structured `dest_q`/`dest_r` int fields (recorder + `combat_log` + serialization round-trip, legacy → `-1`). Observer-only / read-only ⇒ sims byte-identical (V.2/V.14) | `game/combat/engine.py`, `game/combat/replay.py`, `game/models.py`, `game/combat/recorder.py`, `game/combat_log.py`, `tests/game/test_combat_replay.py`, `tests/game/test_combat.py`, `docs/design/tasks/t37c_forward_replay_stepper_plan.md` | T.37a, T.37b | M | ✅ Done |
 | T.12a | Combat view core + dev harness — flet.canvas hex board (10×7), pieces at coords, **DEFAULT manual event-step** playback (+ optional autoplay/fast-fwd) driving the **forward `CombatReplay` stepper** (resource truth: live HP/mana/stat bars via the stepper, V.57; back-scrub via `inspect_at_tick`) with the T.37 stream as **animation cues + action queue**, per-event animations + floating damage/heal numbers + death/despawn; action-queue with 2-round projection + round markers (entries = moves + attacks/casts; moves smaller + movement-iconed); click-to-inspect (live stats via the replay + equipped items + traits; global active augments); combat-end panel; dev-harness launcher (FIGHT/CHALLENGE/REWARD all combats, REWARD = easy fight + team/weather/augments/items → `CombatSession`) + minimal `main.py` dev entry (`TEMPEST_DEV=1`); pure Flet-free `combat_playback` model (queue projection + cue derivation, tested) | `ui/views/combat.py`, `ui/views/dev_harness.py`, `ui/combat_playback.py`, `main.py`, `docs/live/systems/ui.md`, `tests/ui/test_combat_playback.py`, `docs/design/tasks/t12_combat_view_plan.md` | T.3, T.8, T.37a, T.37b, T.37c | L | ✅ Done |
 | T.12b | Combat view boss + polish — **phase A (readability/animation, V.56/V.57):** token movement tween (glide, not pop), attack/cast **target arrows**, **tickwise DOT reveal** (manual+autoplay; incl. sudden-death **true-DOT now beat-emitting** via `is_dot`, V.54 — was silent ⇒ instakill), **sudden-death indicator** (header badge + queue divider), status-icon row, real-time-scaled autoplay pacing. **Phase B (boss):** promote `resolve_boss_combat` `tools/`→`src/game/combat/resolve.py` (takes `map_effect_id`, content-import-free, byte-identical V.2/V.59) + map-effect-aware `inspect_at_tick`/`CombatReplay` + map-effect board overlay + harness BOSS node. Sprites + tick-by-tick admin mode deferred | `ui/views/combat.py`, `ui/combat_playback.py`, `ui/views/dev_harness.py`, `game/combat/resolve.py`, `game/combat/replay.py`, `game/combat/recorder.py`, `game/combat/context.py`, `game/events.py`, `tools/playtest/_common.py`, `docs/design/tasks/t12b_combat_view_polish_plan.md`, `docs/live/systems/ui.md`, `tests/ui/test_combat_playback.py`, `tests/` | T.12a | M | ✅ Done |
+| T.12c | Combat-view per-ability-shape VFX — **record the ability's targeting footprint** (reuse the handler's hit-determination: `enemies_in_radius`/`allies_in_radius`/`neighbors_of` → `circle`, `line_targets` → `line`) via `ctx.note_footprint` → `on_footprint` → recorder `footprint` records on `BattleResult` (**observer-only**, scoped to `current_cast_id`, sims byte-identical — V.61/V.2/V.54); view **draws + animates (expand/fade)** circle/line in the ability's element colour (`AbilityMeta` tags), single-target keeps swoosh/arrow. **Phase B:** buff/heal **ally halos** + control **telegraphs** + status-apply flash via `AbilityMeta` intent tags. Sprites still deferred. Built headless → **user visual gates** | `game/targeting.py`, `game/combat/context.py`, `game/events.py`, `game/combat/recorder.py`, `game/models.py`, `ui/combat_playback.py`, `ui/views/combat.py`, `tests/game/test_combat.py`, `tests/ui/test_combat_playback.py`, `docs/design/tasks/t12c_combat_view_vfx_plan.md`, `docs/live/systems/ui.md` | T.12b, T.20, T.34 | M | 📋 Plan |
 | T.13 | Run summary visualization — BarChart of damage per battle | `viz/run_summary.py`, `ui/views/summary.py` | T.3, T.8 | M | 📋 Plan |
 | T.14 | Save/load — JSON serialization of Run state | `game/save.py` | T.1 | S | ✅ Done |
 | T.15 | Routing + app wiring — connect all views in main.py | `main.py` | T.9-T.13 | M | 📋 Plan |
@@ -829,19 +831,16 @@ in their T-task plan docs; what remains here is genuinely undecided.
 - D.17 Cache health UX: warn indicator surface when any node is `substitute`
   or any `live` weather aged > 2h; hover shows affected cities; smart
   failsafe copy when many nodes degraded. Polish layer over T.7 cache states.
-- D.18 Combat-view animation polish (**post-T.12b → future T.12c**): T.12b ships
-  simple primitives — melee = red **swoosh**, ranged/ability = directional
-  **arrow** (damage-type colour), heal = green **beam** to the ally, cast-
-  activation = caster **glow ring**, self/AoE = ring, attacker **lunge**, real-time
-  **DOT drip**, **sudden-death** indicator. **Deferred richer VFX, categorized by
-  ability shape/intent:** AoE *damage* marks its **area** (red-tinted cells in the
-  radius); **buffs/shields circle the buffed target(s)** (not a damage arrow);
-  cones/lines show their footprint; per-element **cast glow/projectile**; status-
-  apply telegraphs; **sprite art** for tokens (affinity circles + initials until
-  then). Needs an ability→shape/intent classification the view can read (AoE /
-  single / cone / line / self-buff) — likely from `AbilityMeta` tags / the
-  `Magnitude` family. UI-only, presentation over the replay backend (V.56/V.57);
-  no combat-math change.
+- D.27 Combat-view animation polish (**post-T.12b**) — **RESOLVED [2026-06-23] (T.12c)**
+  → planned in [`docs/design/tasks/t12c_combat_view_vfx_plan.md`](docs/design/tasks/t12c_combat_view_vfx_plan.md).
+  T.12b shipped flat primitives (swoosh/arrow/beam/glow-ring/lunge); **T.12c** adds
+  per-ability-shape VFX by **recording the handler's targeting footprint** (circle/
+  line) → animated (expand/fade), element-coloured; buff/heal ally halos + control
+  telegraphs (phase B). Approach: reuse the engine's hit-determination via
+  `ctx.note_footprint` (observer-only, V.61) — not authored shapes, not beat-derived.
+  **Sprite art** for tokens stays deferred (still affinity circles + initials).
+  [Renumbered from a mistaken duplicate `D.18` — the real D.18 is the side-independent
+  tiebreak, RESOLVED T.33a.]
 
 ## Implementation Order
 
@@ -861,7 +860,7 @@ LIVING snapshot — refresh via `/spec` whenever a §T status flips. Last: 2026-
 5. ~~**T.29d** multi-slot + Multicaster — `active_abilities: list` + convention discovery, `Multicaster` Calling + `cast_momentum`, 9 showcase pieces (6 champs + 3 enemies; T6 ults), distinct-slot rule, priority-weighted start-mana.~~ ✅ Done
 6. **T.31** augments — ~50 catalog, `RunModifiers` seam, `sim_run` augment policies; carries 3 paired Primordial-unlock RUN-augments + Primordial @1 signatures + @3 tier-up (D.20).
 
-**Then — UI phase:** T.9 → T.10 → T.15 → T.23 → **T.37a → T.37b → T.37c → T.12a → T.12b**; viz T.11/T.13; polish T.34a/b/c (ability tooltips) → **T.35a (Magnitude family) → T.35b (dead-stat balance)** + T.17.
+**Then — UI phase:** T.9 → T.10 → T.15 → T.23 → **T.37a → T.37b → T.37c → T.12a → T.12b → T.12c**; viz T.11/T.13; polish T.34a/b/c (ability tooltips) → **T.35a (Magnitude family) → T.35b (dead-stat balance)** + T.17.
 
 **Independent now (post-T.34, no UI dep):** T.35a (#42 Finding A — Magnitude-family refactor, byte-identical) can run any time after T.34c; T.35b (#42 Finding B — balance re-tune) after T.35a. **T.36a (kings) → T.36b (champion roster rebalance) → T.36c (enemy roster rebalance)** run after T.35b — pure content/classification re-axis + kit rewrites; no UI/engine dep (new `Spellslinger` role + V.47-guard extension only). The unified axis-distribution solve (role derives from axes, V.32 — plan §13/§14) fixes the durability skew + populates all roles; combined ~66 axis edits / ~39 kit rebuilds across both rosters, split kings/champions/enemies so each ships green independently (enemies last — sims run champ-vs-enemy).
 
@@ -877,7 +876,7 @@ T.33a (3-class scaling + #39 baseline parity + fair total order) → T.33b (spee
 T.6 → T.7 → T.16 (API tests)
 
 ### Phase 3: UI + Combat (Week 4-6)
-T.8 → T.9 → T.10 → T.15 → T.23 → T.37a → T.37b → T.37c → T.12a → T.12b
+T.8 → T.9 → T.10 → T.15 → T.23 → T.37a → T.37b → T.37c → T.12a → T.12b → T.12c
 
 ### Phase 4: Visualizations (Week 6-7)
 T.11 → T.13
