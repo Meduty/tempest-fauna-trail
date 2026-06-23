@@ -1,3 +1,5 @@
+import pytest
+
 from src.game.combat import (
     BOARD_HEIGHT,
     BOARD_WIDTH,
@@ -488,6 +490,38 @@ def test_battle_event_dest_coords_round_trip_and_legacy_default():
     legacy = BattleEvent.from_dict({"tick": 1, "actor_id": "x",
                                     "target_id": None, "event_type": EVENT_MOVE})
     assert (legacy.dest_q, legacy.dest_r) == (-1, -1)
+
+
+def test_deal_damage_rejects_unknown_damage_type():
+    """V.58 (B.29): `damage_type` is a closed vocabulary — `deal_damage` raises
+    on anything outside {physical, magical, true} so a typo like the old "magic"
+    can never silently fall through to the armor branch again."""
+    from src.game.combat.context import _VALID_DAMAGE_TYPES
+    assert _VALID_DAMAGE_TYPES == frozenset({"physical", "magical", "true"})
+
+    ctx, _rec, src, tgt = _recorder_harness()
+    from src.game.effects import SourceTag
+    # valid types do not raise
+    for dt in ("physical", "magical", "true"):
+        ctx.deal_damage(src, tgt, 10.0, SourceTag.ABILITY, damage_type=dt)
+    # the old typo now raises
+    with pytest.raises(ValueError):
+        ctx.deal_damage(src, tgt, 10.0, SourceTag.ABILITY, damage_type="magic")
+
+
+def test_magical_mitigates_by_resistance_not_armor():
+    """B.29 regression: magical damage keys off resistance, physical off armor."""
+    from src.game.effects import SourceTag
+    # high resistance, zero armor → magical should be heavily reduced, physical not
+    ctx_a, _a, src_a, tgt_a = _recorder_harness()
+    ctx_b, _b, src_b, tgt_b = _recorder_harness()
+    for t in (tgt_a, tgt_b):
+        t.base_stats["resistance"] = 200.0
+        t.base_stats["armor"] = 0.0
+        t.hp = t.max_hp = 100000.0
+    mag = ctx_a.deal_damage(src_a, tgt_a, 1000.0, SourceTag.ABILITY, damage_type="magical")
+    phys = ctx_b.deal_damage(src_b, tgt_b, 1000.0, SourceTag.ABILITY, damage_type="physical")
+    assert mag < phys  # resistance bit the magical hit, armor (0) left physical intact
 
 
 def test_ability_damage_emits_ability_beat_excluded_from_turns():

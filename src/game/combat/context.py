@@ -61,6 +61,11 @@ _HARD_CC_GATES = (
 BOARD_WIDTH = 10
 BOARD_HEIGHT = 7
 
+# Closed `damage_type` vocabulary (V.58): magical→resistance, physical→armor,
+# true→unmitigated. `deal_damage` validates against this so a typo can't slip
+# into the armor branch unnoticed (B.29).
+_VALID_DAMAGE_TYPES = frozenset({"physical", "magical", "true"})
+
 # Hex directions (axial)
 HEX_DIRECTIONS: tuple[tuple[int, int], ...] = (
     (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1),
@@ -201,6 +206,13 @@ class CombatContext:
           raw → × weather_modifier → × crit → fire on_damage_pre → mitigate
           → apply → fire on_damage_dealt → fire on_damage_taken → kill check
         """
+        # `damage_type` is a closed vocabulary (V.58) — an unknown string would
+        # silently fall through to the armor branch (B.29). Fail loud instead.
+        if damage_type not in _VALID_DAMAGE_TYPES:
+            raise ValueError(
+                f"Unknown damage_type {damage_type!r}; expected one of "
+                f"{sorted(_VALID_DAMAGE_TYPES)} (V.58)."
+            )
         if not target.alive:
             return 0.0
 

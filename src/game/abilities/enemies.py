@@ -58,7 +58,7 @@ def conscript_passive(owner: Any) -> EffectBundle:
         state["count"] += 1
         if state["count"] % 4 == 0:
             ctx.deal_damage(owner, event.target, CONSCRIPT_BONUS.eval(owner),
-                          SourceTag.BASIC_ATTACK, damage_type="magic")
+                          SourceTag.BASIC_ATTACK, damage_type="magical")
 
     return EffectBundle(hooks=[
         Hook("on_attack_landed", hook, scope=HookScope.PER_HIT),
@@ -81,7 +81,7 @@ def conscript_active(ctx: Any, actor: Any, targets: list) -> None:
     if not target:
         return
     ctx.deal_damage(actor, target, CONSCRIPT_DMG.eval(actor), SourceTag.ABILITY,
-                    damage_type="magic")
+                    damage_type="magical")
 
 
 ABILITY_META["enemy_conscript.active"] = AbilityMeta(
@@ -123,7 +123,7 @@ def levyman_active(ctx: Any, actor: Any, targets: list) -> None:
     if not target:
         return
     ctx.deal_damage(actor, target, LEVYMAN_DMG.eval(actor), SourceTag.ABILITY,
-                    damage_type="magic")
+                    damage_type="magical")
 
 
 ABILITY_META["enemy_levyman.active"] = AbilityMeta(

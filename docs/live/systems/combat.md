@@ -122,9 +122,11 @@ final = max(1, round(mitigated))                              # true damage skip
   ability fallback = `ABILITY_STR_COEFF` 0.2 / `ABILITY_INT_COEFF` 4.2.
 - **Crit is not random** — `crit_counter` on the `Piece` increments per eligible
   hit and crits every `round(1/crit_chance)`-th, then resets. Shared autos/casts.
-- **Mitigation** — magical→resistance, else armor; `_effective_mitigation`
-  applies `penetration_pct` then flat `penetration`, clamped ≥ 0; true damage
-  ignores both.
+- **Mitigation** — `magical`→resistance, `physical`→armor, `true`→unmitigated;
+  `_effective_mitigation` applies `penetration_pct` then flat `penetration`,
+  clamped ≥ 0. `damage_type` is a **closed vocabulary** `{physical, magical, true}`
+  that `deal_damage` **validates** (raises on anything else, V.58) — a typo can't
+  silently fall into the armor branch (B.29).
 
 ## Result
 
@@ -218,6 +220,9 @@ drives the floating *number*, the stepper drives the *bar*. The stream is
 - **V.56/V.57** — the combat view's resource truth (hp/mana/stats/position) is the
   live replay, **never** the event stream's partial `hp_after` fields (incomplete
   for ability burst, B.28); the stream is animation cues + queue projection (T.12).
+- **V.58** — `damage_type` is a closed vocabulary `{physical, magical, true}`;
+  `deal_damage` validates + raises on anything else so a typo can't be mis-mitigated
+  as physical (B.29).
 
 ## File map
 

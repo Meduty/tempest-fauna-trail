@@ -64,7 +64,6 @@ from src.ui.theme import (
 _DMG_COLORS: dict[str, str] = {
     DMG_PHYSICAL: DANGER,
     DMG_MAGICAL: ACCENT,
-    "magic": ACCENT,  # alias — a few handlers pass "magic" not "magical" (see B.x mitigation bug)
     DMG_TRUE: TEXT_PRIMARY,
     DMG_DOT: DOT_DAMAGE,
 }
