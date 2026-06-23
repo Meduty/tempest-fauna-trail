@@ -32,7 +32,14 @@ from src.game.combat import (
     ROUND_TICKS,
 )
 from src.game.combat_log import group_events_by_tick
-from src.game.models import BattleEvent, BattleResult, Champion, Enemy, WeatherState
+from src.game.models import (
+    BattleEvent,
+    BattleResult,
+    Champion,
+    Enemy,
+    Footprint,
+    WeatherState,
+)
 
 # Beats that count as "actions" on the projected queue (V.56 — moves render
 # smaller + movement-iconed; attacks/casts are the primary entries). dot/heal/
@@ -86,6 +93,9 @@ class CombatSession:
     run_mods: Any = None  # RunModifiers | None (active augments)
     node_id: str = ""
     map_effect_id: str = ""  # boss fights (T.12b) — board map effect; "" = non-boss
+    # Optional starting-position override (piece-id → (q, r)) — the prep-phase /
+    # dev-harness hand-placement path. None = deterministic default formation.
+    positions: dict[str, tuple[int, int]] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,6 +113,10 @@ class Step:
     round: int
     beats: tuple[BattleEvent, ...]
     pre_beats: tuple[BattleEvent, ...] = ()
+    # Recorded targeting footprints at this tick (T.12c, V.61) — the view animates
+    # them as per-ability circle/line shapes, joined to a `cast` beat by `cast_id`
+    # for element colour. Geometry only, no resource numbers (B.28 guard holds).
+    footprints: tuple[Footprint, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -178,6 +192,12 @@ def build_playback(result: BattleResult) -> Playback:
     this is a view-side regrouping). Trailing DOTs after the last action (e.g.
     sudden-death bleed before the killing tick) attach to a final step.
     """
+    # Footprints joined to their action step by tick (a footprint is recorded
+    # mid-handler at the cast's tick, so it shares the cast action step's tick).
+    fps_by_tick: dict[int, list[Footprint]] = {}
+    for fp in result.footprints:
+        fps_by_tick.setdefault(fp.tick, []).append(fp)
+
     steps: list[Step] = []
     pending_dots: list[BattleEvent] = []
     for tick, beats in group_events_by_tick(result):
@@ -188,6 +208,7 @@ def build_playback(result: BattleResult) -> Playback:
                 tick=tick, round=tick // ROUND_TICKS,
                 beats=tuple(actions),
                 pre_beats=tuple(pending_dots) + tuple(dots),
+                footprints=tuple(fps_by_tick.get(tick, ())),
             ))
             pending_dots = []
         else:

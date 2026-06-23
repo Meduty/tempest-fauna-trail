@@ -111,6 +111,24 @@ class PhaseEvent:
 
 
 @dataclass(slots=True)
+class FootprintEvent:
+    """Fires on on_footprint — a targeting helper's geometry during a cast (T.12c).
+
+    Observer-only telemetry for the combat view (V.61): `kind` is "circle" (a
+    radius AoE — `enemies_in_radius`/`allies_in_radius`/`neighbors_of`) or "line"
+    (a beam — `line_targets`). `(center_q, center_r)` is the origin; geometry is
+    `radius` (circle) or `direction` + `length` (line). `cast_id` ties it to the
+    in-flight cast so the view can join it to that cast's beats for element colour."""
+    cast_id: int
+    kind: str  # "circle" | "line"
+    center_q: int
+    center_r: int
+    radius: int = 0
+    direction: tuple[int, int] = (0, 0)
+    length: int = 0
+
+
+@dataclass(slots=True)
 class SpawnEvent:
     """Fires on on_spawn."""
     piece: Any  # Piece

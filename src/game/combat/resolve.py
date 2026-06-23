@@ -23,17 +23,21 @@ def resolve_combat(
     *,
     node_id: str = "",
     run_mods: Any = None,
+    positions: dict[str, tuple[int, int]] | None = None,
 ) -> BattleResult:
     """Resolve one battle from start to finish; pure and deterministic.
 
     `run_mods` (a `RunModifiers`, T.31) threads active augments + quest state into
     `compile_loadout`. The `None` default leaves every non-augment caller —
-    including every balance sim — byte-for-byte unchanged (V.2/V.18).
+    including every balance sim — byte-for-byte unchanged (V.2/V.18). `positions`
+    (piece-id → `(q, r)`) is an optional starting-position override (prep/dev
+    hand-placement); `None` = deterministic default formation (byte-identical).
     """
     from src.game.combat.engine import run as run_combat
 
     ctx, recorder = build_combat(
-        team, enemies, weather, run_mods=run_mods, node_id=node_id, with_recorder=True
+        team, enemies, weather, run_mods=run_mods, node_id=node_id, with_recorder=True,
+        positions=positions,
     )
     winner = run_combat(ctx, recorder)
     return recorder.build_result(winner)
@@ -48,6 +52,7 @@ def resolve_boss_combat(
     run_seed: int = 42,
     node_id: str = "",
     run_mods: Any = None,
+    positions: dict[str, tuple[int, int]] | None = None,
 ) -> BattleResult:
     """Resolve a boss fight — the **single src-side boss entry** (V.59). Same
     primitives as `resolve_combat` plus a board map effect: `build_combat` →
@@ -64,7 +69,7 @@ def resolve_boss_combat(
 
     ctx, recorder = build_combat(
         team, enemies, weather, run_mods=run_mods, node_id=node_id, seed=run_seed,
-        with_recorder=True,
+        with_recorder=True, positions=positions,
     )
     if map_effect_id:
         attach_map_effect(map_effect_id, ctx, seed=run_seed)
@@ -81,6 +86,7 @@ def build_combat(
     node_id: str = "",
     seed: int = 42,
     with_recorder: bool = True,
+    positions: dict[str, tuple[int, int]] | None = None,
 ) -> tuple[Any, Any]:
     """Build the combat substrate (pieces + bus + context, optionally a wired
     recorder) up to — but not running — the tick loop. The **single** wiring path
@@ -88,11 +94,17 @@ def build_combat(
     `inspect_at_tick` (no recorder, reads live state), and `resolve_boss_combat`
     (attaches a map effect to `ctx` before running) — so none of them drift into
     parallel setups. Returns `(ctx, recorder|None)`.
+
+    `positions` (piece-id → `(q, r)`) is an optional **starting-position override**
+    applied after `assign_spawns` — the prep-phase / dev-harness hand-placement
+    path. `None` leaves the deterministic default formation untouched (byte-
+    identical, V.2); when given it's still pure deterministic input (no RNG), and
+    `load_order`/`formation_index` tiebreaks (V.34) are unaffected.
     """
     # Deferred imports keep the content↔combat boundary acyclic: loadout pulls
     # in the ability/passive registries, which must finish importing first.
     from src.game.combat.context import CombatContext
-    from src.game.combat.engine import assign_spawns
+    from src.game.combat.engine import BOARD_HEIGHT, BOARD_WIDTH, assign_spawns
     from src.game.combat.recorder import BattleResultRecorder
     from src.game.loadout import compile_loadout
 
@@ -100,8 +112,24 @@ def build_combat(
     # formation_index (input order) + load_order (seeded, side-independent) — V.34.
     pieces, bus, trait_activations = compile_loadout(team, enemies, weather, seed=seed, run_mods=run_mods)
 
-    # Assign spawn positions.
+    # Assign spawn positions (deterministic default formation), then apply any
+    # hand-placement override (prep phase / dev harness) on top. The override is
+    # validated here (on-board + no two pieces sharing a cell) — the engine-level
+    # guard; T.23 layers the prep-side player-zone/roster-id validation on top.
     assign_spawns(pieces)
+    if positions:
+        seen_cells: dict[tuple[int, int], str] = {}
+        for pid, (q, r) in positions.items():
+            if not (0 <= q < BOARD_WIDTH and 0 <= r < BOARD_HEIGHT):
+                raise ValueError(f"positions[{pid!r}] = ({q},{r}) is off-board "
+                                 f"(0..{BOARD_WIDTH - 1}, 0..{BOARD_HEIGHT - 1}).")
+            if (q, r) in seen_cells:
+                raise ValueError(f"positions: {pid!r} and {seen_cells[(q, r)]!r} "
+                                 f"both placed on cell ({q},{r}).")
+            seen_cells[(q, r)] = pid
+        for piece in pieces:
+            if piece.id in positions:
+                piece.position_q, piece.position_r = positions[piece.id]
 
     recorder = None
     if with_recorder:

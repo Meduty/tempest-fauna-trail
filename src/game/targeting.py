@@ -12,6 +12,16 @@ from typing import Any
 from src.game.status import StatusGate
 
 
+def _note_footprint(ctx: Any, kind: str, center_q: int, center_r: int, **geo: Any) -> None:
+    """Forward this helper's geometry to `ctx.note_footprint` for the combat view
+    (T.12c, V.61). Observer-only: `note_footprint` records only while a cast is in
+    flight, and the call no-ops on contexts that don't implement it (test stubs).
+    Never changes the helper's returned targets."""
+    note = getattr(ctx, "note_footprint", None)
+    if note is not None:
+        note(kind, center_q, center_r, **geo)
+
+
 def _filter_hexproof(actor: Any, enemies: list) -> list:
     """Drop hexproof enemies from single-target acquisition (V.40).
 
@@ -102,6 +112,7 @@ def lowest_hp_ally(actor: Any, ctx: Any) -> Any | None:
 def neighbors_of(piece: Any, ctx: Any) -> list:
     """All pieces adjacent (hex distance 1) to the given piece."""
     from src.game.combat import hex_distance
+    _note_footprint(ctx, "circle", piece.position_q, piece.position_r, radius=1)
     result = []
     for p in ctx.all_pieces():
         if p is piece or not p.alive:
@@ -114,6 +125,7 @@ def neighbors_of(piece: Any, ctx: Any) -> list:
 def enemies_in_radius(center_q: int, center_r: int, radius: int, of: Any, ctx: Any) -> list:
     """All enemies of 'of' within hex radius of center position."""
     from src.game.combat import hex_distance
+    _note_footprint(ctx, "circle", center_q, center_r, radius=radius)
     result = []
     for e in ctx.enemies_of(of):
         if hex_distance(center_q, center_r, e.position_q, e.position_r) <= radius:
@@ -124,6 +136,7 @@ def enemies_in_radius(center_q: int, center_r: int, radius: int, of: Any, ctx: A
 def allies_in_radius(center_q: int, center_r: int, radius: int, of: Any, ctx: Any) -> list:
     """All allies of 'of' within hex radius of center position."""
     from src.game.combat import hex_distance
+    _note_footprint(ctx, "circle", center_q, center_r, radius=radius)
     result = []
     for a in ctx.allies_of(of):
         if hex_distance(center_q, center_r, a.position_q, a.position_r) <= radius:
@@ -144,6 +157,8 @@ def furthest_enemy(actor: Any, ctx: Any) -> Any | None:
 
 def line_targets(actor: Any, direction: tuple[int, int], length: int, ctx: Any) -> list:
     """All pieces along a line from actor in the given direction."""
+    _note_footprint(ctx, "line", actor.position_q, actor.position_r,
+                    direction=direction, length=length)
     result = []
     q, r = actor.position_q, actor.position_r
     dq, dr = direction

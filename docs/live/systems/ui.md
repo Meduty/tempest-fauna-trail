@@ -28,11 +28,13 @@ no change. The view owns resolution (takes inputs, not a pre-resolved result).
 
 `build_playback(result) -> Playback` turns the recorded event stream into:
 
-- **`Playback.steps: list[Step]`** — one `Step(tick, round, beats, pre_beats)`
-  per **action moment**. DOT-only ticks are **absorbed**: a step's `beats` are the
-  action cues at `tick` (attack/cast/ability/heal/death/spawn/despawn/move), and
-  `pre_beats` are the DOTs that ticked *between* the previous action step and this
-  one. So Next goes action→action (no DOT-only steps), and the view drips
+- **`Playback.steps: list[Step]`** — one `Step(tick, round, beats, pre_beats,
+  footprints)` per **action moment**. DOT-only ticks are **absorbed**: a step's
+  `beats` are the action cues at `tick` (attack/cast/ability/heal/death/spawn/
+  despawn/move), and `pre_beats` are the DOTs that ticked *between* the previous
+  action step and this one. **`footprints`** (T.12c) are the cast's recorded
+  targeting geometry at that tick (`BattleResult.footprints` joined by tick) — the
+  per-ability-shape VFX; geometry only, no resource numbers. So Next goes action→action (no DOT-only steps), and the view drips
   `pre_beats` chronologically before showing the action ("what bled in between").
   `round = tick // ROUND_TICKS`.
 - **`Playback.queue(cursor) -> list[QueueEntry]`** — the forward **action-queue
@@ -90,11 +92,23 @@ Zones (views_spec §7.3):
   attacker **lunges** toward its target (offset, tweened). **Melee** basic attacks
   draw a red **swoosh** (`_swoosh`, `cv.Arc` crescent facing the attacker);
   **ranged/ability/cast** draw a directional **arrow** (`_arrow`, colour by damage
-  type); AoE/self casts → a ring on the caster. (No distinct spell VFX/projectile
-  yet — sprite pass deferred.)
-- **Manual step = instant** full reveal (action + arrows + numbers + dots at once)
-  so attacks always show; the **real-time DOT drip is autoplay-only** (a rapid Next
-  must never out-race an async reveal).
+  type); AoE/self casts → a ring on the caster.
+- **Per-ability-shape VFX (T.12c, V.61):** a cast's recorded targeting
+  **footprint** (`step.footprints`, joined to the `cast` beat by `cast_id`) draws
+  in the ability's **element colour** (`_element_color` from `AbilityMeta.tags`:
+  magic→accent, physical→danger, true→white). A `circle` (radius AoE) is an
+  **animated overlay** (`_footprint_circle`, keyed `fp-{cast_id}-{i}`) — translucent
+  fill + ring that **pops** (expand + fade-in via `state["fp_phase"]` 0→1 with
+  `animate_scale`/`animate_opacity`) then stays as the **static residue**. A `line`
+  (beam) draws on the canvas (`_footprint_line`; no roster ability uses
+  `line_targets` yet — kept correct). (Sprites/projectiles still deferred; phase B
+  = buff/heal halos + control telegraphs.)
+- **Manual step = instant** full reveal of the static truth (action + arrows +
+  numbers + dots + footprint shape at once) so attacks always show; the footprint
+  **pop** is a non-blocking cosmetic grow (`_kick_footprint_pop` → `page.run_task`)
+  on top of that truth, so manual Next and autoplay animate the shape the **same
+  way** (user-set) and a rapid Next just leaves the full shape. The **real-time DOT
+  drip stays autoplay-only** (a rapid Next must never out-race an async reveal).
 - **Action queue active highlight:** the entry(ies) at the current step's tick
   ("resolving now") render **bigger + accent-bordered** (`animate_size`); fixed-width
   row with horizontal overflow so the layout never shifts.

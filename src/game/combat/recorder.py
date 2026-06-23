@@ -16,6 +16,7 @@ from src.game.events import (
     DamageEvent,
     DeathEvent,
     DespawnEvent,
+    FootprintEvent,
     HealEvent,
     SpawnEvent,
     StatusEvent,
@@ -24,6 +25,7 @@ from src.game.models import (
     BattleEvent,
     BattleResult,
     CombatOutcome,
+    Footprint,
     ManaProfile,
     PieceSnapshot,
     WeatherState,
@@ -89,6 +91,9 @@ class BattleResultRecorder:
         self._node_id = node_id
         self._trait_activations = list(trait_activations or [])
         self._events: list[BattleEvent] = []
+        # Per-cast targeting footprints (T.12c, V.61) — recorded observer-only
+        # from `on_footprint`, stamped on the BattleResult for the combat view.
+        self._footprints: list[Footprint] = []
         self._damage_dealt: dict[str, int] = {p.id: 0 for p in pieces}
         self._damage_taken: dict[str, int] = {p.id: 0 for p in pieces}
         self._duration_ticks: int = 0
@@ -171,6 +176,14 @@ class BattleResultRecorder:
         bus.subscribe(Hook(
             event="on_despawn",
             handler=self._on_despawn,
+            priority=-1000,
+            scope=HookScope.PER_HIT,
+        ))
+        # T.12c — targeting footprints (observer-only; V.61). Only fires while a
+        # cast is in flight (CombatContext.note_footprint gates on current_cast_id).
+        bus.subscribe(Hook(
+            event="on_footprint",
+            handler=self._on_footprint,
             priority=-1000,
             scope=HookScope.PER_HIT,
         ))
@@ -282,6 +295,7 @@ class BattleResultRecorder:
                 is_crit=event.is_crit,
                 hp_after=int(event.target.hp),
                 barrier_after=int(event.target.barrier_total),
+                cast_id=event.cast_id if event.cast_id is not None else -1,
             ))
 
     def _on_death(self, ctx: Any, event: DeathEvent) -> None:
@@ -315,6 +329,7 @@ class BattleResultRecorder:
             slot_idx=event.slot_idx,
             mana_spent=int(event.mana_cost),
             mana_after=int(event.mana_after),
+            cast_id=event.cast_id,
         ))
 
     def _on_heal(self, ctx: Any, event: HealEvent) -> None:
@@ -391,6 +406,22 @@ class BattleResultRecorder:
             event_type=EVENT_DESPAWN,
         ))
 
+    def _on_footprint(self, ctx: Any, event: FootprintEvent) -> None:
+        """Record a targeting footprint (T.12c, V.61) — observer-only geometry the
+        combat view animates as a per-ability shape. Joined to its cast's beats by
+        `cast_id`/`tick`. Does not affect combat math (no `turns`/damage impact)."""
+        tick = ctx.current_tick if ctx else 0
+        self._footprints.append(Footprint(
+            tick=tick,
+            cast_id=event.cast_id,
+            kind=event.kind,
+            center_q=event.center_q,
+            center_r=event.center_r,
+            radius=event.radius,
+            direction=event.direction,
+            length=event.length,
+        ))
+
     def _on_combat_end(self, ctx: Any, event: CombatEndEvent) -> None:
         """Record combat end."""
         pass
@@ -429,4 +460,5 @@ class BattleResultRecorder:
             initial_pieces=list(self._initial_pieces),
             board_width=self._board_width,
             board_height=self._board_height,
+            footprints=list(self._footprints),
         )

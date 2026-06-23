@@ -427,6 +427,11 @@ class BattleEvent:
     # get robust coords without string-splitting.
     dest_q: int = -1
     dest_r: int = -1
+    # Cast attribution (T.12c) — on a `cast` activation marker or an `ability`
+    # damage beat, this is the engine's `cast_id` for that cast, so the combat
+    # view can join a recorded targeting `Footprint` (which carries the same
+    # cast_id) to its ability for element colour. `-1` marks a non-cast beat.
+    cast_id: int = -1
 
     def __post_init__(self) -> None:
         if self.tick < 0:
@@ -448,6 +453,7 @@ class BattleEvent:
             "barrier_after": self.barrier_after,
             "dest_q": self.dest_q,
             "dest_r": self.dest_r,
+            "cast_id": self.cast_id,
         }
 
     @classmethod
@@ -467,6 +473,7 @@ class BattleEvent:
             barrier_after=payload.get("barrier_after", 0),
             dest_q=payload.get("dest_q", -1),
             dest_r=payload.get("dest_r", -1),
+            cast_id=payload.get("cast_id", -1),
         )
 
 
@@ -542,6 +549,53 @@ class PieceSnapshot:
 
 
 @dataclass(slots=True)
+class Footprint:
+    """A targeting helper's recorded geometry during a cast (T.12c, V.61).
+
+    Observer-only telemetry for the combat view: `kind` is "circle" (radius AoE)
+    or "line" (beam), `(center_q, center_r)` the origin, geometry is `radius`
+    (circle) or `direction` + `length` (line). `tick`/`cast_id` join it to the
+    cast's beats. Capture never affects combat math — the helper returns its
+    target list unchanged and no subscriber exists on the sim path (byte-identical,
+    V.2/V.14). Empty list for results from pre-T.12c saves.
+    """
+    tick: int
+    cast_id: int
+    kind: str
+    center_q: int
+    center_r: int
+    radius: int = 0
+    direction: tuple[int, int] = (0, 0)
+    length: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "tick": self.tick,
+            "cast_id": self.cast_id,
+            "kind": self.kind,
+            "center_q": self.center_q,
+            "center_r": self.center_r,
+            "radius": self.radius,
+            "direction": list(self.direction),
+            "length": self.length,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> Footprint:
+        d = payload.get("direction", (0, 0))
+        return cls(
+            tick=payload["tick"],
+            cast_id=payload["cast_id"],
+            kind=payload["kind"],
+            center_q=payload["center_q"],
+            center_r=payload["center_r"],
+            radius=payload.get("radius", 0),
+            direction=tuple(d),
+            length=payload.get("length", 0),
+        )
+
+
+@dataclass(slots=True)
 class BattleResult:
     node_id: str
     weather: WeatherState
@@ -570,6 +624,10 @@ class BattleResult:
     initial_pieces: list[PieceSnapshot] = field(default_factory=list)
     board_width: int = 0
     board_height: int = 0
+    # Recorded per-cast targeting footprints (T.12c, V.61) — observer-only
+    # geometry the combat view animates as per-ability shapes (circle/line).
+    # Empty for results from pre-T.12c saves.
+    footprints: list[Footprint] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if self.rounds < 0 or self.turns < 0 or self.duration_ticks < 0:
@@ -596,6 +654,7 @@ class BattleResult:
             "initial_pieces": [p.to_dict() for p in self.initial_pieces],
             "board_width": self.board_width,
             "board_height": self.board_height,
+            "footprints": [f.to_dict() for f in self.footprints],
         }
 
     @classmethod
@@ -627,6 +686,10 @@ class BattleResult:
             ],
             board_width=payload.get("board_width", 0),
             board_height=payload.get("board_height", 0),
+            footprints=[
+                Footprint.from_dict(raw)
+                for raw in payload.get("footprints", [])
+            ],
         )
 
 
