@@ -490,6 +490,34 @@ def test_battle_event_dest_coords_round_trip_and_legacy_default():
     assert (legacy.dest_q, legacy.dest_r) == (-1, -1)
 
 
+def test_ability_damage_emits_ability_beat_excluded_from_turns():
+    """T.37: ability damage emits an `ability` beat (separate from the `cast`
+    activation marker) carrying final post-mitigation amount + damage_type +
+    hp_after; `turns` counts attack+cast only ⇒ byte-identical sims (V.54)."""
+    from src.game.combat import (
+        EVENT_ABILITY, EVENT_ATTACK, EVENT_CAST, resolve_combat,
+    )
+    from src.game.content import CHAMPION_ROSTER, ENEMY_ROSTER
+    from src.game.models import WeatherState
+
+    team = [CHAMPION_ROSTER["champ_aurion"]]
+    enemies = list(ENEMY_ROSTER.values())[:6]
+    result = resolve_combat(team, enemies, WeatherState.CLEAR)
+
+    ability = [e for e in result.events if e.event_type == EVENT_ABILITY]
+    assert ability, "expected ability-damage beats from a registered caster"
+    for e in ability:
+        assert e.amount > 0                       # final post-mitigation figure
+        assert e.hp_after >= 0                     # HP truth stamped
+        assert e.note in ("physical", "magical", "magic", "true")
+        assert e.event_type != EVENT_CAST          # distinct from the activation marker
+
+    # turns excludes ability beats → unchanged vs pre-`ability` (byte-identical)
+    atk = sum(1 for e in result.events if e.event_type == EVENT_ATTACK)
+    cast = sum(1 for e in result.events if e.event_type == EVENT_CAST)
+    assert result.turns == atk + cast
+
+
 def test_attack_beat_hp_after_is_exact_under_barrier():
     """V.54 guard: `amount` is full pre-barrier damage (DPS accounting), but
     `hp_after` is the real HP — so a barrier makes amount != HP-delta, yet the

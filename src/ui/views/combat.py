@@ -27,6 +27,7 @@ from src.game.combat import (
     BOARD_HEIGHT,
     BOARD_WIDTH,
     CombatReplay,
+    EVENT_ABILITY,
     EVENT_ATTACK,
     EVENT_CAST,
     EVENT_DOT,
@@ -63,6 +64,7 @@ from src.ui.theme import (
 _DMG_COLORS: dict[str, str] = {
     DMG_PHYSICAL: DANGER,
     DMG_MAGICAL: ACCENT,
+    "magic": ACCENT,  # alias — a few handlers pass "magic" not "magical" (see B.x mitigation bug)
     DMG_TRUE: TEXT_PRIMARY,
     DMG_DOT: DOT_DAMAGE,
 }
@@ -243,7 +245,7 @@ def build_combat_view(
                 continue
             if b.event_type == EVENT_HEAL:
                 txt, col = f"+{b.amount}", SUCCESS
-            elif b.event_type in (EVENT_ATTACK, EVENT_CAST, EVENT_DOT):
+            elif b.event_type in (EVENT_ATTACK, EVENT_ABILITY, EVENT_CAST, EVENT_DOT):
                 col = _DMG_COLORS.get(b.note, DANGER)
                 txt = f"-{b.amount}" + ("!" if b.is_crit else "")
             else:

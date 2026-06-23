@@ -272,7 +272,7 @@ class CombatContext:
         dealt_event = DamageEvent(
             attacker=attacker, target=target, amount=final,
             tag=tag.value, cast_id=self._current_cast_id, hit_id=hit_id,
-            is_crit=is_crit,
+            is_crit=is_crit, damage_type=damage_type,
         )
         self._bus.fire("on_damage_dealt", dealt_event, cast_id=self._current_cast_id, ctx=self)
 

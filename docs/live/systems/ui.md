@@ -72,7 +72,8 @@ Zones (views_spec §7.3):
   Floating numbers are **monospaced** (`FONT_MONO`), coloured **by damage type**
   (`_DMG_COLORS`: physical red, magical blue, true white, DOT purple; heal green),
   with crit marked by a trailing `!` + size bump (not colour), and **staggered per
-  target** so multi-hit ticks stay legible.
+  target** so multi-hit ticks stay legible. Ability damage shows via the `ability`
+  beat (V.54), basic hits via `attack`, bleeds via `dot`, heals via `heal`.
 - **Bottom controls:** **Next ▶** (default manual step), ◀ Prev, Autoplay toggle,
   ⏭ End (fast-forward), ↺ Restart, Exit.
 - **Combat-end panel:** outcome / survivors / damage dealt-taken / **Continue**

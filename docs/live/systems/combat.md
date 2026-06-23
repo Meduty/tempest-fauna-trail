@@ -136,16 +136,22 @@ combat-view layout (`initial_pieces`: per-piece `PieceSnapshot` identity +
 spawn-time position + mana profile, with `spawn_tick=0` for starters and the
 spawn tick for mid-combat summons; `board_width`/`board_height`).
 
-**Beat taxonomy (V.54, T.37a).** Every visible-state-changing beat emits exactly
-one `BattleEvent` from a single producer path: `move`/`attack`/`cast`/`death`
-plus `heal`/`dot`/`status`(applied)/`status_expire`/`spawn`/`despawn`. Beats that
+**Beat taxonomy (V.54, T.37a; `ability` T.37 follow-up).** Every visible-state-
+changing beat emits exactly one `BattleEvent` from a single producer path:
+`move`/`attack`/`cast`/`ability`/`death` plus `heal`/`dot`/`status`(applied)/
+`status_expire`/`spawn`/`despawn`. **`cast` vs `ability` are distinct:** `cast` is
+the *activation* marker (`amount=0`, "a piece casts", `_on_cast`); `ability` is
+the resulting *damage* (one per target hit, `_on_damage_dealt` when
+`tag == ABILITY`) — first a `cast`, then per-target `ability` beats. Beats that
 actually change HP carry `hp_after`/`barrier_after` = the engine's post-event
 truth (read after `deal_damage` applies, V.28-correct: the `amount` is the full
-pre-barrier figure for DPS accounting): always on `attack`/`dot`/`heal`, and on a
-damaging `cast` (the engine's unregistered-ability fallback). Registered-ability
-**cast activation markers** (`amount=0`, the ability's per-hit damage attributed
-separately) are *not* HP-changing and keep the `hp_after=-1` / `barrier_after=0`
-sentinels — the view reads ability-hit HP from replay, not from the cast marker.
+pre-barrier figure for DPS accounting): on `attack`/`ability`/`dot`/`heal`. The
+`ability`/`attack` `amount` is the **final post-mitigation** figure with `is_crit`
++ `damage_type` (`physical`/`magical`/`true`, on `DamageEvent`) — the single
+`ctx.deal_damage` chokepoint is the one producer (no separate ability handler).
+With `ability` added the stream is HP-complete; the view still reads bars from the
+live stepper (V.57) — the beat's `amount`/`type` drives the floating *number*, not
+the bar. `turns` counts `attack`+`cast` only (`ability` excluded) ⇒ byte-identical.
 `expire_summon`
 fires `on_despawn` (distinct from `death`). The recorder is observer-only ⇒ sims
 byte-identical; only `combat_log` golden text re-baselines. `record_attack` (a
@@ -189,10 +195,11 @@ read-only `PieceView`/`SlotView`/`StatusView` structs. `run_mods` is **cloned**
 `BattleResult` (avoids T.14 save bloat + stat-drift).
 
 **This live state is the combat view's resource-truth source (V.56/V.57), NOT
-the recorded event stream** — the stream's `hp_after`/`barrier_after` are stamped
-only on basic-attack/DOT/heal beats, **not** registered-ability damage (`_on_cast`
-→ `hp_after=-1`, B.28), so a bar built from the stream would freeze through an
-ability hit. The stream is **animation cues + action-queue projection** only. `move`/
+the recorded event stream** — even though the stream is now HP-complete (the
+`ability` beat closed the B.28 gap), the view keeps **one** source of truth (the
+stepper) so bars can't drift from a dual pipeline; the stream's `amount`/`type`
+drives the floating *number*, the stepper drives the *bar*. The stream is
+**animation cues + action-queue projection** only. `move`/
 `spawn` beats carry structured `dest_q`/`dest_r` int coords (T.37c), not a parsed
 `note` string.
 

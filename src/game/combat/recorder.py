@@ -34,7 +34,8 @@ from src.game.piece import Piece
 # Event type constants — the BattleEvent.event_type vocabulary
 EVENT_MOVE = "move"
 EVENT_ATTACK = "attack"
-EVENT_CAST = "cast"
+EVENT_CAST = "cast"               # ability *activation* marker (amount=0)
+EVENT_ABILITY = "ability"         # ability *damage* (one per target hit; amount = final post-mitigation)
 EVENT_DEATH = "death"
 EVENT_HEAL = "heal"
 EVENT_DOT = "dot"
@@ -254,6 +255,24 @@ class BattleResultRecorder:
                 event_type=EVENT_DOT,
                 amount=amount,
                 note=DMG_DOT,
+                is_crit=event.is_crit,
+                hp_after=int(event.target.hp),
+                barrier_after=int(event.target.barrier_total),
+            ))
+        elif event.tag == SourceTag.ABILITY.value:
+            # Ability *damage* beat (T.37) — separate from the `cast` activation
+            # marker (`_on_cast`, amount=0). One per target hit; `amount` is the
+            # final post-mitigation figure `deal_damage` already computed, so the
+            # view's floating number is post-mitigation by construction. Carries
+            # `damage_type` for colour. Excluded from `turns` (V.54) ⇒ byte-identical.
+            tick = ctx.current_tick if ctx else 0
+            self._events.append(BattleEvent(
+                tick=tick,
+                actor_id=event.attacker.id if event.attacker is not None else "",
+                target_id=event.target.id,
+                event_type=EVENT_ABILITY,
+                amount=amount,
+                note=event.damage_type,
                 is_crit=event.is_crit,
                 hp_after=int(event.target.hp),
                 barrier_after=int(event.target.barrier_total),

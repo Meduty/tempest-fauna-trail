@@ -12,6 +12,7 @@ No Flet imports, no I/O — the log is a deterministic function of the result.
 from __future__ import annotations
 
 from src.game.combat import (
+    EVENT_ABILITY,
     EVENT_ATTACK,
     EVENT_CAST,
     EVENT_DEATH,
@@ -69,8 +70,11 @@ def _format_event(
             return f"{event.actor_id} casts {event.note} at {event.target_id}{mana}"
         return f"{event.actor_id} casts {event.note}{mana}"
 
-    if event.event_type in (EVENT_ATTACK, EVENT_CAST, EVENT_DOT):
-        verb = {EVENT_ATTACK: "attacks", EVENT_CAST: "casts at", EVENT_DOT: "burns"}[event.event_type]
+    if event.event_type in (EVENT_ATTACK, EVENT_CAST, EVENT_ABILITY, EVENT_DOT):
+        verb = {
+            EVENT_ATTACK: "attacks", EVENT_CAST: "casts at",
+            EVENT_ABILITY: "hits", EVENT_DOT: "burns",
+        }[event.event_type]
         line = (
             f"{event.actor_id} {verb} {event.target_id} "
             f"— {event.amount} {event.note}"
