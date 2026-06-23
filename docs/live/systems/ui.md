@@ -84,8 +84,18 @@ Zones (views_spec §7.3):
   screen); crit = `!` + size. (T.12b)
 - **Token tween (T.12b):** tokens are **keyed overlay `Container`s** (`tok-{id}`,
   HP/mana/status pips `hp-`/`mp-`/`st-{id}`) with `animate_position` → they **glide**
-  between cells; canvas keeps cells + arrows + numbers. **Attack/cast arrows**
-  (`_arrow`, `cv.Line`) point actor→target on the revealed action (AoE/self → ring).
+  between cells; canvas keeps cells + slash/arrows + numbers. On an action the
+  attacker **lunges** toward its target (offset, tweened). **Melee** basic attacks
+  draw a red **swoosh** (`_swoosh`, `cv.Arc` crescent facing the attacker);
+  **ranged/ability/cast** draw a directional **arrow** (`_arrow`, colour by damage
+  type); AoE/self casts → a ring on the caster. (No distinct spell VFX/projectile
+  yet — sprite pass deferred.)
+- **Manual step = instant** full reveal (action + arrows + numbers + dots at once)
+  so attacks always show; the **real-time DOT drip is autoplay-only** (a rapid Next
+  must never out-race an async reveal).
+- **Action queue active highlight:** the entry(ies) at the current step's tick
+  ("resolving now") render **bigger + accent-bordered** (`animate_size`); fixed-width
+  row with horizontal overflow so the layout never shifts.
   **Status pips** under each token (colour by status, stack count, remaining-time
   tooltip). **Sudden-death** (tick ≥ `SUDDEN_DEATH_TICK`): header badge + board
   border tint + a `DANGER` divider in the queue.

@@ -469,25 +469,32 @@ def build_combat_view(
         board_stack.controls = [cv.Canvas(shapes=shapes, width=_BOARD_W, height=_BOARD_H), *overlays]
 
     # ---------- action queue ----------
-    def _queue_chip(entry: QueueEntry) -> ft.Control:
+    def _queue_chip(entry: QueueEntry, active: bool) -> ft.Control:
+        """One queue entry. `active` = currently resolving (this step's tick) →
+        bigger + accent highlight so the player sees what's being resolved."""
         is_move = entry.is_move
         label = _initials(name_by_id.get(entry.actor_id, entry.actor_id))
         icon = "→" if is_move else ("✦" if entry.kind == EVENT_CAST else "⚔")
-        size = 34 if is_move else 44
+        size = (40 if is_move else 52) if active else (34 if is_move else 44)
         return ft.Container(
             width=size, height=size, border_radius=6,
-            bgcolor=SURFACE_ELEVATED if not is_move else SURFACE,
+            bgcolor=ft.Colors.with_opacity(0.25, ACCENT) if active
+            else (SURFACE_ELEVATED if not is_move else SURFACE),
+            border=ft.Border.all(2, ACCENT) if active else None,
             alignment=ft.Alignment.CENTER,
             content=ft.Column(
-                [ft.Text(icon, size=10 if is_move else 12, color=TEXT_MUTED),
-                 ft.Text(label, size=9 if is_move else 11, color=TEXT_PRIMARY)],
+                [ft.Text(icon, size=12 if (active or not is_move) else 10, color=TEXT_PRIMARY if active else TEXT_MUTED),
+                 ft.Text(label, size=11 if (active or not is_move) else 9, color=TEXT_PRIMARY)],
                 spacing=0, alignment=ft.MainAxisAlignment.CENTER,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER, tight=True,
             ),
-            tooltip=f"{name_by_id.get(entry.actor_id, entry.actor_id)} · {entry.kind} · {_secs(entry.tick)}",
+            tooltip=f"{name_by_id.get(entry.actor_id, entry.actor_id)} · {entry.kind} · {_secs(entry.tick)}"
+            + (" · resolving now" if active else ""),
+            animate_size=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
         )
 
     def _build_queue() -> None:
+        now = playback.tick_at(state["cursor"])
         entries = playback.queue(state["cursor"])
         controls: list[ft.Control] = []
         last_round: int | None = None
@@ -505,7 +512,7 @@ def build_combat_view(
                     width=2, height=44, bgcolor=ACCENT,
                     tooltip=f"round {e.round + 1}",
                 ))
-            controls.append(_queue_chip(e))
+            controls.append(_queue_chip(e, active=(e.tick == now and state["cursor"] >= 0)))
             last_round = e.round
         if not controls:
             controls = [ft.Text("— no upcoming actions —", size=12, color=TEXT_MUTED)]
