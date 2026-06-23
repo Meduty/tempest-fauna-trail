@@ -384,9 +384,9 @@ def build_combat_view(
         queue_row.controls = controls
 
     # ---------- inspect panel ----------
-    def _stat_row(label: str, value: str) -> ft.Control:
+    def _stat_row(label: str, value: str, label_w: int = 90) -> ft.Control:
         return ft.Row(
-            [ft.Text(label, size=11, color=TEXT_MUTED, width=90),
+            [ft.Text(label, size=11, color=TEXT_MUTED, width=label_w),
              ft.Text(value, size=11, color=TEXT_PRIMARY)],
             spacing=SPACING_SM,
         )
@@ -408,8 +408,24 @@ def build_combat_view(
             controls.append(_stat_row("HP", f"{pv.hp} / {pv.max_hp}"))
             if pv.barrier_total:
                 controls.append(_stat_row("barrier", str(pv.barrier_total)))
-            for key in ("strength", "intelligence", "attack_speed", "armor", "resistance", "attack_range"):
-                controls.append(_stat_row(key, f"{pv.stats.get(key, 0):.0f}"))
+
+            # Two-column stat block: primary (combat) | premium (mr/pen/crit/…).
+            def _fmt(key: str) -> str:
+                v = pv.stats.get(key, 0.0)
+                if key in ("crit_chance", "penetration_pct"):
+                    return f"{v * 100:.0f}%"
+                return f"{v:.0f}"
+
+            primary = [("STR", "strength"), ("INT", "intelligence"), ("AS", "attack_speed"),
+                       ("armor", "armor"), ("res", "resistance"), ("range", "attack_range")]
+            premium = [("MS", "move_speed"), ("MR", "mana_regen"), ("crit", "crit_chance"),
+                       ("pen", "penetration"), ("pen%", "penetration_pct"), ("threat", "threat")]
+            controls.append(ft.Row([
+                ft.Column([_stat_row(lbl, _fmt(k), label_w=48) for lbl, k in primary],
+                          spacing=SPACING_XS, expand=True),
+                ft.Column([_stat_row(lbl, _fmt(k), label_w=48) for lbl, k in premium],
+                          spacing=SPACING_XS, expand=True),
+            ], spacing=SPACING_SM))
             for i, slot in enumerate(pv.mana):
                 controls.append(_stat_row(
                     f"mana[{i}]", f"{slot.current_mana} / {slot.max_mana} (cost {slot.mana_cost})"))

@@ -353,7 +353,9 @@ class ScalingTerm:
             pieces.append(f"{self.base:g}")
         for short, coeff, val in scales:
             pieces.append(f"{coeff * 100:g}% {short}")
-            stat_notes.append(f"{short} {coeff:g}×{val:g}")
+            # Show each stat's **computed contribution** (coeff×stat), not the raw
+            # "coeff×statval" expression — i.e. how much that stat actually adds.
+            stat_notes.append(f"{short} +{round(coeff * val)}")
         rhs = " + ".join(pieces) if pieces else "0"
         note = f"  ({', '.join(stat_notes)})" if stat_notes else ""
         return f"{round(self.eval(source))} = {rhs}{note}"
