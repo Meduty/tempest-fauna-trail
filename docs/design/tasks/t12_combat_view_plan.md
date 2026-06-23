@@ -154,6 +154,30 @@ None (no rosters/tags touched). Doc-drift: no `docs/live/systems/ui.md` exists y
 **Resolved here (overridable):** §4.3 (`combat_playback` = cues + queue, no resource numbers — bars from the stepper), §4.5 (reward = easy fight, combat only), §4.6 (boss in b), §4.7 (dev entry), §4.8 (backward/restart = rebuild a fresh `CombatReplay`). Board = `flet.canvas` hex.
 **Still open / deferred:** action-queue projection granularity (which beats count as "actions" — proposal: `attack`/`cast` are queue entries; `move`/`dot`/`status` are not — refine in build); mana display via stepper per-slot `PieceView.mana` (live, exact — no linear fill needed now the stepper is the source); real-time-scaled autoplay pacing (T.12b); sprite art; keyboard shortcuts (T.12b).
 
+### 7.1 Design research findings (TFT + JRPG + Flet) — 2026-06-23
+
+Web research into TFT board UX, turn-based JRPG combat presentation, and Flet
+game-dev patterns. Sources: [TFT UI case study (Z. Roberson)](https://zacharyrobes.com/teamfight-tactics-ui-design),
+[TFT UI tools (esports.gg)](https://esports.gg/guides/teamfight-tactics/tft-tip-tuesday-how-to-utilize-the-ui-tools/),
+[Damage Numbers in RPGs (Shweep)](https://shweep.medium.com/damage-numbers-in-rpgs-1f0e3b1bc23a),
+[JRPG combat system (S. Hargain)](https://medium.com/@seanhargain055/building-a-jrpg-combat-system-without-losing-the-thread-3c6a1ee543d4),
+[Flet Canvas docs](https://flet.dev/docs/controls/canvas/),
+[Flet Animations docs](https://flet.dev/docs/guides/python/animations/).
+
+**Cheap legibility fixes — fold into T.12a (still core, not polish):**
+- **Monospaced floating numbers.** Use `theme.FONT_MONO` for damage/heal text (research: compact monospaced reads best; cursive is worst). Currently default font.
+- **DOT visually distinct from hits.** `EVENT_DOT` floats render same red as `attack`/`cast` today; give DOT its own tint (e.g. `WARNING`/orange) so bleeds read apart from strikes.
+- **Stagger overlapping numbers.** Multiple beats on one target at one tick overlap at a fixed offset today; offset each by index so multi-hit ticks stay legible.
+
+**T.12b polish backlog (research-sourced):**
+- **Float-up + bounce motion** for numbers — swap canvas `cv.Text` for an overlay `ft.Text` with `animate_offset` (implicit anim, no thread); "numbers float upward with bounce" is the standard juice. Flet has no canvas anim → manual timing or implicit-animated overlay controls.
+- **Hit reaction** — token nudge / flash on damage ("without damage reactions, hits feel like a wet noodle"). Skipped in `a`.
+- **Two-tier inspect** — hover = light highlight + name tooltip; click = full panel (TFT pattern). `a` is click-only.
+- **Dedicated trait/synergy strip** + **live damage mini-tracker** — TFT splits info across panels (trait tracker left, damage/scoreboard right) to cut board clutter; ours buries traits in the inspect global panel and shows damage only on the end panel.
+- **HP bars do double duty** — embed tier/rarity pip on the bar (TFT bars carry star level); pairs with the sprite pass.
+- **Canvas static-layer flatten** — the 70-dot cell grid is static; `canvas.capture()` it once instead of redrawing each render (micro-opt; current full-rebuild is fine for a low-frequency turn-based stepper, not a 60fps loop).
+- **Phase state-machine** for menu→prep→combat→summary routing (T.15) — standard game-loop pattern; our update(stepper)/render split already conforms.
+
 ## 8. Test plan
 UI not unit-tested (CLAUDE.md) → target the **pure `combat_playback`** model (cues + queue) + the **view↔stepper wiring contract**:
 - `build_playback(result)`: one step per event-bearing tick; steps cover every `BattleEvent`; `Step.round == tick // ROUND_TICKS`; each step's beats are the tick's cues in resolved order (no resource fields on the model).
