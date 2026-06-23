@@ -236,15 +236,15 @@ def test_forward_stepper_winner_matches_resolve():
     replay = CombatReplay(team, enemies, weather)
     replay.step_to(10_000_000)
     assert replay.finished
-    assert replay.winner == ("team" if result.outcome.name == "WIN" else replay.winner)
+    # full outcome↔winner mapping (V.60): WIN↔team, LOSS↔enemy, DRAW↔draw
+    expected = {"WIN": "team", "LOSS": "enemy", "DRAW": "draw"}[result.outcome.name]
+    assert replay.winner == expected
 
 
 def test_replay_has_no_flet_import():
     """`combat/replay.py` stays Flet-free (V.1) — importable with no display."""
     import importlib
-    import sys
 
-    assert "flet" not in sys.modules or True  # don't force-fail if a sibling imported it
     mod = importlib.import_module("src.game.combat.replay")
     src = open(mod.__file__).read()
     assert "import flet" not in src and "from flet" not in src

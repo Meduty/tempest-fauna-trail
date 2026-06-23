@@ -68,9 +68,11 @@ Zones (views_spec §7.3):
   ally/enemy outline) at its **stepped `(q,r)`**, with `meter_bar` HP + a custom
   **mana bar (`_mana_bar`)** overlaid beneath. The mana bar draws a **cast-threshold
   tick at each `k×mana_cost`** (since `max_mana` = 2×cost, V.48, the fill alone
-  doesn't show readiness) and a **ready highlight** once `current ≥ cost`. Floating damage/heal numbers (red/green, crit = amber)
-  drawn for the current step's beats. **Click-to-select** via transparent overlay
-  containers per token (robust hit-test — no canvas gesture math).
+  doesn't show readiness) and a **ready highlight** once `current ≥ cost`. Floating
+  damage/heal numbers are coloured **by damage type** (phys red / magic blue / true
+  white / dot purple / heal green; crit = trailing `!` + size bump, not colour) and
+  render as overlay controls on top of the tokens. **Click-to-select** via the token
+  overlay (robust hit-test — no canvas gesture math).
 - **Side — inspect (read-only):** selected piece → live stats (stepper), mana,
   statuses, **ability descriptions** (`render_for` against a `PieceView` stat-shim
   → name + live blurb + formula, for team *and* enemy pieces), equipped
@@ -117,12 +119,14 @@ Zones (views_spec §7.3):
 - **Combat-end panel:** outcome / survivors / damage dealt-taken / **Continue**
   (→ `on_exit`).
 
-**Playback driver:** manual step mutates the cursor + re-renders (no thread).
-Autoplay is an opt-in `threading.Thread` advancing the cursor on a fixed interval
-(`_AUTOPLAY_INTERVAL_S`, event-paced — **not** tick=second, V.56) + `page.update()`;
-it never blocks the main thread and stops on view pop / toggle-off (the view's
-on-pop handler, stashed on `view.data`, clears an `alive` flag). Displayed
-durations → seconds via `TICKS_PER_SECOND` (V.39), never used for pacing.
+**Playback driver:** manual step mutates the cursor + re-renders **instantly**
+(full reveal — action + numbers + DOTs at once; no async drip to out-race a rapid
+Next). Autoplay is opt-in, an **async loop** scheduled with `page.run_task(_autoplay_loop)`
+that advances one step then `_play_step` drips the interstitial DOTs + action paced
+by the tick gap (`playback_delay_s`, 1s ≈ 1s real, clamped; event-paced not
+tick=second, V.56). It never blocks the main thread and stops on view pop /
+toggle-off (the view's on-pop handler, stashed on `view.data`, clears an `alive`
+flag). Displayed durations → seconds via `TICKS_PER_SECOND` (V.39).
 
 ## `ui/views/dev_harness.py` — launcher
 
