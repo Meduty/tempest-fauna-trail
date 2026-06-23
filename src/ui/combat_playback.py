@@ -22,7 +22,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.game.combat import EVENT_ATTACK, EVENT_CAST, EVENT_DOT, EVENT_MOVE, ROUND_TICKS
+from src.game.ability_text import TICKS_PER_SECOND
+from src.game.combat import (
+    EVENT_ATTACK,
+    EVENT_CAST,
+    EVENT_DOT,
+    EVENT_MOVE,
+    MAX_TICKS,
+    ROUND_TICKS,
+)
 from src.game.combat_log import group_events_by_tick
 from src.game.models import BattleEvent, BattleResult, Champion, Enemy, WeatherState
 
@@ -34,6 +42,32 @@ _QUEUE_KINDS: frozenset[str] = frozenset({EVENT_MOVE, EVENT_ATTACK, EVENT_CAST})
 
 # How many future rounds the action queue projects ahead of the cursor's round.
 QUEUE_LOOKAHEAD_ROUNDS = 2
+
+# Real-time playback pacing (T.12b, user-set 1s ≈ 1s). The delay before a moment
+# at `tick` = (tick − prev_tick)/TICKS_PER_SECOND × SPEED, clamped so a huge idle
+# gap can't freeze the loop. Shared by the DOT drip + action autoplay.
+PLAYBACK_SPEED = 1.0
+PLAYBACK_MAX_DELAY_S = 2.5
+SUDDEN_DEATH_TICK = MAX_TICKS  # = engine.SUDDEN_DEATH_TICK_START; the sudden-death threshold
+
+
+def playback_delay_s(prev_tick: int, tick: int) -> float:
+    """Real-time delay before the moment at `tick` (1 game-second ≈ 1 real-second,
+    clamped). Pure; used for both the DOT drip and autoplay pacing (V.39 feel,
+    V.56 event-paced)."""
+    gap = max(0, tick - prev_tick) / TICKS_PER_SECOND
+    return min(PLAYBACK_MAX_DELAY_S, gap * PLAYBACK_SPEED)
+
+
+def is_sudden_death(tick: int) -> bool:
+    """True once the fight has entered the sudden-death timeout window."""
+    return tick >= SUDDEN_DEATH_TICK
+
+
+def pre_beat_ticks(step: "Step") -> list[int]:
+    """Distinct ticks present in a step's interstitial DOT `pre_beats`, ascending
+    — the drip reveals one tick-group per entry (same-tick beats together)."""
+    return sorted({b.tick for b in step.pre_beats})
 
 
 @dataclass(frozen=True, slots=True)

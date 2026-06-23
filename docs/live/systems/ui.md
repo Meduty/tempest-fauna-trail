@@ -77,10 +77,20 @@ Zones (views_spec §7.3):
   `champion.items`, `champion.traits`; a global sub-panel shows active augments
   (`session.run_mods.augments`) + cleared `result.trait_activations`. Hover a token
   for the same ability blurbs as a tooltip.
-- **Floating numbers:** the step's `pre_beats` (interstitial DOTs) reveal **one-by-
-  one with a delay** (`_drip_pre_beats` via `page.run_task`), dimmer + stacked
-  higher, then the action `beats` show bright — so DOTs read as a sequence leading
-  into the action. Coloured by damage type (legend on screen); crit = `!` + size.
+- **Floating numbers:** the step's `pre_beats` (interstitial DOTs) reveal by a
+  **tick cutoff** (`state["reveal_tick"]`) — same-tick DOTs pop together, paced
+  **real-time** (`playback_delay_s`, 1 game-s ≈ 1 real-s) via `_play_step`/
+  `page.run_task`; then the action `beats` show. Coloured by damage type (legend on
+  screen); crit = `!` + size. (T.12b)
+- **Token tween (T.12b):** tokens are **keyed overlay `Container`s** (`tok-{id}`,
+  HP/mana/status pips `hp-`/`mp-`/`st-{id}`) with `animate_position` → they **glide**
+  between cells; canvas keeps cells + arrows + numbers. **Attack/cast arrows**
+  (`_arrow`, `cv.Line`) point actor→target on the revealed action (AoE/self → ring).
+  **Status pips** under each token (colour by status, stack count, remaining-time
+  tooltip). **Sudden-death** (tick ≥ `SUDDEN_DEATH_TICK`): header badge + board
+  border tint + a `DANGER` divider in the queue.
+- **Autoplay = real-time (T.12b):** `_autoplay_loop` advances one step then
+  `_play_step` drips DOTs + action paced by the tick gap (1s ≈ 1s, clamped).
 - **Keyboard:** →/↵ Next · ← Prev · Space autoplay · F end · R restart · Esc exit
   (`page.on_keyboard_event`, cleared on view pop).
   Floating numbers are **monospaced** (`FONT_MONO`), coloured **by damage type**

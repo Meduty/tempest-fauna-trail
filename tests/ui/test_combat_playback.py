@@ -154,6 +154,29 @@ def test_combat_session_is_flet_free_value_bundle():
         s.node_id = "x"
 
 
+def test_playback_delay_is_real_time_scaled_and_clamped():
+    from src.ui.combat_playback import (
+        playback_delay_s, PLAYBACK_MAX_DELAY_S, is_sudden_death, SUDDEN_DEATH_TICK,
+    )
+    assert playback_delay_s(0, 100) == 1.0          # 100 ticks = 1 game-second ≈ 1 real-second
+    assert playback_delay_s(500, 500) == 0.0        # same tick → no delay (grouped)
+    assert playback_delay_s(0, 10_000_000) == PLAYBACK_MAX_DELAY_S  # clamped
+    assert not is_sudden_death(SUDDEN_DEATH_TICK - 1)
+    assert is_sudden_death(SUDDEN_DEATH_TICK)
+
+
+def test_pre_beat_ticks_groups_distinct_ticks_ascending():
+    from src.ui.combat_playback import pre_beat_ticks
+    result = _dot_fight()
+    pb = build_playback(result)
+    step = next((s for s in pb.steps if s.pre_beats), None)
+    if step is None:
+        pytest.skip("no interstitial DOTs")
+    ticks = pre_beat_ticks(step)
+    assert ticks == sorted(set(ticks))
+    assert all(t in ticks for t in {b.tick for b in step.pre_beats})
+
+
 def test_combat_playback_has_no_flet_import():
     import src.ui.combat_playback as mod
     src = open(mod.__file__).read()

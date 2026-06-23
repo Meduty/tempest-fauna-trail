@@ -38,7 +38,15 @@ from src.game.combat.engine import DMG_MAGICAL, DMG_TRUE
 from src.game.combat.recorder import DMG_DOT, DMG_PHYSICAL
 from src.game.combat.replay import PieceView
 from src.game.models import CombatOutcome
-from src.ui.combat_playback import CombatSession, Playback, QueueEntry, build_playback
+from src.ui.combat_playback import (
+    CombatSession,
+    Playback,
+    QueueEntry,
+    build_playback,
+    is_sudden_death,
+    playback_delay_s,
+    pre_beat_ticks,
+)
 from src.ui.components.meter_bar import meter_bar
 from src.ui.theme import (
     ACCENT,
@@ -56,6 +64,7 @@ from src.ui.theme import (
     SURFACE_ELEVATED,
     TEXT_MUTED,
     TEXT_PRIMARY,
+    WARNING,
 )
 
 # Floating damage-number colour by damage-type `note` (V.57 numbers come from
@@ -79,8 +88,26 @@ _BAR_W = 34
 _BOARD_W = _MARGIN_X * 2 + (BOARD_WIDTH - 1) * _COL_W
 _BOARD_H = _MARGIN_Y * 2 + (BOARD_HEIGHT - 1) * _ROW_H + _ROW_H // 2
 
-_AUTOPLAY_INTERVAL_S = 0.75  # event-paced (first-pass, tunable); fast-fwd = no delay
-_DOT_REVEAL_DELAY_S = 0.30   # delay between each interstitial-DOT reveal on Next
+_TWEEN_MS = 250              # token glide / bar-follow animation duration
+
+# Status pip colours (combat view only; falls back to TEXT_MUTED).
+_STATUS_COLORS: dict[str, str] = {
+    "burn": WARNING, "poison": SUCCESS, "grief": DOT_DAMAGE, "bleed": DANGER,
+    "sudden_death": DANGER, "stun": "#FFD54F", "slow": ACCENT, "barrier": ACCENT,
+}
+
+
+def _arrow(x1: float, y1: float, x2: float, y2: float, color: str) -> list:
+    """A line from (x1,y1)→(x2,y2) with a small arrowhead at the target end."""
+    import math
+    paint = ft.Paint(color=color, style=ft.PaintingStyle.STROKE, stroke_width=2.5)
+    shapes = [cv.Line(x1, y1, x2, y2, paint)]
+    ang = math.atan2(y2 - y1, x2 - x1)
+    for da in (math.radians(150), math.radians(-150)):
+        hx = x2 + 9 * math.cos(ang + da)
+        hy = y2 + 9 * math.sin(ang + da)
+        shapes.append(cv.Line(x2, y2, hx, hy, paint))
+    return shapes
 
 
 def _cell_xy(q: int, r: int) -> tuple[float, float]:
@@ -187,15 +214,24 @@ def build_combat_view(
         "selected": None,      # selected piece id (inspect)
         "playing": False,
         "alive": True,         # cleared on view pop → stops the autoplay thread
-        "reveal": 0,           # how many of the step's pre_beats (DOTs) are shown
+        "reveal_tick": 0,      # tick cutoff: pre_beats with tick<=this are shown; action at reveal_tick>=step.tick
         "anim_token": 0,       # invalidates an in-flight pre-beat drip on re-advance
     }
 
     # --- controls that get rebuilt each render ---
     board_stack = ft.Stack(width=_BOARD_W, height=_BOARD_H)
+    board_container = ft.Container(
+        content=board_stack, bgcolor=SURFACE, border_radius=8,
+        padding=SPACING_SM, width=_BOARD_W + SPACING_MD, height=_BOARD_H + SPACING_MD,
+    )
     queue_row = ft.Row(spacing=SPACING_SM, scroll=ft.ScrollMode.AUTO, height=64)
     inspect_col = ft.Column(spacing=SPACING_SM, width=300, scroll=ft.ScrollMode.AUTO)
     status_text = ft.Text("", size=12, color=TEXT_MUTED)
+    sudden_death_badge = ft.Container(
+        visible=False, padding=ft.Padding(8, 2, 8, 2), border_radius=4,
+        bgcolor=ft.Colors.with_opacity(0.2, DANGER),
+        content=ft.Text("⚠ SUDDEN DEATH", size=12, weight=ft.FontWeight.BOLD, color=DANGER),
+    )
     # Full-screen overlay for the combat-end panel. MUST stay `visible=False`
     # until the fight ends — a visible expand=True container on top of `body`
     # in the root Stack would intercept all pointer events (Next / token clicks
@@ -224,82 +260,107 @@ def build_combat_view(
             state["replay"] = replay
         replay.step_to(target_tick)
         state["cursor"] = new_cursor
-        # Default: reveal everything (instant). The animated forward path
-        # (`_step(+1)` / keyboard) overrides this to drip the pre-beats.
+        # Default: reveal everything (instant) — `reveal_tick` past the step tick.
+        # The animated forward path (`_step(+1)`/autoplay) lowers it then drips.
         state["anim_token"] += 1
-        state["reveal"] = len(playback.steps[new_cursor].pre_beats) if new_cursor >= 0 else 0
+        state["reveal_tick"] = target_tick
 
     # ---------- board ----------
+    def _token(p: PieceView, cx: float, cy: float) -> ft.Control:
+        """Keyed overlay token (circle + initials). Keyed by piece id + given
+        `animate_position` so a position change between renders **glides** (canvas
+        shapes can't animate). Doubles as the click/inspect hit-target."""
+        selected = p.id == state["selected"]
+        return ft.Container(
+            key=f"tok-{p.id}",
+            left=cx - _TOKEN_R, top=cy - _TOKEN_R, width=_TOKEN_R * 2, height=_TOKEN_R * 2,
+            border_radius=_TOKEN_R, bgcolor=AFFINITY_COLORS.get(p.affinity, ACCENT),
+            border=ft.Border.all(3, ACCENT) if selected
+            else ft.Border.all(2, DANGER if p.is_enemy else SUCCESS),
+            alignment=ft.Alignment.CENTER,
+            content=ft.Text(_initials(name_by_id.get(p.id, p.id)),
+                            size=11, weight=ft.FontWeight.BOLD, color="#111111"),
+            on_click=lambda _e, pid=p.id: _select(pid),
+            tooltip=_ability_tooltip(p),
+            animate_position=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
+        )
+
+    def _status_pips(p: PieceView, cx: float, cy: float) -> ft.Control | None:
+        if not p.statuses:
+            return None
+        pips = [
+            ft.Container(
+                width=11, height=11, border_radius=5,
+                bgcolor=_STATUS_COLORS.get(st.status_id, TEXT_MUTED),
+                alignment=ft.Alignment.CENTER,
+                content=ft.Text(str(st.stacks), size=7, color="#111111") if st.stacks > 1 else None,
+                tooltip=f"{st.status_id} ×{st.stacks} · {_secs(st.remaining_ticks)}",
+            )
+            for st in p.statuses[:5]
+        ]
+        return ft.Container(
+            key=f"st-{p.id}", left=cx - _BAR_W / 2, top=cy + _TOKEN_R + 16,
+            content=ft.Row(pips, spacing=2, tight=True),
+            animate_position=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
+        )
+
     def _build_board(pieces: list[PieceView]) -> None:
         shapes: list[cv.Shape] = []
         overlays: list[ft.Control] = []
+        pos_by_id = {p.id: p for p in pieces}
 
-        # subtle cell grid (behind the tokens)
+        # subtle cell grid (behind everything)
         for q in range(BOARD_WIDTH):
             for r in range(BOARD_HEIGHT):
                 cx, cy = _cell_xy(q, r)
                 shapes.append(cv.Circle(
-                    cx, cy, 3,
-                    ft.Paint(color=SURFACE_ELEVATED, style=ft.PaintingStyle.FILL),
-                ))
+                    cx, cy, 3, ft.Paint(color=SURFACE_ELEVATED, style=ft.PaintingStyle.FILL)))
 
-        pos_by_id = {p.id: p for p in pieces}
+        cursor = state["cursor"]
+        reveal_tick = state["reveal_tick"]
+        step = playback.steps[cursor] if cursor >= 0 else None
+        action_shown = step is not None and reveal_tick >= step.tick
+
+        # attack/cast target arrows — only once the action is revealed.
+        if action_shown:
+            for b in step.beats:
+                if b.event_type not in (EVENT_ATTACK, EVENT_ABILITY, EVENT_CAST):
+                    continue
+                actor = pos_by_id.get(b.actor_id)
+                tgt = pos_by_id.get(b.target_id or "")
+                col = _DMG_COLORS.get(b.note, ACCENT)
+                if actor is None:
+                    continue
+                ax, ay = _cell_xy(actor.q, actor.r)
+                if tgt is not None and tgt.id != actor.id:
+                    bx, by = _cell_xy(tgt.q, tgt.r)
+                    shapes.extend(_arrow(ax, ay, bx, by, col))
+                else:  # AoE / self / no target → ring on the actor
+                    shapes.append(cv.Circle(
+                        ax, ay, _TOKEN_R + 6,
+                        ft.Paint(color=col, style=ft.PaintingStyle.STROKE, stroke_width=2)))
 
         for p in pieces:
             if not p.alive:
                 continue
             cx, cy = _cell_xy(p.q, p.r)
-            tint = AFFINITY_COLORS.get(p.affinity, ACCENT)
-
-            # selection ring
-            if p.id == state["selected"]:
-                shapes.append(cv.Circle(
-                    cx, cy, _TOKEN_R + 4,
-                    ft.Paint(color=ACCENT, style=ft.PaintingStyle.STROKE, stroke_width=3),
-                ))
-            # token disc + enemy outline
-            shapes.append(cv.Circle(
-                cx, cy, _TOKEN_R,
-                ft.Paint(color=tint, style=ft.PaintingStyle.FILL),
-            ))
-            shapes.append(cv.Circle(
-                cx, cy, _TOKEN_R,
-                ft.Paint(
-                    color=DANGER if p.is_enemy else SUCCESS,
-                    style=ft.PaintingStyle.STROKE, stroke_width=2,
-                ),
-            ))
-            shapes.append(cv.Text(
-                cx - _TOKEN_R, cy - 8,
-                _initials(name_by_id.get(p.id, p.id)),
-                ft.TextStyle(size=11, weight=ft.FontWeight.BOLD, color="#111111"),
-            ))
-
-            # HP bar overlay below the token
+            overlays.append(_token(p, cx, cy))
             overlays.append(ft.Container(
-                left=cx - _BAR_W / 2, top=cy + _TOKEN_R + 2, width=_BAR_W,
+                key=f"hp-{p.id}", left=cx - _BAR_W / 2, top=cy + _TOKEN_R + 2,
                 content=meter_bar(current=p.hp, maximum=max(1, p.max_hp), height=5, width=_BAR_W),
+                animate_position=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
             ))
-            # mana bar (first slot) if the piece has mana — with cast-threshold
-            # ticks so it's clear when a cast is ready (V.48: max = 2×cost).
             if p.mana:
                 slot = p.mana[0]
                 overlays.append(ft.Container(
-                    left=cx - _BAR_W / 2, top=cy + _TOKEN_R + 9,
-                    content=_mana_bar(
-                        slot.current_mana, slot.mana_cost, slot.max_mana,
-                        width=_BAR_W, height=4,
-                    ),
+                    key=f"mp-{p.id}", left=cx - _BAR_W / 2, top=cy + _TOKEN_R + 9,
+                    content=_mana_bar(slot.current_mana, slot.mana_cost, slot.max_mana,
+                                      width=_BAR_W, height=4),
+                    animate_position=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
                 ))
-            # transparent click target (robust hit-test, no canvas gesture math);
-            # hover tooltip shows the piece's abilities + live blurbs.
-            overlays.append(ft.Container(
-                left=cx - _TOKEN_R, top=cy - _TOKEN_R,
-                width=_TOKEN_R * 2, height=_TOKEN_R * 2,
-                border_radius=_TOKEN_R, bgcolor="#00000000",
-                on_click=lambda _e, pid=p.id: _select(pid),
-                tooltip=_ability_tooltip(p),
-            ))
+            pips = _status_pips(p, cx, cy)
+            if pips is not None:
+                overlays.append(pips)
 
         # Floating damage / heal numbers for the current step. Monospaced;
         # coloured by damage type (phys red / magic blue / true white / dot
@@ -331,17 +392,16 @@ def build_combat_view(
                 ),
             ))
 
-        if state["cursor"] >= 0:
-            step = playback.steps[state["cursor"]]
-            # interstitial DOTs reveal chronologically (state["reveal"] count),
-            # dimmer + stacked progressively higher so they read as a sequence
-            # leading into the action; the action `beats` show once all the
-            # pre-beats are revealed.
-            reveal = state["reveal"]
+        if step is not None:
+            # interstitial DOTs reveal up to `reveal_tick` (a tick cutoff): all
+            # DOTs sharing a tick show together, dimmer + stacked higher, as a
+            # real-time sequence; the action `beats` show once reveal_tick reaches
+            # the action tick.
             pre_hits: dict[str, int] = {}
-            for i, b in enumerate(step.pre_beats[:reveal]):
+            shown_pre = [b for b in step.pre_beats if b.tick <= reveal_tick]
+            for i, b in enumerate(shown_pre):
                 _emit_number(b, base_rise=20 + i * 2, opacity=0.6, hit_count=pre_hits)
-            if reveal >= len(step.pre_beats):
+            if action_shown:
                 act_hits: dict[str, int] = {}
                 for b in step.beats:
                     _emit_number(b, base_rise=0, opacity=1.0, hit_count=act_hits)
@@ -371,8 +431,16 @@ def build_combat_view(
         entries = playback.queue(state["cursor"])
         controls: list[ft.Control] = []
         last_round: int | None = None
+        sd_marked = False
         for e in entries:
-            if last_round is not None and e.round != last_round:
+            # sudden-death divider once the queue crosses the threshold
+            if not sd_marked and is_sudden_death(e.tick):
+                controls.append(ft.Container(
+                    width=4, height=48, bgcolor=DANGER, border_radius=2,
+                    tooltip="Sudden Death",
+                ))
+                sd_marked = True
+            elif last_round is not None and e.round != last_round:
                 controls.append(ft.Container(
                     width=2, height=44, bgcolor=ACCENT,
                     tooltip=f"round {e.round + 1}",
@@ -515,6 +583,9 @@ def build_combat_view(
         _build_end_panel()
         tick = _current_tick()
         rnd = tick // ROUND_TICKS + 1
+        sd = is_sudden_death(tick)
+        sudden_death_badge.visible = sd
+        board_container.border = ft.Border.all(2, DANGER) if sd else None
         status_text.value = (
             f"tick {tick} ({_secs(tick)}) · round {rnd} · "
             f"step {state['cursor'] + 1}/{playback.step_count()}"
@@ -526,17 +597,23 @@ def build_combat_view(
         state["selected"] = pid
         _render()
 
-    async def _drip_pre_beats(cursor_at: int, token: int) -> None:
-        """Reveal a step's interstitial DOTs one-by-one (chronological order +
-        delay), then the action — so the player reads 'these bled between the
-        two actions.' Aborts if the cursor moved on (token mismatch)."""
+    async def _play_step(cursor_at: int, token: int) -> None:
+        """Reveal the step's interstitial DOTs (grouped by tick) then its action,
+        paced real-time (1s game ≈ 1s real, `playback_delay_s`). Same-tick DOTs
+        pop together; aborts if the cursor moved on (token mismatch)."""
         step = playback.steps[cursor_at]
-        for i in range(1, len(step.pre_beats) + 1):
-            await asyncio.sleep(_DOT_REVEAL_DELAY_S)
+        prev_tick = playback.tick_at(cursor_at - 1) if cursor_at > 0 else 0
+        # reveal targets = each distinct pre-beat tick, then the action tick.
+        targets = pre_beat_ticks(step)
+        if not targets or targets[-1] != step.tick:
+            targets = targets + [step.tick]
+        for t in targets:
+            await asyncio.sleep(playback_delay_s(prev_tick, t))
             if not state["alive"] or state["anim_token"] != token or state["cursor"] != cursor_at:
                 return
-            state["reveal"] = i
+            state["reveal_tick"] = t
             _render()
+            prev_tick = t
 
     def _step(delta: int) -> None:
         prev = state["cursor"]
@@ -545,10 +622,10 @@ def build_combat_view(
         step = playback.steps[cur] if cur >= 0 else None
         # Forward step onto a new action with interstitial DOTs → drip them.
         if delta > 0 and cur > prev and step is not None and step.pre_beats:
-            state["reveal"] = 0
+            state["reveal_tick"] = -1  # hide pre-beats + action until the drip
             token = state["anim_token"]
             _render()
-            page.run_task(_drip_pre_beats, cur, token)
+            page.run_task(_play_step, cur, token)
         else:
             _render()
 
@@ -563,19 +640,22 @@ def build_combat_view(
         _render()
 
     async def _autoplay_loop() -> None:
-        # Async loop driven by the flet event loop (`page.run_task`) — reliable
-        # in flet 0.85 where a bare thread's `page.update()` may not repaint.
+        # Real-time autoplay (1s ≈ 1s) on the flet event loop (`page.run_task`):
+        # advance one step, drip its DOTs + action paced by the tick gap.
         while state["alive"] and state["playing"]:
-            await asyncio.sleep(_AUTOPLAY_INTERVAL_S)
-            if not (state["alive"] and state["playing"]):
-                break
             if state["cursor"] >= _last_cursor():
                 state["playing"] = False
                 autoplay_btn.text = "▶ Autoplay"
                 _render()
                 break
             _advance_to(state["cursor"] + 1)
+            cur = state["cursor"]
+            token = state["anim_token"]
+            state["reveal_tick"] = -1
             _render()
+            await _play_step(cur, token)
+            if state["anim_token"] != token:  # user interrupted mid-step
+                break
 
     def _toggle_autoplay(_e: Any) -> None:
         state["playing"] = not state["playing"]
@@ -601,6 +681,8 @@ def build_combat_view(
         ft.Text("Combat", size=18, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
         ft.Container(width=SPACING_LG),
         ft.Text(f"weather: {session.weather.value}", size=12, color=TEXT_MUTED),
+        ft.Container(width=SPACING_MD),
+        sudden_death_badge,
         ft.Container(expand=True),
         status_text,
     ])
@@ -624,10 +706,7 @@ def build_combat_view(
 
     left = ft.Column([
         queue_row,
-        ft.Container(
-            content=board_stack, bgcolor=SURFACE, border_radius=8,
-            padding=SPACING_SM, width=_BOARD_W + SPACING_MD, height=_BOARD_H + SPACING_MD,
-        ),
+        board_container,
         controls_row,
         legend,
     ], spacing=SPACING_MD)
