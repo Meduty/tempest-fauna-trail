@@ -104,7 +104,8 @@ _STATUS_COLORS: dict[str, str] = {
 
 
 def _arrow(x1: float, y1: float, x2: float, y2: float, color: str) -> list:
-    """A line from (x1,y1)→(x2,y2) with a small arrowhead at the target end."""
+    """A line from (x1,y1)→(x2,y2) with a small arrowhead at the target end
+    (ranged attacks / casts)."""
     import math
     paint = ft.Paint(color=color, style=ft.PaintingStyle.STROKE, stroke_width=2.5)
     shapes = [cv.Line(x1, y1, x2, y2, paint)]
@@ -114,6 +115,19 @@ def _arrow(x1: float, y1: float, x2: float, y2: float, color: str) -> list:
         hy = y2 + 9 * math.sin(ang + da)
         shapes.append(cv.Line(x2, y2, hx, hy, paint))
     return shapes
+
+
+def _swoosh(ax: float, ay: float, tx: float, ty: float, color: str) -> list:
+    """A minimalist melee slash — a crescent arc across the target, oriented along
+    the attack direction (stick-fight 'swoosh'). Drawn at the target token."""
+    import math
+    r = _TOKEN_R + 6
+    paint = ft.Paint(color=color, style=ft.PaintingStyle.STROKE, stroke_width=3.5)
+    # centre the arc on the side the attacker is coming from
+    facing = math.atan2(ay - ty, ax - tx)
+    start = facing - math.radians(75)
+    return [cv.Arc(tx - r, ty - r, r * 2, r * 2,
+                   start_angle=start, sweep_angle=math.radians(150), paint=paint)]
 
 
 def _cell_xy(q: int, r: int) -> tuple[float, float]:
@@ -243,7 +257,10 @@ def build_combat_view(
         content=board_stack, bgcolor=SURFACE, border_radius=8,
         padding=SPACING_SM, width=_BOARD_W + SPACING_MD, height=_BOARD_H + SPACING_MD,
     )
-    queue_row = ft.Row(spacing=SPACING_SM, scroll=ft.ScrollMode.AUTO, height=64)
+    # Fixed width (= board) + horizontal overflow scroll, so the queue never
+    # resizes the layout (which made the inspect panel jump erratically).
+    queue_row = ft.Row(spacing=SPACING_SM, scroll=ft.ScrollMode.AUTO, height=64,
+                       width=_BOARD_W, vertical_alignment=ft.CrossAxisAlignment.CENTER)
     inspect_col = ft.Column(spacing=SPACING_SM, width=300, scroll=ft.ScrollMode.AUTO)
     status_text = ft.Text("", size=12, color=TEXT_MUTED)
     sudden_death_badge = ft.Container(
@@ -283,14 +300,17 @@ def build_combat_view(
         state["reveal_tick"] = target_tick
 
     # ---------- board ----------
-    def _token(p: PieceView, cx: float, cy: float) -> ft.Control:
+    def _token(p: PieceView, cx: float, cy: float, offx: float = 0.0, offy: float = 0.0) -> ft.Control:
         """Keyed overlay token (circle + initials). Keyed by piece id + given
         `animate_position` so a position change between renders **glides** (canvas
-        shapes can't animate). Doubles as the click/inspect hit-target."""
+        shapes can't animate). `offx`/`offy` lunge the attacker toward its target
+        on an action step (tweens out, returns next step). Doubles as the
+        click/inspect hit-target."""
         selected = p.id == state["selected"]
         return ft.Container(
             key=f"tok-{p.id}",
-            left=cx - _TOKEN_R, top=cy - _TOKEN_R, width=_TOKEN_R * 2, height=_TOKEN_R * 2,
+            left=cx - _TOKEN_R + offx, top=cy - _TOKEN_R + offy,
+            width=_TOKEN_R * 2, height=_TOKEN_R * 2,
             border_radius=_TOKEN_R, bgcolor=AFFINITY_COLORS.get(p.affinity, ACCENT),
             border=ft.Border.all(3, ACCENT) if selected
             else ft.Border.all(2, DANGER if p.is_enemy else SUCCESS),
@@ -346,7 +366,11 @@ def build_combat_view(
         step = playback.steps[cursor] if cursor >= 0 else None
         action_shown = step is not None and reveal_tick >= step.tick
 
-        # attack/cast target arrows — only once the action is revealed.
+        # attack/cast target arrows + attacker lunge — only once the action is
+        # revealed. `lunge[actor_id]` = (dx,dy) toward the target; the keyed token
+        # tweens out then back next step, reading as an attack motion.
+        import math
+        lunge: dict[str, tuple[float, float]] = {}
         if action_shown:
             for b in step.beats:
                 if b.event_type not in (EVENT_ATTACK, EVENT_ABILITY, EVENT_CAST):
@@ -359,7 +383,17 @@ def build_combat_view(
                 ax, ay = _cell_xy(actor.q, actor.r)
                 if tgt is not None and tgt.id != actor.id:
                     bx, by = _cell_xy(tgt.q, tgt.r)
-                    shapes.extend(_arrow(ax, ay, bx, by, col))
+                    # melee basic attack → red slash swoosh at the target;
+                    # ranged / ability / cast → directional arrow.
+                    is_melee = (b.event_type == EVENT_ATTACK
+                                and actor.stats.get("attack_range", 9) <= 1.5)
+                    if is_melee:
+                        shapes.extend(_swoosh(ax, ay, bx, by, DANGER))
+                    else:
+                        shapes.extend(_arrow(ax, ay, bx, by, col))
+                    d = math.hypot(bx - ax, by - ay) or 1.0
+                    k = min(16.0, d * 0.35)
+                    lunge[b.actor_id] = ((bx - ax) / d * k, (by - ay) / d * k)
                 else:  # AoE / self / no target → ring on the actor
                     shapes.append(cv.Circle(
                         ax, ay, _TOKEN_R + 6,
@@ -369,7 +403,8 @@ def build_combat_view(
             if not p.alive:
                 continue
             cx, cy = _cell_xy(p.q, p.r)
-            overlays.append(_token(p, cx, cy))
+            ox, oy = lunge.get(p.id, (0.0, 0.0))
+            overlays.append(_token(p, cx, cy, ox, oy))
             overlays.append(ft.Container(
                 key=f"hp-{p.id}", left=cx - _BAR_W / 2, top=cy + _TOKEN_R + 2,
                 content=meter_bar(current=p.hp, maximum=max(1, p.max_hp), height=5, width=_BAR_W),
@@ -641,18 +676,13 @@ def build_combat_view(
             prev_tick = t
 
     def _step(delta: int) -> None:
-        prev = state["cursor"]
+        # Manual step = **instant full reveal** (action + arrows + numbers + any
+        # interstitial DOTs all at once). `_advance_to` already set `reveal_tick`
+        # to the step tick, so the action shows immediately — no async drip to
+        # race a rapid Next (which previously aborted before the arrow/number
+        # appeared). The real-time DOT drip is an autoplay feature.
         _advance_to(state["cursor"] + delta)
-        cur = state["cursor"]
-        step = playback.steps[cur] if cur >= 0 else None
-        # Forward step onto a new action with interstitial DOTs → drip them.
-        if delta > 0 and cur > prev and step is not None and step.pre_beats:
-            state["reveal_tick"] = -1  # hide pre-beats + action until the drip
-            token = state["anim_token"]
-            _render()
-            page.run_task(_play_step, cur, token)
-        else:
-            _render()
+        _render()
 
     def _restart() -> None:
         state["playing"] = False
