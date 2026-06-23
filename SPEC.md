@@ -829,6 +829,19 @@ in their T-task plan docs; what remains here is genuinely undecided.
 - D.17 Cache health UX: warn indicator surface when any node is `substitute`
   or any `live` weather aged > 2h; hover shows affected cities; smart
   failsafe copy when many nodes degraded. Polish layer over T.7 cache states.
+- D.18 Combat-view animation polish (**post-T.12b → future T.12c**): T.12b ships
+  simple primitives — melee = red **swoosh**, ranged/ability = directional
+  **arrow** (damage-type colour), heal = green **beam** to the ally, cast-
+  activation = caster **glow ring**, self/AoE = ring, attacker **lunge**, real-time
+  **DOT drip**, **sudden-death** indicator. **Deferred richer VFX, categorized by
+  ability shape/intent:** AoE *damage* marks its **area** (red-tinted cells in the
+  radius); **buffs/shields circle the buffed target(s)** (not a damage arrow);
+  cones/lines show their footprint; per-element **cast glow/projectile**; status-
+  apply telegraphs; **sprite art** for tokens (affinity circles + initials until
+  then). Needs an ability→shape/intent classification the view can read (AoE /
+  single / cone / line / self-buff) — likely from `AbilityMeta` tags / the
+  `Magnitude` family. UI-only, presentation over the replay backend (V.56/V.57);
+  no combat-math change.
 
 ## Implementation Order
 
