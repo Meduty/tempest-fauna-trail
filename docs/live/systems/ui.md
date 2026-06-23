@@ -65,8 +65,10 @@ Zones (views_spec §7.3):
   slides forward as rounds complete.
 - **Centre — hex board:** `flet.canvas` 10×7 (`BOARD_WIDTH`×`BOARD_HEIGHT`); each
   living piece a token (`cv.Circle` tinted `AFFINITY_COLORS[affinity]` + initials,
-  ally/enemy outline) at its **stepped `(q,r)`**, with `meter_bar` HP (+ first-slot
-  mana) overlaid beneath. Floating damage/heal numbers (red/green, crit = amber)
+  ally/enemy outline) at its **stepped `(q,r)`**, with `meter_bar` HP + a custom
+  **mana bar (`_mana_bar`)** overlaid beneath. The mana bar draws a **cast-threshold
+  tick at each `k×mana_cost`** (since `max_mana` = 2×cost, V.48, the fill alone
+  doesn't show readiness) and a **ready highlight** once `current ≥ cost`. Floating damage/heal numbers (red/green, crit = amber)
   drawn for the current step's beats. **Click-to-select** via transparent overlay
   containers per token (robust hit-test — no canvas gesture math).
 - **Side — inspect (read-only):** selected piece → live stats (stepper), mana,

@@ -103,6 +103,31 @@ def _secs(ticks: int) -> str:
     return f"{ticks / TICKS_PER_SECOND:.1f}s"
 
 
+def _mana_bar(current: int, cost: int, maximum: int, *, width: int, height: int = 5) -> ft.Control:
+    """Mana bar with **cast-threshold ticks**. `max_mana` (= 2×cost by default,
+    V.48) means the fill alone doesn't show when a cast fires — so draw a tick at
+    each `k×cost` and highlight the bar once `current ≥ cost` (a cast is ready)."""
+    maximum = max(1, maximum)
+    ratio = max(0.0, min(1.0, current / maximum))
+    ready = cost > 0 and current >= cost
+    children: list[ft.Control] = [
+        ft.Container(width=width, height=height, bgcolor=SURFACE_ELEVATED, border_radius=height // 2),
+        ft.Container(width=max(0.0, ratio * width), height=height,
+                     bgcolor=ACCENT, border_radius=height // 2),
+    ]
+    if cost > 0:
+        k = 1
+        while k * cost < maximum:
+            x = (k * cost / maximum) * width
+            children.append(ft.Container(left=x - 0.75, width=1.5, height=height, bgcolor=TEXT_PRIMARY))
+            k += 1
+    return ft.Container(
+        content=ft.Stack(children, width=width, height=height),
+        width=width, height=height, border_radius=height // 2,
+        border=ft.Border.all(1, SUCCESS) if ready else None,
+    )
+
+
 class _ViewStatSource:
     """Adapts a `PieceView` to the `.stat(name)` interface `ability_text.render`
     expects, so ability tooltips show numbers scaled to the piece's *current*
@@ -255,15 +280,15 @@ def build_combat_view(
                 left=cx - _BAR_W / 2, top=cy + _TOKEN_R + 2, width=_BAR_W,
                 content=meter_bar(current=p.hp, maximum=max(1, p.max_hp), height=5, width=_BAR_W),
             ))
-            # mana bar (first slot) if the piece has mana
+            # mana bar (first slot) if the piece has mana — with cast-threshold
+            # ticks so it's clear when a cast is ready (V.48: max = 2×cost).
             if p.mana:
                 slot = p.mana[0]
                 overlays.append(ft.Container(
-                    left=cx - _BAR_W / 2, top=cy + _TOKEN_R + 9, width=_BAR_W,
-                    content=meter_bar(
-                        current=slot.current_mana, maximum=max(1, slot.max_mana),
-                        color=ACCENT, warn_color=ACCENT, danger_color=ACCENT,
-                        height=4, width=_BAR_W,
+                    left=cx - _BAR_W / 2, top=cy + _TOKEN_R + 9,
+                    content=_mana_bar(
+                        slot.current_mana, slot.mana_cost, slot.max_mana,
+                        width=_BAR_W, height=4,
                     ),
                 ))
             # transparent click target (robust hit-test, no canvas gesture math);
