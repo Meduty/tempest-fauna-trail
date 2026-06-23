@@ -366,38 +366,53 @@ def build_combat_view(
         step = playback.steps[cursor] if cursor >= 0 else None
         action_shown = step is not None and reveal_tick >= step.tick
 
-        # attack/cast target arrows + attacker lunge — only once the action is
-        # revealed. `lunge[actor_id]` = (dx,dy) toward the target; the keyed token
-        # tweens out then back next step, reading as an attack motion.
+        # Effect lines + attacker lunge — driven off the *effect* beats (attack/
+        # ability/heal), NOT the `cast` activation marker (whose target is the
+        # caster's combat target, not the ability's real target — that drew heal
+        # lines at enemies). Melee attack → red swoosh; ranged/ability → arrow
+        # (type colour); heal → green beam to the healed ally; cast marker → a
+        # glow ring on the caster. `lunge[actor_id]` (damage only) tweens the token.
         import math
+
+        def _lunge(actor: PieceView, bx: float, by: float) -> None:
+            ax, ay = _cell_xy(actor.q, actor.r)
+            d = math.hypot(bx - ax, by - ay) or 1.0
+            k = min(16.0, d * 0.35)
+            lunge[actor.id] = ((bx - ax) / d * k, (by - ay) / d * k)
+
         lunge: dict[str, tuple[float, float]] = {}
         if action_shown:
             for b in step.beats:
-                if b.event_type not in (EVENT_ATTACK, EVENT_ABILITY, EVENT_CAST):
-                    continue
+                et = b.event_type
                 actor = pos_by_id.get(b.actor_id)
-                tgt = pos_by_id.get(b.target_id or "")
-                col = _DMG_COLORS.get(b.note, ACCENT)
                 if actor is None:
                     continue
                 ax, ay = _cell_xy(actor.q, actor.r)
-                if tgt is not None and tgt.id != actor.id:
-                    bx, by = _cell_xy(tgt.q, tgt.r)
-                    # melee basic attack → red slash swoosh at the target;
-                    # ranged / ability / cast → directional arrow.
-                    is_melee = (b.event_type == EVENT_ATTACK
-                                and actor.stats.get("attack_range", 9) <= 1.5)
-                    if is_melee:
-                        shapes.extend(_swoosh(ax, ay, bx, by, DANGER))
-                    else:
-                        shapes.extend(_arrow(ax, ay, bx, by, col))
-                    d = math.hypot(bx - ax, by - ay) or 1.0
-                    k = min(16.0, d * 0.35)
-                    lunge[b.actor_id] = ((bx - ax) / d * k, (by - ay) / d * k)
-                else:  # AoE / self / no target → ring on the actor
+                if et == EVENT_CAST:  # activation marker only → caster glow ring
+                    shapes.append(cv.Circle(
+                        ax, ay, _TOKEN_R + 5,
+                        ft.Paint(color=ACCENT, style=ft.PaintingStyle.STROKE, stroke_width=2)))
+                    continue
+                if et not in (EVENT_ATTACK, EVENT_ABILITY, EVENT_HEAL):
+                    continue
+                tgt = pos_by_id.get(b.target_id or "")
+                if tgt is None or tgt.id == actor.id:  # self/AoE → ring on actor
+                    ring = SUCCESS if et == EVENT_HEAL else _DMG_COLORS.get(b.note, ACCENT)
                     shapes.append(cv.Circle(
                         ax, ay, _TOKEN_R + 6,
-                        ft.Paint(color=col, style=ft.PaintingStyle.STROKE, stroke_width=2)))
+                        ft.Paint(color=ring, style=ft.PaintingStyle.STROKE, stroke_width=2)))
+                    continue
+                bx, by = _cell_xy(tgt.q, tgt.r)
+                if et == EVENT_HEAL:  # green beam to the healed ally (no lunge)
+                    shapes.append(cv.Line(
+                        ax, ay, bx, by,
+                        ft.Paint(color=SUCCESS, style=ft.PaintingStyle.STROKE, stroke_width=2.5)))
+                elif et == EVENT_ATTACK and actor.stats.get("attack_range", 9) <= 1.5:
+                    shapes.extend(_swoosh(ax, ay, bx, by, DANGER))
+                    _lunge(actor, bx, by)
+                else:  # ranged attack or ability damage
+                    shapes.extend(_arrow(ax, ay, bx, by, _DMG_COLORS.get(b.note, ACCENT)))
+                    _lunge(actor, bx, by)
 
         for p in pieces:
             if not p.alive:
@@ -430,6 +445,11 @@ def build_combat_view(
         # bleeds happened, then this action"; the action `beats` render bright +
         # low. Per-target stagger avoids overlap. (V.57: number from `beat.amount`,
         # bar from the live stepper.)
+        # Numbers are OVERLAY controls (added after the tokens) so they render ON
+        # TOP — `cv.Text` on the canvas sat *behind* the overlay tokens and got
+        # hidden when a piece stood directly above the target.
+        numbers: list[ft.Control] = []
+
         def _emit_number(b: Any, base_rise: int, opacity: float, hit_count: dict[str, int]) -> None:
             tgt = pos_by_id.get(b.target_id or "")
             if tgt is None or not b.amount:
@@ -444,11 +464,12 @@ def build_combat_view(
             tx, ty = _cell_xy(tgt.q, tgt.r)
             n = hit_count.get(b.target_id, 0)
             hit_count[b.target_id] = n + 1
-            shapes.append(cv.Text(
-                tx - 6 + n * 6, ty - _TOKEN_R - 18 - base_rise - n * 14, txt,
-                ft.TextStyle(
-                    size=15 if b.is_crit else 13, weight=ft.FontWeight.BOLD,
+            numbers.append(ft.Container(
+                left=tx - 8 + n * 7, top=ty - _TOKEN_R - 16 - base_rise - n * 14,
+                content=ft.Text(
+                    txt, size=15 if b.is_crit else 13, weight=ft.FontWeight.BOLD,
                     color=ft.Colors.with_opacity(opacity, base), font_family=FONT_MONO,
+                    no_wrap=True,
                 ),
             ))
 
@@ -466,7 +487,10 @@ def build_combat_view(
                 for b in step.beats:
                     _emit_number(b, base_rise=0, opacity=1.0, hit_count=act_hits)
 
-        board_stack.controls = [cv.Canvas(shapes=shapes, width=_BOARD_W, height=_BOARD_H), *overlays]
+        # canvas (cells/lines/swoosh) behind, tokens+bars next, numbers on top.
+        board_stack.controls = [
+            cv.Canvas(shapes=shapes, width=_BOARD_W, height=_BOARD_H), *overlays, *numbers,
+        ]
 
     # ---------- action queue ----------
     def _queue_chip(entry: QueueEntry, active: bool) -> ft.Control:
