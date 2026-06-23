@@ -492,6 +492,24 @@ def test_battle_event_dest_coords_round_trip_and_legacy_default():
     assert (legacy.dest_q, legacy.dest_r) == (-1, -1)
 
 
+def test_status_beat_fires_once_per_acquisition_not_per_reapply():
+    """V.54: a `status` beat fires on acquisition only — re-applies/refreshes of
+    an already-held status emit no new beat (kills sudden-death/poison spam).
+    A fresh acquisition after expiry beats again."""
+    from src.game.combat.recorder import EVENT_STATUS, EVENT_STATUS_EXPIRE
+    ctx, rec, _src, tgt = _recorder_harness()
+
+    ctx.apply_status(tgt, "burn", duration_ticks=300)
+    ctx.apply_status(tgt, "burn", duration_ticks=300)  # refresh — no new beat
+    ctx.apply_status(tgt, "burn", duration_ticks=300)  # refresh — no new beat
+    assert sum(1 for e in rec._events if e.event_type == EVENT_STATUS) == 1
+
+    ctx.remove_status(tgt, "burn")
+    assert sum(1 for e in rec._events if e.event_type == EVENT_STATUS_EXPIRE) == 1
+    ctx.apply_status(tgt, "burn", duration_ticks=300)  # re-acquired after expiry → beats again
+    assert sum(1 for e in rec._events if e.event_type == EVENT_STATUS) == 2
+
+
 def test_deal_damage_rejects_unknown_damage_type():
     """V.58 (B.29): `damage_type` is a closed vocabulary — `deal_damage` raises
     on anything outside {physical, magical, true} so a typo like the old "magic"

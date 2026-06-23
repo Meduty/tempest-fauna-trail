@@ -95,6 +95,10 @@ class BattleResultRecorder:
         self._timed_out: bool = False
         self._outcome: CombatOutcome | None = None
         self._current_tick: int = 0
+        # Statuses currently held per piece — a `status` beat fires only on the
+        # transition INTO a status (acquisition), not on re-applies/refreshes
+        # (V.54: kills sudden-death + poison-restack spam).
+        self._active_statuses: set[tuple[str, str]] = set()
         # Board layout snapshot (T.37a). Positions are final here — assign_spawns
         # ran before the recorder is constructed in every resolve path. Summons
         # are appended by `_on_spawn` at their spawn tick. Board dims via deferred
@@ -330,7 +334,12 @@ class BattleResultRecorder:
         ))
 
     def _on_status_applied(self, ctx: Any, event: StatusEvent) -> None:
-        """Record a status-applied beat (icon appears). `amount` = stacks."""
+        """Record a status-applied beat (icon appears) — once per *acquisition*,
+        not per re-apply/refresh (V.54). `amount` = stacks at acquisition."""
+        key = (event.target.id, event.status_id)
+        if key in self._active_statuses:
+            return  # already held — a stack/refresh, not a new acquisition
+        self._active_statuses.add(key)
         tick = ctx.current_tick if ctx else 0
         self._events.append(BattleEvent(
             tick=tick,
@@ -342,7 +351,9 @@ class BattleResultRecorder:
         ))
 
     def _on_status_expired(self, ctx: Any, event: StatusEvent) -> None:
-        """Record a status-expired beat (icon clears)."""
+        """Record a status-expired beat (icon clears). Clears the acquisition
+        guard so a later re-application beats again (V.54)."""
+        self._active_statuses.discard((event.target.id, event.status_id))
         tick = ctx.current_tick if ctx else 0
         self._events.append(BattleEvent(
             tick=tick,

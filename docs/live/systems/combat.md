@@ -102,9 +102,12 @@ the slow ~5 s action cadence (`60000/attack_speed`).
   (DOT + decay on each status's cadence, then expiry), `expire_modifiers`,
   summon despawn.
 - **Termination** — ends when one side has no living piece. **Sudden death**:
-  at `SUDDEN_DEATH_TICK_START` (= `MAX_TICKS`, 12 000) an escalating DOT is
-  applied each tick; `HARD_CAP_TICKS` (= MAX_TICKS + 2 000) is the absolute
-  ceiling. A fight resolved by sudden-death counts as `timed_out` → `DRAW`.
+  at `SUDDEN_DEATH_TICK_START` (= `MAX_TICKS`, 12 000) the loop applies a
+  stacking DOT (+3 stacks/engine-tick) that **damages once per second**
+  (`dot_interval_ticks=100`, like every DOT — V.25), so it escalates but still
+  leaves room for a few last actions; `HARD_CAP_TICKS` (= MAX_TICKS + 2 000) is
+  the absolute ceiling. A fight resolved by sudden-death counts as `timed_out`
+  → `DRAW`.
 
 ## Damage pipeline
 
@@ -154,7 +157,10 @@ pre-barrier figure for DPS accounting): on `attack`/`ability`/`dot`/`heal`. The
 With `ability` added the stream is HP-complete; the view still reads bars from the
 live stepper (V.57) — the beat's `amount`/`type` drives the floating *number*, not
 the bar. `turns` counts `attack`+`cast` only (`ability` excluded) ⇒ byte-identical.
-`expire_summon`
+The **`status` (apply) beat fires once per *acquisition*** — the recorder tracks a
+`(piece_id, status_id)` active set (cleared on `status_expire`) and skips re-applies/
+refreshes (V.54), so sudden-death (re-applied every tick) + poison-restacks don't
+spam the stream (live stacks come from the stepper anyway, V.57). `expire_summon`
 fires `on_despawn` (distinct from `death`). The recorder is observer-only ⇒ sims
 byte-identical; only `combat_log` golden text re-baselines. `record_attack` (a
 dead parallel path) was removed — `_on_attack_landed` is the sole attack producer.
