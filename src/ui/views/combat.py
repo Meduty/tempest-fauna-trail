@@ -136,7 +136,14 @@ def build_combat_view(
     queue_row = ft.Row(spacing=SPACING_SM, scroll=ft.ScrollMode.AUTO, height=64)
     inspect_col = ft.Column(spacing=SPACING_SM, width=300, scroll=ft.ScrollMode.AUTO)
     status_text = ft.Text("", size=12, color=TEXT_MUTED)
-    end_panel = ft.Container(visible=False)
+    # Full-screen overlay for the combat-end panel. MUST stay `visible=False`
+    # until the fight ends — a visible expand=True container on top of `body`
+    # in the root Stack would intercept all pointer events (Next / token clicks
+    # frozen). `visible=False` removes it from hit-testing entirely.
+    end_overlay = ft.Container(
+        visible=False, alignment=ft.Alignment.CENTER, expand=True,
+        bgcolor=ft.Colors.with_opacity(0.75, BG),
+    )
 
     def _last_cursor() -> int:
         return playback.step_count() - 1
@@ -361,14 +368,15 @@ def build_combat_view(
     # ---------- combat-end panel ----------
     def _build_end_panel() -> None:
         at_end = state["cursor"] >= _last_cursor() and state["replay"].finished
-        end_panel.visible = bool(at_end)
+        end_overlay.visible = bool(at_end)
         if not at_end:
+            end_overlay.content = None
             return
         outcome = result.outcome
         won = outcome == CombatOutcome.WIN
         dealt = sum(result.team_damage_dealt.values())
         taken = sum(result.team_damage_taken.values())
-        end_panel.content = ft.Container(
+        end_overlay.content = ft.Container(
             padding=SPACING_LG, border_radius=8, bgcolor=SURFACE_ELEVATED,
             content=ft.Column([
                 ft.Text(
@@ -482,7 +490,7 @@ def build_combat_view(
         bgcolor=BG, padding=SPACING_LG, expand=True,
         content=ft.Column([
             header,
-            ft.Stack([body, ft.Container(content=end_panel, alignment=ft.Alignment.CENTER, expand=True)], expand=True),
+            ft.Stack([body, end_overlay], expand=True),
         ], spacing=SPACING_MD, expand=True),
     )
 
