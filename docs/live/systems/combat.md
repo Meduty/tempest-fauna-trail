@@ -111,8 +111,11 @@ the slow ~5 s action cadence (`60000/attack_speed`).
   stacking DOT (+3 stacks/engine-tick) that **damages once per second**
   (`dot_interval_ticks=100`, like every DOT — V.25), so it escalates but still
   leaves room for a few last actions; `HARD_CAP_TICKS` (= MAX_TICKS + 2 000) is
-  the absolute ceiling. A fight resolved by sudden-death counts as `timed_out`
-  → `DRAW`.
+  the absolute ceiling. **Outcome is survivor-based (V.60):** WIN = team
+  survivors & no enemy, LOSS = enemy survivors & no team, DRAW = **no survivors
+  either side** (a true mutual wipe — only via a simultaneous DOT/sudden-death
+  pass). `timed_out` is an **independent flag**, not an outcome — a sudden-death
+  fight with a survivor is a real WIN/LOSS.
 
 ## Damage pipeline
 

@@ -148,14 +148,29 @@ def test_inverted_matchup_loses():
 
 
 def test_stalemate_reaches_draw_timeout():
+    # Symmetric idle 1v1 → sudden death wipes both on the same tick → true DRAW
+    # (no survivors, V.60). DRAW is by survivors, not by the timed_out flag.
     team = [_champ(id="hero", attack_range=1, move_speed=0, attack_speed=10_000)]
     enemies = [_enemy(id="mob", attack_range=1, move_speed=0, attack_speed=10_000)]
     result = resolve_combat(team, enemies, WeatherState.CLEAR)
     assert result.outcome == CombatOutcome.DRAW
     assert result.timed_out is True
+    assert not result.surviving_team_ids and not result.surviving_enemy_ids  # true mutual wipe
     assert result.duration_ticks >= MAX_TICKS
     assert result.turns == 0
     assert result.rounds >= MAX_TICKS // ROUND_TICKS
+
+
+def test_timed_out_with_survivor_is_win_loss_not_draw():
+    """V.60: a fight that times out but has a clear survivor resolves WIN/LOSS —
+    `timed_out` must not force DRAW. Asymmetric idle: the tankier side outlasts
+    the sudden-death DOT and survives, so the other side loses."""
+    team = [_champ(id="hero", attack_range=1, move_speed=0, attack_speed=10_000, max_hp=400_000)]
+    enemies = [_enemy(id="mob", attack_range=1, move_speed=0, attack_speed=10_000, max_hp=100)]
+    result = resolve_combat(team, enemies, WeatherState.CLEAR)
+    assert result.timed_out is True
+    assert result.outcome == CombatOutcome.WIN  # hero outlasts → survivor → not DRAW
+    assert result.surviving_team_ids and not result.surviving_enemy_ids
 
 
 # --- 6.3 Meter semantics -----------------------------------------------------

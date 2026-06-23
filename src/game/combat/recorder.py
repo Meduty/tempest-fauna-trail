@@ -397,14 +397,15 @@ class BattleResultRecorder:
 
     def build_result(self, winner: str) -> BattleResult:
         """Build the final BattleResult from recorded data."""
+        # Outcome is survivor-based (V.60): WIN/LOSS by the engine's `winner`,
+        # DRAW only on a true mutual wipe (winner == "draw"). `timed_out` is a
+        # separate flag — sudden death with a survivor is a real WIN/LOSS, not a
+        # DRAW. (Do NOT force DRAW on timeout.)
         if winner == "team":
             outcome = CombatOutcome.WIN
         elif winner == "enemy":
             outcome = CombatOutcome.LOSS
         else:
-            outcome = CombatOutcome.DRAW
-
-        if self._timed_out:
             outcome = CombatOutcome.DRAW
 
         rounds = (self._duration_ticks + ROUND_TICKS - 1) // ROUND_TICKS if self._duration_ticks > 0 else 0
