@@ -28,10 +28,13 @@ no change. The view owns resolution (takes inputs, not a pre-resolved result).
 
 `build_playback(result) -> Playback` turns the recorded event stream into:
 
-- **`Playback.steps: list[Step]`** — one `Step(tick, round, beats)` per
-  event-bearing tick (`group_events_by_tick`); `beats` are the **animation cues**
-  to play at that tick (attack/cast/heal/dot/death/spawn/despawn/move). `round =
-  tick // ROUND_TICKS`.
+- **`Playback.steps: list[Step]`** — one `Step(tick, round, beats, pre_beats)`
+  per **action moment**. DOT-only ticks are **absorbed**: a step's `beats` are the
+  action cues at `tick` (attack/cast/ability/heal/death/spawn/despawn/move), and
+  `pre_beats` are the DOTs that ticked *between* the previous action step and this
+  one. So Next goes action→action (no DOT-only steps), and the view drips
+  `pre_beats` chronologically before showing the action ("what bled in between").
+  `round = tick // ROUND_TICKS`.
 - **`Playback.queue(cursor) -> list[QueueEntry]`** — the forward **action-queue
   projection**: upcoming `move`/`attack`/`cast` beats from the cursor's tick,
   spanning the current round + the next `QUEUE_LOOKAHEAD_ROUNDS` (= 2); each entry
@@ -67,8 +70,17 @@ Zones (views_spec §7.3):
   drawn for the current step's beats. **Click-to-select** via transparent overlay
   containers per token (robust hit-test — no canvas gesture math).
 - **Side — inspect (read-only):** selected piece → live stats (stepper), mana,
-  statuses, equipped `champion.items`, `champion.traits`; a global sub-panel shows
-  active augments (`session.run_mods.augments`) + cleared `result.trait_activations`.
+  statuses, **ability descriptions** (`render_for` against a `PieceView` stat-shim
+  → name + live blurb + formula, for team *and* enemy pieces), equipped
+  `champion.items`, `champion.traits`; a global sub-panel shows active augments
+  (`session.run_mods.augments`) + cleared `result.trait_activations`. Hover a token
+  for the same ability blurbs as a tooltip.
+- **Floating numbers:** the step's `pre_beats` (interstitial DOTs) reveal **one-by-
+  one with a delay** (`_drip_pre_beats` via `page.run_task`), dimmer + stacked
+  higher, then the action `beats` show bright — so DOTs read as a sequence leading
+  into the action. Coloured by damage type (legend on screen); crit = `!` + size.
+- **Keyboard:** →/↵ Next · ← Prev · Space autoplay · F end · R restart · Esc exit
+  (`page.on_keyboard_event`, cleared on view pop).
   Floating numbers are **monospaced** (`FONT_MONO`), coloured **by damage type**
   (`_DMG_COLORS`: physical red, magical blue, true white, DOT purple; heal green),
   with crit marked by a trailing `!` + size bump (not colour), and **staggered per

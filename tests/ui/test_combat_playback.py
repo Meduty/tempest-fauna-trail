@@ -13,6 +13,7 @@ from src.game.combat import (
     CombatReplay,
     EVENT_ATTACK,
     EVENT_CAST,
+    EVENT_DOT,
     EVENT_MOVE,
     ROUND_TICKS,
     resolve_combat,
@@ -38,18 +39,45 @@ def _result():
     return resolve_combat(team, enemies, weather), team, enemies, weather
 
 
-def test_one_step_per_event_bearing_tick_covering_every_event():
+def _dot_fight():
+    """A matchup that produces DOT beats (ember_salamander burns)."""
+    team = [CHAMPION_ROSTER["champ_ember_salamander"]]
+    enemies = list(ENEMY_ROSTER.values())[:6]
+    return resolve_combat(team, enemies, WeatherState.CLEAR)
+
+
+def test_steps_are_action_moments_covering_every_event():
     result, *_ = _result()
     pb = build_playback(result)
-    # one step per distinct event tick, ascending
     ticks = [s.tick for s in pb.steps]
-    assert ticks == sorted(set(ticks))
-    # every event lands in exactly one step
-    total_beats = sum(len(s.beats) for s in pb.steps)
-    assert total_beats == len(result.events)
+    assert ticks == sorted(ticks)  # ascending
+    # every event lands in exactly one step, across beats + pre_beats
+    total = sum(len(s.beats) + len(s.pre_beats) for s in pb.steps)
+    assert total == len(result.events)
     for s in pb.steps:
         assert s.round == s.tick // ROUND_TICKS
-        assert all(b.tick == s.tick for b in s.beats)
+        # action beats never include DOTs; DOTs only live in pre_beats
+        assert all(b.event_type != EVENT_DOT for b in s.beats)
+        assert all(b.event_type == EVENT_DOT for b in s.pre_beats)
+
+
+def test_dot_only_ticks_absorbed_into_next_action_pre_beats():
+    """DOT-only ticks must NOT become their own steps — they attach to the next
+    action step's pre_beats (so Next goes action→action, DOTs read as 'what bled
+    in between')."""
+    result = _dot_fight()
+    assert any(e.event_type == EVENT_DOT for e in result.events), "fixture has no DOTs"
+    pb = build_playback(result)
+    # no step is DOT-only in its action beats; every DOT is carried as a pre_beat
+    dot_in_pre = sum(len(s.pre_beats) for s in pb.steps)
+    dot_total = sum(1 for e in result.events if e.event_type == EVENT_DOT)
+    assert dot_in_pre == dot_total
+    # at least one step actually carries interstitial DOTs
+    assert any(s.pre_beats for s in pb.steps)
+    # every step with action beats has ≥1 non-DOT action (no empty/dot-only steps,
+    # except a possible trailing pre_beats-only step)
+    for s in pb.steps[:-1]:
+        assert s.beats
 
 
 def test_model_carries_no_resource_numbers():

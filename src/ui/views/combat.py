@@ -79,6 +79,7 @@ _BOARD_W = _MARGIN_X * 2 + (BOARD_WIDTH - 1) * _COL_W
 _BOARD_H = _MARGIN_Y * 2 + (BOARD_HEIGHT - 1) * _ROW_H + _ROW_H // 2
 
 _AUTOPLAY_INTERVAL_S = 0.75  # event-paced (first-pass, tunable); fast-fwd = no delay
+_DOT_REVEAL_DELAY_S = 0.30   # delay between each interstitial-DOT reveal on Next
 
 
 def _cell_xy(q: int, r: int) -> tuple[float, float]:
@@ -160,6 +161,8 @@ def build_combat_view(
         "selected": None,      # selected piece id (inspect)
         "playing": False,
         "alive": True,         # cleared on view pop → stops the autoplay thread
+        "reveal": 0,           # how many of the step's pre_beats (DOTs) are shown
+        "anim_token": 0,       # invalidates an in-flight pre-beat drip on re-advance
     }
 
     # --- controls that get rebuilt each render ---
@@ -195,6 +198,10 @@ def build_combat_view(
             state["replay"] = replay
         replay.step_to(target_tick)
         state["cursor"] = new_cursor
+        # Default: reveal everything (instant). The animated forward path
+        # (`_step(+1)` / keyboard) overrides this to drip the pre-beats.
+        state["anim_token"] += 1
+        state["reveal"] = len(playback.steps[new_cursor].pre_beats) if new_cursor >= 0 else 0
 
     # ---------- board ----------
     def _build_board(pieces: list[PieceView]) -> None:
@@ -210,10 +217,6 @@ def build_combat_view(
                     ft.Paint(color=SURFACE_ELEVATED, style=ft.PaintingStyle.FILL),
                 ))
 
-        # current step's cue beats — floating numbers keyed by target
-        cur_beats = ()
-        if state["cursor"] >= 0:
-            cur_beats = playback.steps[state["cursor"]].beats
         pos_by_id = {p.id: p for p in pieces}
 
         for p in pieces:
@@ -272,33 +275,50 @@ def build_combat_view(
                 tooltip=_ability_tooltip(p),
             ))
 
-        # floating damage / heal numbers for this step's beats. Monospaced for
-        # legibility; colour by damage type (phys red / magic blue / true white /
-        # dot purple, heal green); crit marked with `!` + a size bump rather than
-        # colour (keeps the type colour readable); multiple numbers on one target
-        # staggered so they don't overlap (research §7.1).
-        hit_count: dict[str, int] = {}
-        for b in cur_beats:
+        # Floating damage / heal numbers for the current step. Monospaced;
+        # coloured by damage type (phys red / magic blue / true white / dot
+        # purple, heal green); crit = `!` + size bump (not colour). The step's
+        # `pre_beats` (DOTs that ticked *between* the previous action and this
+        # one) render first — dimmer + stacked higher — so the player reads "these
+        # bleeds happened, then this action"; the action `beats` render bright +
+        # low. Per-target stagger avoids overlap. (V.57: number from `beat.amount`,
+        # bar from the live stepper.)
+        def _emit_number(b: Any, base_rise: int, opacity: float, hit_count: dict[str, int]) -> None:
             tgt = pos_by_id.get(b.target_id or "")
             if tgt is None or not b.amount:
-                continue
+                return
             if b.event_type == EVENT_HEAL:
-                txt, col = f"+{b.amount}", SUCCESS
+                txt, base = f"+{b.amount}", SUCCESS
             elif b.event_type in (EVENT_ATTACK, EVENT_ABILITY, EVENT_CAST, EVENT_DOT):
-                col = _DMG_COLORS.get(b.note, DANGER)
+                base = _DMG_COLORS.get(b.note, DANGER)
                 txt = f"-{b.amount}" + ("!" if b.is_crit else "")
             else:
-                continue
+                return
             tx, ty = _cell_xy(tgt.q, tgt.r)
             n = hit_count.get(b.target_id, 0)
             hit_count[b.target_id] = n + 1
             shapes.append(cv.Text(
-                tx - 6 + n * 6, ty - _TOKEN_R - 18 - n * 14, txt,
+                tx - 6 + n * 6, ty - _TOKEN_R - 18 - base_rise - n * 14, txt,
                 ft.TextStyle(
                     size=15 if b.is_crit else 13, weight=ft.FontWeight.BOLD,
-                    color=col, font_family=FONT_MONO,
+                    color=ft.Colors.with_opacity(opacity, base), font_family=FONT_MONO,
                 ),
             ))
+
+        if state["cursor"] >= 0:
+            step = playback.steps[state["cursor"]]
+            # interstitial DOTs reveal chronologically (state["reveal"] count),
+            # dimmer + stacked progressively higher so they read as a sequence
+            # leading into the action; the action `beats` show once all the
+            # pre-beats are revealed.
+            reveal = state["reveal"]
+            pre_hits: dict[str, int] = {}
+            for i, b in enumerate(step.pre_beats[:reveal]):
+                _emit_number(b, base_rise=20 + i * 2, opacity=0.6, hit_count=pre_hits)
+            if reveal >= len(step.pre_beats):
+                act_hits: dict[str, int] = {}
+                for b in step.beats:
+                    _emit_number(b, base_rise=0, opacity=1.0, hit_count=act_hits)
 
         board_stack.controls = [cv.Canvas(shapes=shapes, width=_BOARD_W, height=_BOARD_H), *overlays]
 
@@ -370,6 +390,22 @@ def build_combat_view(
             for st in pv.statuses:
                 controls.append(_stat_row(
                     st.status_id, f"x{st.stacks} · {_secs(st.remaining_ticks)}"))
+            # Abilities (active + passive) with live-rendered descriptions — for
+            # any piece (team or enemy), against its current effective stats.
+            abil_ids = abilities_by_id.get(pv.id, [])
+            if abil_ids:
+                src = _ViewStatSource(pv)
+                controls.append(ft.Divider(height=8))
+                controls.append(ft.Text("Abilities", size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY))
+                for aid in abil_ids:
+                    rendered = render_for(aid, src)
+                    if rendered is None:
+                        continue
+                    controls.append(ft.Text(rendered.name, size=11, weight=ft.FontWeight.BOLD, color=ACCENT))
+                    controls.append(ft.Text(rendered.text, size=11, color=TEXT_MUTED))
+                    if rendered.formula:
+                        controls.append(ft.Text(
+                            rendered.formula, size=10, color=TEXT_MUTED, font_family=FONT_MONO))
             champ = champ_by_id.get(pv.id)
             if champ is not None:
                 if champ.items:
@@ -448,9 +484,31 @@ def build_combat_view(
         state["selected"] = pid
         _render()
 
+    async def _drip_pre_beats(cursor_at: int, token: int) -> None:
+        """Reveal a step's interstitial DOTs one-by-one (chronological order +
+        delay), then the action — so the player reads 'these bled between the
+        two actions.' Aborts if the cursor moved on (token mismatch)."""
+        step = playback.steps[cursor_at]
+        for i in range(1, len(step.pre_beats) + 1):
+            await asyncio.sleep(_DOT_REVEAL_DELAY_S)
+            if not state["alive"] or state["anim_token"] != token or state["cursor"] != cursor_at:
+                return
+            state["reveal"] = i
+            _render()
+
     def _step(delta: int) -> None:
+        prev = state["cursor"]
         _advance_to(state["cursor"] + delta)
-        _render()
+        cur = state["cursor"]
+        step = playback.steps[cur] if cur >= 0 else None
+        # Forward step onto a new action with interstitial DOTs → drip them.
+        if delta > 0 and cur > prev and step is not None and step.pre_beats:
+            state["reveal"] = 0
+            token = state["anim_token"]
+            _render()
+            page.run_task(_drip_pre_beats, cur, token)
+        else:
+            _render()
 
     def _restart() -> None:
         state["playing"] = False
@@ -505,6 +563,22 @@ def build_combat_view(
         status_text,
     ])
 
+    def _legend_dot(color: str, label: str) -> ft.Control:
+        return ft.Row(
+            [ft.Container(width=10, height=10, bgcolor=color, border_radius=5),
+             ft.Text(label, size=10, color=TEXT_MUTED)],
+            spacing=4, tight=True,
+        )
+
+    legend = ft.Row([
+        _legend_dot(DANGER, "Phys"), _legend_dot(ACCENT, "Magic"),
+        _legend_dot(TEXT_PRIMARY, "True"), _legend_dot(DOT_DAMAGE, "DoT"),
+        _legend_dot(SUCCESS, "Heal"),
+        ft.Container(expand=True),
+        ft.Text("→/↵ Next · ← Prev · Space play · F end · R restart · Esc exit",
+                size=10, color=TEXT_MUTED),
+    ], spacing=SPACING_MD, wrap=True)
+
     left = ft.Column([
         queue_row,
         ft.Container(
@@ -512,6 +586,7 @@ def build_combat_view(
             padding=SPACING_SM, width=_BOARD_W + SPACING_MD, height=_BOARD_H + SPACING_MD,
         ),
         controls_row,
+        legend,
     ], spacing=SPACING_MD)
 
     body = ft.Row([
@@ -530,12 +605,31 @@ def build_combat_view(
         ], spacing=SPACING_MD, expand=True),
     )
 
+    def _on_key(e: ft.KeyboardEvent) -> None:
+        if not state["alive"]:
+            return
+        k = e.key
+        if k in ("Arrow Right", "Enter"):
+            _step(1)
+        elif k == "Arrow Left":
+            _step(-1)
+        elif k in (" ", "Space"):
+            _toggle_autoplay(None)
+        elif k == "F":
+            _fast_forward()
+        elif k == "R":
+            _restart()
+        elif k == "Escape":
+            on_exit()
+
     def _on_pop(_e: Any) -> None:
         state["alive"] = False
         state["playing"] = False
+        page.on_keyboard_event = None
 
     view = ft.View(route="/combat", controls=[root], padding=0)
     view.data = _on_pop  # harness wires this into page.on_view_pop
+    page.on_keyboard_event = _on_key
 
     # initial paint
     _advance_to(-1)

@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.game.combat import EVENT_ATTACK, EVENT_CAST, EVENT_MOVE, ROUND_TICKS
+from src.game.combat import EVENT_ATTACK, EVENT_CAST, EVENT_DOT, EVENT_MOVE, ROUND_TICKS
 from src.game.combat_log import group_events_by_tick
 from src.game.models import BattleEvent, BattleResult, Champion, Enemy, WeatherState
 
@@ -55,12 +55,19 @@ class CombatSession:
 
 @dataclass(frozen=True, slots=True)
 class Step:
-    """One event-bearing tick — the animation cues to play when the cursor lands
-    here. Resource numbers are NOT here (read them off the stepper, V.57)."""
+    """One **action moment** — the cursor lands on ticks that have a real action
+    (attack/cast/ability/move/heal/death/spawn/despawn), never on a DOT-only
+    tick. `beats` = the action beats at `tick`; `pre_beats` = the DOT beats that
+    ticked *between* the previous action step and this one (rendered as the "what
+    bled in between" numbers, so Next goes action→action without instant-
+    resolving DOTs and without spamming the cursor with DOT-only steps).
+
+    Resource numbers are NOT here (read them off the stepper, V.57)."""
 
     tick: int
     round: int
     beats: tuple[BattleEvent, ...]
+    pre_beats: tuple[BattleEvent, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,13 +134,36 @@ def _entry(event: BattleEvent) -> QueueEntry:
 
 
 def build_playback(result: BattleResult) -> Playback:
-    """Derive the animation-cue steps + action-queue source from a resolved
-    `BattleResult`. Pure + deterministic (no RNG, no Flet)."""
-    steps = [
-        Step(tick=tick, round=tick // ROUND_TICKS, beats=tuple(beats))
-        for tick, beats in group_events_by_tick(result)
-    ]
-    actions = [
+    """Derive the action-moment steps + action-queue source from a resolved
+    `BattleResult`. Pure + deterministic (no RNG, no Flet).
+
+    DOT-only ticks are **absorbed** into the next action step's `pre_beats`
+    rather than becoming their own steps, so stepping is action-to-action and
+    DOTs read as "what bled between these two actions" (V.54 stream unchanged —
+    this is a view-side regrouping). Trailing DOTs after the last action (e.g.
+    sudden-death bleed before the killing tick) attach to a final step.
+    """
+    steps: list[Step] = []
+    pending_dots: list[BattleEvent] = []
+    for tick, beats in group_events_by_tick(result):
+        dots = [b for b in beats if b.event_type == EVENT_DOT]
+        actions = [b for b in beats if b.event_type != EVENT_DOT]
+        if actions:
+            steps.append(Step(
+                tick=tick, round=tick // ROUND_TICKS,
+                beats=tuple(actions),
+                pre_beats=tuple(pending_dots) + tuple(dots),
+            ))
+            pending_dots = []
+        else:
+            pending_dots.extend(dots)  # DOT-only tick → carry to the next action
+    if pending_dots:  # trailing DOTs with no following action
+        last = pending_dots[-1]
+        steps.append(Step(
+            tick=last.tick, round=last.tick // ROUND_TICKS,
+            beats=(), pre_beats=tuple(pending_dots),
+        ))
+    queue_actions = [
         _entry(e) for e in result.events if e.event_type in _QUEUE_KINDS
     ]
-    return Playback(steps=steps, _actions=actions)
+    return Playback(steps=steps, _actions=queue_actions)
