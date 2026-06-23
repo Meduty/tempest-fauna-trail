@@ -50,6 +50,7 @@ from src.ui.theme import (
     SPACING_LG,
     SPACING_MD,
     SPACING_SM,
+    SPACING_XS,
     SUCCESS,
     SURFACE,
     SURFACE_ELEVATED,
@@ -570,14 +571,15 @@ def build_combat_view(
             spacing=4, tight=True,
         )
 
-    legend = ft.Row([
-        _legend_dot(DANGER, "Phys"), _legend_dot(ACCENT, "Magic"),
-        _legend_dot(TEXT_PRIMARY, "True"), _legend_dot(DOT_DAMAGE, "DoT"),
-        _legend_dot(SUCCESS, "Heal"),
-        ft.Container(expand=True),
+    legend = ft.Column([
+        ft.Row([
+            _legend_dot(DANGER, "Phys"), _legend_dot(ACCENT, "Magic"),
+            _legend_dot(TEXT_PRIMARY, "True"), _legend_dot(DOT_DAMAGE, "DoT"),
+            _legend_dot(SUCCESS, "Heal"),
+        ], spacing=SPACING_MD, wrap=True),
         ft.Text("→/↵ Next · ← Prev · Space play · F end · R restart · Esc exit",
                 size=10, color=TEXT_MUTED),
-    ], spacing=SPACING_MD, wrap=True)
+    ], spacing=SPACING_XS, width=_BOARD_W)
 
     left = ft.Column([
         queue_row,
