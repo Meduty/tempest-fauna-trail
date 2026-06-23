@@ -107,6 +107,56 @@ def test_inspect_midfight_does_not_finalize_combat():
     assert any(v.alive and v.is_enemy for v in views)
 
 
+# --- T.12b: boss path (resolve_boss_combat promoted to src, V.59) ----------
+
+
+def _boss_setup():
+    from src.game.encounter import generate_boss_encounter
+    from src.game.route import STAGES
+    from tools.playtest._common import default_team
+    enc = generate_boss_encounter(0, 9, STAGES[0])
+    return default_team(1), enc
+
+
+def test_resolve_boss_combat_no_effect_byte_identical_to_resolve_combat():
+    """V.59/V.2: with no map effect, the promoted boss entry == resolve_combat
+    (same primitives, order, default seed)."""
+    from src.game.combat import resolve_boss_combat
+    team = [CHAMPION_ROSTER["champ_aurion"]]
+    enemies = list(ENEMY_ROSTER.values())[:6]
+    a = resolve_combat(team, enemies, WeatherState.CLEAR)
+    b = resolve_boss_combat(team, enemies, WeatherState.CLEAR)
+    assert a.to_dict() == b.to_dict()
+
+
+def test_boss_replay_survivors_match_resolve_with_map_effect():
+    """V.55/V.59: CombatReplay with a map_effect_id reproduces the boss fight
+    (hazard/sunlit/fog applied) — final survivors match resolve_boss_combat."""
+    from src.game.combat import resolve_boss_combat, CombatReplay
+    team, enc = _boss_setup()
+    r = resolve_boss_combat(team, enc.all_enemies, WeatherState.CLEAR,
+                            map_effect_id=enc.map_effect_id)
+    rep = CombatReplay(team, enc.all_enemies, WeatherState.CLEAR,
+                       map_effect_id=enc.map_effect_id)
+    rep.step_to(10_000_000)
+    alive_team = {v.id for v in rep.pieces() if v.alive and not v.is_enemy}
+    alive_enemy = {v.id for v in rep.pieces() if v.alive and v.is_enemy}
+    assert alive_team == set(r.surviving_team_ids)
+    assert alive_enemy == set(r.surviving_enemy_ids)
+
+
+def test_boss_replay_board_cells_are_value_tuples():
+    """board_cells() exposes map-effect tiles as (q,r,kind) value tuples (V.1 —
+    raw BoardState never escapes)."""
+    from src.game.combat import CombatReplay
+    team, enc = _boss_setup()
+    rep = CombatReplay(team, enc.all_enemies, WeatherState.CLEAR,
+                       map_effect_id=enc.map_effect_id)
+    rep.step_to(300)
+    cells = rep.board_cells()
+    assert all(isinstance(c, tuple) and len(c) == 3 and isinstance(c[2], str) for c in cells)
+
+
 # --- T.37c: resumable forward CombatReplay stepper -------------------------
 
 

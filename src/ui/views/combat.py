@@ -32,6 +32,7 @@ from src.game.combat import (
     EVENT_DOT,
     EVENT_HEAL,
     ROUND_TICKS,
+    resolve_boss_combat,
     resolve_combat,
 )
 from src.game.combat.engine import DMG_MAGICAL, DMG_TRUE
@@ -89,6 +90,11 @@ _BOARD_W = _MARGIN_X * 2 + (BOARD_WIDTH - 1) * _COL_W
 _BOARD_H = _MARGIN_Y * 2 + (BOARD_HEIGHT - 1) * _ROW_H + _ROW_H // 2
 
 _TWEEN_MS = 250              # token glide / bar-follow animation duration
+
+# Map-effect cell tint by kind (boss board overlay, T.12b).
+_CELL_COLORS: dict[str, str] = {
+    "hazard": DANGER, "sunlit": WARNING, "ley": ACCENT, "slow": TEXT_MUTED,
+}
 
 # Status pip colours (combat view only; falls back to TEXT_MUTED).
 _STATUS_COLORS: dict[str, str] = {
@@ -176,10 +182,25 @@ def build_combat_view(
 ) -> ft.View:
     """Build the `/combat` view for one `CombatSession`. `on_exit` is called by
     the combat-end panel's Continue button (returns to the producer)."""
-    result = resolve_combat(
-        session.team, session.enemies, session.weather,
-        node_id=session.node_id, run_mods=session.run_mods,
-    )
+    boss = bool(session.map_effect_id)
+
+    def _new_replay() -> CombatReplay:
+        return CombatReplay(
+            session.team, session.enemies, session.weather,
+            run_mods=session.run_mods, map_effect_id=session.map_effect_id,
+        )
+
+    if boss:
+        result = resolve_boss_combat(
+            session.team, session.enemies, session.weather,
+            map_effect_id=session.map_effect_id, node_id=session.node_id,
+            run_mods=session.run_mods,
+        )
+    else:
+        result = resolve_combat(
+            session.team, session.enemies, session.weather,
+            node_id=session.node_id, run_mods=session.run_mods,
+        )
     playback = build_playback(result)
 
     # Display-name + roster lookups (summons fall back to their id).
@@ -208,9 +229,7 @@ def build_combat_view(
     # --- mutable view state ---
     state: dict[str, Any] = {
         "cursor": -1,          # -1 = initial board (tick 0); 0..N-1 = step index
-        "replay": CombatReplay(
-            session.team, session.enemies, session.weather, run_mods=session.run_mods,
-        ),
+        "replay": _new_replay(),
         "selected": None,      # selected piece id (inspect)
         "playing": False,
         "alive": True,         # cleared on view pop → stops the autoplay thread
@@ -254,9 +273,7 @@ def build_combat_view(
         target_tick = playback.tick_at(new_cursor)
         replay: CombatReplay = state["replay"]
         if target_tick < replay.tick:
-            replay = CombatReplay(
-                session.team, session.enemies, session.weather, run_mods=session.run_mods,
-            )
+            replay = _new_replay()
             state["replay"] = replay
         replay.step_to(target_tick)
         state["cursor"] = new_cursor
@@ -315,6 +332,14 @@ def build_combat_view(
                 cx, cy = _cell_xy(q, r)
                 shapes.append(cv.Circle(
                     cx, cy, 3, ft.Paint(color=SURFACE_ELEVATED, style=ft.PaintingStyle.FILL)))
+
+        # boss map-effect tiles (hazard/sunlit/ley/slow) tinted under the tokens
+        for q, r, kind in state["replay"].board_cells():
+            cx, cy = _cell_xy(q, r)
+            col = _CELL_COLORS.get(kind, TEXT_MUTED)
+            shapes.append(cv.Circle(
+                cx, cy, _TOKEN_R + 2,
+                ft.Paint(color=ft.Colors.with_opacity(0.22, col), style=ft.PaintingStyle.FILL)))
 
         cursor = state["cursor"]
         reveal_tick = state["reveal_tick"]

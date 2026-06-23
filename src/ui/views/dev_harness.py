@@ -25,6 +25,7 @@ import src.game.items  # noqa: F401
 from src.game.content import CHAMPION_ROSTER
 from src.game.encounter import (
     DEFAULT_DC,
+    generate_boss_encounter,
     generate_challenge,
     generate_fight,
     generate_reward,
@@ -50,7 +51,7 @@ from tools.playtest._common import (
     stage_def,
 )
 
-_NODE_TYPES = ["FIGHT", "CHALLENGE", "REWARD"]
+_NODE_TYPES = ["FIGHT", "CHALLENGE", "REWARD", "BOSS"]
 _MAX_ITEMS = 3  # V.23 — up to 3 equipped items per champion
 
 
@@ -147,13 +148,18 @@ def build_dev_harness_view(
         else:
             wx = WeatherState(weather.value)
 
-        # enemies per node type (all combats; REWARD = easy fight)
+        # enemies per node type (all combats; REWARD = easy fight; BOSS = map effect)
+        map_effect_id = ""
         try:
             ntype = node_type.value
             if ntype == "FIGHT":
                 enemies = generate_fight(seed, n_index, sdef, dc_val)
             elif ntype == "REWARD":
                 enemies = generate_reward(seed, n_index, sdef, dc_val)
+            elif ntype == "BOSS":
+                encounter = generate_boss_encounter(seed, n_index, sdef)
+                enemies = encounter.all_enemies
+                map_effect_id = encounter.map_effect_id
             else:  # CHALLENGE
                 enemies, _reward = generate_challenge(seed, n_index, sdef, wx, dc_val)
         except Exception as exc:
@@ -161,7 +167,8 @@ def build_dev_harness_view(
 
         node_id = f"s{stage_idx}-n{n_index}-{city_id}"
         session = CombatSession(
-            team=team, enemies=enemies, weather=wx, run_mods=run_mods, node_id=node_id,
+            team=team, enemies=enemies, weather=wx, run_mods=run_mods,
+            node_id=node_id, map_effect_id=map_effect_id,
         )
         open_combat(session)
 

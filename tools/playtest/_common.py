@@ -11,15 +11,12 @@ from dataclasses import dataclass
 from typing import Iterable, Literal
 
 from src.game.bosses.data import BossEncounterResult
-from src.game.combat.engine import run as run_combat
-from src.game.combat.resolve import build_combat
 from src.game.content import (
     CHAMPION_ROSTER,
     ENEMY_ROSTER,
     get_champion,
     get_enemy,
 )
-from src.game.loadout import attach_map_effect
 from src.game.models import BattleResult, Champion, Enemy, WeatherState
 from src.game.route import STAGES
 
@@ -114,25 +111,20 @@ def resolve_boss_combat(
     node_id: str = "",
     run_mods: object = None,
 ) -> BattleResult:
-    """Resolve a boss fight, attaching the encounter's map effect.
+    """Resolve a boss fight (thin shim over the src-side single entry, V.59).
 
-    `resolve_combat` cannot do this because it doesn't accept a map effect.
-    This composes the same primitives manually. `run_mods` (T.31) threads active
-    augments; `None` keeps every non-augment caller byte-identical (V.2).
+    The boss wiring lives in `src/game/combat/resolve.py::resolve_boss_combat`
+    (build_combat → `attach_map_effect` → run) so the UI can reach it without
+    importing `tools/` (V.1). This unwraps the `BossEncounterResult` and delegates;
+    byte-identical (V.2). `run_mods` (T.31) threads active augments.
     """
-    enemies = encounter.all_enemies
-    # Reuse the single combat-wiring path (`build_combat` — compile_loadout assigns
-    # formation_index + load_order, V.34); a boss fight only differs by attaching a
-    # map effect to `ctx` before the loop runs, so no parallel setup (T.37b).
-    ctx, recorder = build_combat(
-        team, enemies, weather, run_mods=run_mods, node_id=node_id, seed=run_seed,
-        with_recorder=True,
-    )
-    if encounter.map_effect_id:
-        attach_map_effect(encounter.map_effect_id, ctx, seed=run_seed)
+    from src.game.combat.resolve import resolve_boss_combat as _resolve_boss_combat
 
-    winner = run_combat(ctx, recorder)
-    return recorder.build_result(winner)
+    return _resolve_boss_combat(
+        team, encounter.all_enemies, weather,
+        map_effect_id=encounter.map_effect_id, run_seed=run_seed,
+        node_id=node_id, run_mods=run_mods,
+    )
 
 
 # ---------------------------------------------------------------------------

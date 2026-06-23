@@ -33,7 +33,7 @@ from src.game.combat.recorder import (  # noqa: F401
     EVENT_SPAWN,
     EVENT_DESPAWN,
 )
-from src.game.combat.resolve import resolve_combat
+from src.game.combat.resolve import resolve_boss_combat, resolve_combat
 from src.game.combat.replay import (  # noqa: F401
     CombatReplay,
     inspect_at_tick,
@@ -47,6 +47,7 @@ __all__ = [
     "run",
     "hex_distance",
     "resolve_combat",
+    "resolve_boss_combat",
     "inspect_at_tick",
     "CombatReplay",
     "PieceView",

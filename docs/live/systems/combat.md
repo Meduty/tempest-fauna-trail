@@ -21,8 +21,13 @@ return recorder.build_result(winner)                                           #
 ```
 
 `build_combat` is reused (no parallel setup, T.37b) by:
-- **`resolve_boss_combat`** (`tools/playtest/_common.py`) — same `build_combat`, then
-  `attach_map_effect(ctx)` before `run` (its only difference; takes a `seed`/`run_seed`).
+- **`resolve_boss_combat`** (`combat/resolve.py`, T.12b/V.59 — the **single src-side
+  boss entry**; `tools/playtest/_common` delegates to it) — same `build_combat`, then
+  `attach_map_effect(map_effect_id, ctx, seed)` before `run`. Takes a `map_effect_id:
+  str` (never a `bosses/` content type ⇒ `combat/` stays content-import-free);
+  byte-identical to the former `tools/` version (V.2). `CombatReplay`/`inspect_at_tick`
+  accept the same `map_effect_id` to replay a boss fight; `CombatReplay.board_cells()`
+  exposes the map-effect tiles as `(q,r,kind)` for the view overlay (V.1).
 - **`CombatReplay` / `inspect_at_tick`** (`combat/replay.py`) — `build_combat(...,
   with_recorder=False)`, then steps the `_step_combat` generator to read live
   state (see [Replay](#replay)).

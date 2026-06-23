@@ -85,6 +85,7 @@ class CombatSession:
     weather: WeatherState
     run_mods: Any = None  # RunModifiers | None (active augments)
     node_id: str = ""
+    map_effect_id: str = ""  # boss fights (T.12b) — board map effect; "" = non-boss
 
 
 @dataclass(frozen=True, slots=True)

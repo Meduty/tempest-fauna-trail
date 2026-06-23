@@ -96,8 +96,10 @@ BattleResultRecorder.build_result()          # rebuilds BattleResult from events
 ```
 
 Boss fights insert one extra step — `attach_map_effect(...)` after building the context
-and before `run()` (see `tools/playtest/_common.py::resolve_boss_combat`, the canonical
-wiring).
+and before `run()`. The canonical wiring is **`src/game/combat/resolve.py::resolve_boss_combat`**
+(T.12b/V.59 — the single src-side boss entry, takes a `map_effect_id: str` so `combat/`
+stays content-import-free; `tools/playtest/_common` delegates to it). `CombatReplay`/
+`inspect_at_tick` accept the same `map_effect_id` to replay a boss fight.
 
 ### 3.1 Where each piece lives
 
@@ -335,8 +337,8 @@ uv run python -m tools.playtest.sim_run ...           # a full run
 uv run python -m tools.playtest.inspect ...           # roster inspection
 uv run python -m tools.playtest.inspect_node ...
 ```
-`_common.py` holds shared helpers incl. `resolve_boss_combat` (the canonical
-map-effect wiring).
+`_common.py` holds shared helpers; `resolve_boss_combat` now delegates to the
+src-side `combat/resolve.py` entry (V.59).
 
 ### Power simulation (`tools/simulation/`, T.25) — balance benchmarking
 - `matchup.py` — `run_matchup`, the pure unit of work (safe in worker processes)

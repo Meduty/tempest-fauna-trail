@@ -91,6 +91,10 @@ Zones (views_spec §7.3):
   border tint + a `DANGER` divider in the queue.
 - **Autoplay = real-time (T.12b):** `_autoplay_loop` advances one step then
   `_play_step` drips DOTs + action paced by the tick gap (1s ≈ 1s, clamped).
+- **Boss (T.12b):** `CombatSession.map_effect_id` → the view resolves via
+  `resolve_boss_combat` + builds `CombatReplay(map_effect_id=…)`; the board tints
+  map-effect tiles (`_CELL_COLORS` over `replay.board_cells()`). Dev harness adds a
+  **BOSS** node type (`generate_boss_encounter` → `enc.all_enemies` + `map_effect_id`).
 - **Keyboard:** →/↵ Next · ← Prev · Space autoplay · F end · R restart · Esc exit
   (`page.on_keyboard_event`, cleared on view pop).
   Floating numbers are **monospaced** (`FONT_MONO`), coloured **by damage type**

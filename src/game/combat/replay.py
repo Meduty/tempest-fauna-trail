@@ -133,13 +133,21 @@ class CombatReplay:
         weather: WeatherState,
         *,
         run_mods: Any = None,
+        map_effect_id: str = "",
+        seed: int = 42,
     ) -> None:
         from src.game.combat.engine import _step_combat
         from src.game.combat.resolve import build_combat
 
         ctx, _ = build_combat(
-            team, enemies, weather, run_mods=_clone_run_mods(run_mods), with_recorder=False
+            team, enemies, weather, run_mods=_clone_run_mods(run_mods),
+            seed=seed, with_recorder=False,
         )
+        # Boss replay: attach the map effect before the loop runs (mirrors
+        # resolve_boss_combat) so hazard/sunlit/fog reproduce exactly (V.55/V.59).
+        if map_effect_id:
+            from src.game.loadout import attach_map_effect
+            attach_map_effect(map_effect_id, ctx, seed=seed)
         self._ctx = ctx
         self._gen = _step_combat(ctx, None)
         self._tick = 0
@@ -194,6 +202,16 @@ class CombatReplay:
         mid-fight summons). Raw `Piece` never escapes (V.1)."""
         return [_view(p) for p in self._ctx.all_pieces()]
 
+    def board_cells(self) -> list[tuple[int, int, str]]:
+        """Live map-effect cells as `(q, r, kind)` value tuples (`kind` ∈
+        sunlit/hazard/ley/slow) for the combat-view overlay. Read-only — the raw
+        `BoardState` never escapes `src/game/` (V.1)."""
+        cells: list[tuple[int, int, str]] = []
+        for (q, r), mods in self._ctx.board_state.cell_modifiers.items():
+            for m in mods:
+                cells.append((q, r, m.kind))
+        return sorted(cells)
+
 
 def inspect_at_tick(
     team: list[Champion],
@@ -201,13 +219,16 @@ def inspect_at_tick(
     weather: WeatherState,
     *,
     run_mods: Any = None,
+    map_effect_id: str = "",
     tick: int,
 ) -> list[PieceView]:
     """Read every piece's live state at `tick` (pure; no recorder, stores
     nothing). `tick=0` → state right after combat start (initial board);
     `tick=N` → after ticks 1..N. Byte-identical to the same tick of the resolved
-    fight (V.55/V.2).
+    fight (V.55/V.2); `map_effect_id` replays a boss fight's board hazards (V.59).
 
     Random-access wrapper over `CombatReplay` (re-runs from 0) so the two read
     paths share one driver — no parallel stepping logic (V.29)."""
-    return CombatReplay(team, enemies, weather, run_mods=run_mods).step_to(max(0, tick)).pieces()
+    return CombatReplay(
+        team, enemies, weather, run_mods=run_mods, map_effect_id=map_effect_id,
+    ).step_to(max(0, tick)).pieces()
