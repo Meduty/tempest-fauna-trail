@@ -26,6 +26,7 @@ ACCENT = "#64B5F6"
 DANGER = "#EF5350"
 SUCCESS = "#66BB6A"
 WARNING = "#FFA726"
+DOT_DAMAGE = "#CE93D8"  # damage-over-time floats — distinct from hit red / crit amber
 
 # --- Typography ---
 FONT_MONO = "monospace"

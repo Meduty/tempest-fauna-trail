@@ -96,19 +96,21 @@ BattleResultRecorder.build_result()          # rebuilds BattleResult from events
 ```
 
 Boss fights insert one extra step — `attach_map_effect(...)` after building the context
-and before `run()` (see `tools/playtest/_common.py::resolve_boss_combat`, the canonical
-wiring).
+and before `run()`. The canonical wiring is **`src/game/combat/resolve.py::resolve_boss_combat`**
+(T.12b/V.59 — the single src-side boss entry, takes a `map_effect_id: str` so `combat/`
+stays content-import-free; `tools/playtest/_common` delegates to it). `CombatReplay`/
+`inspect_at_tick` accept the same `map_effect_id` to replay a boss fight.
 
 ### 3.1 Where each piece lives
 
 | Concern | File |
 |---|---|
 | Public entry (`resolve_combat`) + the shared `build_combat` wiring helper (compile → assign_spawns → context, optional recorder) reused by resolve / boss / replay | `src/game/combat/resolve.py` |
-| Package re-exports (`resolve_combat`, `CombatContext`, `run`, `inspect_at_tick`) | `src/game/combat/__init__.py` |
-| **The tick loop** (energy meters, pathing, attacks, casts, statuses, map effects, sudden death) + tuning constants (coeffs, tick sizes); `run(..., stop_after_tick=)` is the drivable replay hook | `src/game/combat/engine.py` |
+| Package re-exports (`resolve_combat`, `CombatContext`, `run`, `inspect_at_tick`, `CombatReplay`) | `src/game/combat/__init__.py` |
+| **The tick loop** — the single `_step_combat` generator (energy meters, pathing, attacks, casts, statuses, map effects, sudden death) + tuning constants; `run` drains it, `CombatReplay` steps it forward (T.37c) | `src/game/combat/engine.py` |
 | **Mutator API** — the *only* way content touches the world | `src/game/combat/context.py` |
 | Event → `BattleResult` reconstruction (beats + `initial_pieces` board snapshot) | `src/game/combat/recorder.py` |
-| **Replay / inspect-at-tick** — `inspect_at_tick` re-runs the engine to a tick (on a cloned `run_mods`) and returns read-only `PieceView`s; recomputes state, records nothing (V.55) | `src/game/combat/replay.py` |
+| **Replay** — `CombatReplay` steps the engine **forward** for playback; `inspect_at_tick` re-runs to a tick (random seek) on a cloned `run_mods`; both return read-only `PieceView`s, record nothing (V.55); the live state is the view's resource truth, not the event stream (V.56/V.57, B.28) | `src/game/combat/replay.py` |
 | Compile models → combat `Piece`s + wire passives/weather/**traits** | `src/game/loadout.py` |
 | **Synergy traits** — `TraitScope`/`TraitBreakpoint`/`DynamicThreshold`, `@register_trait`, `_resolve_traits` (unique-id count, affinity synthesis, apex/dynamic threshold) applied in `compile_loadout` step 3 (T.28a; primitives T.28b/c) | `src/game/traits/` |
 
@@ -335,8 +337,8 @@ uv run python -m tools.playtest.sim_run ...           # a full run
 uv run python -m tools.playtest.inspect ...           # roster inspection
 uv run python -m tools.playtest.inspect_node ...
 ```
-`_common.py` holds shared helpers incl. `resolve_boss_combat` (the canonical
-map-effect wiring).
+`_common.py` holds shared helpers; `resolve_boss_combat` now delegates to the
+src-side `combat/resolve.py` entry (V.59).
 
 ### Power simulation (`tools/simulation/`, T.25) — balance benchmarking
 - `matchup.py` — `run_matchup`, the pure unit of work (safe in worker processes)
@@ -364,10 +366,12 @@ depend on it:
 - **`resolve_combat` is pure** — same inputs, byte-identical `BattleResult`. When the
   T.31 `run_mods` arg lands it must default to `None`, leaving every existing caller (and
   every sim) byte-for-byte unchanged (V.2).
-- **State for a view is recomputed, not recorded (V.55).** `inspect_at_tick` re-runs the
-  same engine (via `run(stop_after_tick=)`) to read any piece's live state at any tick —
-  no per-tick keyframes in `BattleResult`. Same purity contract: it clones `run_mods` so
-  the replay can't mutate the caller's quest state.
+- **State for a view is recomputed, not recorded (V.55).** The `CombatReplay` forward
+  stepper (playback) and `inspect_at_tick` (random seek) drive the same single
+  `_step_combat` generator to read any piece's live state at any tick — no per-tick
+  keyframes in `BattleResult`. Same purity contract: they clone `run_mods` so the replay
+  can't mutate the caller's quest state. This live state is the combat view's resource
+  truth, **not** the event stream's partial `hp_after` (V.56/V.57, B.28).
 - **Verify with:** fixed seed + `workers=1` → identical output across runs.
 
 ---

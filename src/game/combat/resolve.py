@@ -39,6 +39,39 @@ def resolve_combat(
     return recorder.build_result(winner)
 
 
+def resolve_boss_combat(
+    team: list[Champion],
+    enemies: list[Enemy],
+    weather: WeatherState,
+    *,
+    map_effect_id: str = "",
+    run_seed: int = 42,
+    node_id: str = "",
+    run_mods: Any = None,
+) -> BattleResult:
+    """Resolve a boss fight — the **single src-side boss entry** (V.59). Same
+    primitives as `resolve_combat` plus a board map effect: `build_combat` →
+    `attach_map_effect(map_effect_id)` when set → run → result.
+
+    Takes a **`map_effect_id: str`** (never a `bosses/`-content type) so `combat/`
+    stays content-import-free — the package HARD RULE; `attach_map_effect` is a
+    deferred `loadout` import. Byte-identical to the former `tools/playtest/_common`
+    version (V.2 — same primitives, order, default seed); `tools/` delegates here.
+    `CombatReplay`/`inspect_at_tick` accept the same `map_effect_id` to replay it.
+    """
+    from src.game.combat.engine import run as run_combat
+    from src.game.loadout import attach_map_effect
+
+    ctx, recorder = build_combat(
+        team, enemies, weather, run_mods=run_mods, node_id=node_id, seed=run_seed,
+        with_recorder=True,
+    )
+    if map_effect_id:
+        attach_map_effect(map_effect_id, ctx, seed=run_seed)
+    winner = run_combat(ctx, recorder)
+    return recorder.build_result(winner)
+
+
 def build_combat(
     team: list[Champion],
     enemies: list[Enemy],

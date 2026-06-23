@@ -1,3 +1,5 @@
+import pytest
+
 from src.game.combat import (
     BOARD_HEIGHT,
     BOARD_WIDTH,
@@ -146,14 +148,29 @@ def test_inverted_matchup_loses():
 
 
 def test_stalemate_reaches_draw_timeout():
+    # Symmetric idle 1v1 → sudden death wipes both on the same tick → true DRAW
+    # (no survivors, V.60). DRAW is by survivors, not by the timed_out flag.
     team = [_champ(id="hero", attack_range=1, move_speed=0, attack_speed=10_000)]
     enemies = [_enemy(id="mob", attack_range=1, move_speed=0, attack_speed=10_000)]
     result = resolve_combat(team, enemies, WeatherState.CLEAR)
     assert result.outcome == CombatOutcome.DRAW
     assert result.timed_out is True
+    assert not result.surviving_team_ids and not result.surviving_enemy_ids  # true mutual wipe
     assert result.duration_ticks >= MAX_TICKS
     assert result.turns == 0
     assert result.rounds >= MAX_TICKS // ROUND_TICKS
+
+
+def test_timed_out_with_survivor_is_win_loss_not_draw():
+    """V.60: a fight that times out but has a clear survivor resolves WIN/LOSS —
+    `timed_out` must not force DRAW. Asymmetric idle: the tankier side outlasts
+    the sudden-death DOT and survives, so the other side loses."""
+    team = [_champ(id="hero", attack_range=1, move_speed=0, attack_speed=10_000, max_hp=400_000)]
+    enemies = [_enemy(id="mob", attack_range=1, move_speed=0, attack_speed=10_000, max_hp=100)]
+    result = resolve_combat(team, enemies, WeatherState.CLEAR)
+    assert result.timed_out is True
+    assert result.outcome == CombatOutcome.WIN  # hero outlasts → survivor → not DRAW
+    assert result.surviving_team_ids and not result.surviving_enemy_ids
 
 
 # --- 6.3 Meter semantics -----------------------------------------------------
@@ -462,6 +479,129 @@ def test_recorder_emits_heal_dot_status_spawn_despawn_beats():
     assert heal.amount == 40 and heal.hp_after == 140
     dot = next(e for e in rec._events if e.event_type == EVENT_DOT)
     assert dot.hp_after == int(tgt.hp)
+    # T.37c: spawn carries structured coords, not a parsed `note` string (B.28).
+    spawn = next(e for e in rec._events if e.event_type == EVENT_SPAWN)
+    assert (spawn.dest_q, spawn.dest_r) == (4, 2)
+
+
+def test_move_and_spawn_carry_structured_coords():
+    """T.37c: `move`/`spawn` beats expose `dest_q`/`dest_r` int fields (B.28)."""
+    from src.game.combat.recorder import EVENT_MOVE
+    ctx, rec, src, tgt = _recorder_harness()
+    rec.record_move("hero", tick=7, dest_q=3, dest_r=5)
+    mv = next(e for e in rec._events if e.event_type == EVENT_MOVE)
+    assert (mv.dest_q, mv.dest_r) == (3, 5)
+    assert mv.note == ""  # destination no longer hidden in the note string
+
+
+def test_battle_event_dest_coords_round_trip_and_legacy_default():
+    """`dest_q`/`dest_r` survive serialization; legacy payloads default to -1."""
+    from src.game.models import BattleEvent
+    from src.game.combat.recorder import EVENT_MOVE
+    ev = BattleEvent(tick=2, actor_id="hero", target_id=None,
+                     event_type=EVENT_MOVE, dest_q=4, dest_r=1)
+    back = BattleEvent.from_dict(ev.to_dict())
+    assert (back.dest_q, back.dest_r) == (4, 1)
+    legacy = BattleEvent.from_dict({"tick": 1, "actor_id": "x",
+                                    "target_id": None, "event_type": EVENT_MOVE})
+    assert (legacy.dest_q, legacy.dest_r) == (-1, -1)
+
+
+def test_status_beat_fires_once_per_acquisition_not_per_reapply():
+    """V.54: a `status` beat fires on acquisition only — re-applies/refreshes of
+    an already-held status emit no new beat (kills sudden-death/poison spam).
+    A fresh acquisition after expiry beats again."""
+    from src.game.combat.recorder import EVENT_STATUS, EVENT_STATUS_EXPIRE
+    ctx, rec, _src, tgt = _recorder_harness()
+
+    ctx.apply_status(tgt, "burn", duration_ticks=300)
+    ctx.apply_status(tgt, "burn", duration_ticks=300)  # refresh — no new beat
+    ctx.apply_status(tgt, "burn", duration_ticks=300)  # refresh — no new beat
+    assert sum(1 for e in rec._events if e.event_type == EVENT_STATUS) == 1
+
+    ctx.remove_status(tgt, "burn")
+    assert sum(1 for e in rec._events if e.event_type == EVENT_STATUS_EXPIRE) == 1
+    ctx.apply_status(tgt, "burn", duration_ticks=300)  # re-acquired after expiry → beats again
+    assert sum(1 for e in rec._events if e.event_type == EVENT_STATUS) == 2
+
+
+def test_true_damage_dot_emits_dot_beat_via_is_dot():
+    """V.54 (T.12b): a true-damage DOT tick (sudden_death) emits a `dot` beat when
+    is_dot=True — it was silent before (SourceTag.TRUE matched no beat branch),
+    which made sudden death instakill with no animation."""
+    from src.game.combat.recorder import EVENT_DOT
+    from src.game.effects import SourceTag
+
+    ctx, rec, src, tgt = _recorder_harness()
+    tgt.hp = 1000.0
+    ctx.deal_damage(src, tgt, 50.0, SourceTag.TRUE, is_dot=True)  # sudden-death-style tick
+    dots = [e for e in rec._events if e.event_type == EVENT_DOT]
+    assert len(dots) == 1 and dots[0].hp_after == int(tgt.hp)
+
+    # without is_dot, true damage stays beatless (the old silent path)
+    ctx2, rec2, s2, t2 = _recorder_harness()
+    ctx2.deal_damage(s2, t2, 50.0, SourceTag.TRUE)
+    assert not [e for e in rec2._events if e.event_type == EVENT_DOT]
+
+
+def test_deal_damage_rejects_unknown_damage_type():
+    """V.58 (B.29): `damage_type` is a closed vocabulary — `deal_damage` raises
+    on anything outside {physical, magical, true} so a typo like the old "magic"
+    can never silently fall through to the armor branch again."""
+    from src.game.combat.context import _VALID_DAMAGE_TYPES
+    assert _VALID_DAMAGE_TYPES == frozenset({"physical", "magical", "true"})
+
+    ctx, _rec, src, tgt = _recorder_harness()
+    from src.game.effects import SourceTag
+    # valid types do not raise
+    for dt in ("physical", "magical", "true"):
+        ctx.deal_damage(src, tgt, 10.0, SourceTag.ABILITY, damage_type=dt)
+    # the old typo now raises
+    with pytest.raises(ValueError):
+        ctx.deal_damage(src, tgt, 10.0, SourceTag.ABILITY, damage_type="magic")
+
+
+def test_magical_mitigates_by_resistance_not_armor():
+    """B.29 regression: magical damage keys off resistance, physical off armor."""
+    from src.game.effects import SourceTag
+    # high resistance, zero armor → magical should be heavily reduced, physical not
+    ctx_a, _a, src_a, tgt_a = _recorder_harness()
+    ctx_b, _b, src_b, tgt_b = _recorder_harness()
+    for t in (tgt_a, tgt_b):
+        t.base_stats["resistance"] = 200.0
+        t.base_stats["armor"] = 0.0
+        t.hp = t.max_hp = 100000.0
+    mag = ctx_a.deal_damage(src_a, tgt_a, 1000.0, SourceTag.ABILITY, damage_type="magical")
+    phys = ctx_b.deal_damage(src_b, tgt_b, 1000.0, SourceTag.ABILITY, damage_type="physical")
+    assert mag < phys  # resistance bit the magical hit, armor (0) left physical intact
+
+
+def test_ability_damage_emits_ability_beat_excluded_from_turns():
+    """T.37: ability damage emits an `ability` beat (separate from the `cast`
+    activation marker) carrying final post-mitigation amount + damage_type +
+    hp_after; `turns` counts attack+cast only ⇒ byte-identical sims (V.54)."""
+    from src.game.combat import (
+        EVENT_ABILITY, EVENT_ATTACK, EVENT_CAST, resolve_combat,
+    )
+    from src.game.content import CHAMPION_ROSTER, ENEMY_ROSTER
+    from src.game.models import WeatherState
+
+    team = [CHAMPION_ROSTER["champ_aurion"]]
+    enemies = list(ENEMY_ROSTER.values())[:6]
+    result = resolve_combat(team, enemies, WeatherState.CLEAR)
+
+    ability = [e for e in result.events if e.event_type == EVENT_ABILITY]
+    assert ability, "expected ability-damage beats from a registered caster"
+    for e in ability:
+        assert e.amount > 0                       # final post-mitigation figure
+        assert e.hp_after >= 0                     # HP truth stamped
+        assert e.note in ("physical", "magical", "magic", "true")
+        assert e.event_type != EVENT_CAST          # distinct from the activation marker
+
+    # turns excludes ability beats → unchanged vs pre-`ability` (byte-identical)
+    atk = sum(1 for e in result.events if e.event_type == EVENT_ATTACK)
+    cast = sum(1 for e in result.events if e.event_type == EVENT_CAST)
+    assert result.turns == atk + cast
 
 
 def test_attack_beat_hp_after_is_exact_under_barrier():

@@ -195,7 +195,9 @@ SUDDEN_DEATH = _register(StatusDef(
     display_name="Sudden Death",
     stack_behaviour=StackBehaviour.STACK,  # Stacks escalate each tick
     dot_per_tick=0.5,
-    dot_interval_ticks=1,  # Exception: per-engine-tick. Timeout failsafe — see process_statuses.
+    dot_interval_ticks=100,  # 1s, like every DOT (V.25). +3 stacks/engine-tick still
+    # escalates; landing once/sec leaves room for a few actions in the sudden-death
+    # window (per-tick previously outpaced the ~600-tick action cadence, T.12a).
     dot_scales_with_stacks=True,
     dot_true_damage=True,  # Bypasses all mitigation — unstoppable timeout mechanic
 ))

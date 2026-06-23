@@ -61,6 +61,8 @@ class DamageEvent:
     cast_id: int | None = None
     hit_id: int | None = None
     is_crit: bool = False
+    damage_type: str = "magical"  # physical | magical | true — for the `ability` beat colour (T.37)
+    is_dot: bool = False          # damage-over-time tick → recorder emits a `dot` beat regardless of type (T.12b, V.54)
 
 
 @dataclass(slots=True)

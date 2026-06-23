@@ -34,7 +34,8 @@ from src.game.piece import Piece
 # Event type constants — the BattleEvent.event_type vocabulary
 EVENT_MOVE = "move"
 EVENT_ATTACK = "attack"
-EVENT_CAST = "cast"
+EVENT_CAST = "cast"               # ability *activation* marker (amount=0)
+EVENT_ABILITY = "ability"         # ability *damage* (one per target hit; amount = final post-mitigation)
 EVENT_DEATH = "death"
 EVENT_HEAL = "heal"
 EVENT_DOT = "dot"
@@ -94,6 +95,10 @@ class BattleResultRecorder:
         self._timed_out: bool = False
         self._outcome: CombatOutcome | None = None
         self._current_tick: int = 0
+        # Statuses currently held per piece — a `status` beat fires only on the
+        # transition INTO a status (acquisition), not on re-applies/refreshes
+        # (V.54: kills sudden-death + poison-restack spam).
+        self._active_statuses: set[tuple[str, str]] = set()
         # Board layout snapshot (T.37a). Positions are final here — assign_spawns
         # ran before the recorder is constructed in every resolve path. Summons
         # are appended by `_on_spawn` at their spawn tick. Board dims via deferred
@@ -171,13 +176,17 @@ class BattleResultRecorder:
         ))
 
     def record_move(self, piece_id: str, tick: int, dest_q: int, dest_r: int) -> None:
-        """Record a movement event (called directly by the loop, not via bus)."""
+        """Record a movement event (called directly by the loop, not via bus).
+
+        Destination travels in structured `dest_q`/`dest_r` int fields (T.37c),
+        not a parsed `note` string (B.28)."""
         self._events.append(BattleEvent(
             tick=tick,
             actor_id=piece_id,
             target_id=None,
             event_type=EVENT_MOVE,
-            note=f"{dest_q},{dest_r}",
+            dest_q=dest_q,
+            dest_r=dest_r,
         ))
 
     def record_cast(self, actor_id: str, target_id: str, tick: int, amount: int, damage_type: str, is_crit: bool = False,
@@ -232,8 +241,10 @@ class BattleResultRecorder:
 
         Fires for *all* damage (post-HP-apply). Attack/ability hits already get
         their beat (`_on_attack_landed` / `_on_cast`); DOT ticks had no beat at
-        all (B.27) → emit one here so a view shows the bleed + HP drop. No
-        double-count: only `tag == dot` produces an event."""
+        all (B.27) → emit one here so a view shows the bleed + HP drop. Emit on
+        `tag == dot` **or** `event.is_dot` (T.12b) — the latter catches true-damage
+        DOTs (`sudden_death`, `SourceTag.TRUE`) that were silent (V.54). No
+        double-count: attack/ability beats come from their own producers."""
         amount = int(event.amount) if event.amount else 0
         # Environmental damage (hazard tiles, map effects) has no attacker — it
         # is not attributed to any dealer, but is still counted as taken.
@@ -241,7 +252,7 @@ class BattleResultRecorder:
             self._damage_dealt[event.attacker.id] = self._damage_dealt.get(event.attacker.id, 0) + amount
         self._damage_taken[event.target.id] = self._damage_taken.get(event.target.id, 0) + amount
 
-        if event.tag == SourceTag.DOT.value:
+        if event.tag == SourceTag.DOT.value or event.is_dot:
             tick = ctx.current_tick if ctx else 0
             self._events.append(BattleEvent(
                 tick=tick,
@@ -250,6 +261,24 @@ class BattleResultRecorder:
                 event_type=EVENT_DOT,
                 amount=amount,
                 note=DMG_DOT,
+                is_crit=event.is_crit,
+                hp_after=int(event.target.hp),
+                barrier_after=int(event.target.barrier_total),
+            ))
+        elif event.tag == SourceTag.ABILITY.value:
+            # Ability *damage* beat (T.37) — separate from the `cast` activation
+            # marker (`_on_cast`, amount=0). One per target hit; `amount` is the
+            # final post-mitigation figure `deal_damage` already computed, so the
+            # view's floating number is post-mitigation by construction. Carries
+            # `damage_type` for colour. Excluded from `turns` (V.54) ⇒ byte-identical.
+            tick = ctx.current_tick if ctx else 0
+            self._events.append(BattleEvent(
+                tick=tick,
+                actor_id=event.attacker.id if event.attacker is not None else "",
+                target_id=event.target.id,
+                event_type=EVENT_ABILITY,
+                amount=amount,
+                note=event.damage_type,
                 is_crit=event.is_crit,
                 hp_after=int(event.target.hp),
                 barrier_after=int(event.target.barrier_total),
@@ -307,7 +336,12 @@ class BattleResultRecorder:
         ))
 
     def _on_status_applied(self, ctx: Any, event: StatusEvent) -> None:
-        """Record a status-applied beat (icon appears). `amount` = stacks."""
+        """Record a status-applied beat (icon appears) — once per *acquisition*,
+        not per re-apply/refresh (V.54). `amount` = stacks at acquisition."""
+        key = (event.target.id, event.status_id)
+        if key in self._active_statuses:
+            return  # already held — a stack/refresh, not a new acquisition
+        self._active_statuses.add(key)
         tick = ctx.current_tick if ctx else 0
         self._events.append(BattleEvent(
             tick=tick,
@@ -319,7 +353,9 @@ class BattleResultRecorder:
         ))
 
     def _on_status_expired(self, ctx: Any, event: StatusEvent) -> None:
-        """Record a status-expired beat (icon clears)."""
+        """Record a status-expired beat (icon clears). Clears the acquisition
+        guard so a later re-application beats again (V.54)."""
+        self._active_statuses.discard((event.target.id, event.status_id))
         tick = ctx.current_tick if ctx else 0
         self._events.append(BattleEvent(
             tick=tick,
@@ -340,7 +376,8 @@ class BattleResultRecorder:
             actor_id=event.piece.id,
             target_id=None,
             event_type=EVENT_SPAWN,
-            note=f"{q},{r}",
+            dest_q=q,
+            dest_r=r,
         ))
         self._initial_pieces.append(_snapshot_piece(event.piece, spawn_tick=tick))
 
@@ -360,14 +397,15 @@ class BattleResultRecorder:
 
     def build_result(self, winner: str) -> BattleResult:
         """Build the final BattleResult from recorded data."""
+        # Outcome is survivor-based (V.60): WIN/LOSS by the engine's `winner`,
+        # DRAW only on a true mutual wipe (winner == "draw"). `timed_out` is a
+        # separate flag — sudden death with a survivor is a real WIN/LOSS, not a
+        # DRAW. (Do NOT force DRAW on timeout.)
         if winner == "team":
             outcome = CombatOutcome.WIN
         elif winner == "enemy":
             outcome = CombatOutcome.LOSS
         else:
-            outcome = CombatOutcome.DRAW
-
-        if self._timed_out:
             outcome = CombatOutcome.DRAW
 
         rounds = (self._duration_ticks + ROUND_TICKS - 1) // ROUND_TICKS if self._duration_ticks > 0 else 0

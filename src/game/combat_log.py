@@ -12,6 +12,7 @@ No Flet imports, no I/O — the log is a deterministic function of the result.
 from __future__ import annotations
 
 from src.game.combat import (
+    EVENT_ABILITY,
     EVENT_ATTACK,
     EVENT_CAST,
     EVENT_DEATH,
@@ -50,7 +51,8 @@ def _format_event(
     event: BattleEvent, current_hp: dict[str, int], track_hp: bool
 ) -> str:
     if event.event_type == EVENT_MOVE:
-        return f"{event.actor_id} moves to ({event.note})"
+        coords = f"{event.dest_q},{event.dest_r}" if event.dest_q >= 0 else event.note
+        return f"{event.actor_id} moves to ({coords})"
 
     if event.event_type == EVENT_DEATH:
         killer = ""
@@ -69,8 +71,11 @@ def _format_event(
             return f"{event.actor_id} casts {event.note} at {event.target_id}{mana}"
         return f"{event.actor_id} casts {event.note}{mana}"
 
-    if event.event_type in (EVENT_ATTACK, EVENT_CAST, EVENT_DOT):
-        verb = {EVENT_ATTACK: "attacks", EVENT_CAST: "casts at", EVENT_DOT: "burns"}[event.event_type]
+    if event.event_type in (EVENT_ATTACK, EVENT_CAST, EVENT_ABILITY, EVENT_DOT):
+        verb = {
+            EVENT_ATTACK: "attacks", EVENT_CAST: "casts at",
+            EVENT_ABILITY: "hits", EVENT_DOT: "burns",
+        }[event.event_type]
         line = (
             f"{event.actor_id} {verb} {event.target_id} "
             f"— {event.amount} {event.note}"
@@ -91,7 +96,8 @@ def _format_event(
         return f"{event.actor_id} loses {event.note}"
 
     if event.event_type == EVENT_SPAWN:
-        return f"{event.actor_id} spawns at ({event.note})"
+        coords = f"{event.dest_q},{event.dest_r}" if event.dest_q >= 0 else event.note
+        return f"{event.actor_id} spawns at ({coords})"
 
     if event.event_type == EVENT_DESPAWN:
         return f"{event.actor_id} expires"

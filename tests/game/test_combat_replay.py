@@ -105,3 +105,146 @@ def test_inspect_midfight_does_not_finalize_combat():
     views = inspect_at_tick(team, enemies, weather, tick=30)
     assert any(v.alive and not v.is_enemy for v in views)
     assert any(v.alive and v.is_enemy for v in views)
+
+
+# --- T.12b: boss path (resolve_boss_combat promoted to src, V.59) ----------
+
+
+def _boss_setup():
+    from src.game.encounter import generate_boss_encounter
+    from src.game.route import STAGES
+    from tools.playtest._common import default_team
+    enc = generate_boss_encounter(0, 9, STAGES[0])
+    return default_team(1), enc
+
+
+def test_resolve_boss_combat_no_effect_byte_identical_to_resolve_combat():
+    """V.59/V.2: with no map effect, the promoted boss entry == resolve_combat
+    (same primitives, order, default seed)."""
+    from src.game.combat import resolve_boss_combat
+    team = [CHAMPION_ROSTER["champ_aurion"]]
+    enemies = list(ENEMY_ROSTER.values())[:6]
+    a = resolve_combat(team, enemies, WeatherState.CLEAR)
+    b = resolve_boss_combat(team, enemies, WeatherState.CLEAR)
+    assert a.to_dict() == b.to_dict()
+
+
+def test_boss_replay_survivors_match_resolve_with_map_effect():
+    """V.55/V.59: CombatReplay with a map_effect_id reproduces the boss fight
+    (hazard/sunlit/fog applied) — final survivors match resolve_boss_combat."""
+    from src.game.combat import resolve_boss_combat, CombatReplay
+    team, enc = _boss_setup()
+    r = resolve_boss_combat(team, enc.all_enemies, WeatherState.CLEAR,
+                            map_effect_id=enc.map_effect_id)
+    rep = CombatReplay(team, enc.all_enemies, WeatherState.CLEAR,
+                       map_effect_id=enc.map_effect_id)
+    rep.step_to(10_000_000)
+    alive_team = {v.id for v in rep.pieces() if v.alive and not v.is_enemy}
+    alive_enemy = {v.id for v in rep.pieces() if v.alive and v.is_enemy}
+    assert alive_team == set(r.surviving_team_ids)
+    assert alive_enemy == set(r.surviving_enemy_ids)
+
+
+def test_boss_replay_board_cells_are_value_tuples():
+    """board_cells() exposes map-effect tiles as (q,r,kind) value tuples (V.1 —
+    raw BoardState never escapes)."""
+    from src.game.combat import CombatReplay
+    team, enc = _boss_setup()
+    rep = CombatReplay(team, enc.all_enemies, WeatherState.CLEAR,
+                       map_effect_id=enc.map_effect_id)
+    rep.step_to(300)
+    cells = rep.board_cells()
+    assert all(isinstance(c, tuple) and len(c) == 3 and isinstance(c[2], str) for c in cells)
+
+
+# --- T.37c: resumable forward CombatReplay stepper -------------------------
+
+
+def _event_ticks(result):
+    return sorted({e.tick for e in result.events if e.tick > 0})
+
+
+def test_forward_stepper_matches_inspect_at_every_event_tick():
+    """The headline T.37c guarantee: a single forward-stepped CombatReplay yields
+    the *same* live state as independent `inspect_at_tick` re-runs at every
+    event-bearing tick (held instance == re-run from 0). O(N) vs O(N²)."""
+    from src.game.combat import CombatReplay
+
+    team, enemies, weather = _aurion_fight()
+    result = resolve_combat(team, enemies, weather)
+    ticks = _event_ticks(result)
+    assert ticks, "fight produced no events"
+
+    replay = CombatReplay(team, enemies, weather)
+    for t in ticks:
+        stepped = {v.id: v for v in replay.step_to(t).pieces()}
+        fresh = {v.id: v for v in inspect_at_tick(team, enemies, weather, tick=t)}
+        assert stepped == fresh, f"stepper diverged from inspect at tick {t}"
+
+
+def test_forward_stepper_hp_complete_through_ability_burst():
+    """B.28 guard: live-replay HP is COMPLETE — every HP change shows, including
+    registered-ability burst the event stream omits (`_on_cast` stamps
+    `hp_after=-1`; only `dot` damage carries `hp_after`). A naive bar built from
+    the stream's `hp_after` would freeze through a nuke; the stepper does not."""
+    from src.game.combat import CombatReplay
+
+    team, enemies, weather = _aurion_fight()
+    result = resolve_combat(team, enemies, weather)
+
+    # Reconstruct HP the (wrong) stream-only way: seed from initial snapshot,
+    # apply each beat's hp_after when present (== the B.28-incomplete source).
+    stream_hp = {s.id: s.max_hp for s in result.initial_pieces}
+
+    replay = CombatReplay(team, enemies, weather)
+    diverged = False
+    for t in _event_ticks(result):
+        for e in result.events:
+            if e.tick == t and e.hp_after >= 0:
+                stream_hp[e.target_id] = e.hp_after
+        live = {v.id: v.hp for v in replay.step_to(t).pieces()}
+        for pid, live_hp in live.items():
+            # The live (engine-truth) HP is authoritative; where the stream lacks
+            # a beat for a hit, the two disagree — proving the stream can't be the
+            # bar source (V.57).
+            if pid in stream_hp and stream_hp[pid] != live_hp:
+                diverged = True
+    assert diverged, (
+        "expected the stream-only HP reconstruction to diverge from live replay "
+        "on at least one ability-burst tick (B.28); if not, the fixture has no "
+        "registered-ability damage — pick a caster matchup"
+    )
+
+
+def test_forward_stepper_is_forward_only():
+    """Forward-only: stepping to an earlier tick raises (use inspect_at_tick)."""
+    from src.game.combat import CombatReplay
+
+    team, enemies, weather = _aurion_fight()
+    replay = CombatReplay(team, enemies, weather)
+    replay.step_to(100)
+    with pytest.raises(ValueError):
+        replay.step_to(50)
+
+
+def test_forward_stepper_winner_matches_resolve():
+    """Draining the stepper to the end yields the same winner as resolve_combat."""
+    from src.game.combat import CombatReplay
+
+    team, enemies, weather = _aurion_fight()
+    result = resolve_combat(team, enemies, weather)
+    replay = CombatReplay(team, enemies, weather)
+    replay.step_to(10_000_000)
+    assert replay.finished
+    # full outcome↔winner mapping (V.60): WIN↔team, LOSS↔enemy, DRAW↔draw
+    expected = {"WIN": "team", "LOSS": "enemy", "DRAW": "draw"}[result.outcome.name]
+    assert replay.winner == expected
+
+
+def test_replay_has_no_flet_import():
+    """`combat/replay.py` stays Flet-free (V.1) — importable with no display."""
+    import importlib
+
+    mod = importlib.import_module("src.game.combat.replay")
+    src = open(mod.__file__).read()
+    assert "import flet" not in src and "from flet" not in src

@@ -21,10 +21,16 @@ return recorder.build_result(winner)                                           #
 ```
 
 `build_combat` is reused (no parallel setup, T.37b) by:
-- **`resolve_boss_combat`** (`tools/playtest/_common.py`) — same `build_combat`, then
-  `attach_map_effect(ctx)` before `run` (its only difference; takes a `seed`/`run_seed`).
-- **`inspect_at_tick`** (`combat/replay.py`) — `build_combat(..., with_recorder=False)`,
-  then `run(ctx, None, stop_after_tick=T)` to read live state (see [Replay](#replay)).
+- **`resolve_boss_combat`** (`combat/resolve.py`, T.12b/V.59 — the **single src-side
+  boss entry**; `tools/playtest/_common` delegates to it) — same `build_combat`, then
+  `attach_map_effect(map_effect_id, ctx, seed)` before `run`. Takes a `map_effect_id:
+  str` (never a `bosses/` content type ⇒ `combat/` stays content-import-free);
+  byte-identical to the former `tools/` version (V.2). `CombatReplay`/`inspect_at_tick`
+  accept the same `map_effect_id` to replay a boss fight; `CombatReplay.board_cells()`
+  exposes the map-effect tiles as `(q,r,kind)` for the view overlay (V.1).
+- **`CombatReplay` / `inspect_at_tick`** (`combat/replay.py`) — `build_combat(...,
+  with_recorder=False)`, then steps the `_step_combat` generator to read live
+  state (see [Replay](#replay)).
 
 ## The pieces
 
@@ -101,9 +107,15 @@ the slow ~5 s action cadence (`60000/attack_speed`).
   (DOT + decay on each status's cadence, then expiry), `expire_modifiers`,
   summon despawn.
 - **Termination** — ends when one side has no living piece. **Sudden death**:
-  at `SUDDEN_DEATH_TICK_START` (= `MAX_TICKS`, 12 000) an escalating DOT is
-  applied each tick; `HARD_CAP_TICKS` (= MAX_TICKS + 2 000) is the absolute
-  ceiling. A fight resolved by sudden-death counts as `timed_out` → `DRAW`.
+  at `SUDDEN_DEATH_TICK_START` (= `MAX_TICKS`, 12 000) the loop applies a
+  stacking DOT (+3 stacks/engine-tick) that **damages once per second**
+  (`dot_interval_ticks=100`, like every DOT — V.25), so it escalates but still
+  leaves room for a few last actions; `HARD_CAP_TICKS` (= MAX_TICKS + 2 000) is
+  the absolute ceiling. **Outcome is survivor-based (V.60):** WIN = team
+  survivors & no enemy, LOSS = enemy survivors & no team, DRAW = **no survivors
+  either side** (a true mutual wipe — only via a simultaneous DOT/sudden-death
+  pass). `timed_out` is an **independent flag**, not an outcome — a sudden-death
+  fight with a survivor is a real WIN/LOSS.
 
 ## Damage pipeline
 
@@ -121,9 +133,11 @@ final = max(1, round(mitigated))                              # true damage skip
   ability fallback = `ABILITY_STR_COEFF` 0.2 / `ABILITY_INT_COEFF` 4.2.
 - **Crit is not random** — `crit_counter` on the `Piece` increments per eligible
   hit and crits every `round(1/crit_chance)`-th, then resets. Shared autos/casts.
-- **Mitigation** — magical→resistance, else armor; `_effective_mitigation`
-  applies `penetration_pct` then flat `penetration`, clamped ≥ 0; true damage
-  ignores both.
+- **Mitigation** — `magical`→resistance, `physical`→armor, `true`→unmitigated;
+  `_effective_mitigation` applies `penetration_pct` then flat `penetration`,
+  clamped ≥ 0. `damage_type` is a **closed vocabulary** `{physical, magical, true}`
+  that `deal_damage` **validates** (raises on anything else, V.58) — a typo can't
+  silently fall into the armor branch (B.29).
 
 ## Result
 
@@ -135,17 +149,26 @@ combat-view layout (`initial_pieces`: per-piece `PieceSnapshot` identity +
 spawn-time position + mana profile, with `spawn_tick=0` for starters and the
 spawn tick for mid-combat summons; `board_width`/`board_height`).
 
-**Beat taxonomy (V.54, T.37a).** Every visible-state-changing beat emits exactly
-one `BattleEvent` from a single producer path: `move`/`attack`/`cast`/`death`
-plus `heal`/`dot`/`status`(applied)/`status_expire`/`spawn`/`despawn`. Beats that
+**Beat taxonomy (V.54, T.37a; `ability` T.37 follow-up).** Every visible-state-
+changing beat emits exactly one `BattleEvent` from a single producer path:
+`move`/`attack`/`cast`/`ability`/`death` plus `heal`/`dot`/`status`(applied)/
+`status_expire`/`spawn`/`despawn`. **`cast` vs `ability` are distinct:** `cast` is
+the *activation* marker (`amount=0`, "a piece casts", `_on_cast`); `ability` is
+the resulting *damage* (one per target hit, `_on_damage_dealt` when
+`tag == ABILITY`) — first a `cast`, then per-target `ability` beats. Beats that
 actually change HP carry `hp_after`/`barrier_after` = the engine's post-event
 truth (read after `deal_damage` applies, V.28-correct: the `amount` is the full
-pre-barrier figure for DPS accounting): always on `attack`/`dot`/`heal`, and on a
-damaging `cast` (the engine's unregistered-ability fallback). Registered-ability
-**cast activation markers** (`amount=0`, the ability's per-hit damage attributed
-separately) are *not* HP-changing and keep the `hp_after=-1` / `barrier_after=0`
-sentinels — the view reads ability-hit HP from replay, not from the cast marker.
-`expire_summon`
+pre-barrier figure for DPS accounting): on `attack`/`ability`/`dot`/`heal`. The
+`ability`/`attack` `amount` is the **final post-mitigation** figure with `is_crit`
++ `damage_type` (`physical`/`magical`/`true`, on `DamageEvent`) — the single
+`ctx.deal_damage` chokepoint is the one producer (no separate ability handler).
+With `ability` added the stream is HP-complete; the view still reads bars from the
+live stepper (V.57) — the beat's `amount`/`type` drives the floating *number*, not
+the bar. `turns` counts `attack`+`cast` only (`ability` excluded) ⇒ byte-identical.
+The **`status` (apply) beat fires once per *acquisition*** — the recorder tracks a
+`(piece_id, status_id)` active set (cleared on `status_expire`) and skips re-applies/
+refreshes (V.54), so sudden-death (re-applied every tick) + poison-restacks don't
+spam the stream (live stacks come from the stepper anyway, V.57). `expire_summon`
 fires `on_despawn` (distinct from `death`). The recorder is observer-only ⇒ sims
 byte-identical; only `combat_log` golden text re-baselines. `record_attack` (a
 dead parallel path) was removed — `_on_attack_landed` is the sole attack producer.
@@ -160,21 +183,41 @@ subtraction for legacy events. Used by the playtest CLIs and golden-snapshot
 tests.
 
 <a id="replay"></a>
-## Replay / inspect-at-tick (T.37b)
+## Replay / forward stepper / inspect-at-tick (T.37b, T.37c)
 
-Continuous combat state for a view is **recomputed, not recorded** (V.55). Since
-combat is byte-identical for the same inputs, `inspect_at_tick(team, enemies,
-weather, *, run_mods=None, tick) -> list[PieceView]` (`combat/replay.py`) re-runs
-the engine via the drivable `run(..., stop_after_tick=tick)` hook and reads each
-piece's live state — hp, barriers, per-slot mana, **effective stats** via
-`piece.stat()` (STR/AS ramp included), statuses, position — into frozen
-read-only `PieceView`/`SlotView`/`StatusView` value structs. `tick=0` is the
-initial board (after `on_combat_start`); `tick=N` is after ticks 1..N. The
-`run_mods` is **cloned** (deep-copy of the mutable `augment_state`) so the replay
-never mutates the caller. Raw `Piece`/Flet never escape `src/game/` (V.1). No
-per-tick state is stored in `BattleResult` (avoids T.14 save bloat + stat-drift).
+Continuous combat state for a view is **recomputed, not recorded** (V.55). The
+engine loop is the **single** `_step_combat` generator (`combat/engine.py`, V.29),
+driven two ways — no parallel loop:
 
-The `stop_after_tick` hook is dead on the `None` (resolve) path ⇒ byte-identical.
+- **`run(ctx, recorder=None)`** *drains* it to completion (the resolve path) —
+  byte-identical to the pre-T.37c monolithic loop (V.2/V.14).
+- **`CombatReplay(team, enemies, weather, *, run_mods=None)`** *steps* it
+  **forward** (`.step_to(tick)`, `.pieces() -> list[PieceView]`, `.tick`,
+  `.winner`) for sequential playback — drives one instance once, O(total ticks).
+  Forward-only; `step_to` to an earlier tick raises.
+
+The generator yields once per fully-processed tick (`yield 0` = after
+`on_combat_start`; `yield N` = after ticks 1..N), so a stepping consumer pauses
+mid-fight **before** the post-loop finalize (`end_combat`/`on_combat_end` never
+mutate the inspected state).
+
+`inspect_at_tick(team, enemies, weather, *, run_mods=None, tick) -> list[PieceView]`
+is a random/backward-access wrapper (re-run from 0) **over `CombatReplay`** — one
+driver, two shapes. Each reads hp, barriers, per-slot mana, **effective stats**
+via `piece.stat()` (STR/AS ramp included), statuses, position into frozen
+read-only `PieceView`/`SlotView`/`StatusView` structs. `run_mods` is **cloned**
+(deep-copy of mutable `augment_state`) so replay never mutates the caller. Raw
+`Piece`/Flet never escape `src/game/` (V.1). No per-tick state is stored in
+`BattleResult` (avoids T.14 save bloat + stat-drift).
+
+**This live state is the combat view's resource-truth source (V.56/V.57), NOT
+the recorded event stream** — even though the stream is now HP-complete (the
+`ability` beat closed the B.28 gap), the view keeps **one** source of truth (the
+stepper) so bars can't drift from a dual pipeline; the stream's `amount`/`type`
+drives the floating *number*, the stepper drives the *bar*. The stream is
+**animation cues + action-queue projection** only. `move`/
+`spawn` beats carry structured `dest_q`/`dest_r` int coords (T.37c), not a parsed
+`note` string.
 
 ## Invariants this system owns
 
@@ -185,16 +228,23 @@ The `stop_after_tick` hook is dead on the `None` (resolve) path ⇒ byte-identic
   (`crit_counter`), never RNG.
 - **V.54** — event-stream completeness: every visible-state-changing beat emits
   exactly one `BattleEvent` (T.37a).
-- **V.55** — view state is recomputed by replay (`inspect_at_tick`), never
-  recorded as per-tick keyframes; inspect is pure + clones `run_mods` (T.37b).
+- **V.55** — view state is recomputed by replay, never recorded as per-tick
+  keyframes; the forward `CombatReplay` stepper + `inspect_at_tick` are pure +
+  clone `run_mods` (T.37b, forward stepper T.37c).
+- **V.56/V.57** — the combat view's resource truth (hp/mana/stats/position) is the
+  live replay, **never** the event stream's partial `hp_after` fields (incomplete
+  for ability burst, B.28); the stream is animation cues + queue projection (T.12).
+- **V.58** — `damage_type` is a closed vocabulary `{physical, magical, true}`;
+  `deal_damage` validates + raises on anything else so a typo can't be mis-mitigated
+  as physical (B.29).
 
 ## File map
 
 | Concern | File |
 |---|---|
 | Public entry + shared `build_combat` wiring | `combat/resolve.py` |
-| Tick loop, pathing, damage, spawns, constants, `stop_after_tick` hook | `combat/engine.py` |
-| Replay / `inspect_at_tick` (recompute state at a tick) | `combat/replay.py` |
+| Single tick loop (`_step_combat` generator) + `run` drain, pathing, damage, spawns, constants | `combat/engine.py` |
+| Forward stepper `CombatReplay` + `inspect_at_tick` (recompute state at a tick) | `combat/replay.py` |
 | Mutator API (the only way to touch the world) | `combat/context.py` |
 | Event → `BattleResult` | `combat/recorder.py` |
 | Model → `Piece` compile + weather + passives | `loadout.py` |

@@ -61,6 +61,11 @@ _HARD_CC_GATES = (
 BOARD_WIDTH = 10
 BOARD_HEIGHT = 7
 
+# Closed `damage_type` vocabulary (V.58): magical→resistance, physical→armor,
+# true→unmitigated. `deal_damage` validates against this so a typo can't slip
+# into the armor branch unnoticed (B.29).
+_VALID_DAMAGE_TYPES = frozenset({"physical", "magical", "true"})
+
 # Hex directions (axial)
 HEX_DIRECTIONS: tuple[tuple[int, int], ...] = (
     (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1),
@@ -194,13 +199,26 @@ class CombatContext:
         *,
         crit: bool | None = None,
         damage_type: str = "magical",
+        is_dot: bool = False,
     ) -> float:
         """Deal damage. Returns final amount dealt after mitigation.
+
+        `is_dot` marks a damage-over-time tick (set by `process_statuses`) so the
+        recorder emits a `dot` beat regardless of `damage_type` — incl. true-damage
+        DOTs like `sudden_death` that no longer go silent (V.54). Presentation-only;
+        does not affect combat math.
 
         Pipeline:
           raw → × weather_modifier → × crit → fire on_damage_pre → mitigate
           → apply → fire on_damage_dealt → fire on_damage_taken → kill check
         """
+        # `damage_type` is a closed vocabulary (V.58) — an unknown string would
+        # silently fall through to the armor branch (B.29). Fail loud instead.
+        if damage_type not in _VALID_DAMAGE_TYPES:
+            raise ValueError(
+                f"Unknown damage_type {damage_type!r}; expected one of "
+                f"{sorted(_VALID_DAMAGE_TYPES)} (V.58)."
+            )
         if not target.alive:
             return 0.0
 
@@ -272,7 +290,7 @@ class CombatContext:
         dealt_event = DamageEvent(
             attacker=attacker, target=target, amount=final,
             tag=tag.value, cast_id=self._current_cast_id, hit_id=hit_id,
-            is_crit=is_crit,
+            is_crit=is_crit, damage_type=damage_type, is_dot=is_dot,
         )
         self._bus.fire("on_damage_dealt", dealt_event, cast_id=self._current_cast_id, ctx=self)
 
