@@ -107,6 +107,7 @@ None — no rosters/tags/abilities touched. Map-effect ids (`sunlit_tiles`/`fog`
 
 ## 7. Open questions
 **Resolved here (overridable):** §4.1 (overlay tokens), §4.2 (`map_effect_id` str), §4.4 (pacing formula), §4.6 (A/B split). Arrowhead = short twin lines (simplest in `cv`).
+**Resolved (user-set 2026-06-23):** **DOT drip = every tick, uncapped** — a step reveals *all* its `pre_beats` one-by-one (no cap/batch), even when sudden death absorbs dozens. Accepts longer drips on timeout/long-DoT fights as the faithful read. (Considered: cap-N, per-source batch, banner-only — rejected.)
 **Still open / deferred:** tick-by-tick admin scrubber (defer — stepper supports it, small follow-up); sprite art (deferred); whether autoplay should *also* token-flash each DOT or just reveal (refine in build with the user watching).
 
 ## 8. Test plan
