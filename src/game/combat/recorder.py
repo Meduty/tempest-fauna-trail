@@ -241,8 +241,10 @@ class BattleResultRecorder:
 
         Fires for *all* damage (post-HP-apply). Attack/ability hits already get
         their beat (`_on_attack_landed` / `_on_cast`); DOT ticks had no beat at
-        all (B.27) → emit one here so a view shows the bleed + HP drop. No
-        double-count: only `tag == dot` produces an event."""
+        all (B.27) → emit one here so a view shows the bleed + HP drop. Emit on
+        `tag == dot` **or** `event.is_dot` (T.12b) — the latter catches true-damage
+        DOTs (`sudden_death`, `SourceTag.TRUE`) that were silent (V.54). No
+        double-count: attack/ability beats come from their own producers."""
         amount = int(event.amount) if event.amount else 0
         # Environmental damage (hazard tiles, map effects) has no attacker — it
         # is not attributed to any dealer, but is still counted as taken.
@@ -250,7 +252,7 @@ class BattleResultRecorder:
             self._damage_dealt[event.attacker.id] = self._damage_dealt.get(event.attacker.id, 0) + amount
         self._damage_taken[event.target.id] = self._damage_taken.get(event.target.id, 0) + amount
 
-        if event.tag == SourceTag.DOT.value:
+        if event.tag == SourceTag.DOT.value or event.is_dot:
             tick = ctx.current_tick if ctx else 0
             self._events.append(BattleEvent(
                 tick=tick,

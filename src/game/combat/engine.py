@@ -603,9 +603,9 @@ def process_statuses(ctx: CombatContext, pieces: list[Piece]) -> None:
                                 attacker = p
                                 break
                     if status_def.dot_true_damage:
-                        ctx.deal_damage(attacker, piece, dot_amount, SourceTag.TRUE)
+                        ctx.deal_damage(attacker, piece, dot_amount, SourceTag.TRUE, is_dot=True)
                     else:
-                        ctx.deal_damage(attacker, piece, dot_amount, SourceTag.DOT, damage_type="magical")
+                        ctx.deal_damage(attacker, piece, dot_amount, SourceTag.DOT, damage_type="magical", is_dot=True)
                     # "Decreases if it does" — shed stacks per DOT tick (poison).
                     # decay_fraction>0 → percentage decay (truncated, floor 1), giving
                     # an investment-scaling plateau with no hard cap; else flat 1.

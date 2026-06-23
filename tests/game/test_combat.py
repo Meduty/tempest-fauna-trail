@@ -510,6 +510,25 @@ def test_status_beat_fires_once_per_acquisition_not_per_reapply():
     assert sum(1 for e in rec._events if e.event_type == EVENT_STATUS) == 2
 
 
+def test_true_damage_dot_emits_dot_beat_via_is_dot():
+    """V.54 (T.12b): a true-damage DOT tick (sudden_death) emits a `dot` beat when
+    is_dot=True — it was silent before (SourceTag.TRUE matched no beat branch),
+    which made sudden death instakill with no animation."""
+    from src.game.combat.recorder import EVENT_DOT
+    from src.game.effects import SourceTag
+
+    ctx, rec, src, tgt = _recorder_harness()
+    tgt.hp = 1000.0
+    ctx.deal_damage(src, tgt, 50.0, SourceTag.TRUE, is_dot=True)  # sudden-death-style tick
+    dots = [e for e in rec._events if e.event_type == EVENT_DOT]
+    assert len(dots) == 1 and dots[0].hp_after == int(tgt.hp)
+
+    # without is_dot, true damage stays beatless (the old silent path)
+    ctx2, rec2, s2, t2 = _recorder_harness()
+    ctx2.deal_damage(s2, t2, 50.0, SourceTag.TRUE)
+    assert not [e for e in rec2._events if e.event_type == EVENT_DOT]
+
+
 def test_deal_damage_rejects_unknown_damage_type():
     """V.58 (B.29): `damage_type` is a closed vocabulary — `deal_damage` raises
     on anything outside {physical, magical, true} so a typo like the old "magic"
