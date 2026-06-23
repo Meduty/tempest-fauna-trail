@@ -7,7 +7,8 @@
       "Bash(Rscript --version)",
       "WebSearch",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "WebFetch(domain:flet.dev)"
     ]
   }
 }

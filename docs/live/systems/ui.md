@@ -69,6 +69,10 @@ Zones (views_spec §7.3):
 - **Side — inspect (read-only):** selected piece → live stats (stepper), mana,
   statuses, equipped `champion.items`, `champion.traits`; a global sub-panel shows
   active augments (`session.run_mods.augments`) + cleared `result.trait_activations`.
+  Floating numbers are **monospaced** (`FONT_MONO`), coloured **by damage type**
+  (`_DMG_COLORS`: physical red, magical blue, true white, DOT purple; heal green),
+  with crit marked by a trailing `!` + size bump (not colour), and **staggered per
+  target** so multi-hit ticks stay legible.
 - **Bottom controls:** **Next ▶** (default manual step), ◀ Prev, Autoplay toggle,
   ⏭ End (fast-forward), ↺ Restart, Exit.
 - **Combat-end panel:** outcome / survivors / damage dealt-taken / **Continue**

@@ -164,10 +164,10 @@ game-dev patterns. Sources: [TFT UI case study (Z. Roberson)](https://zacharyrob
 [Flet Canvas docs](https://flet.dev/docs/controls/canvas/),
 [Flet Animations docs](https://flet.dev/docs/guides/python/animations/).
 
-**Cheap legibility fixes — fold into T.12a (still core, not polish):**
-- **Monospaced floating numbers.** Use `theme.FONT_MONO` for damage/heal text (research: compact monospaced reads best; cursive is worst). Currently default font.
-- **DOT visually distinct from hits.** `EVENT_DOT` floats render same red as `attack`/`cast` today; give DOT its own tint (e.g. `WARNING`/orange) so bleeds read apart from strikes.
-- **Stagger overlapping numbers.** Multiple beats on one target at one tick overlap at a fixed offset today; offset each by index so multi-hit ticks stay legible.
+**Cheap legibility fixes — ✅ DONE in T.12a (`combat.py` floating-number loop):**
+- ✅ **Monospaced floating numbers** — `theme.FONT_MONO` on the damage/heal `TextStyle`.
+- ✅ **Floating numbers coloured by damage type** (`_DMG_COLORS` keyed on the beat's damage-type `note`): physical = `DANGER` red, magical = `ACCENT` blue, true = `TEXT_PRIMARY` white, DOT = `DOT_DAMAGE` purple, heal = `SUCCESS` green. Crit marked with a trailing `!` + size bump (research: secondary element, not colour) so the type colour stays readable.
+- ✅ **Stagger overlapping numbers** — per-target `hit_count` offsets each number up + right by index so multi-hit ticks stay legible.
 
 **T.12b polish backlog (research-sourced):**
 - **Float-up + bounce motion** for numbers — swap canvas `cv.Text` for an overlay `ft.Text` with `animate_offset` (implicit anim, no thread); "numbers float upward with bounce" is the standard juice. Flet has no canvas anim → manual timing or implicit-animated overlay controls.

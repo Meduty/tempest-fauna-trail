@@ -34,6 +34,8 @@ from src.game.combat import (
     ROUND_TICKS,
     resolve_combat,
 )
+from src.game.combat.engine import DMG_MAGICAL, DMG_TRUE
+from src.game.combat.recorder import DMG_DOT, DMG_PHYSICAL
 from src.game.combat.replay import PieceView
 from src.game.models import CombatOutcome
 from src.ui.combat_playback import CombatSession, Playback, QueueEntry, build_playback
@@ -43,6 +45,8 @@ from src.ui.theme import (
     AFFINITY_COLORS,
     BG,
     DANGER,
+    DOT_DAMAGE,
+    FONT_MONO,
     SPACING_LG,
     SPACING_MD,
     SPACING_SM,
@@ -51,8 +55,17 @@ from src.ui.theme import (
     SURFACE_ELEVATED,
     TEXT_MUTED,
     TEXT_PRIMARY,
-    WARNING,
 )
+
+# Floating damage-number colour by damage-type `note` (V.57 numbers come from
+# the beat's `amount`; the bar lands on the live stepper hp). phys=red, magic=
+# blue, true=white, dot=purple. Heal (green) handled separately.
+_DMG_COLORS: dict[str, str] = {
+    DMG_PHYSICAL: DANGER,
+    DMG_MAGICAL: ACCENT,
+    DMG_TRUE: TEXT_PRIMARY,
+    DMG_DOT: DOT_DAMAGE,
+}
 
 # --- Board geometry (pixel layout of the 10×7 hex grid) ---
 _MARGIN_X = 40
@@ -218,21 +231,32 @@ def build_combat_view(
                 on_click=lambda _e, pid=p.id: _select(pid),
             ))
 
-        # floating damage / heal numbers for this step's beats
+        # floating damage / heal numbers for this step's beats. Monospaced for
+        # legibility; colour by damage type (phys red / magic blue / true white /
+        # dot purple, heal green); crit marked with `!` + a size bump rather than
+        # colour (keeps the type colour readable); multiple numbers on one target
+        # staggered so they don't overlap (research §7.1).
+        hit_count: dict[str, int] = {}
         for b in cur_beats:
             tgt = pos_by_id.get(b.target_id or "")
             if tgt is None or not b.amount:
                 continue
-            tx, ty = _cell_xy(tgt.q, tgt.r)
             if b.event_type == EVENT_HEAL:
                 txt, col = f"+{b.amount}", SUCCESS
             elif b.event_type in (EVENT_ATTACK, EVENT_CAST, EVENT_DOT):
-                txt, col = f"-{b.amount}", DANGER if not b.is_crit else WARNING
+                col = _DMG_COLORS.get(b.note, DANGER)
+                txt = f"-{b.amount}" + ("!" if b.is_crit else "")
             else:
                 continue
+            tx, ty = _cell_xy(tgt.q, tgt.r)
+            n = hit_count.get(b.target_id, 0)
+            hit_count[b.target_id] = n + 1
             shapes.append(cv.Text(
-                tx - 6, ty - _TOKEN_R - 18, txt,
-                ft.TextStyle(size=13, weight=ft.FontWeight.BOLD, color=col),
+                tx - 6 + n * 6, ty - _TOKEN_R - 18 - n * 14, txt,
+                ft.TextStyle(
+                    size=15 if b.is_crit else 13, weight=ft.FontWeight.BOLD,
+                    color=col, font_family=FONT_MONO,
+                ),
             ))
 
         board_stack.controls = [cv.Canvas(shapes=shapes, width=_BOARD_W, height=_BOARD_H), *overlays]
