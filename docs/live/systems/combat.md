@@ -190,9 +190,9 @@ read-only `PieceView`/`SlotView`/`StatusView` structs. `run_mods` is **cloned**
 
 **This live state is the combat view's resource-truth source (V.56/V.57), NOT
 the recorded event stream** — the stream's `hp_after`/`barrier_after` are stamped
-only on basic-attack/DOT/heal beats, **not** registered-ability burst (`_on_cast`
-→ `hp_after=-1`, B.28), so a bar built from the stream would freeze through a
-nuke. The stream is **animation cues + action-queue projection** only. `move`/
+only on basic-attack/DOT/heal beats, **not** registered-ability damage (`_on_cast`
+→ `hp_after=-1`, B.28), so a bar built from the stream would freeze through an
+ability hit. The stream is **animation cues + action-queue projection** only. `move`/
 `spawn` beats carry structured `dest_q`/`dest_r` int coords (T.37c), not a parsed
 `note` string.
 
