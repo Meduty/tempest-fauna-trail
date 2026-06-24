@@ -208,6 +208,35 @@ def test_footprints_carry_no_resource_numbers():
             assert not (names & {"hp", "max_hp", "barrier", "mana", "hp_after"})
 
 
+def test_classify_intent_maps_known_abilities():
+    from src.ui.combat_playback import classify_intent
+    # damage + control (disarm) — Aurion
+    aurion = classify_intent("champ_aurion.active")
+    assert aurion.kind == "damage" and aurion.control is True
+    # heal wins over a damage element (sunmane_lion = physical+heal)
+    assert classify_intent("champ_sunmane_lion.active").kind == "heal"
+    assert classify_intent("champ_dawnwisp.active").kind == "heal"
+    # pure team buff
+    assert classify_intent("champ_goldcrest_lark.active").kind == "buff"
+    # summon
+    assert classify_intent("champ_umbra.active").kind == "summon"
+    # unknown id → safe damage default, no crash
+    assert classify_intent("does_not_exist").kind == "damage"
+
+
+def test_classify_intent_covers_every_ability_meta():
+    """Tag-coverage guard: every roster ability id classifies to a valid intent
+    kind without error (so new content can't desync the VFX classifier)."""
+    from src.game.registries import ABILITY_META
+    from src.ui.combat_playback import classify_intent
+    assert ABILITY_META, "ABILITY_META not populated"
+    valid = {"damage", "heal", "buff", "summon"}
+    for aid in ABILITY_META:
+        intent = classify_intent(aid)
+        assert intent.kind in valid, f"{aid} → {intent.kind}"
+        assert isinstance(intent.control, bool)
+
+
 def test_combat_playback_has_no_flet_import():
     import src.ui.combat_playback as mod
     src = open(mod.__file__).read()

@@ -42,9 +42,9 @@ from src.game.models import CombatOutcome, Footprint
 from src.game.registries import ABILITY_META
 from src.ui.combat_playback import (
     CombatSession,
-    Playback,
     QueueEntry,
     build_playback,
+    classify_intent,
     is_sudden_death,
     playback_delay_s,
     pre_beat_ticks,
@@ -474,12 +474,15 @@ def build_combat_view(
                     _lunge(actor, bx, by)
 
         # Per-ability-shape VFX (T.12c, V.61): the cast's recorded targeting
-        # footprint(s), drawn in the ability's element colour. A `circle` (radius
-        # AoE) is an animated overlay — translucent fill + ring that pops
+        # footprint(s). Colour joins each footprint to its cast by `cast_id` (the
+        # `cast` beat carries the ability id in `note`). The cast's *intent*
+        # (T.12c-B, `classify_intent`) recolours the shape: an ally-directed
+        # heal/buff renders as a green halo (not an element colour), and a control
+        # ability adds a WARNING telegraph ring just outside the AoE. A `circle`
+        # (radius AoE) is an animated overlay — translucent fill + ring that pops
         # (expand + fade-in) via `fp_phase` then stays as the static residue. A
         # `line` (beam) draws on the canvas (no roster ability uses `line_targets`
-        # yet — kept correct, static). Colour joins each footprint to its cast by
-        # `cast_id` (the `cast` beat carries the ability id in `note`).
+        # yet — kept correct, static).
         fp_overlays: list[ft.Control] = []
         if action_shown and step is not None and step.footprints:
             ability_by_cast = {
@@ -490,9 +493,25 @@ def build_combat_view(
             fp_scale = 0.35 + 0.65 * ph
             fp_op = ph
             for i, fp in enumerate(step.footprints):
-                color = _element_color(ability_by_cast.get(fp.cast_id, ""))
+                aid = ability_by_cast.get(fp.cast_id, "")
+                intent = classify_intent(aid) if aid else None
+                if intent is not None and intent.kind in ("heal", "buff"):
+                    color = SUCCESS  # ally-directed → green halo (T.12c-B)
+                else:
+                    color = _element_color(aid)
                 if fp.kind == "circle":
                     fp_overlays.append(_footprint_circle(fp, color, i, fp_scale, fp_op))
+                    if intent is not None and intent.control:
+                        # control telegraph: WARNING ring just outside the AoE
+                        cx, cy = _cell_xy(fp.center_q, fp.center_r)
+                        tpx = _fp_pixel_radius(fp.radius) + 5
+                        fp_overlays.append(ft.Container(
+                            key=f"fp-tel-{fp.cast_id}-{i}",
+                            left=cx - tpx, top=cy - tpx,
+                            width=tpx * 2, height=tpx * 2, border_radius=tpx,
+                            border=ft.Border.all(2, WARNING), opacity=fp_op,
+                            animate_opacity=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
+                        ))
                 elif fp.kind == "line":
                     shapes.extend(_footprint_line(fp, color))
 

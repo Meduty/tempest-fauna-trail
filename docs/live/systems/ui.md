@@ -102,8 +102,15 @@ Zones (views_spec §7.3):
   fill + ring that **pops** (expand + fade-in via `state["fp_phase"]` 0→1 with
   `animate_scale`/`animate_opacity`) then stays as the **static residue**. A `line`
   (beam) draws on the canvas (`_footprint_line`; no roster ability uses
-  `line_targets` yet — kept correct). (Sprites/projectiles still deferred; phase B
-  = buff/heal halos + control telegraphs.)
+  `line_targets` yet — kept correct).
+- **Ability-intent recolour (T.12c-B, partial):** the cast's intent
+  (`classify_intent` in `combat_playback.py`, from `AbilityMeta.tags`: heal →
+  summon → damage-element → buff) recolours the footprint shape — an ally-directed
+  **heal/buff** renders as a **green halo** (`SUCCESS`) instead of an element
+  colour, and a **control** ability adds a **`WARNING` telegraph ring** just
+  outside the AoE (keyed `fp-tel-{cast_id}-{i}`). (Sprites/projectiles still
+  deferred. Phase B **remaining**: status-apply flash + ally halos on heals that
+  produce no targeting footprint.)
 - **Manual step = instant** full reveal of the static truth (action + arrows +
   numbers + dots + footprint shape at once) so attacks always show; the footprint
   **pop** is a non-blocking cosmetic grow (`_kick_footprint_pop` → `page.run_task`)

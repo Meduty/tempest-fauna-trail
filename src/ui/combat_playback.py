@@ -40,6 +40,7 @@ from src.game.models import (
     Footprint,
     WeatherState,
 )
+from src.game.registries import ABILITY_META
 
 # Beats that count as "actions" on the projected queue (V.56 — moves render
 # smaller + movement-iconed; attacks/casts are the primary entries). dot/heal/
@@ -49,6 +50,54 @@ _QUEUE_KINDS: frozenset[str] = frozenset({EVENT_MOVE, EVENT_ATTACK, EVENT_CAST})
 
 # How many future rounds the action queue projects ahead of the cursor's round.
 QUEUE_LOOKAHEAD_ROUNDS = 2
+
+# --- Ability-intent classification (T.12c-B) ---------------------------------
+# Tag → intent, from `AbilityMeta.tags` (the UI-iconography vocab, V.38). Element
+# tags (`magic`/`physical`/`true`) mark a *damage* ability; `heal`/`summon` are
+# explicit; everything else with no damage element is a buff. `control` is an
+# orthogonal flag (the ability also applies hard/soft CC) used for telegraphs.
+_INTENT_DAMAGE_TAGS: frozenset[str] = frozenset({"magic", "physical", "true"})
+_INTENT_BUFF_TAGS: frozenset[str] = frozenset({
+    "buff", "defense", "haste", "shield", "aura", "team", "empower", "support",
+    "lifesteal", "evasion", "reflect", "penetration", "crit", "mana", "tempo",
+    "scaling",
+})
+_INTENT_CONTROL_TAGS: frozenset[str] = frozenset({
+    "stun", "root", "slow", "fear", "silence", "taunt", "disarm", "freeze",
+    "debuff", "control",
+})
+
+
+@dataclass(frozen=True, slots=True)
+class Intent:
+    """An ability's presentation intent (T.12c-B). `kind` drives the VFX shape
+    family (damage shape vs ally halo vs summon); `control` adds a telegraph."""
+
+    kind: str  # "damage" | "heal" | "buff" | "summon"
+    control: bool = False
+
+
+def classify_intent(ability_id: str) -> Intent:
+    """Map an ability id → presentation `Intent` from its `AbilityMeta.tags` (pure).
+
+    Priority: heal → summon → damage (any element tag) → buff (default). The
+    `control` flag is set whenever a control tag is present, regardless of kind.
+    Unknown ids (no `AbilityMeta`) classify as plain `damage` (the safe default —
+    a damage shape is the engine's most common cast)."""
+    meta = ABILITY_META.get(ability_id)
+    tags = frozenset(meta.tags) if meta is not None else frozenset()
+    control = bool(tags & _INTENT_CONTROL_TAGS)
+    if "heal" in tags:
+        kind = "heal"
+    elif "summon" in tags:
+        kind = "summon"
+    elif tags & _INTENT_DAMAGE_TAGS:
+        kind = "damage"
+    elif tags & _INTENT_BUFF_TAGS:
+        kind = "buff"
+    else:
+        kind = "damage"
+    return Intent(kind=kind, control=control)
 
 # Real-time playback pacing (T.12b, user-set 1s ≈ 1s). The delay before a moment
 # at `tick` = (tick − prev_tick)/TICKS_PER_SECOND × SPEED, clamped so a huge idle
