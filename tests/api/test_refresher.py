@@ -342,3 +342,42 @@ class TestLifecycle:
         assert fired, "Timer did not fire within timeout"
         # At least one fetch should have happened
         assert mock_client.fetch_weather.call_count >= 1
+
+
+# ---------------------------------------------------------------------------
+# on_tick callback (T.11) — UI repaint hook, back-compat
+# ---------------------------------------------------------------------------
+
+class TestOnTickCallback:
+    def test_on_tick_fires_with_selected_cities(
+        self, cache: WeatherCache, mock_client: MagicMock
+    ) -> None:
+        seen: list[list[str]] = []
+        r = WeatherRefresher(
+            cache=cache, client=mock_client,
+            get_current_node_index=lambda: 1, rng_seed=42,
+            on_tick=lambda selected: seen.append(selected),
+        )
+        result = r.tick()
+        assert seen == [result]  # called once with the fetched city ids
+
+    def test_on_tick_exception_does_not_break_tick(
+        self, cache: WeatherCache, mock_client: MagicMock
+    ) -> None:
+        def _boom(_selected: list[str]) -> None:
+            raise RuntimeError("UI blew up")
+
+        r = WeatherRefresher(
+            cache=cache, client=mock_client,
+            get_current_node_index=lambda: 1, rng_seed=42, on_tick=_boom,
+        )
+        # Must not propagate — the worker thread keeps the refresher alive.
+        result = r.tick()
+        assert len(result) >= 1
+
+    def test_default_none_is_back_compat(
+        self, refresher: WeatherRefresher
+    ) -> None:
+        # No on_tick passed → tick still returns normally.
+        result = refresher.tick()
+        assert 1 <= len(result) <= 3

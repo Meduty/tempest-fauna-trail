@@ -300,6 +300,23 @@ STAGES: tuple[StageDef, ...] = (
 
 ROUTE_NODE_COUNT: Final[int] = sum(len(s.node_cities) for s in STAGES)  # 50
 
+# Ordered city ids in route order (node index 1 == ROUTE_CITY_IDS[0]). The same
+# flattening `build_route` walks, so `ROUTE_CITY_IDS[node.index - 1]` is the
+# city id backing a `Node` (which only carries the city *name*). Used to wire the
+# T.7 `WeatherCache`/`Refresher` to the live route (T.11).
+ROUTE_CITY_IDS: Final[tuple[str, ...]] = tuple(
+    cid for stage in STAGES for cid in stage.node_cities
+)
+
+
+def city_id_for_node(node_index: int) -> str:
+    """Return the city id backing the 1-based ``node_index`` (T.11)."""
+    if not 1 <= node_index <= ROUTE_NODE_COUNT:
+        raise ValueError(
+            f"node_index {node_index!r} is out of range [1, {ROUTE_NODE_COUNT}]."
+        )
+    return ROUTE_CITY_IDS[node_index - 1]
+
 
 # ---------------------------------------------------------------------------
 # Enemy pool id helpers

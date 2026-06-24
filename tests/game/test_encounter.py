@@ -244,3 +244,58 @@ class TestContentVersion:
     def test_content_version_defined(self):
         assert isinstance(CONTENT_VERSION, str)
         assert len(CONTENT_VERSION) > 0
+
+
+# ---------------------------------------------------------------------------
+# node_encounter — per-node dispatch (T.11)
+# ---------------------------------------------------------------------------
+
+class TestNodeEncounter:
+    def _route(self):
+        from src.game.route import build_route
+        return build_route()
+
+    def test_fight_node_matches_generate_fight(self) -> None:
+        from src.game.encounter import node_encounter
+        from src.game.models import NodeType
+        from src.game.route import stage_of
+
+        route = self._route()
+        node = next(n for n in route if n.node_type is NodeType.FIGHT)
+        enc = node_encounter(0, node, weather=node.weather)
+        expected = generate_fight(0, node.index, stage_of(node.index))
+        assert [e.id for e in enc.enemies] == [e.id for e in expected]
+        assert enc.map_effect_id == ""
+
+    def test_deterministic_same_seed(self) -> None:
+        from src.game.encounter import node_encounter
+        route = self._route()
+        node = route[0]
+        a = node_encounter(99, node, weather=node.weather)
+        b = node_encounter(99, node, weather=node.weather)
+        assert [e.id for e in a.enemies] == [e.id for e in b.enemies]
+
+    def test_no_fight_nodes_empty(self) -> None:
+        from src.game.encounter import node_encounter
+        from src.game.models import NodeType
+
+        route = self._route()
+        for ntype in (NodeType.AUGMENT, NodeType.SUPPLY):
+            matches = [n for n in route if n.node_type is ntype]
+            for node in matches:
+                enc = node_encounter(0, node)
+                assert enc.enemies == []
+                assert enc.map_effect_id == ""
+
+    def test_boss_node_carries_map_effect(self) -> None:
+        from src.game.encounter import generate_boss_encounter, node_encounter
+        from src.game.models import NodeType
+        from src.game.route import stage_of
+
+        route = self._route()
+        boss = next((n for n in route if n.node_type is NodeType.BOSS_FIGHT), None)
+        assert boss is not None
+        enc = node_encounter(0, boss)
+        expected = generate_boss_encounter(0, boss.index, stage_of(boss.index))
+        assert enc.map_effect_id == expected.map_effect_id
+        assert len(enc.enemies) == len(expected.all_enemies)

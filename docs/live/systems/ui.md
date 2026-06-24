@@ -1,10 +1,10 @@
 # UI — main menu + combat view + dev harness (LIVING)
 
 > **Status:** ✅ for the main menu (T.9), combat view core + dev harness (T.12a),
-> **RunStart (T.10)**. The rest of the Flet run-loop (Trail/Prep/Reward/Summary,
-> T.11–T.15/T.23) is unbuilt — this doc grows as those land. **New Run is live**
-> (→ RunStart → champion pick → Run); Continue stays disabled until load-into-Trail
-> (T.15). FROZEN design:
+> **RunStart (T.10)**, **Trail (T.11)**. The rest of the Flet run-loop
+> (Prep/Reward/Summary, T.13–T.15/T.23) is unbuilt — this doc grows as those land.
+> **New Run is live** (→ RunStart → champion pick → **Trail** → Prep stub); Continue
+> stays disabled until load-into-Trail (T.15). FROZEN design:
 > [`views_spec.md`](../../design/systems/views_spec.md). Audited by `/check`.
 
 ## RunStart (T.10) — `game/run_init.py` + `ui/views/run_start.py`
@@ -25,8 +25,62 @@ The run-start flow is **logic in `game/run_init.py` (Flet-free, V.1/V.63), view 
 - `build_run_start_view(page, *, seed, on_pick, on_back) -> ft.View` (route
   `/run-start`) renders the offer as `champion_card`s; a click emits `on_pick(cid)`.
   The host (`main.py` `_start_new_run`) draws a fresh `secrets` seed, calls
-  `new_run`, and pushes the next screen. **Landing is a `_push_trail_stub`
-  placeholder** until the real Trail view lands (T.11).
+  `new_run`, and pushes the next screen (`main._push_trail` → the Trail view).
+
+## Trail (T.11) — `viz/route_map.py` + `ui/views/trail.py`
+
+The between-fights hub. **Pure presentation (V.1/V.63)** — reads `Run` state and
+calls into `game/` for every number; computes none itself.
+
+- **`viz/route_map.py`** (graded Canvas viz, two layers like `combat_playback`):
+  - `route_node_specs(run, weather_for, selected_index=None) -> list[RouteNodeSpec]`
+    — **pure, Flet-free, test-asserted** (`tests/viz/test_route_map.py`): one spec per
+    `run.route` node in index order, each carrying index/city/weather/state/`is_boss`/
+    `is_selected`/`(x, y)`/state-tint colour. `weather_for(node)` supplies the *displayed*
+    weather; selection defaults to `run.current_node_index`.
+  - `build_route_map(run, weather_for, on_select, selected_index=None) -> ft.Control`
+    — draws the specs with `flet.canvas` (`cv.Line` lane behind, `cv.Circle` nodes on
+    top, index + 4-char weather label, boss = `DANGER` ring, focus = `TEXT_PRIMARY`
+    ring) inside a horizontally-scrolling `ft.Stack`; transparent overlay `ft.Container`
+    buttons per node hit-test → `on_select(node_index)` (no gesture math, per CLAUDE.md).
+- **`ui/views/trail.py`** `build_trail_view(page, run, *, on_play_next, on_save_exit)
+  -> ft.View` (route `/trail`):
+  - **Node focus panel** — selected node's city/type/weather (`weather_badge`),
+    team-wide Weather Favor (`weather_effects.ring_relation` tally ↑/·/↓), and the
+    deterministic **enemy preview** via `encounter.node_encounter(run.seed, node,
+    weather=…)` (boss `map_effect_id` surfaced). The **Play Next Encounter** button
+    shows only on the `CURRENT` node → `on_play_next(node)`.
+  - **Team summary** — Amber / Tempest rank / bench counts + roster rows
+    (affinity dot, name, `L{level} {role}`, HP).
+  - **Live weather (V.66/V.4)** — the view **owns** a T.7 `WeatherCache(ROUTE_CITY_IDS)`
+    + `WeatherRefresher`, started on open. **On open a kickstart worker thread fetches
+    the *current* node immediately** (then runs one seed tick for neighbours) so the
+    Trail shows live weather at once instead of waiting a full ~60s tick — the rest
+    fill at ≤3 nodes/pulse (V.11). The refresher's optional `on_tick=…` callback
+    repaints **each pulse** while the player sits on the Trail. **Repaints from these
+    worker threads marshal onto the Flet event loop via `page.run_task`** (`_schedule_render`
+    → `asyncio.run_coroutine_threadsafe`, the same pattern combat-view autoplay uses) —
+    a bare `page.update()` from a `threading.Timer` thread is unreliable on desktop.
+    A **no-key banner** ("Add one in Settings") shows when no key resolves.
+    **Display is tri-state by `CacheState` (V.66):** UNKNOWN → a `?` "weather pending"
+    chip (map label `?`, favor `— pending`) — **never a concrete weather it hasn't
+    fetched**; SUBSTITUTE → the city default weather **flagged `fallback`**; LIVE → the
+    weather badge unflagged. **No API key** (or `WeatherClient` `ValueError`) ⇒ refresher
+    skipped, so **every node stays UNKNOWN → `?`** until a key is configured. The enemy
+    preview/favor-generation still derive from the node's `default_weather`
+    deterministically (V.2) — *display* weather ≠ *game-logic* weather. The view is
+    **lifecycle-bounded**: `view.data` is
+    the refresher-stop handler that `main._pop` fires before popping, and **Save & Exit**
+    stops it explicitly then autosaves via `save.save_run` (V.65/V.36) → menu.
+- **Shared seam:** `encounter.node_encounter(run_seed, node, weather=None, dc) ->
+  NodeEncounter(enemies, map_effect_id)` is the **one deterministic dispatcher** (V.2)
+  the Trail preview uses now and the Prep `Start Combat` flow will reuse (T.23) — so the
+  previewed squad is byte-identical to the fought squad. `route.city_id_for_node(index)`
+  / `route.ROUTE_CITY_IDS` back the `Node` (which holds only the city *name*) with the
+  city id the weather cache keys on.
+- **Wiring (`main.py`):** New Run → RunStart → `_push_trail`; Play Next →
+  `_push_prep_stub` (a placeholder until the full Prep view, T.23); Save & Exit →
+  autosave + `_pop` to menu.
 
 The combat view is **pure presentation over the replay backend** (V.56): it
 renders a fight only through `resolve_combat` + the forward `CombatReplay`
@@ -204,12 +258,27 @@ inline.
 ## `ui/views/menu.py` — main menu (T.9, route `/`)
 
 `build_menu_view(page, *, on_new_run, on_continue, on_playfight, on_quit,
-save_exists=False) -> ft.View`. The app entry point (views_spec §4): title +
-pitch + four entries. **New Run** / **Continue** are surfaced but **disabled**
-(the Trail/Prep run shell, T.10/T.11, isn't built — Continue's hint reflects
-`save_exists`); **Playfight ▶** opens the combat dev harness; **Quit** closes the
+on_settings=None, save_exists=False) -> ft.View`. The app entry point
+(views_spec §4): title + pitch + entries. **New Run** is live (→ RunStart →
+Trail); **Continue** stays disabled until load-into-Trail (T.15, hint reflects
+`save_exists`); **Playfight ▶** opens the combat dev harness; **Settings**
+(rendered when `on_settings` is wired) opens the API-key view; **Quit** closes the
 app. Pure presentation — emits intent through the `on_*` callbacks; the host owns
 the view stack. Buttons keyed by their `content` label (Flet 0.84).
+
+## `ui/views/settings.py` — Settings (API key, route `/settings`)
+
+`build_settings_view(page, *, on_back) -> ft.View`. Lets a player set the
+OpenWeather API key **in-app** (no `.env`/shell needed). Pure presentation over
+**`src/app_config.py`** (Flet-free file I/O): a masked, reveal-able key field +
+**Save** → `app_config.save_api_key` (atomic temp→`os.replace`), status line
+(saved / cleared / none), and the config-file path. The key is **never displayed
+in full or logged** (V.3). Persistence lives in `~/<user-data>/tempest-fauna-trail/
+config.json` (sibling of `saves/`), kept **separate from `game/save.py`** (V.36 =
+*Run* persistence only). `app_config.resolve_api_key()` reads **env var → config
+file → None** (env wins). The Trail calls it on open: a key starts the refresher,
+none ⇒ every node stays `?` (V.66). Changing the key takes effect the next time the
+Trail opens (Settings is reached from the menu, so no Trail is live to re-init).
 
 ## `src/main.py` app shell
 

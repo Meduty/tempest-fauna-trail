@@ -9,6 +9,17 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
+# Load OPENWEATHER_API_KEY (and friends) from a repo-root .env so `flet run` sees
+# the same key the tests do (conftest loads it separately). `python-dotenv` is a
+# dev dependency — guard the import so packaged builds without it (or a shell that
+# already exported the key) still start. An existing env var always wins.
+try:
+    from dotenv import load_dotenv  # type: ignore
+
+    load_dotenv(_PROJECT_ROOT / ".env")
+except ImportError:
+    pass
+
 import flet as ft  # noqa: E402 — must follow the sys.path bootstrap above
 
 from src.ui.views.admin import build_admin_content  # noqa: E402
@@ -39,36 +50,55 @@ def _pop(page: ft.Page) -> None:
         page.update()
 
 
-def _push_trail_stub(page: ft.Page, run) -> None:
-    """Minimal post-pick landing (T.10 / 10a) — the real Trail view lands in T.11.
+def _push_prep_stub(page: ft.Page, run, node) -> None:
+    """Minimal Play-Next landing (T.11) — the full Prep view lands in T.23 (23a).
 
-    Confirms the run started and shows the starting roster + resources so the
-    New Run → champion-pick → run-loop seam is verifiable end to end now. Replaced
-    by `ui/views/trail.py` in T.11 (this is a clearly-marked placeholder)."""
+    Confirms the Trail → Prep seam (the current node + its deterministic enemy
+    squad) until `ui/views/prep.py` exists. Clearly-marked placeholder."""
+    from src.game.encounter import node_encounter
     from src.ui.theme import (
         BG, FONT_SIZE_BODY, FONT_SIZE_DISPLAY, SPACING_LG, SPACING_MD,
         SPACING_XXL, TEXT_MUTED, TEXT_PRIMARY,
     )
 
-    champ = run.roster[0]
-    node = run.current_node()
+    enc = node_encounter(run.seed, node, weather=node.weather)
     body = ft.Column(
         [
-            ft.Text("Run started", size=FONT_SIZE_DISPLAY, weight=ft.FontWeight.BOLD,
-                    color=TEXT_PRIMARY),
-            ft.Text(f"Champion: {champ.name}  ·  Amber: {run.amber}  ·  Rank: {run.tempest_rank}",
-                    size=FONT_SIZE_BODY, color=TEXT_PRIMARY),
-            ft.Text(f"Node {node.index}: {node.city}  ·  Shop: {len([s for s in run.shop_offers if s])} offers",
-                    size=FONT_SIZE_BODY, color=TEXT_MUTED),
+            ft.Text(f"Prep — Node {node.index}: {node.city}", size=FONT_SIZE_DISPLAY,
+                    weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
+            ft.Text(f"{node.node_type.value} · {node.weather.value} · "
+                    f"{len(enc.enemies)} enemies", size=FONT_SIZE_BODY, color=TEXT_PRIMARY),
             ft.Container(height=SPACING_LG),
-            ft.Text("Trail view arrives in T.11.", size=FONT_SIZE_BODY, color=TEXT_MUTED),
-            ft.TextButton("← Back to menu", on_click=lambda _e: _pop(page)),
+            ft.Text("Full Prep (placement + shop) arrives in T.23.",
+                    size=FONT_SIZE_BODY, color=TEXT_MUTED),
+            ft.TextButton("← Back to Trail", on_click=lambda _e: _pop(page)),
         ],
         spacing=SPACING_MD, horizontal_alignment=ft.CrossAxisAlignment.CENTER, tight=True,
     )
     root = ft.Container(bgcolor=BG, expand=True, alignment=ft.Alignment.CENTER,
                         padding=SPACING_XXL, content=body)
-    page.views.append(ft.View(route="/trail", controls=[root], padding=0))
+    page.views.append(ft.View(route="/prep", controls=[root], padding=0))
+    page.update()
+
+
+def _push_trail(page: ft.Page, run) -> None:
+    """Push the Trail view (T.11) — route map + node focus + team summary + live
+    weather. Play Next → Prep; Save & Exit autosaves the run and returns to menu."""
+    from src.game.save import default_save_dir, save_run
+    from src.ui.views.trail import build_trail_view
+
+    def _save_exit() -> None:
+        # Autosave via the atomic save layer (V.65/V.36), then back to the menu.
+        save_run(run, default_save_dir() / f"{run.run_id}.json")
+        _pop(page)  # fires the Trail's refresher-stop handler (V.66)
+
+    page.views.append(
+        build_trail_view(
+            page, run,
+            on_play_next=lambda node: _push_prep_stub(page, run, node),
+            on_save_exit=_save_exit,
+        )
+    )
     page.update()
 
 
@@ -83,7 +113,7 @@ def _start_new_run(page: ft.Page) -> None:
 
     def _on_pick(champion_id: str) -> None:
         run = new_run(seed, champion_id)
-        _push_trail_stub(page, run)
+        _push_trail(page, run)
 
     page.views.append(
         build_run_start_view(page, seed=seed, on_pick=_on_pick, on_back=lambda: _pop(page))
@@ -123,6 +153,11 @@ def _game_ui(page: ft.Page) -> None:
     def _continue() -> None:
         """Continue placeholder — load-into-Trail wired in T.15 (15b)."""
 
+    def _open_settings() -> None:
+        from src.ui.views.settings import build_settings_view
+        page.views.append(build_settings_view(page, on_back=lambda: _pop(page)))
+        page.update()
+
     save_exists = default_save_dir().exists() and any(default_save_dir().glob("*.json"))
 
     menu = build_menu_view(
@@ -131,6 +166,7 @@ def _game_ui(page: ft.Page) -> None:
         on_continue=_continue,
         on_playfight=lambda: _push_playfight(page),
         on_quit=_quit,
+        on_settings=_open_settings,
         save_exists=save_exists,
     )
 

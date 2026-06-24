@@ -49,6 +49,7 @@ def build_menu_view(
     on_continue: Callable[[], None],
     on_playfight: Callable[[], None],
     on_quit: Callable[[], None],
+    on_settings: Callable[[], None] | None = None,
     save_exists: bool = False,
 ) -> ft.View:
     """Build the `/` main-menu view (views_spec §4).
@@ -76,13 +77,21 @@ def build_menu_view(
     else:
         continue_btn = _disabled("Continue", "No saved run found.")
 
+    row_actions: list[ft.Control] = [
+        new_run,
+        continue_btn,
+        _primary("Playfight ▶", on_playfight),
+    ]
+    if on_settings is not None:
+        row_actions.append(
+            ft.OutlinedButton("Settings", width=_btn_w, height=46,
+                              on_click=lambda _e: on_settings())
+        )
+    row_actions.append(
+        ft.OutlinedButton("Quit", width=_btn_w, height=46, on_click=lambda _e: on_quit())
+    )
     actions = ft.Column(
-        [
-            new_run,
-            continue_btn,
-            _primary("Playfight ▶", on_playfight),
-            ft.OutlinedButton("Quit", width=_btn_w, height=46, on_click=lambda _e: on_quit()),
-        ],
+        row_actions,
         spacing=SPACING_MD,
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
     )

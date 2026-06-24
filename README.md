@@ -30,6 +30,38 @@ cp .env.example .env
 # edit .env, set OPENWEATHER_API_KEY=<your-key>
 ```
 
+### Weather API key (optional, but recommended)
+
+Live weather drives combat, so the Trail wants an [OpenWeather](https://openweathermap.org/api)
+key (free tier is plenty). Configure it **either** way:
+
+1. **`.env` file** (preferred for local dev) — `cp .env.example .env`, then edit the
+   one line:
+
+   ```env
+   OPENWEATHER_API_KEY=your_actual_key_here
+   ```
+
+   No quotes, no spaces around `=`. `.env` is git-ignored; the app/tests load it via
+   `python-dotenv`.
+
+2. **Environment variable** (CI / shells / one-off):
+
+   ```bash
+   export OPENWEATHER_API_KEY=your_actual_key_here
+   uv run flet run
+   ```
+
+3. **In-app Settings menu** (no terminal needed) — launch the app, open
+   **Settings** from the main menu, paste your key, **Save**. It persists to a local
+   config file (`~/<user-data>/tempest-fauna-trail/config.json`) and the Trail picks
+   it up next time you open it. An `OPENWEATHER_API_KEY` env var, if set, overrides it.
+
+**Without a key the game still runs** — the weather refresher simply never starts, so
+every Trail node shows a `?` **"weather pending"** marker (the app **never** invents
+fake weather it hasn't fetched). Add a key to see live weather and the affinity
+favor/clash it drives. The key is read from the environment and **never logged** (V.3).
+
 ### Run
 
 ```bash

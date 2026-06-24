@@ -319,3 +319,29 @@ class TestLookupHelpers:
                 node_index = offset + i + 1
                 assert stage_of(node_index).index == stage.index
             offset += len(stage.node_cities)
+
+
+# ---------------------------------------------------------------------------
+# city_id_for_node / ROUTE_CITY_IDS (T.11)
+# ---------------------------------------------------------------------------
+
+def test_route_city_ids_count_and_uniqueness() -> None:
+    from src.game.route import ROUTE_CITY_IDS
+    assert len(ROUTE_CITY_IDS) == ROUTE_NODE_COUNT
+    assert len(set(ROUTE_CITY_IDS)) == ROUTE_NODE_COUNT  # each city once
+
+
+def test_city_id_for_node_matches_build_route_order() -> None:
+    from src.game.route import city_id_for_node
+    route = build_route()
+    for node in route:
+        cid = city_id_for_node(node.index)
+        assert CITIES[cid].name == node.city  # id backs the node's city name
+
+
+def test_city_id_for_node_rejects_out_of_range() -> None:
+    from src.game.route import city_id_for_node
+    with pytest.raises(ValueError):
+        city_id_for_node(0)
+    with pytest.raises(ValueError):
+        city_id_for_node(ROUTE_NODE_COUNT + 1)

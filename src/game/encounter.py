@@ -29,7 +29,7 @@ from .content import (
     discover_abilities,
 )
 from .models import Enemy, WeatherState
-from .route import StageDef
+from .route import StageDef, stage_of
 from .scaling import level_scale_stats, power
 
 # ---------------------------------------------------------------------------
@@ -878,3 +878,55 @@ def _get_enemy_def(enemy_id: str) -> EnemyDef | None:
         if d.id == enemy_id:
             return d
     return None
+
+
+# ---------------------------------------------------------------------------
+# Per-node encounter dispatch (T.11) — one seam for Trail preview + Prep combat
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class NodeEncounter:
+    """The enemy squad (and boss map effect, if any) for one route node.
+
+    Single deterministic seam (V.2/V.63): the Trail enemy *preview* and the later
+    Prep `Start Combat` flow both call :func:`node_encounter` for the same node, so
+    the previewed squad is byte-identical to the squad actually fought. Non-combat
+    node types (AUGMENT/SUPPLY) yield an empty squad.
+    """
+
+    enemies: list[Enemy]
+    map_effect_id: str = ""
+
+
+def node_encounter(
+    run_seed: int,
+    node: "Node",
+    weather: WeatherState | None = None,
+    dc: float = DEFAULT_DC,
+) -> NodeEncounter:
+    """Generate the enemy squad for ``node`` deterministically (T.11).
+
+    Dispatches on ``node.node_type`` to the matching ``generate_*`` function,
+    deriving the stage from ``node.index``. ``weather`` (defaulting to the node's
+    own weather) only affects CHALLENGE affinity rolls. AUGMENT/SUPPLY nodes have
+    no fight, returning an empty :class:`NodeEncounter`. Pure + seed-deterministic
+    (V.2) — same ``(run_seed, node, weather, dc)`` ⇒ same squad.
+    """
+    from .models import NodeType  # local import — avoid widening module surface
+
+    stage = stage_of(node.index)
+    wx = weather if weather is not None else node.weather
+    match node.node_type:
+        case NodeType.FIGHT:
+            return NodeEncounter(generate_fight(run_seed, node.index, stage, dc))
+        case NodeType.REWARD:
+            return NodeEncounter(generate_reward(run_seed, node.index, stage, dc))
+        case NodeType.CHALLENGE:
+            squad, _reward = generate_challenge(run_seed, node.index, stage, wx, dc)
+            return NodeEncounter(squad)
+        case NodeType.BOSS_FIGHT:
+            enc = generate_boss_encounter(run_seed, node.index, stage)
+            return NodeEncounter(enc.all_enemies, enc.map_effect_id)
+        case _:  # AUGMENT / SUPPLY — no combat
+            return NodeEncounter([])
