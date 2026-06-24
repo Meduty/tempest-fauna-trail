@@ -119,15 +119,21 @@ Zones (views_spec §7.3):
     (`status` beat → `actor_id`'s cell, colour `_STATUS_COLORS[note]` else
     `WARNING`, keyed `stflash-{actor_id}-{note}`); the arrow loop otherwise skips
     `status` beats.
-  Both share the footprint **pop phase** (`fp_phase`) — `_has_action_fx(step)` (a
-  step with footprints **or** a heal/status beat) seeds the grow so halo/flash
-  animate identically to footprint shapes on Next/autoplay.
+  Both share the footprint **pop phase** (`fp_phase`); on manual `Next` the
+  per-beat drip (`_drip_action_beats`) re-seeds the grow as each heal/status beat is
+  revealed, so halo/flash animate like footprint shapes.
 - **Manual step = instant** full reveal of the static truth (action + arrows +
-  numbers + dots + footprint shape at once) so attacks always show; the footprint
-  **pop** is a non-blocking cosmetic grow (`_kick_footprint_pop` → `page.run_task`)
-  on top of that truth, so manual Next and autoplay animate the shape the **same
-  way** (user-set) and a rapid Next just leaves the full shape. The **real-time DOT
-  drip stays autoplay-only** (a rapid Next must never out-race an async reveal).
+  numbers + dots) so the DOTs+truth show, then the tick's **action beats reveal one
+  at a time** in recorded chronological order (intra-tick stagger): `_advance_to`
+  sets `reveal_n` to the step's full beat count (static truth for backward/seek), and
+  a forward `Next` re-seeds `reveal_n = 0` and `_drip_action_beats` reveals beats
+  `1..N` `_BEAT_STAGGER_S` apart — so when **multiple pieces act on one tick** you read
+  move→attack→… in order instead of all at once. Each newly-revealed beat pops its
+  footprint/halo/flash (`fp_phase`). Interrupt-safe (`anim_token`): a rapid Next
+  aborts the drip and the next advance shows everything. The **real-time DOT drip
+  stays autoplay-only**. ⚠ **Known-rough (D.28):** the stagger is **manual-`Next`
+  only** and feels clunky; **autoplay does not stagger** — it shows the tick's beats
+  together and is flagged for a **full rework** (pacing/illegibility).
 - **Action queue active highlight:** the entry(ies) at the current step's tick
   ("resolving now") render **bigger + accent-bordered** (`animate_size`); fixed-width
   row with horizontal overflow so the layout never shifts.

@@ -92,6 +92,11 @@ _BOARD_W = _MARGIN_X * 2 + (BOARD_WIDTH - 1) * _COL_W
 _BOARD_H = _MARGIN_Y * 2 + (BOARD_HEIGHT - 1) * _ROW_H + _ROW_H // 2
 
 _TWEEN_MS = 250              # token glide / bar-follow animation duration
+# Delay between consecutive action beats *within one tick* (intra-tick stagger).
+# Multiple pieces can act on the same tick; the engine records their beats in
+# chronological order, and the view reveals them one at a time this far apart so a
+# move→attack→… sequence reads in order instead of flashing all at once.
+_BEAT_STAGGER_S = 0.22
 
 # Map-effect cell tint by kind (boss board overlay, T.12b).
 _CELL_COLORS: dict[str, str] = {
@@ -306,6 +311,7 @@ def build_combat_view(
         "reveal_tick": 0,      # tick cutoff: pre_beats with tick<=this are shown; action at reveal_tick>=step.tick
         "anim_token": 0,       # invalidates an in-flight pre-beat drip on re-advance
         "fp_phase": 1.0,       # footprint-shape pop phase 0→1 (0 = tiny+clear seed, 1 = full). Cosmetic only.
+        "reveal_n": 0,         # action beats of the current step revealed so far (intra-tick stagger)
     }
 
     # --- controls that get rebuilt each render ---
@@ -355,9 +361,14 @@ def build_combat_view(
         # The animated forward path (`_step(+1)`/autoplay) lowers it then drips.
         state["anim_token"] += 1
         state["reveal_tick"] = target_tick
-        # Footprint shapes default to their full static residue; the pop path
-        # (`_kick_footprint_pop` / autoplay) seeds them small first to animate in.
+        # Footprint shapes default to their full static residue; the drip path
+        # (`_drip_action_beats` / autoplay) seeds them small first to animate in.
         state["fp_phase"] = 1.0
+        # Default: every action beat of the landed step is revealed (static truth,
+        # backward/rapid-Next). The forward animated path lowers it to 0 and drips
+        # the beats one at a time in recorded chronological order.
+        _new_step = playback.steps[new_cursor] if new_cursor >= 0 else None
+        state["reveal_n"] = len(_new_step.beats) if _new_step is not None else 0
 
     # ---------- board ----------
     def _token(p: PieceView, cx: float, cy: float, offx: float = 0.0, offy: float = 0.0) -> ft.Control:
@@ -425,6 +436,10 @@ def build_combat_view(
         reveal_tick = state["reveal_tick"]
         step = playback.steps[cursor] if cursor >= 0 else None
         action_shown = step is not None and reveal_tick >= step.tick
+        # Intra-tick stagger: only the first `reveal_n` action beats (recorded in
+        # chronological order) are drawn — the forward drip reveals them in turn so
+        # multiple pieces acting on one tick animate in sequence, not all at once.
+        revealed = step.beats[:state["reveal_n"]] if (action_shown and step is not None) else []
 
         # Effect lines + attacker lunge — driven off the *effect* beats (attack/
         # ability/heal), NOT the `cast` activation marker (whose target is the
@@ -442,7 +457,7 @@ def build_combat_view(
 
         lunge: dict[str, tuple[float, float]] = {}
         if action_shown:
-            for b in step.beats:
+            for b in revealed:
                 et = b.event_type
                 actor = pos_by_id.get(b.actor_id)
                 if actor is None:
@@ -486,14 +501,18 @@ def build_combat_view(
         # yet — kept correct, static).
         fp_overlays: list[ft.Control] = []
         if action_shown and step is not None and step.footprints:
+            # Join footprints to their cast by id — but only *revealed* casts, so a
+            # footprint pops with its cast beat during the intra-tick stagger.
             ability_by_cast = {
-                b.cast_id: b.note for b in step.beats
+                b.cast_id: b.note for b in revealed
                 if b.event_type == EVENT_CAST and b.cast_id >= 0
             }
             ph = state["fp_phase"]
             fp_scale = 0.35 + 0.65 * ph
             fp_op = ph
             for i, fp in enumerate(step.footprints):
+                if fp.cast_id not in ability_by_cast:
+                    continue  # its cast beat hasn't been revealed yet
                 aid = ability_by_cast.get(fp.cast_id, "")
                 intent = classify_intent(aid) if aid else None
                 if intent is not None and intent.kind in ("heal", "buff"):
@@ -526,7 +545,7 @@ def build_combat_view(
         if action_shown and step is not None:
             ph = state["fp_phase"]
             fx_scale = 0.35 + 0.65 * ph
-            for b in step.beats:
+            for b in revealed:
                 if b.event_type == EVENT_HEAL and b.target_id:
                     tgt = pos_by_id.get(b.target_id)
                     if tgt is None:
@@ -631,7 +650,7 @@ def build_combat_view(
                 _emit_number(b, base_rise=20 + i * 2, opacity=0.6, hit_count=pre_hits)
             if action_shown:
                 act_hits: dict[str, int] = {}
-                for b in step.beats:
+                for b in revealed:
                     _emit_number(b, base_rise=0, opacity=1.0, hit_count=act_hits)
 
         # canvas (cells/lines/swoosh/beam) behind, footprint AoE shapes next,
@@ -855,46 +874,46 @@ def build_combat_view(
             _render()
             prev_tick = t
 
-    def _has_action_fx(step: Any) -> bool:
-        """Whether a step carries a T.12c FX that should pop on reveal — a targeting
-        footprint shape, a heal (ally halo), or a status-apply (flash). Drives the
-        shared `fp_phase` grow so all three animate identically on Next/autoplay."""
-        return bool(step.footprints or any(
-            b.event_type in (EVENT_HEAL, EVENT_STATUS) for b in step.beats))
-
-    def _kick_footprint_pop() -> None:
-        """Cosmetic grow + fade-in of the current step's footprint shapes + intent
-        FX (T.12c — halos/flashes). The static truth (numbers / bars / arrows /
-        shape residue) is already painted by the caller's `_render`, so this pop is
-        purely the AoE ring / halo expanding — a rapid Next just interrupts the grow
-        and leaves the full (correct) shape. Plays identically for manual Next and
-        autoplay (the user wants both to behave the same — autoplay = auto-tapping
-        advance)."""
-        cur = state["cursor"]
+    async def _drip_action_beats(cur: int, token: int) -> None:
+        """Reveal a step's action beats one at a time in recorded (chronological)
+        order — multiple pieces acting on the same tick animate in sequence, not
+        all at once — popping each beat's footprint/halo/flash as it lands. The
+        full reveal is the static truth `_advance_to` already set, so a rapid Next
+        or a cursor move just interrupts (token/cursor guard) and leaves everything
+        shown. Used by both manual Next and autoplay so they behave identically."""
         step = playback.steps[cur] if 0 <= cur < playback.step_count() else None
-        if step is None or not _has_action_fx(step):
-            return  # `_advance_to` already set fp_phase = 1.0 (full static)
-        state["fp_phase"] = 0.0  # seed: tiny + transparent, then grow
-        tok = state["anim_token"]
-
-        async def _grow() -> None:
-            await asyncio.sleep(0.03)  # let the seed frame paint before tweening
-            if not state["alive"] or state["anim_token"] != tok or state["cursor"] != cur:
+        if step is None:
+            return
+        total = len(step.beats)
+        for n in range(1, total + 1):
+            if not state["alive"] or state["anim_token"] != token or state["cursor"] != cur:
+                return
+            state["reveal_n"] = n
+            state["fp_phase"] = 0.0  # seed the just-revealed beat's shape pop
+            _render()
+            await asyncio.sleep(0.03)  # let the seed frame paint before growing
+            if not state["alive"] or state["anim_token"] != token or state["cursor"] != cur:
                 return
             state["fp_phase"] = 1.0
             _render()
-
-        page.run_task(_grow)
+            if n < total:
+                await asyncio.sleep(_BEAT_STAGGER_S)  # gap before the next beat
 
     def _step(delta: int) -> None:
-        # Manual step = **instant full reveal** of the static truth (action +
-        # arrows + numbers + any interstitial DOTs all at once). `_advance_to`
-        # already set `reveal_tick` to the step tick, so the action shows
-        # immediately — no async drip to race a rapid Next. The footprint shape
-        # *pops* on top (cosmetic, interrupt-safe) so Next feels alive like autoplay.
+        # Forward Next animates the landed tick's action beats in recorded order
+        # (intra-tick stagger) so a multi-piece tick reads move→attack→… in
+        # sequence, each beat's footprint/halo/flash popping as it lands. Backward /
+        # seek shows the full static truth at once. Interrupt-safe via anim_token —
+        # a rapid Next aborts the drip and the next advance shows everything.
         _advance_to(state["cursor"] + delta)
-        _kick_footprint_pop()
-        _render()
+        cur = state["cursor"]
+        if delta > 0 and cur >= 0:
+            token = state["anim_token"]
+            state["reveal_n"] = 0  # seed: nothing yet; drip reveals beats in order
+            _render()
+            page.run_task(_drip_action_beats, cur, token)
+        else:
+            _render()
 
     def _restart() -> None:
         state["playing"] = False
@@ -924,7 +943,17 @@ def build_combat_view(
             await _play_step(cur, token)
             if state["anim_token"] != token:  # user interrupted mid-step
                 break
-            if _has_action_fx(playback.steps[cur]):  # cosmetic grow once action shown
+            # `_play_step` reveals the action at `reveal_tick == step.tick`; `reveal_n`
+            # stays at the step's full beat count (set by `_advance_to`), so autoplay
+            # shows the tick's beats together and the FX linger. Pop the shapes/halos.
+            # NOTE: the intra-tick **stagger is a manual-Next affordance only**;
+            # staggered autoplay is deferred polish (SPEC §T.12c / §D.28) — gating
+            # autoplay's beats behind the drip made single-beat steps flash sub-frame
+            # ("no animations"). Manual Next keeps the in-order reveal.
+            if playback.steps[cur].footprints or any(
+                b.event_type in (EVENT_HEAL, EVENT_STATUS)
+                for b in playback.steps[cur].beats
+            ):
                 state["fp_phase"] = 1.0
                 _render()
 
