@@ -1,9 +1,10 @@
-# UI — combat view + dev harness (LIVING)
+# UI — main menu + combat view + dev harness (LIVING)
 
-> **Status:** ✅ for the combat view core + dev harness (T.12a). The rest of the
-> Flet UI (Menu/Trail/Prep/Summary, T.9–T.15/T.23) is unbuilt — this doc grows as
-> those land. FROZEN design: [`views_spec.md`](../../design/systems/views_spec.md).
-> Audited by `/check`.
+> **Status:** ✅ for the main menu (T.9), combat view core + dev harness (T.12a).
+> The rest of the Flet UI (Trail/Prep/Summary, T.10–T.15/T.23) is unbuilt — this
+> doc grows as those land. New Run/Continue are surfaced-but-disabled in the menu
+> until the Trail run shell exists. FROZEN design:
+> [`views_spec.md`](../../design/systems/views_spec.md). Audited by `/check`.
 
 The combat view is **pure presentation over the replay backend** (V.56): it
 renders a fight only through `resolve_combat` + the forward `CombatReplay`
@@ -154,12 +155,24 @@ flag). Displayed durations → seconds via `TICKS_PER_SECOND` (V.39).
 against `CHAMPION_ROSTER` / `ITEM_REGISTRY` / `AUGMENT_REGISTRY`; errors surface
 inline.
 
-## `src/main.py` dev entry
+## `ui/views/menu.py` — main menu (T.9, route `/`)
 
-Behind `TEMPEST_DEV=1` (mirrors `TEMPEST_ADMIN`): a tiny harness↔combat
-`page.views` stack (`_dev_ui`) ahead of the real routing (T.15). `open_combat`
-pushes the combat view; Continue / `page.on_view_pop` pops it (firing the combat
-view's on-pop to stop autoplay). Existing counter/admin entries untouched.
+`build_menu_view(page, *, on_new_run, on_continue, on_playfight, on_quit,
+save_exists=False) -> ft.View`. The app entry point (views_spec §4): title +
+pitch + four entries. **New Run** / **Continue** are surfaced but **disabled**
+(the Trail/Prep run shell, T.10/T.11, isn't built — Continue's hint reflects
+`save_exists`); **Playfight ▶** opens the combat dev harness; **Quit** closes the
+app. Pure presentation — emits intent through the `on_*` callbacks; the host owns
+the view stack. Buttons keyed by their `content` label (Flet 0.84).
+
+## `src/main.py` app shell
+
+`_game_ui` is the default shell (no env gate): a `page.views` stack rooted at the
+menu (`/`). **Playfight** pushes the dev harness (`_push_playfight`) whose
+`open_combat` pushes the combat view; `_pop` / `page.on_view_pop` unwind the
+stack (firing the combat view's on-pop to stop autoplay). `TEMPEST_DEV=1` is a
+**legacy shortcut** that lands directly in Playfight; `TEMPEST_ADMIN=1` still
+opens the admin panel. Quit → `page.window.destroy()`.
 
 ## Invariants this layer owns
 
@@ -178,5 +191,6 @@ view's on-pop to stop autoplay). Existing counter/admin entries untouched.
 | `CombatSession` + pure cue/queue model (`build_playback`) | `src/ui/combat_playback.py` |
 | Combat view (canvas board, stepper drive loop, inspect, end panel) | `src/ui/views/combat.py` |
 | Dev harness launcher → `CombatSession` | `src/ui/views/dev_harness.py` |
-| Dev entry (`TEMPEST_DEV=1`) + harness↔combat nav | `src/main.py` |
+| Main menu (`/`, T.9) — New Run/Continue/Playfight/Quit | `src/ui/views/menu.py` |
+| App shell — menu↔harness↔combat `page.views` nav | `src/main.py` |
 | Design tokens / shared components (`meter_bar`, chips, …) | `src/ui/theme.py`, `src/ui/components/` |
