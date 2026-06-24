@@ -31,6 +31,7 @@ from src.game.combat import (
     EVENT_CAST,
     EVENT_DOT,
     EVENT_HEAL,
+    EVENT_STATUS,
     ROUND_TICKS,
     resolve_boss_combat,
     resolve_combat,
@@ -515,6 +516,51 @@ def build_combat_view(
                 elif fp.kind == "line":
                     shapes.extend(_footprint_line(fp, color))
 
+        # T.12c-B intent FX driven by recorded beats (observer-only, V.56): an
+        # ally **halo** on each healed target — covers single-target heals, which
+        # produce no targeting footprint, so the footprint recolour above never
+        # fires for them — and a **status-apply flash** on a piece the moment a
+        # status lands (`status` beats are otherwise skipped by the arrow loop).
+        # Both read existing heal/status beats; no sim-path change (V.2/V.14).
+        # They share the footprint pop phase so Next/autoplay animate them alike.
+        if action_shown and step is not None:
+            ph = state["fp_phase"]
+            fx_scale = 0.35 + 0.65 * ph
+            for b in step.beats:
+                if b.event_type == EVENT_HEAL and b.target_id:
+                    tgt = pos_by_id.get(b.target_id)
+                    if tgt is None:
+                        continue
+                    hx, hy = _cell_xy(tgt.q, tgt.r)
+                    hr = _TOKEN_R + 7
+                    fp_overlays.append(ft.Container(
+                        key=f"heal-halo-{b.target_id}",
+                        left=hx - hr, top=hy - hr, width=hr * 2, height=hr * 2,
+                        border_radius=hr,
+                        bgcolor=ft.Colors.with_opacity(0.15, SUCCESS),
+                        border=ft.Border.all(2.5, SUCCESS),
+                        scale=fx_scale, opacity=ph,
+                        animate_scale=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
+                        animate_opacity=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
+                    ))
+                elif b.event_type == EVENT_STATUS:
+                    afflicted = pos_by_id.get(b.actor_id)  # status beat: actor = afflicted
+                    if afflicted is None:
+                        continue
+                    sx, sy = _cell_xy(afflicted.q, afflicted.r)
+                    sr = _TOKEN_R + 4
+                    scolor = _STATUS_COLORS.get(b.note, WARNING)
+                    fp_overlays.append(ft.Container(
+                        key=f"stflash-{b.actor_id}-{b.note}",
+                        left=sx - sr, top=sy - sr, width=sr * 2, height=sr * 2,
+                        border_radius=sr,
+                        bgcolor=ft.Colors.with_opacity(0.22, scolor),
+                        border=ft.Border.all(2, scolor),
+                        scale=fx_scale, opacity=ph,
+                        animate_scale=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
+                        animate_opacity=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
+                    ))
+
         for p in pieces:
             if not p.alive:
                 continue
@@ -809,16 +855,24 @@ def build_combat_view(
             _render()
             prev_tick = t
 
+    def _has_action_fx(step: Any) -> bool:
+        """Whether a step carries a T.12c FX that should pop on reveal — a targeting
+        footprint shape, a heal (ally halo), or a status-apply (flash). Drives the
+        shared `fp_phase` grow so all three animate identically on Next/autoplay."""
+        return bool(step.footprints or any(
+            b.event_type in (EVENT_HEAL, EVENT_STATUS) for b in step.beats))
+
     def _kick_footprint_pop() -> None:
-        """Cosmetic grow + fade-in of the current step's footprint shapes (T.12c).
-        The static truth (numbers / bars / arrows / shape residue) is already
-        painted by the caller's `_render`, so this pop is purely the AoE ring
-        expanding — a rapid Next just interrupts the grow and leaves the full
-        (correct) shape. Plays identically for manual Next and autoplay (the user
-        wants both to behave the same — autoplay = auto-tapping advance)."""
+        """Cosmetic grow + fade-in of the current step's footprint shapes + intent
+        FX (T.12c — halos/flashes). The static truth (numbers / bars / arrows /
+        shape residue) is already painted by the caller's `_render`, so this pop is
+        purely the AoE ring / halo expanding — a rapid Next just interrupts the grow
+        and leaves the full (correct) shape. Plays identically for manual Next and
+        autoplay (the user wants both to behave the same — autoplay = auto-tapping
+        advance)."""
         cur = state["cursor"]
         step = playback.steps[cur] if 0 <= cur < playback.step_count() else None
-        if step is None or not step.footprints:
+        if step is None or not _has_action_fx(step):
             return  # `_advance_to` already set fp_phase = 1.0 (full static)
         state["fp_phase"] = 0.0  # seed: tiny + transparent, then grow
         tok = state["anim_token"]
@@ -870,7 +924,7 @@ def build_combat_view(
             await _play_step(cur, token)
             if state["anim_token"] != token:  # user interrupted mid-step
                 break
-            if playback.steps[cur].footprints:  # cosmetic grow once action shown
+            if _has_action_fx(playback.steps[cur]):  # cosmetic grow once action shown
                 state["fp_phase"] = 1.0
                 _render()
 

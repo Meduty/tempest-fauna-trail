@@ -103,14 +103,25 @@ Zones (views_spec §7.3):
   `animate_scale`/`animate_opacity`) then stays as the **static residue**. A `line`
   (beam) draws on the canvas (`_footprint_line`; no roster ability uses
   `line_targets` yet — kept correct).
-- **Ability-intent recolour (T.12c-B, partial):** the cast's intent
-  (`classify_intent` in `combat_playback.py`, from `AbilityMeta.tags`: heal →
-  summon → damage-element → buff) recolours the footprint shape — an ally-directed
-  **heal/buff** renders as a **green halo** (`SUCCESS`) instead of an element
-  colour, and a **control** ability adds a **`WARNING` telegraph ring** just
-  outside the AoE (keyed `fp-tel-{cast_id}-{i}`). (Sprites/projectiles still
-  deferred. Phase B **remaining**: status-apply flash + ally halos on heals that
-  produce no targeting footprint.)
+- **Ability-intent recolour (T.12c-B):** the cast's intent (`classify_intent` in
+  `combat_playback.py`, from `AbilityMeta.tags`: heal → summon → damage-element →
+  buff) recolours the footprint shape — an ally-directed **heal/buff** renders as a
+  **green halo** (`SUCCESS`) instead of an element colour, and a **control** ability
+  adds a **`WARNING` telegraph ring** just outside the AoE (keyed
+  `fp-tel-{cast_id}-{i}`). (Sprites/projectiles still deferred, D.27.)
+- **Beat-driven intent FX (T.12c-B):** observer-only overlays read from the
+  recorded `heal`/`status` beats (no sim-path change, V.2/V.14) so single-target
+  casts — which produce no footprint — still read intent:
+  - **Ally halo** — a green (`SUCCESS`) ring on each **healed target** (`heal` beat
+    → `target_id`'s cell, keyed `heal-halo-{target_id}`); covers single-target heals
+    the footprint recolour can't reach.
+  - **Status-apply flash** — a coloured disc on a piece the moment a status lands
+    (`status` beat → `actor_id`'s cell, colour `_STATUS_COLORS[note]` else
+    `WARNING`, keyed `stflash-{actor_id}-{note}`); the arrow loop otherwise skips
+    `status` beats.
+  Both share the footprint **pop phase** (`fp_phase`) — `_has_action_fx(step)` (a
+  step with footprints **or** a heal/status beat) seeds the grow so halo/flash
+  animate identically to footprint shapes on Next/autoplay.
 - **Manual step = instant** full reveal of the static truth (action + arrows +
   numbers + dots + footprint shape at once) so attacks always show; the footprint
   **pop** is a non-blocking cosmetic grow (`_kick_footprint_pop` → `page.run_task`)

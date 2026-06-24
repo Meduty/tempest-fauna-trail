@@ -477,6 +477,12 @@ def test_recorder_emits_heal_dot_status_spawn_despawn_beats():
 
     heal = next(e for e in rec._events if e.event_type == EVENT_HEAL)
     assert heal.amount == 40 and heal.hp_after == 140
+    # T.12c-B view contract: the heal beat names the healed piece (ally-halo VFX
+    # finds its cell by target_id) and the status beat names the afflicted piece +
+    # status id (apply-flash finds the cell by actor_id, colours by note).
+    assert heal.target_id == tgt.id
+    status = next(e for e in rec._events if e.event_type == EVENT_STATUS)
+    assert status.actor_id == tgt.id and status.note == "burn"
     dot = next(e for e in rec._events if e.event_type == EVENT_DOT)
     assert dot.hp_after == int(tgt.hp)
     # T.37c: spawn carries structured coords, not a parsed `note` string (B.28).
