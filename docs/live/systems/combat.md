@@ -173,6 +173,19 @@ fires `on_despawn` (distinct from `death`). The recorder is observer-only ⇒ si
 byte-identical; only `combat_log` golden text re-baselines. `record_attack` (a
 dead parallel path) was removed — `_on_attack_landed` is the sole attack producer.
 
+**Targeting footprints (T.12c, V.61) — observer-only shape telemetry.** Alongside
+beats, the recorder collects a `footprints: list[Footprint]` for the combat view's
+per-ability-shape VFX. The targeting helpers record the geometry they already
+compute: `enemies_in_radius`/`allies_in_radius`/`neighbors_of` → a `circle`
+(center + radius), `line_targets` → a `line` (origin + direction + length), via
+`ctx.note_footprint(kind, q, r, …)` → `on_footprint` → `_on_footprint`. Capture
+fires **only while a cast is in flight** (`note_footprint` gates on
+`_current_cast_id`), so idle/AI/passive target queries don't record. It is
+**observer-only**: the helper returns its target list unchanged and, on the sim /
+`CombatReplay` path (no recorder subscribed), the bus fire no-ops ⇒ **byte-identical**
+(V.2/V.14, extends V.54). The `cast` + `ability` beats now carry the engine's
+`cast_id` so the view joins a footprint to its ability for element colour.
+
 <a id="rendering"></a>
 ## Rendering
 
@@ -237,6 +250,10 @@ drives the floating *number*, the stepper drives the *bar*. The stream is
 - **V.58** — `damage_type` is a closed vocabulary `{physical, magical, true}`;
   `deal_damage` validates + raises on anything else so a typo can't be mis-mitigated
   as physical (B.29).
+- **V.61** — targeting footprints are observer-only telemetry for the combat view:
+  helpers record geometry via `ctx.note_footprint` → `on_footprint` only while a
+  cast is in flight; the recorder stamps `footprint` records on `BattleResult`;
+  capture never changes targeting results or damage ⇒ byte-identical (T.12c).
 
 ## File map
 
@@ -246,7 +263,8 @@ drives the floating *number*, the stepper drives the *bar*. The stream is
 | Single tick loop (`_step_combat` generator) + `run` drain, pathing, damage, spawns, constants | `combat/engine.py` |
 | Forward stepper `CombatReplay` + `inspect_at_tick` (recompute state at a tick) | `combat/replay.py` |
 | Mutator API (the only way to touch the world) | `combat/context.py` |
-| Event → `BattleResult` | `combat/recorder.py` |
+| Event → `BattleResult` (incl. footprint telemetry) | `combat/recorder.py` |
+| Targeting helpers + footprint capture | `targeting.py` (`ctx.note_footprint` in `combat/context.py`) |
 | Model → `Piece` compile + weather + passives | `loadout.py` |
 | Runtime piece | `piece.py` |
 | Boss wiring (map effect) | `tools/playtest/_common.py::resolve_boss_combat` |

@@ -135,13 +135,14 @@ class CombatReplay:
         run_mods: Any = None,
         map_effect_id: str = "",
         seed: int = 42,
+        positions: dict[str, tuple[int, int]] | None = None,
     ) -> None:
         from src.game.combat.engine import _step_combat
         from src.game.combat.resolve import build_combat
 
         ctx, _ = build_combat(
             team, enemies, weather, run_mods=_clone_run_mods(run_mods),
-            seed=seed, with_recorder=False,
+            seed=seed, with_recorder=False, positions=positions,
         )
         # Boss replay: attach the map effect before the loop runs (mirrors
         # resolve_boss_combat) so hazard/sunlit/fog reproduce exactly (V.55/V.59).

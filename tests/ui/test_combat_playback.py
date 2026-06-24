@@ -177,6 +177,66 @@ def test_pre_beat_ticks_groups_distinct_ticks_ascending():
     assert all(t in ticks for t in {b.tick for b in step.pre_beats})
 
 
+def test_steps_carry_footprints_joined_by_tick():
+    """T.12c/V.61: recorded targeting footprints surface on the step at their tick
+    (a footprint shares its cast action step's tick), every footprint joins a step,
+    and a footprint's cast_id matches a `cast` beat in that step (colour join)."""
+    result, *_ = _result()  # champ_aurion casts a radius-2 AoE
+    assert result.footprints, "fixture produced no footprints"
+    pb = build_playback(result)
+    on_steps = [(s.tick, f) for s in pb.steps for f in s.footprints]
+    # every footprint lands on a step whose tick equals the footprint's tick
+    for tick, fp in on_steps:
+        assert fp.tick == tick
+    # no footprint dropped (each joins exactly one step at its tick)
+    assert len(on_steps) == len(result.footprints)
+    # the footprint's cast_id matches a cast beat in its step → colour join works
+    for s in pb.steps:
+        cast_ids = {b.cast_id for b in s.beats if b.event_type == EVENT_CAST}
+        for fp in s.footprints:
+            assert fp.cast_id in cast_ids
+
+
+def test_footprints_carry_no_resource_numbers():
+    """B.28 guard extension: footprints are geometry only — Step gaining a
+    `footprints` field must not leak resource state."""
+    result, *_ = _result()
+    pb = build_playback(result)
+    for s in pb.steps:
+        for fp in s.footprints:
+            names = {f.name for f in dataclasses.fields(fp)}
+            assert not (names & {"hp", "max_hp", "barrier", "mana", "hp_after"})
+
+
+def test_classify_intent_maps_known_abilities():
+    from src.ui.combat_playback import classify_intent
+    # damage + control (disarm) — Aurion
+    aurion = classify_intent("champ_aurion.active")
+    assert aurion.kind == "damage" and aurion.control is True
+    # heal wins over a damage element (sunmane_lion = physical+heal)
+    assert classify_intent("champ_sunmane_lion.active").kind == "heal"
+    assert classify_intent("champ_dawnwisp.active").kind == "heal"
+    # pure team buff
+    assert classify_intent("champ_goldcrest_lark.active").kind == "buff"
+    # summon
+    assert classify_intent("champ_umbra.active").kind == "summon"
+    # unknown id → safe damage default, no crash
+    assert classify_intent("does_not_exist").kind == "damage"
+
+
+def test_classify_intent_covers_every_ability_meta():
+    """Tag-coverage guard: every roster ability id classifies to a valid intent
+    kind without error (so new content can't desync the VFX classifier)."""
+    from src.game.registries import ABILITY_META
+    from src.ui.combat_playback import classify_intent
+    assert ABILITY_META, "ABILITY_META not populated"
+    valid = {"damage", "heal", "buff", "summon"}
+    for aid in ABILITY_META:
+        intent = classify_intent(aid)
+        assert intent.kind in valid, f"{aid} → {intent.kind}"
+        assert isinstance(intent.control, bool)
+
+
 def test_combat_playback_has_no_flet_import():
     import src.ui.combat_playback as mod
     src = open(mod.__file__).read()

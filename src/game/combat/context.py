@@ -23,6 +23,7 @@ from src.game.events import (
     DamageEvent,
     DeathEvent,
     DespawnEvent,
+    FootprintEvent,
     HealEvent,
     KillEvent,
     SpawnEvent,
@@ -467,6 +468,27 @@ class CombatContext:
         # Clean up cast dedup
         self._bus.clear_cast(cast_id)
         self._current_cast_id = old_cast_id
+
+    def note_footprint(
+        self, kind: str, center_q: int, center_r: int, *,
+        radius: int = 0, direction: tuple[int, int] = (0, 0), length: int = 0,
+    ) -> None:
+        """Record a targeting helper's geometry for the combat view (V.61).
+
+        **Observer-only telemetry.** Fires `on_footprint` ONLY while a cast is in
+        flight (`_current_cast_id` set) so idle/AI/passive target queries don't
+        record. No subscriber on the sim / `CombatReplay` path ⇒ the bus fire
+        no-ops ⇒ **byte-identical** (V.2/V.14). Never touches targeting results or
+        damage — the calling helper returns its target list unchanged.
+        """
+        if self._current_cast_id is None:
+            return
+        event = FootprintEvent(
+            cast_id=self._current_cast_id, kind=kind,
+            center_q=center_q, center_r=center_r,
+            radius=radius, direction=direction, length=length,
+        )
+        self._bus.fire("on_footprint", event, cast_id=self._current_cast_id, ctx=self)
 
     def gain_mana(self, actor: Piece, amount: float) -> None:
         """Add mana to ALL of actor's active slots (separate pools).

@@ -38,12 +38,13 @@ from src.game.combat import (
 from src.game.combat.engine import DMG_MAGICAL, DMG_TRUE
 from src.game.combat.recorder import DMG_DOT, DMG_PHYSICAL
 from src.game.combat.replay import PieceView
-from src.game.models import CombatOutcome
+from src.game.models import CombatOutcome, Footprint
+from src.game.registries import ABILITY_META
 from src.ui.combat_playback import (
     CombatSession,
-    Playback,
     QueueEntry,
     build_playback,
+    classify_intent,
     is_sudden_death,
     playback_delay_s,
     pre_beat_ticks,
@@ -130,6 +131,58 @@ def _swoosh(ax: float, ay: float, tx: float, ty: float, color: str) -> list:
                    start_angle=start, sweep_angle=math.radians(150), paint=paint)]
 
 
+def _fp_pixel_radius(radius_cells: int) -> float:
+    """A footprint's hex radius in cells → pixel radius (≈ one row per cell ring)."""
+    return max(float(_TOKEN_R), radius_cells * _ROW_H)
+
+
+def _footprint_circle(fp: Footprint, color: str, idx: int,
+                      scale: float, opacity: float) -> ft.Control:
+    """A radius-AoE footprint: translucent fill + ring, keyed + `animate_scale`/
+    `animate_opacity` so it pops (expand + fade-in) when revealed and stays as the
+    static residue. Keyed by cast id + index so concurrent footprints don't clash."""
+    cx, cy = _cell_xy(fp.center_q, fp.center_r)
+    pr = _fp_pixel_radius(fp.radius)
+    return ft.Container(
+        key=f"fp-{fp.cast_id}-{idx}",
+        left=cx - pr, top=cy - pr, width=pr * 2, height=pr * 2, border_radius=pr,
+        bgcolor=ft.Colors.with_opacity(0.16, color),
+        border=ft.Border.all(2.5, color),
+        scale=scale, opacity=opacity,
+        animate_scale=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
+        animate_opacity=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
+    )
+
+
+def _footprint_line(fp: Footprint, color: str) -> list:
+    """A beam footprint: a thick element-coloured line from the origin along the
+    direction for `length` cells. Static canvas shape (no roster ability uses
+    `line_targets` yet — kept correct for when one does / for direct tests)."""
+    cx, cy = _cell_xy(fp.center_q, fp.center_r)
+    dq, dr = fp.direction
+    ex, ey = _cell_xy(fp.center_q + dq * fp.length, fp.center_r + dr * fp.length)
+    return [cv.Line(cx, cy, ex, ey,
+                    ft.Paint(color=color, style=ft.PaintingStyle.STROKE, stroke_width=6))]
+
+
+# Per-ability-shape VFX (T.12c). Element colour from `AbilityMeta.tags` (the
+# UI-iconography vocab uses "magic"/"physical"/"true"); falls back to ACCENT.
+_ELEMENT_COLORS: dict[str, str] = {
+    "physical": DANGER, "magic": ACCENT, "true": TEXT_PRIMARY,
+}
+
+
+def _element_color(ability_id: str) -> str:
+    """The footprint shape colour for an ability id, from its `AbilityMeta` element
+    tag. Unknown / untagged → ACCENT (V.61: view reads `AbilityMeta`, no math)."""
+    meta = ABILITY_META.get(ability_id)
+    if meta is not None:
+        for tag in meta.tags:
+            if tag in _ELEMENT_COLORS:
+                return _ELEMENT_COLORS[tag]
+    return ACCENT
+
+
 def _cell_xy(q: int, r: int) -> tuple[float, float]:
     """Offset-hex (q,r) → pixel centre. Odd columns stagger down half a row."""
     x = _MARGIN_X + q * _COL_W
@@ -202,18 +255,20 @@ def build_combat_view(
         return CombatReplay(
             session.team, session.enemies, session.weather,
             run_mods=session.run_mods, map_effect_id=session.map_effect_id,
+            positions=session.positions,
         )
 
     if boss:
         result = resolve_boss_combat(
             session.team, session.enemies, session.weather,
             map_effect_id=session.map_effect_id, node_id=session.node_id,
-            run_mods=session.run_mods,
+            run_mods=session.run_mods, positions=session.positions,
         )
     else:
         result = resolve_combat(
             session.team, session.enemies, session.weather,
             node_id=session.node_id, run_mods=session.run_mods,
+            positions=session.positions,
         )
     playback = build_playback(result)
 
@@ -249,6 +304,7 @@ def build_combat_view(
         "alive": True,         # cleared on view pop → stops the autoplay thread
         "reveal_tick": 0,      # tick cutoff: pre_beats with tick<=this are shown; action at reveal_tick>=step.tick
         "anim_token": 0,       # invalidates an in-flight pre-beat drip on re-advance
+        "fp_phase": 1.0,       # footprint-shape pop phase 0→1 (0 = tiny+clear seed, 1 = full). Cosmetic only.
     }
 
     # --- controls that get rebuilt each render ---
@@ -298,6 +354,9 @@ def build_combat_view(
         # The animated forward path (`_step(+1)`/autoplay) lowers it then drips.
         state["anim_token"] += 1
         state["reveal_tick"] = target_tick
+        # Footprint shapes default to their full static residue; the pop path
+        # (`_kick_footprint_pop` / autoplay) seeds them small first to animate in.
+        state["fp_phase"] = 1.0
 
     # ---------- board ----------
     def _token(p: PieceView, cx: float, cy: float, offx: float = 0.0, offy: float = 0.0) -> ft.Control:
@@ -414,6 +473,48 @@ def build_combat_view(
                     shapes.extend(_arrow(ax, ay, bx, by, _DMG_COLORS.get(b.note, ACCENT)))
                     _lunge(actor, bx, by)
 
+        # Per-ability-shape VFX (T.12c, V.61): the cast's recorded targeting
+        # footprint(s). Colour joins each footprint to its cast by `cast_id` (the
+        # `cast` beat carries the ability id in `note`). The cast's *intent*
+        # (T.12c-B, `classify_intent`) recolours the shape: an ally-directed
+        # heal/buff renders as a green halo (not an element colour), and a control
+        # ability adds a WARNING telegraph ring just outside the AoE. A `circle`
+        # (radius AoE) is an animated overlay — translucent fill + ring that pops
+        # (expand + fade-in) via `fp_phase` then stays as the static residue. A
+        # `line` (beam) draws on the canvas (no roster ability uses `line_targets`
+        # yet — kept correct, static).
+        fp_overlays: list[ft.Control] = []
+        if action_shown and step is not None and step.footprints:
+            ability_by_cast = {
+                b.cast_id: b.note for b in step.beats
+                if b.event_type == EVENT_CAST and b.cast_id >= 0
+            }
+            ph = state["fp_phase"]
+            fp_scale = 0.35 + 0.65 * ph
+            fp_op = ph
+            for i, fp in enumerate(step.footprints):
+                aid = ability_by_cast.get(fp.cast_id, "")
+                intent = classify_intent(aid) if aid else None
+                if intent is not None and intent.kind in ("heal", "buff"):
+                    color = SUCCESS  # ally-directed → green halo (T.12c-B)
+                else:
+                    color = _element_color(aid)
+                if fp.kind == "circle":
+                    fp_overlays.append(_footprint_circle(fp, color, i, fp_scale, fp_op))
+                    if intent is not None and intent.control:
+                        # control telegraph: WARNING ring just outside the AoE
+                        cx, cy = _cell_xy(fp.center_q, fp.center_r)
+                        tpx = _fp_pixel_radius(fp.radius) + 5
+                        fp_overlays.append(ft.Container(
+                            key=f"fp-tel-{fp.cast_id}-{i}",
+                            left=cx - tpx, top=cy - tpx,
+                            width=tpx * 2, height=tpx * 2, border_radius=tpx,
+                            border=ft.Border.all(2, WARNING), opacity=fp_op,
+                            animate_opacity=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
+                        ))
+                elif fp.kind == "line":
+                    shapes.extend(_footprint_line(fp, color))
+
         for p in pieces:
             if not p.alive:
                 continue
@@ -487,9 +588,11 @@ def build_combat_view(
                 for b in step.beats:
                     _emit_number(b, base_rise=0, opacity=1.0, hit_count=act_hits)
 
-        # canvas (cells/lines/swoosh) behind, tokens+bars next, numbers on top.
+        # canvas (cells/lines/swoosh/beam) behind, footprint AoE shapes next,
+        # tokens+bars over them, numbers on top.
         board_stack.controls = [
-            cv.Canvas(shapes=shapes, width=_BOARD_W, height=_BOARD_H), *overlays, *numbers,
+            cv.Canvas(shapes=shapes, width=_BOARD_W, height=_BOARD_H),
+            *fp_overlays, *overlays, *numbers,
         ]
 
     # ---------- action queue ----------
@@ -706,13 +809,37 @@ def build_combat_view(
             _render()
             prev_tick = t
 
+    def _kick_footprint_pop() -> None:
+        """Cosmetic grow + fade-in of the current step's footprint shapes (T.12c).
+        The static truth (numbers / bars / arrows / shape residue) is already
+        painted by the caller's `_render`, so this pop is purely the AoE ring
+        expanding — a rapid Next just interrupts the grow and leaves the full
+        (correct) shape. Plays identically for manual Next and autoplay (the user
+        wants both to behave the same — autoplay = auto-tapping advance)."""
+        cur = state["cursor"]
+        step = playback.steps[cur] if 0 <= cur < playback.step_count() else None
+        if step is None or not step.footprints:
+            return  # `_advance_to` already set fp_phase = 1.0 (full static)
+        state["fp_phase"] = 0.0  # seed: tiny + transparent, then grow
+        tok = state["anim_token"]
+
+        async def _grow() -> None:
+            await asyncio.sleep(0.03)  # let the seed frame paint before tweening
+            if not state["alive"] or state["anim_token"] != tok or state["cursor"] != cur:
+                return
+            state["fp_phase"] = 1.0
+            _render()
+
+        page.run_task(_grow)
+
     def _step(delta: int) -> None:
-        # Manual step = **instant full reveal** (action + arrows + numbers + any
-        # interstitial DOTs all at once). `_advance_to` already set `reveal_tick`
-        # to the step tick, so the action shows immediately — no async drip to
-        # race a rapid Next (which previously aborted before the arrow/number
-        # appeared). The real-time DOT drip is an autoplay feature.
+        # Manual step = **instant full reveal** of the static truth (action +
+        # arrows + numbers + any interstitial DOTs all at once). `_advance_to`
+        # already set `reveal_tick` to the step tick, so the action shows
+        # immediately — no async drip to race a rapid Next. The footprint shape
+        # *pops* on top (cosmetic, interrupt-safe) so Next feels alive like autoplay.
         _advance_to(state["cursor"] + delta)
+        _kick_footprint_pop()
         _render()
 
     def _restart() -> None:
@@ -738,10 +865,14 @@ def build_combat_view(
             cur = state["cursor"]
             token = state["anim_token"]
             state["reveal_tick"] = -1
+            state["fp_phase"] = 0.0  # seed the footprint pop; grows after reveal
             _render()
             await _play_step(cur, token)
             if state["anim_token"] != token:  # user interrupted mid-step
                 break
+            if playback.steps[cur].footprints:  # cosmetic grow once action shown
+                state["fp_phase"] = 1.0
+                _render()
 
     def _toggle_autoplay(_e: Any) -> None:
         state["playing"] = not state["playing"]

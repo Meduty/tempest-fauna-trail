@@ -1,9 +1,10 @@
-# UI — combat view + dev harness (LIVING)
+# UI — main menu + combat view + dev harness (LIVING)
 
-> **Status:** ✅ for the combat view core + dev harness (T.12a). The rest of the
-> Flet UI (Menu/Trail/Prep/Summary, T.9–T.15/T.23) is unbuilt — this doc grows as
-> those land. FROZEN design: [`views_spec.md`](../../design/systems/views_spec.md).
-> Audited by `/check`.
+> **Status:** ✅ for the main menu (T.9), combat view core + dev harness (T.12a).
+> The rest of the Flet UI (Trail/Prep/Summary, T.10–T.15/T.23) is unbuilt — this
+> doc grows as those land. New Run/Continue are surfaced-but-disabled in the menu
+> until the Trail run shell exists. FROZEN design:
+> [`views_spec.md`](../../design/systems/views_spec.md). Audited by `/check`.
 
 The combat view is **pure presentation over the replay backend** (V.56): it
 renders a fight only through `resolve_combat` + the forward `CombatReplay`
@@ -28,11 +29,13 @@ no change. The view owns resolution (takes inputs, not a pre-resolved result).
 
 `build_playback(result) -> Playback` turns the recorded event stream into:
 
-- **`Playback.steps: list[Step]`** — one `Step(tick, round, beats, pre_beats)`
-  per **action moment**. DOT-only ticks are **absorbed**: a step's `beats` are the
-  action cues at `tick` (attack/cast/ability/heal/death/spawn/despawn/move), and
-  `pre_beats` are the DOTs that ticked *between* the previous action step and this
-  one. So Next goes action→action (no DOT-only steps), and the view drips
+- **`Playback.steps: list[Step]`** — one `Step(tick, round, beats, pre_beats,
+  footprints)` per **action moment**. DOT-only ticks are **absorbed**: a step's
+  `beats` are the action cues at `tick` (attack/cast/ability/heal/death/spawn/
+  despawn/move), and `pre_beats` are the DOTs that ticked *between* the previous
+  action step and this one. **`footprints`** (T.12c) are the cast's recorded
+  targeting geometry at that tick (`BattleResult.footprints` joined by tick) — the
+  per-ability-shape VFX; geometry only, no resource numbers. So Next goes action→action (no DOT-only steps), and the view drips
   `pre_beats` chronologically before showing the action ("what bled in between").
   `round = tick // ROUND_TICKS`.
 - **`Playback.queue(cursor) -> list[QueueEntry]`** — the forward **action-queue
@@ -90,11 +93,30 @@ Zones (views_spec §7.3):
   attacker **lunges** toward its target (offset, tweened). **Melee** basic attacks
   draw a red **swoosh** (`_swoosh`, `cv.Arc` crescent facing the attacker);
   **ranged/ability/cast** draw a directional **arrow** (`_arrow`, colour by damage
-  type); AoE/self casts → a ring on the caster. (No distinct spell VFX/projectile
-  yet — sprite pass deferred.)
-- **Manual step = instant** full reveal (action + arrows + numbers + dots at once)
-  so attacks always show; the **real-time DOT drip is autoplay-only** (a rapid Next
-  must never out-race an async reveal).
+  type); AoE/self casts → a ring on the caster.
+- **Per-ability-shape VFX (T.12c, V.61):** a cast's recorded targeting
+  **footprint** (`step.footprints`, joined to the `cast` beat by `cast_id`) draws
+  in the ability's **element colour** (`_element_color` from `AbilityMeta.tags`:
+  magic→accent, physical→danger, true→white). A `circle` (radius AoE) is an
+  **animated overlay** (`_footprint_circle`, keyed `fp-{cast_id}-{i}`) — translucent
+  fill + ring that **pops** (expand + fade-in via `state["fp_phase"]` 0→1 with
+  `animate_scale`/`animate_opacity`) then stays as the **static residue**. A `line`
+  (beam) draws on the canvas (`_footprint_line`; no roster ability uses
+  `line_targets` yet — kept correct).
+- **Ability-intent recolour (T.12c-B, partial):** the cast's intent
+  (`classify_intent` in `combat_playback.py`, from `AbilityMeta.tags`: heal →
+  summon → damage-element → buff) recolours the footprint shape — an ally-directed
+  **heal/buff** renders as a **green halo** (`SUCCESS`) instead of an element
+  colour, and a **control** ability adds a **`WARNING` telegraph ring** just
+  outside the AoE (keyed `fp-tel-{cast_id}-{i}`). (Sprites/projectiles still
+  deferred. Phase B **remaining**: status-apply flash + ally halos on heals that
+  produce no targeting footprint.)
+- **Manual step = instant** full reveal of the static truth (action + arrows +
+  numbers + dots + footprint shape at once) so attacks always show; the footprint
+  **pop** is a non-blocking cosmetic grow (`_kick_footprint_pop` → `page.run_task`)
+  on top of that truth, so manual Next and autoplay animate the shape the **same
+  way** (user-set) and a rapid Next just leaves the full shape. The **real-time DOT
+  drip stays autoplay-only** (a rapid Next must never out-race an async reveal).
 - **Action queue active highlight:** the entry(ies) at the current step's tick
   ("resolving now") render **bigger + accent-bordered** (`animate_size`); fixed-width
   row with horizontal overflow so the layout never shifts.
@@ -140,12 +162,24 @@ flag). Displayed durations → seconds via `TICKS_PER_SECOND` (V.39).
 against `CHAMPION_ROSTER` / `ITEM_REGISTRY` / `AUGMENT_REGISTRY`; errors surface
 inline.
 
-## `src/main.py` dev entry
+## `ui/views/menu.py` — main menu (T.9, route `/`)
 
-Behind `TEMPEST_DEV=1` (mirrors `TEMPEST_ADMIN`): a tiny harness↔combat
-`page.views` stack (`_dev_ui`) ahead of the real routing (T.15). `open_combat`
-pushes the combat view; Continue / `page.on_view_pop` pops it (firing the combat
-view's on-pop to stop autoplay). Existing counter/admin entries untouched.
+`build_menu_view(page, *, on_new_run, on_continue, on_playfight, on_quit,
+save_exists=False) -> ft.View`. The app entry point (views_spec §4): title +
+pitch + four entries. **New Run** / **Continue** are surfaced but **disabled**
+(the Trail/Prep run shell, T.10/T.11, isn't built — Continue's hint reflects
+`save_exists`); **Playfight ▶** opens the combat dev harness; **Quit** closes the
+app. Pure presentation — emits intent through the `on_*` callbacks; the host owns
+the view stack. Buttons keyed by their `content` label (Flet 0.84).
+
+## `src/main.py` app shell
+
+`_game_ui` is the default shell (no env gate): a `page.views` stack rooted at the
+menu (`/`). **Playfight** pushes the dev harness (`_push_playfight`) whose
+`open_combat` pushes the combat view; `_pop` / `page.on_view_pop` unwind the
+stack (firing the combat view's on-pop to stop autoplay). `TEMPEST_DEV=1` is a
+**legacy shortcut** that lands directly in Playfight; `TEMPEST_ADMIN=1` still
+opens the admin panel. Quit → `page.window.destroy()`.
 
 ## Invariants this layer owns
 
@@ -164,5 +198,6 @@ view's on-pop to stop autoplay). Existing counter/admin entries untouched.
 | `CombatSession` + pure cue/queue model (`build_playback`) | `src/ui/combat_playback.py` |
 | Combat view (canvas board, stepper drive loop, inspect, end panel) | `src/ui/views/combat.py` |
 | Dev harness launcher → `CombatSession` | `src/ui/views/dev_harness.py` |
-| Dev entry (`TEMPEST_DEV=1`) + harness↔combat nav | `src/main.py` |
+| Main menu (`/`, T.9) — New Run/Continue/Playfight/Quit | `src/ui/views/menu.py` |
+| App shell — menu↔harness↔combat `page.views` nav | `src/main.py` |
 | Design tokens / shared components (`meter_bar`, chips, …) | `src/ui/theme.py`, `src/ui/components/` |

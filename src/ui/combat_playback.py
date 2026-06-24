@@ -32,7 +32,15 @@ from src.game.combat import (
     ROUND_TICKS,
 )
 from src.game.combat_log import group_events_by_tick
-from src.game.models import BattleEvent, BattleResult, Champion, Enemy, WeatherState
+from src.game.models import (
+    BattleEvent,
+    BattleResult,
+    Champion,
+    Enemy,
+    Footprint,
+    WeatherState,
+)
+from src.game.registries import ABILITY_META
 
 # Beats that count as "actions" on the projected queue (V.56 — moves render
 # smaller + movement-iconed; attacks/casts are the primary entries). dot/heal/
@@ -42,6 +50,57 @@ _QUEUE_KINDS: frozenset[str] = frozenset({EVENT_MOVE, EVENT_ATTACK, EVENT_CAST})
 
 # How many future rounds the action queue projects ahead of the cursor's round.
 QUEUE_LOOKAHEAD_ROUNDS = 2
+
+# --- Ability-intent classification (T.12c-B) ---------------------------------
+# Tag → intent, from `AbilityMeta.tags` (the UI-iconography vocab, V.38). Element
+# tags (`magic`/`physical`/`true`) mark a *damage* ability; `heal`/`summon` are
+# explicit; an ability with a buff/support tag (and no damage element) is a buff;
+# anything else — including unknown ids with no tags — defaults to *damage* (the
+# safe, most-common cast shape). `control` is an orthogonal flag (the ability also
+# applies hard/soft CC) used for telegraphs.
+_INTENT_DAMAGE_TAGS: frozenset[str] = frozenset({"magic", "physical", "true"})
+_INTENT_BUFF_TAGS: frozenset[str] = frozenset({
+    "buff", "defense", "haste", "shield", "aura", "team", "empower", "support",
+    "lifesteal", "evasion", "reflect", "penetration", "crit", "mana", "tempo",
+    "scaling",
+})
+_INTENT_CONTROL_TAGS: frozenset[str] = frozenset({
+    "stun", "root", "slow", "fear", "silence", "taunt", "disarm", "freeze",
+    "debuff", "control",
+})
+
+
+@dataclass(frozen=True, slots=True)
+class Intent:
+    """An ability's presentation intent (T.12c-B). `kind` drives the VFX shape
+    family (damage shape vs ally halo vs summon); `control` adds a telegraph."""
+
+    kind: str  # "damage" | "heal" | "buff" | "summon"
+    control: bool = False
+
+
+def classify_intent(ability_id: str) -> Intent:
+    """Map an ability id → presentation `Intent` from its `AbilityMeta.tags` (pure).
+
+    Priority: heal → summon → damage (any element tag) → buff (a buff/support tag)
+    → damage (default, no matching tag). The `control` flag is set whenever a
+    control tag is present, regardless of kind. Unknown ids (no `AbilityMeta`)
+    hit the default and classify as plain `damage` (a damage shape is the engine's
+    most common cast)."""
+    meta = ABILITY_META.get(ability_id)
+    tags = frozenset(meta.tags) if meta is not None else frozenset()
+    control = bool(tags & _INTENT_CONTROL_TAGS)
+    if "heal" in tags:
+        kind = "heal"
+    elif "summon" in tags:
+        kind = "summon"
+    elif tags & _INTENT_DAMAGE_TAGS:
+        kind = "damage"
+    elif tags & _INTENT_BUFF_TAGS:
+        kind = "buff"
+    else:
+        kind = "damage"
+    return Intent(kind=kind, control=control)
 
 # Real-time playback pacing (T.12b, user-set 1s ≈ 1s). The delay before a moment
 # at `tick` = (tick − prev_tick)/TICKS_PER_SECOND × SPEED, clamped so a huge idle
@@ -86,6 +145,9 @@ class CombatSession:
     run_mods: Any = None  # RunModifiers | None (active augments)
     node_id: str = ""
     map_effect_id: str = ""  # boss fights (T.12b) — board map effect; "" = non-boss
+    # Optional starting-position override (piece-id → (q, r)) — the prep-phase /
+    # dev-harness hand-placement path. None = deterministic default formation.
+    positions: dict[str, tuple[int, int]] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,6 +165,10 @@ class Step:
     round: int
     beats: tuple[BattleEvent, ...]
     pre_beats: tuple[BattleEvent, ...] = ()
+    # Recorded targeting footprints at this tick (T.12c, V.61) — the view animates
+    # them as per-ability circle/line shapes, joined to a `cast` beat by `cast_id`
+    # for element colour. Geometry only, no resource numbers (B.28 guard holds).
+    footprints: tuple[Footprint, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -178,6 +244,12 @@ def build_playback(result: BattleResult) -> Playback:
     this is a view-side regrouping). Trailing DOTs after the last action (e.g.
     sudden-death bleed before the killing tick) attach to a final step.
     """
+    # Footprints joined to their action step by tick (a footprint is recorded
+    # mid-handler at the cast's tick, so it shares the cast action step's tick).
+    fps_by_tick: dict[int, list[Footprint]] = {}
+    for fp in result.footprints:
+        fps_by_tick.setdefault(fp.tick, []).append(fp)
+
     steps: list[Step] = []
     pending_dots: list[BattleEvent] = []
     for tick, beats in group_events_by_tick(result):
@@ -188,6 +260,7 @@ def build_playback(result: BattleResult) -> Playback:
                 tick=tick, round=tick // ROUND_TICKS,
                 beats=tuple(actions),
                 pre_beats=tuple(pending_dots) + tuple(dots),
+                footprints=tuple(fps_by_tick.get(tick, ())),
             ))
             pending_dots = []
         else:

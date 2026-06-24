@@ -653,3 +653,125 @@ def test_battleresult_roundtrip_with_snapshot_and_legacy_default():
     del legacy["board_height"]
     loaded = BattleResult.from_dict(legacy)
     assert loaded.initial_pieces == [] and loaded.board_width == 0
+
+
+# --- T.12c: targeting footprints (observer-only telemetry, V.61) -------------
+
+
+def test_footprint_recorded_for_radius_and_line_during_cast():
+    """V.61 §6 guard: a radius helper records a `circle` (center+radius) and a
+    line helper a `line` (dir+length) when a cast is in flight, and the recorded
+    geometry **contains every hit target** (footprint cells ⊇ hits)."""
+    from src.game.combat.context import hex_distance
+    from src.game.targeting import enemies_in_radius, line_targets
+
+    ctx, rec, src, tgt = _recorder_harness()  # src @(0,0), enemy tgt @(1,0)
+    ctx._current_cast_id = 7  # enter a cast scope (set by cast_ability in real fights)
+
+    hits = enemies_in_radius(0, 0, 2, src, ctx)
+    assert tgt in hits  # tgt @(1,0) is within radius 2 of (0,0)
+    circ = next(f for f in rec._footprints if f.kind == "circle")
+    assert (circ.center_q, circ.center_r, circ.radius, circ.cast_id) == (0, 0, 2, 7)
+    # footprint ⊇ hits: every hit lies within the recorded circle
+    for h in hits:
+        assert hex_distance(circ.center_q, circ.center_r, h.position_q, h.position_r) <= circ.radius
+
+    line_hits = line_targets(src, (1, 0), 3, ctx)
+    assert tgt in line_hits  # tgt @(1,0) is on the line q=1..3, r=0
+    line = next(f for f in rec._footprints if f.kind == "line")
+    assert (line.center_q, line.center_r, line.direction, line.length) == (0, 0, (1, 0), 3)
+
+
+def test_footprint_not_recorded_outside_a_cast():
+    """V.61: idle / AI / passive target queries (no cast in flight) record no
+    footprint — capture is scoped to `current_cast_id`."""
+    from src.game.targeting import enemies_in_radius
+
+    ctx, rec, src, _tgt = _recorder_harness()
+    assert ctx.current_cast_id is None
+    enemies_in_radius(0, 0, 3, src, ctx)
+    assert rec._footprints == []
+
+
+def test_footprint_capture_is_observer_only_byte_identical():
+    """V.61/V.2: footprint capture is observer-only — a real radius-casting fight
+    records footprints, yet `resolve_combat` stays byte-identical run-to-run, and
+    the no-subscriber `CombatReplay` path reaches the same survivors (capture never
+    changes targeting results or damage)."""
+    from src.game.combat import CombatReplay, resolve_combat
+    from src.game.content import CHAMPION_ROSTER, ENEMY_ROSTER
+
+    team = [CHAMPION_ROSTER["champ_aurion"]]  # active = radius-2 AoE
+    enemies = list(ENEMY_ROSTER.values())[:6]
+    r1 = resolve_combat(team, enemies, WeatherState.CLEAR)
+    r2 = resolve_combat(team, enemies, WeatherState.CLEAR)
+
+    assert r1.footprints, "expected recorded footprints from a radius caster"
+    assert all(f.kind == "circle" for f in r1.footprints)
+    # determinism: capture is byte-identical
+    assert r1.to_dict() == r2.to_dict()
+
+    # the inspect/replay path has no recorder subscribed → on_footprint no-ops →
+    # combat unaffected: same survivors as the recorded resolve.
+    replay = CombatReplay(team, enemies, WeatherState.CLEAR)
+    replay.step_to(10_000_000)
+    alive = {v.id for v in replay.pieces() if v.alive and not v.is_enemy}
+    assert alive == set(r1.surviving_team_ids)
+
+
+def test_footprints_round_trip_and_legacy_default():
+    """`BattleResult.footprints` (+ the `cast_id` beat field) survive serialization;
+    pre-T.12c payloads default to an empty footprint list."""
+    from src.game.models import BattleResult, Footprint
+    from src.game.content import CHAMPION_ROSTER, ENEMY_ROSTER
+
+    team = [CHAMPION_ROSTER["champ_aurion"]]
+    enemies = list(ENEMY_ROSTER.values())[:6]
+    result = resolve_combat(team, enemies, WeatherState.CLEAR)
+    assert result.footprints
+    assert BattleResult.from_dict(result.to_dict()).to_dict() == result.to_dict()
+    back = BattleResult.from_dict(result.to_dict())
+    assert all(isinstance(f, Footprint) for f in back.footprints)
+
+    legacy = result.to_dict()
+    del legacy["footprints"]
+    assert BattleResult.from_dict(legacy).footprints == []
+
+
+# --- T.23-prep / dev-harness: starting-position override ---------------------
+
+
+def test_positions_override_places_pieces_and_none_is_byte_identical():
+    """An explicit `positions` override (both sides) places pieces at the given
+    cells (over `assign_spawns`); `positions=None` leaves the deterministic
+    default formation byte-identical."""
+    team = [_champ(id="hero", strength=40)]
+    enemies = [_enemy(id="mob", max_hp=60)]
+    placed = resolve_combat(team, enemies, WeatherState.CLEAR, positions={"hero": (3, 5), "mob": (6, 1)})
+    snap = {s.id: (s.q, s.r) for s in placed.initial_pieces}
+    assert snap["hero"] == (3, 5) and snap["mob"] == (6, 1)
+
+    a = resolve_combat(team, enemies, WeatherState.CLEAR)
+    b = resolve_combat(team, enemies, WeatherState.CLEAR, positions=None)
+    assert a.to_dict() == b.to_dict()  # default path unchanged
+
+
+def test_positions_override_rejects_offboard_and_duplicate_cell():
+    """Engine-level guard: an off-board cell or two pieces on the same cell raise
+    before the sim runs (T.23 layers the prep zone/roster validation on top)."""
+    team = [_champ(id="hero")]
+    enemies = [_enemy(id="mob")]
+    with pytest.raises(ValueError):
+        resolve_combat(team, enemies, WeatherState.CLEAR, positions={"hero": (BOARD_WIDTH, 0)})
+    with pytest.raises(ValueError):
+        resolve_combat(team, enemies, WeatherState.CLEAR,
+                       positions={"hero": (2, 2), "mob": (2, 2)})
+
+
+def test_positions_override_rejects_unknown_piece_id():
+    """Engine-level guard: a `positions` key naming no piece in this combat (e.g. a
+    typo'd id) raises rather than silently dropping the placement."""
+    team = [_champ(id="hero")]
+    enemies = [_enemy(id="mob")]
+    with pytest.raises(ValueError):
+        resolve_combat(team, enemies, WeatherState.CLEAR, positions={"typo_id": (3, 3)})
