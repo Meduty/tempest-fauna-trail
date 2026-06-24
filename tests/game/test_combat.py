@@ -766,3 +766,12 @@ def test_positions_override_rejects_offboard_and_duplicate_cell():
     with pytest.raises(ValueError):
         resolve_combat(team, enemies, WeatherState.CLEAR,
                        positions={"hero": (2, 2), "mob": (2, 2)})
+
+
+def test_positions_override_rejects_unknown_piece_id():
+    """Engine-level guard: a `positions` key naming no piece in this combat (e.g. a
+    typo'd id) raises rather than silently dropping the placement."""
+    team = [_champ(id="hero")]
+    enemies = [_enemy(id="mob")]
+    with pytest.raises(ValueError):
+        resolve_combat(team, enemies, WeatherState.CLEAR, positions={"typo_id": (3, 3)})

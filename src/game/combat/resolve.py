@@ -99,7 +99,9 @@ def build_combat(
     applied after `assign_spawns` — the prep-phase / dev-harness hand-placement
     path. `None` leaves the deterministic default formation untouched (byte-
     identical, V.2); when given it's still pure deterministic input (no RNG), and
-    `load_order`/`formation_index` tiebreaks (V.34) are unaffected.
+    `load_order`/`formation_index` tiebreaks (V.34) are unaffected. Validated
+    before the sim runs — every key names a piece in this combat, every cell is
+    on-board, and no two pieces share a cell — else `ValueError` (no silent drop).
     """
     # Deferred imports keep the content↔combat boundary acyclic: loadout pulls
     # in the ability/passive registries, which must finish importing first.
@@ -114,12 +116,17 @@ def build_combat(
 
     # Assign spawn positions (deterministic default formation), then apply any
     # hand-placement override (prep phase / dev harness) on top. The override is
-    # validated here (on-board + no two pieces sharing a cell) — the engine-level
-    # guard; T.23 layers the prep-side player-zone/roster-id validation on top.
+    # validated here (known piece id + on-board + no two pieces sharing a cell) —
+    # the engine-level guard; T.23 layers the prep-side player-zone/roster-id
+    # validation on top.
     assign_spawns(pieces)
     if positions:
+        piece_ids = {p.id for p in pieces}
         seen_cells: dict[tuple[int, int], str] = {}
         for pid, (q, r) in positions.items():
+            if pid not in piece_ids:
+                raise ValueError(f"positions[{pid!r}] names no piece in this "
+                                 f"combat (known ids: {sorted(piece_ids)}).")
             if not (0 <= q < BOARD_WIDTH and 0 <= r < BOARD_HEIGHT):
                 raise ValueError(f"positions[{pid!r}] = ({q},{r}) is off-board "
                                  f"(0..{BOARD_WIDTH - 1}, 0..{BOARD_HEIGHT - 1}).")

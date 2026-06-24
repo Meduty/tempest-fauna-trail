@@ -54,8 +54,10 @@ QUEUE_LOOKAHEAD_ROUNDS = 2
 # --- Ability-intent classification (T.12c-B) ---------------------------------
 # Tag → intent, from `AbilityMeta.tags` (the UI-iconography vocab, V.38). Element
 # tags (`magic`/`physical`/`true`) mark a *damage* ability; `heal`/`summon` are
-# explicit; everything else with no damage element is a buff. `control` is an
-# orthogonal flag (the ability also applies hard/soft CC) used for telegraphs.
+# explicit; an ability with a buff/support tag (and no damage element) is a buff;
+# anything else — including unknown ids with no tags — defaults to *damage* (the
+# safe, most-common cast shape). `control` is an orthogonal flag (the ability also
+# applies hard/soft CC) used for telegraphs.
 _INTENT_DAMAGE_TAGS: frozenset[str] = frozenset({"magic", "physical", "true"})
 _INTENT_BUFF_TAGS: frozenset[str] = frozenset({
     "buff", "defense", "haste", "shield", "aura", "team", "empower", "support",
@@ -80,10 +82,11 @@ class Intent:
 def classify_intent(ability_id: str) -> Intent:
     """Map an ability id → presentation `Intent` from its `AbilityMeta.tags` (pure).
 
-    Priority: heal → summon → damage (any element tag) → buff (default). The
-    `control` flag is set whenever a control tag is present, regardless of kind.
-    Unknown ids (no `AbilityMeta`) classify as plain `damage` (the safe default —
-    a damage shape is the engine's most common cast)."""
+    Priority: heal → summon → damage (any element tag) → buff (a buff/support tag)
+    → damage (default, no matching tag). The `control` flag is set whenever a
+    control tag is present, regardless of kind. Unknown ids (no `AbilityMeta`)
+    hit the default and classify as plain `damage` (a damage shape is the engine's
+    most common cast)."""
     meta = ABILITY_META.get(ability_id)
     tags = frozenset(meta.tags) if meta is not None else frozenset()
     control = bool(tags & _INTENT_CONTROL_TAGS)
