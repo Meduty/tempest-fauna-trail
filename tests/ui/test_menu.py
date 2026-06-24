@@ -54,8 +54,8 @@ def test_menu_has_four_entries_with_expected_enabled_state():
     view, _ = _build()
     by_text = {b.content: b for b in _buttons(view)}
     assert set(by_text) == {"New Run", "Continue", "Playfight ▶", "Quit"}
-    # Run shell not built → New Run + Continue disabled; Playfight + Quit live.
-    assert by_text["New Run"].disabled is True
+    # New Run live (T.10 → RunStart); Continue disabled until load-into-Trail (T.15).
+    assert not by_text["New Run"].disabled
     assert by_text["Continue"].disabled is True
     assert not by_text["Playfight ▶"].disabled
     assert not by_text["Quit"].disabled
@@ -72,6 +72,7 @@ def test_continue_hint_reflects_save_presence():
 def test_live_buttons_fire_their_intent():
     view, calls = _build()
     by_text = {b.content: b for b in _buttons(view)}
+    by_text["New Run"].on_click(None)
     by_text["Playfight ▶"].on_click(None)
     by_text["Quit"].on_click(None)
-    assert calls["playfight"] == 1 and calls["quit"] == 1
+    assert calls["new_run"] == 1 and calls["playfight"] == 1 and calls["quit"] == 1

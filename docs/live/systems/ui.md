@@ -1,10 +1,32 @@
 # UI — main menu + combat view + dev harness (LIVING)
 
-> **Status:** ✅ for the main menu (T.9), combat view core + dev harness (T.12a).
-> The rest of the Flet UI (Trail/Prep/Summary, T.10–T.15/T.23) is unbuilt — this
-> doc grows as those land. New Run/Continue are surfaced-but-disabled in the menu
-> until the Trail run shell exists. FROZEN design:
+> **Status:** ✅ for the main menu (T.9), combat view core + dev harness (T.12a),
+> **RunStart (T.10)**. The rest of the Flet run-loop (Trail/Prep/Reward/Summary,
+> T.11–T.15/T.23) is unbuilt — this doc grows as those land. **New Run is live**
+> (→ RunStart → champion pick → Run); Continue stays disabled until load-into-Trail
+> (T.15). FROZEN design:
 > [`views_spec.md`](../../design/systems/views_spec.md). Audited by `/check`.
+
+## RunStart (T.10) — `game/run_init.py` + `ui/views/run_start.py`
+
+The run-start flow is **logic in `game/run_init.py` (Flet-free, V.1/V.63), view in
+`ui/views/run_start.py` (pure presentation)**:
+
+- `run_init.champion_offer(seed) -> list[str]` — the **seed-deterministic** 1-of-3
+  (`OFFER_SIZE`) Tier 1–2 (`OFFER_TIERS`) champion offer, via
+  `encounter.derive_seed(seed, 0, _OFFER_CHANNEL=701)` over a sorted pool (V.2 —
+  same seed ⇒ same ids, no `hash()`/wall-clock).
+- `run_init.new_run(seed, chosen_champion_id) -> Run` — builds the in-progress `Run`
+  per SPEC §G run-start conditions: `build_route()` + node 1 `CURRENT`,
+  `STARTING_AMBER=10`, `tempest_rank=STARTING_RANK=1`, the chosen champion granted at
+  level 1 through `economy._materialize_champion` (champion_copies + roster in sync),
+  and the first shop via `shop.refresh_shop` (V.63 — economy/shop own the numbers;
+  the view computes nothing). Rejects an un-offered id.
+- `build_run_start_view(page, *, seed, on_pick, on_back) -> ft.View` (route
+  `/run-start`) renders the offer as `champion_card`s; a click emits `on_pick(cid)`.
+  The host (`main.py` `_start_new_run`) draws a fresh `secrets` seed, calls
+  `new_run`, and pushes the next screen. **Landing is a `_push_trail_stub`
+  placeholder** until the real Trail view lands (T.11).
 
 The combat view is **pure presentation over the replay backend** (V.56): it
 renders a fight only through `resolve_combat` + the forward `CombatReplay`

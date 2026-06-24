@@ -315,15 +315,17 @@ on a worker thread (V.4).
 | Shared components (champion card, weather badge, meter bar, chips) | `src/ui/components/` | ✅ T.8 |
 | Playtest admin panel (dev) | `src/ui/views/admin.py` | dev tool |
 | Flet entry point — menu app shell + Playfight harness + admin | `src/main.py` | ✅ T.9 |
-| Main menu (`/`) — New Run/Continue (disabled until Trail) / Playfight / Quit | `src/ui/views/menu.py` | ✅ T.9 |
+| Main menu (`/`) — New Run (live) / Continue (disabled until load-into-Trail, T.15) / Playfight / Quit | `src/ui/views/menu.py` | ✅ T.9 |
+| RunStart (`/run-start`) — seed-deterministic 1-of-3 champion pick → `Run` | `src/game/run_init.py`, `src/ui/views/run_start.py` | ✅ T.10 |
 | Combat view + dev/Playfight harness | `src/ui/views/combat.py`, `dev_harness.py` | ✅ T.12 |
-| Trail / Prep / Summary views | `src/ui/views/` | 📋 T.10–T.15 |
+| Trail / Prep / Reward / Summary views | `src/ui/views/` | 🟡 T.11–T.15/T.23 |
 | Route map (Canvas), run summary (BarChart) | `src/viz/` | 📋 T.11, T.13 (stub) |
 
 **The game logic is complete; the player-facing Flet UI is the largest remaining
 build.** `main.py` is the menu-rooted `page.views` shell (T.9): **Playfight** opens
-the combat dev harness → combat view; **New Run/Continue** wait on the Trail/Prep
-run shell (T.10/T.11); `TEMPEST_ADMIN=1` opens the admin panel and `TEMPEST_DEV=1`
+the combat dev harness → combat view; **New Run** opens RunStart (T.10,
+`game/run_init.new_run`) → champion pick → `Run` (currently lands on a Trail stub
+until T.11); **Continue** waits on load-into-Trail (T.15); `TEMPEST_ADMIN=1` opens the admin panel and `TEMPEST_DEV=1`
 jumps straight to Playfight. See [SPEC §I Flet Routes](SPEC.md) and `views_spec.md`.
 Flet conventions live in [.claude/rules/flet-ui.md](.claude/rules/flet-ui.md) and CLAUDE.md.
 
