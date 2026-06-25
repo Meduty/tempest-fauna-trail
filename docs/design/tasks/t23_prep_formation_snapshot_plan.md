@@ -1,5 +1,13 @@
 # T23 Plan - Prep Formation Snapshot Integration (`ui/views/prep.py`, `game/combat.py`)
 
+> **⚠️ SUPERSEDED [2026-06-25] by [`t23_prep_view_plan.md`](./t23_prep_view_plan.md).**
+> This snapshot predates V.62 — it cites the removed `game/combat.py` + a
+> `resolve_combat(team_positions=)` signature that never landed. The shipped
+> primitive is **V.62 `build_combat(positions=)` + `CombatSession.positions`**
+> (both sides, validated, byte-identical when `None`); T.23's residue is the
+> team-only `validate_team_positions` wrapper + the `q < 3` deployment zone
+> (V.68). Read the new plan, not this one.
+
 ## 1. Scope
 
 T23 makes Prep placement authoritative for the player team. When the player

@@ -1,10 +1,11 @@
 # UI — main menu + combat view + dev harness (LIVING)
 
 > **Status:** ✅ for the main menu (T.9), combat view core + dev harness (T.12a),
-> **RunStart (T.10)**, **Trail (T.11)**. The rest of the Flet run-loop
-> (Prep/Reward/Summary, T.13–T.15/T.23) is unbuilt — this doc grows as those land.
-> **New Run is live** (→ RunStart → champion pick → **Trail** → Prep stub); Continue
-> stays disabled until load-into-Trail (T.15). FROZEN design:
+> **RunStart (T.10)**, **Trail (T.11)**, **Prep (T.23a — full economy, no items)**.
+> The rest of the Flet run-loop (Reward/Summary, T.13–T.15) + Prep items (T.23b) is
+> unbuilt — this doc grows as those land. **New Run is live** (→ RunStart → champion
+> pick → **Trail** → **Prep** → Combat); Continue stays disabled until
+> load-into-Trail (T.15). FROZEN design:
 > [`views_spec.md`](../../design/systems/views_spec.md). Audited by `/check`.
 
 ## RunStart (T.10) — `game/run_init.py` + `ui/views/run_start.py`
@@ -74,13 +75,42 @@ calls into `game/` for every number; computes none itself.
     stops it explicitly then autosaves via `save.save_run` (V.65/V.36) → menu.
 - **Shared seam:** `encounter.node_encounter(run_seed, node, weather=None, dc) ->
   NodeEncounter(enemies, map_effect_id)` is the **one deterministic dispatcher** (V.2)
-  the Trail preview uses now and the Prep `Start Combat` flow will reuse (T.23) — so the
+  the Trail preview uses now and the Prep `Start Combat` flow reuses (T.23a) — so the
   previewed squad is byte-identical to the fought squad. `route.city_id_for_node(index)`
   / `route.ROUTE_CITY_IDS` back the `Node` (which holds only the city *name*) with the
   city id the weather cache keys on.
 - **Wiring (`main.py`):** New Run → RunStart → `_push_trail`; Play Next →
-  `_push_prep_stub` (a placeholder until the full Prep view, T.23); Save & Exit →
-  autosave + `_pop` to menu.
+  `_push_prep` (the full Prep view, T.23a); Save & Exit → autosave + `_pop` to menu.
+
+## Prep (T.23a) — `ui/views/prep.py`
+
+The pre-combat decision layer (route `/prep`). Pure presentation over the finished
+economy/combat backend (V.63/V.1): it mutates `Run` **only** through `game/economy.py`
+/ `game/shop.py` (buy/reroll/sell/supply, `try_rank_up_with_amber`) and resolves combat
+**only** by building a `CombatSession` — it recomputes no Amber/cost/level/encounter
+number.
+
+- **Placement → `team_positions`:** the player arranges the team on the hex board (Flet
+  `Draggable` tokens + per-cell `DragTarget`, TFT-style bench↔board) within the **allied
+  deployment zone** (columns `0..ALLIED_ZONE_MAX_Q-1` = 0–2, V.68). `run.roster` = the
+  deployable field (capped at `tempest_rank`); `run.bench` = reserves; dragging moves a
+  champion between the two lists. Each placed champion gets a `team_positions[id] = (q,r)`.
+- **Auto-Place / Reset** = the default packing `champion i → (i // 7, i % 7)`, mirroring
+  `engine.assign_spawns` so it's **byte-identical** to `positions=None` (V.62/V.2).
+- **Shared geometry:** the hex pixel layout lives in `ui/components/board_geometry.py`
+  (`cell_xy`, `COL_W`, `ROW_H`, `BOARD_W/H`), reused by the combat view — one coordinate
+  source, no drift.
+- **Shop / preview / tooltips:** shop slots (`run.shop_offers`, cost via `champion_cost`),
+  deterministic enemy preview (`node_encounter`, with affinity-clash hints via
+  `ring_relation`), and a tap-to-inspect stat panel (raw sheet read off the `Champion`).
+- **Start-Combat:** `team = run.roster` placed pieces; `validate_team_positions(team,
+  positions)` (`game/loadout.py`, V.68 — zone + roster-id, on top of the V.62 engine
+  guard); builds `CombatSession(team, enemies, weather=node.weather, run_mods=
+  RunModifiers.from_run(run), node_id, map_effect_id, positions=team_positions)` —
+  shape-identical to the dev-harness producer — and hands it to the host. The
+  reward/progression step (applying the `BattleResult`) is the host's job (T.15, V.64);
+  Prep only produces the input. Combat weather = the node default (deterministic, V.2),
+  decoupled from the displayed live weather (V.66).
 
 The combat view is **pure presentation over the replay backend** (V.56): it
 renders a fight only through `resolve_combat` + the forward `CombatReplay`
@@ -298,6 +328,10 @@ opens the admin panel. Quit → `page.window.destroy()`.
   stepper, **never** the event stream's partial `hp_after` (B.28). The stream is
   animation cues + action-queue projection only.
 - **V.39** — `TICKS_PER_SECOND` renders durations as text only, never pacing.
+- **V.63** — the run-loop UI computes no game logic (Prep mutates `Run` only
+  through `game/economy.py`/`game/shop.py`, resolves only via the combat view).
+- **V.68** — Prep placement is confined to the allied zone (cols 0–2) + validated
+  team-only by `game/loadout.py::validate_team_positions` atop the V.62 guard.
 
 ## File map
 
@@ -305,7 +339,9 @@ opens the admin panel. Quit → `page.window.destroy()`.
 |---|---|
 | `CombatSession` + pure cue/queue model (`build_playback`) | `src/ui/combat_playback.py` |
 | Combat view (canvas board, stepper drive loop, inspect, end panel) | `src/ui/views/combat.py` |
+| Prep view (placement + shop + bench + preview + tooltips, T.23a) | `src/ui/views/prep.py` |
+| Shared hex-board pixel geometry (combat + Prep) | `src/ui/components/board_geometry.py` |
 | Dev harness launcher → `CombatSession` | `src/ui/views/dev_harness.py` |
 | Main menu (`/`, T.9) — New Run/Continue/Playfight/Quit | `src/ui/views/menu.py` |
-| App shell — menu↔harness↔combat `page.views` nav | `src/main.py` |
+| App shell — menu↔harness↔run-loop `page.views` nav | `src/main.py` |
 | Design tokens / shared components (`meter_bar`, chips, …) | `src/ui/theme.py`, `src/ui/components/` |

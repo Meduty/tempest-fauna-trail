@@ -22,6 +22,15 @@ import flet as ft
 import flet.canvas as cv
 
 from src.game.ability_text import TICKS_PER_SECOND, render_for
+from src.ui.components.board_geometry import (
+    BOARD_H,
+    BOARD_W,
+    COL_W,
+    MARGIN_X,
+    MARGIN_Y,
+    ROW_H,
+    cell_xy,
+)
 from src.game.combat import (
     BOARD_HEIGHT,
     BOARD_WIDTH,
@@ -81,15 +90,18 @@ _DMG_COLORS: dict[str, str] = {
 }
 
 # --- Board geometry (pixel layout of the 10×7 hex grid) ---
-_MARGIN_X = 40
-_MARGIN_Y = 34
-_COL_W = 46
-_ROW_H = 50
+# Shared with the Prep view via `ui/components/board_geometry` — one coordinate
+# source so the two boards can't drift (T.23a). Aliased to the existing private
+# names to keep this view byte-identical.
+_MARGIN_X = MARGIN_X
+_MARGIN_Y = MARGIN_Y
+_COL_W = COL_W
+_ROW_H = ROW_H
 _TOKEN_R = 17
 _BAR_W = 34
 
-_BOARD_W = _MARGIN_X * 2 + (BOARD_WIDTH - 1) * _COL_W
-_BOARD_H = _MARGIN_Y * 2 + (BOARD_HEIGHT - 1) * _ROW_H + _ROW_H // 2
+_BOARD_W = BOARD_W
+_BOARD_H = BOARD_H
 
 _TWEEN_MS = 250              # token glide / bar-follow animation duration
 # Delay between consecutive action beats *within one tick* (intra-tick stagger).
@@ -189,11 +201,7 @@ def _element_color(ability_id: str) -> str:
     return ACCENT
 
 
-def _cell_xy(q: int, r: int) -> tuple[float, float]:
-    """Offset-hex (q,r) → pixel centre. Odd columns stagger down half a row."""
-    x = _MARGIN_X + q * _COL_W
-    y = _MARGIN_Y + r * _ROW_H + (_ROW_H // 2 if q % 2 else 0)
-    return float(x), float(y)
+_cell_xy = cell_xy  # shared geometry (T.23a); kept as a module alias.
 
 
 def _initials(name: str) -> str:
