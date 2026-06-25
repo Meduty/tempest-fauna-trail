@@ -2,10 +2,10 @@
 
 > **Status:** ✅ for the main menu (T.9), combat view core + dev harness (T.12a),
 > **RunStart (T.10)**, **Trail (T.11)**, **Prep (T.23a — full economy, no items)**,
-> **Reward + result-out seam (T.15a)**. Still unbuilt: Summary (T.13), terminal/Continue
-> routing (T.15b), Prep items (T.23b). **New Run is live** (→ RunStart → champion pick →
-> **Trail** → **Prep** → **Combat** → **Reward** → Trail); Continue stays disabled until
-> load-into-Trail (T.15b). FROZEN design:
+> **Reward + result-out seam (T.15a)**, **Summary (T.13 — canvas damage chart)**. Still
+> unbuilt: terminal/Continue routing (T.15b), Prep items (T.23b). **New Run is live**
+> (→ RunStart → champion pick → **Trail** → **Prep** → **Combat** → **Reward** → Trail);
+> the Summary view exists but terminal→Summary + Continue land in T.15b. FROZEN design:
 > [`views_spec.md`](../../design/systems/views_spec.md). Audited by `/check`.
 
 ## RunStart (T.10) — `game/run_init.py` + `ui/views/run_start.py`
@@ -134,6 +134,24 @@ is what closes a node — not the view:
    **Continue** → the producer's router: a continuing run pops the stack to the menu and
    pushes a **fresh Trail** at the new current node; a terminal run stays on the menu
    (T.15a interim → Summary in T.15b).
+
+## Summary (T.13) — `viz/run_summary.py` + `ui/views/summary.py`
+
+The run-end screen (route `/summary`). Mirrors the route-map's graded-viz shape
+(V.70): a **pure data fn** + a **canvas builder** — no `ft.BarChart` (removed from
+Flet core ≥0.85).
+
+- `viz/run_summary.py::run_summary_specs(run) -> list[BarSpec]` — one `BarSpec(index,
+  label, damage, height_frac, won)` per battle in `run.battle_log`, in fight order.
+  `damage = sum(result.team_damage_dealt.values())`; `height_frac` max-normalized
+  across the log (peak bar = 1.0; empty/all-zero ⇒ 0.0, guarded); `won` from
+  `result.outcome`. Deterministic + Flet-free (V.2) — tests assert this data, not pixels.
+- `build_run_summary(run) -> ft.Control` — draws the bars as `cv.Rect` (green win /
+  red loss), value + node labels (`cv.Text`), a baseline (`cv.Line`) on a `cv.Canvas`;
+  empty log ⇒ a "No battles fought" text.
+- `ui/views/summary.py::build_summary_view(page, run, *, on_menu)` — outcome banner
+  (Victory/Defeat) + the chart + stat chips (nodes cleared / battles / Amber / rank) +
+  Return-to-Menu. Terminal→Summary routing is wired by the producer in T.15b.
 
 ## The seam — `CombatSession`
 
@@ -359,6 +377,9 @@ opens the admin panel. Quit → `page.window.destroy()`.
 - **V.69** — the run-loop applies a fought node's outcome only through
   `economy.apply_node_result(run, result)` (once per fight, never re-resolving);
   combat exits via `on_exit(result)` (commit-on-start). Extends V.64.
+- **V.70** — graded viz (`route_map`, `run_summary`) is hand-drawn on `flet.canvas`
+  (pure `*_specs` data fn + canvas builder, asserts data not pixels); no dependency on
+  Flet's removed core chart widgets (`ft.BarChart`/`LineChart`/`PieChart`, ≥0.85).
 
 ## File map
 
@@ -369,6 +390,7 @@ opens the admin panel. Quit → `page.window.destroy()`.
 | Prep view (placement + shop + bench + preview + tooltips, T.23a) | `src/ui/views/prep.py` |
 | Reward view (post-fight panel, T.15a) | `src/ui/views/reward.py` |
 | Reward orchestrator (`apply_node_result`, V.69) | `src/game/economy.py` |
+| Run-summary view + canvas damage chart (T.13, V.70) | `src/ui/views/summary.py`, `src/viz/run_summary.py` |
 | Shared hex-board pixel geometry (combat + Prep) | `src/ui/components/board_geometry.py` |
 | Dev harness launcher → `CombatSession` | `src/ui/views/dev_harness.py` |
 | Main menu (`/`, T.9) — New Run/Continue/Playfight/Quit | `src/ui/views/menu.py` |
