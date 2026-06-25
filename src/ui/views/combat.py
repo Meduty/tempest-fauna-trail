@@ -48,7 +48,7 @@ from src.game.combat import (
 from src.game.combat.engine import DMG_MAGICAL, DMG_TRUE
 from src.game.combat.recorder import DMG_DOT, DMG_PHYSICAL
 from src.game.combat.replay import PieceView
-from src.game.models import CombatOutcome, Footprint
+from src.game.models import BattleResult, CombatOutcome, Footprint
 from src.game.registries import ABILITY_META
 from src.ui.combat_playback import (
     CombatSession,
@@ -259,10 +259,13 @@ class _ViewStatSource:
 def build_combat_view(
     page: ft.Page,
     session: CombatSession,
-    on_exit: Callable[[], None],
+    on_exit: Callable[[BattleResult], None],
 ) -> ft.View:
-    """Build the `/combat` view for one `CombatSession`. `on_exit` is called by
-    the combat-end panel's Continue button (returns to the producer)."""
+    """Build the `/combat` view for one `CombatSession`. `on_exit(result)` hands
+    the resolved `BattleResult` back to the producer (V.64) — fired by the
+    combat-end Continue button, the control-bar Exit, and the Escape key (all
+    carry the same up-front-resolved result; commit-on-start, V.69). The producer
+    (run-loop reward step) applies progression; the dev harness ignores the arg."""
     boss = bool(session.map_effect_id)
 
     def _new_replay() -> CombatReplay:
@@ -835,7 +838,7 @@ def build_combat_view(
                 ft.Text(f"Damage dealt {dealt} · taken {taken}"
                         + (" · timed out" if result.timed_out else ""),
                         size=12, color=TEXT_MUTED),
-                ft.FilledButton("Continue", on_click=lambda _e: on_exit()),
+                ft.FilledButton("Continue", on_click=lambda _e: on_exit(result)),
             ], spacing=SPACING_SM, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
         )
 
@@ -981,7 +984,7 @@ def build_combat_view(
         ft.OutlinedButton("⏭ End", on_click=lambda _e: _fast_forward()),
         ft.TextButton("↺ Restart", on_click=lambda _e: _restart()),
         ft.Container(expand=True),
-        ft.TextButton("Exit", on_click=lambda _e: on_exit()),
+        ft.TextButton("Exit", on_click=lambda _e: on_exit(result)),
     ], spacing=SPACING_SM)
 
     # ---------- layout ----------
@@ -1050,7 +1053,7 @@ def build_combat_view(
         elif k == "R":
             _restart()
         elif k == "Escape":
-            on_exit()
+            on_exit(result)
 
     def _on_pop(_e: Any) -> None:
         state["alive"] = False

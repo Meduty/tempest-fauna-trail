@@ -39,7 +39,6 @@ from src.ui.theme import (
 _TITLE = "Tempest Fauna Trail"
 _SUBTITLE = "Animal champions cross real-world cities — live weather shapes the fight."
 _NOT_YET_HINT = "Coming soon — needs the Trail run shell (T.10/T.11)."
-_CONTINUE_SOON_HINT = "Coming soon — load-into-Trail lands in T.15."
 
 
 def build_menu_view(
@@ -69,11 +68,11 @@ def build_menu_view(
     def _disabled(label: str, hint: str) -> ft.Control:
         return ft.OutlinedButton(label, width=_btn_w, height=46, disabled=True, tooltip=hint)
 
-    # New Run is live (T.10 → RunStart → Trail). Continue stays disabled until the
-    # load-into-Trail flow lands (T.15/15b); `save_exists` already threaded for it.
+    # New Run + Continue are both live (T.10 → RunStart → Trail; T.15b loads the
+    # latest save into the Trail). Continue lights up only when a save exists.
     new_run = _primary("New Run", on_new_run)
     if save_exists:
-        continue_btn: ft.Control = _disabled("Continue", _CONTINUE_SOON_HINT)
+        continue_btn: ft.Control = _primary("Continue", on_continue)
     else:
         continue_btn = _disabled("Continue", "No saved run found.")
 

@@ -25,6 +25,7 @@ from src.game.save import CURRENT_SCHEMA_VERSION
 # SPEC §G "Run-start conditions".
 STARTING_AMBER = 10
 STARTING_RANK = 1
+STARTING_HEARTS = 3  # survivable-loss budget (T.38, V.71) — tunable
 OFFER_SIZE = 3
 OFFER_TIERS = (1, 2)
 # derive_seed channel reserved for the run-start champion offer (node_index 0 —
@@ -78,6 +79,7 @@ def new_run(seed: int, chosen_champion_id: str) -> Run:
         current_node_index=1,
         amber=STARTING_AMBER,
         tempest_rank=STARTING_RANK,
+        hearts=STARTING_HEARTS,
     )
 
     # Grant the chosen champion at level 1 (one base copy) through the economy

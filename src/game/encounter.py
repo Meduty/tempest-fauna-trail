@@ -930,3 +930,54 @@ def node_encounter(
             return NodeEncounter(enc.all_enemies, enc.map_effect_id)
         case _:  # AUGMENT / SUPPLY — no combat
             return NodeEncounter([])
+
+
+# ---------------------------------------------------------------------------
+# generate_node_reward — single reward-payload source (T.38, V.70)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class NodeReward:
+    """Applied-on-win reward payload for a fought node (V.70).
+
+    The single derivation source for a node's *type* reward — REWARD loot or
+    CHALLENGE reward. ``item_ids`` flow to ``Run.inventory``, ``amber``/
+    ``tempest_bonus`` to the run economy, and ``champion_offer`` is surfaced as a
+    *pending* recruit choice (applied only via ``economy.recruit_challenge_offer``,
+    never auto-granted). ``None`` is returned for node types with no type reward.
+    """
+
+    item_ids: list[str] = field(default_factory=list)
+    amber: int = 0
+    tempest_bonus: int = 0
+    champion_offer: str | None = None
+
+
+def generate_node_reward(run_seed: int, node: "Node") -> "NodeReward | None":
+    """Return the seed-deterministic type reward for a fought ``node`` (V.70).
+
+    Type-dispatched (mirrors :func:`node_encounter`): **REWARD** → item loot
+    (:func:`generate_reward_loot`); **CHALLENGE** → amber + both components +
+    tempest bonus + champion offer (:func:`generate_challenge`); **all other
+    types** → ``None``. Uses ``node.weather`` (the node's ``default_weather``, not
+    live API weather) so the payload is byte-identical to the reward
+    ``node_encounter`` discards (V.2/V.19). Pure — no ``Run`` mutation, no I/O.
+    """
+    from .models import Node, NodeType  # local import — avoid widening surface  # noqa: F401
+
+    match node.node_type:
+        case NodeType.REWARD:
+            loot = generate_reward_loot(run_seed, node.index)
+            return NodeReward(item_ids=list(loot.item_ids))
+        case NodeType.CHALLENGE:
+            stage = stage_of(node.index)
+            _squad, reward = generate_challenge(run_seed, node.index, stage, node.weather)
+            return NodeReward(
+                item_ids=[reward.component_offer, reward.themed_component],
+                amber=reward.amber,
+                tempest_bonus=reward.tempest_bonus,
+                champion_offer=reward.champion_offer or None,
+            )
+        case _:  # FIGHT / BOSS_FIGHT / AUGMENT / SUPPLY — no type reward
+            return None

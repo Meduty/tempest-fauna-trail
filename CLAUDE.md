@@ -126,7 +126,7 @@ docs/                       # Design + journal (see Documentation Map)
 | `game/augments.py`, `game/economy.py` | T.22 | Augments, Amber economy, Tempest team-size cap |
 | `game/save.py` | T.14 | JSON save/load of `Run` |
 | `ui/theme.py`, `ui/components/`, `ui/views/` | T.8-T.13, T.15, T.23 | Flet views + shared components |
-| `viz/route_map.py`, `viz/run_summary.py` | T.11, T.13 | Canvas route map, BarChart summary |
+| `viz/route_map.py`, `viz/run_summary.py` | T.11, T.13 | Canvas route map + canvas damage-per-battle summary |
 
 ## Flet Conventions
 
@@ -136,7 +136,7 @@ docs/                       # Design + journal (see Documentation Map)
 - All API/HTTP on `threading.Thread` — never block main thread (V.4)
 - `page.update()` once after batch control mutations — not per-control
 - Avoid `page.clean()` — replace `page.views` list instead
-- **Charts**: `ft.BarChart`, `ft.LineChart`, `ft.PieChart` native
+- **Charts**: graded viz is **hand-drawn on `flet.canvas`** (V.72) — Flet ≥0.85 removed the native `ft.BarChart`/`LineChart`/`PieChart` from core (now the optional `flet-charts` plugin, **not used**). Pure `*_specs(run)` data fn + canvas builder (see `viz/route_map.py`, `viz/run_summary.py`)
 - **Canvas**: `flet.canvas` for route map — `cv.Circle`, `cv.Line`, `cv.Text`. Draw connections behind, nodes on top. Manual hit-testing.
 - **Animations**: `animate_opacity`, `animate_offset` on controls; `ft.AnimatedSwitcher` for combat log
 - **Images**: OpenWeather icons via `ft.Image(src="https://openweathermap.org/img/wn/{icon}@2x.png")`

@@ -33,6 +33,16 @@ RNG is Python `Random` seeded from that derived value; no global randomness.
   (`_champion_def_to_enemy`) and yields a `ChallengeReward`.
 - `generate_boss_encounter(run_seed, node_index, stage) -> BossEncounterResult`
   — the boss squad + its map effect.
+- `generate_node_reward(run_seed, node) -> NodeReward | None` (T.38, V.70) — the
+  **single reward-payload source**, type-dispatched (mirrors `node_encounter`):
+  **REWARD** → `generate_reward_loot` items; **CHALLENGE** → the
+  `generate_challenge` reward (amber `2 × stage_index`, both components,
+  `tempest_bonus`, `champion_offer`); **all other types** → `None`. Uses
+  `node.weather` (the node's `default_weather`, not live API weather) so the
+  payload is byte-identical to the reward `node_encounter` *discards* (the
+  fight-build path stays squad-only; the resolve path `economy.apply_node_result`
+  owns the reward). `NodeReward` fields → `Run.inventory` / `amber` / tempest /
+  pending recruit. Applied **on win only** ⇒ a loss is structurally reward-zeroed.
 
 ## Bosses
 
