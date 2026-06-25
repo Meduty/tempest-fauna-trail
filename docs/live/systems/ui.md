@@ -1,11 +1,11 @@
 # UI — main menu + combat view + dev harness (LIVING)
 
 > **Status:** ✅ for the main menu (T.9), combat view core + dev harness (T.12a),
-> **RunStart (T.10)**, **Trail (T.11)**, **Prep (T.23a — full economy, no items)**.
-> The rest of the Flet run-loop (Reward/Summary, T.13–T.15) + Prep items (T.23b) is
-> unbuilt — this doc grows as those land. **New Run is live** (→ RunStart → champion
-> pick → **Trail** → **Prep** → Combat); Continue stays disabled until
-> load-into-Trail (T.15). FROZEN design:
+> **RunStart (T.10)**, **Trail (T.11)**, **Prep (T.23a — full economy, no items)**,
+> **Reward + result-out seam (T.15a)**. Still unbuilt: Summary (T.13), terminal/Continue
+> routing (T.15b), Prep items (T.23b). **New Run is live** (→ RunStart → champion pick →
+> **Trail** → **Prep** → **Combat** → **Reward** → Trail); Continue stays disabled until
+> load-into-Trail (T.15b). FROZEN design:
 > [`views_spec.md`](../../design/systems/views_spec.md). Audited by `/check`.
 
 ## RunStart (T.10) — `game/run_init.py` + `ui/views/run_start.py`
@@ -117,6 +117,24 @@ renders a fight only through `resolve_combat` + the forward `CombatReplay`
 stepper + `inspect_at_tick` + the recorded `BattleResult` stream, and implements
 **no** combat math. `ui/` imports `game/`, never the reverse (V.1).
 
+## Reward (T.15a) — `ui/views/reward.py` + `economy.apply_node_result`
+
+The post-fight panel (route `/reward`). The run-loop **producer** (`main.py::_finish_combat`)
+is what closes a node — not the view:
+
+1. `economy.apply_node_result(run, result) -> NodeResultSummary` — the single game-side
+   reward orchestrator (V.69): appends `result` to `run.battle_log`, grants seeded income
+   (win bonus on a win only, V.2) and — **on a win** — fight tempest (`grant_fight_tempest`,
+   cascades rank-ups) + `mark_current_node_cleared` + `advance_to_next_node` (→ `VICTORY`
+   if last); a non-win (LOSS/DRAW) sets `status = DEFEAT`. Called **exactly once per fight**,
+   never re-resolves.
+2. node-boundary autosave via `save.save_run` (V.65).
+3. `build_reward_view(page, run, summary, *, on_continue)` — pure presentation off the
+   `NodeResultSummary` + live `Run` (outcome banner, Amber/tempest/rank, nodes cleared).
+   **Continue** → the producer's router: a continuing run pops the stack to the menu and
+   pushes a **fresh Trail** at the new current node; a terminal run stays on the menu
+   (T.15a interim → Summary in T.15b).
+
 ## The seam — `CombatSession`
 
 `ui/combat_playback.py` defines the one input bundle the combat view consumes
@@ -127,9 +145,15 @@ CombatSession(team: list[Champion], enemies: list[Enemy], weather: WeatherState,
               run_mods=None, node_id="")
 ```
 
-**Two producers, one session:** the dev harness builds it from selectors now; the
-Prep/Trail `Start Combat` flow builds the **identical** object later → same view,
-no change. The view owns resolution (takes inputs, not a pre-resolved result).
+**Two producers, one session:** the dev harness builds it from selectors; the Prep
+`Start Combat` flow (T.23a) builds the **identical** object → same view. The view owns
+resolution (takes inputs, not a pre-resolved result).
+
+**Result-out (T.15a, V.64):** `build_combat_view(..., on_exit: Callable[[BattleResult],
+None])` hands the resolved `BattleResult` back on **every** exit (end-panel Continue /
+control-bar Exit / Escape — all carry the same up-front-resolved result; **commit-on-start**,
+V.69). The **producer** applies progression; the dev harness ignores the arg
+(`lambda _result: _pop(page)`).
 
 ## `ui/combat_playback.py` — pure animation model (Flet-free, tested)
 
@@ -332,6 +356,9 @@ opens the admin panel. Quit → `page.window.destroy()`.
   through `game/economy.py`/`game/shop.py`, resolves only via the combat view).
 - **V.68** — Prep placement is confined to the allied zone (cols 0–2) + validated
   team-only by `game/loadout.py::validate_team_positions` atop the V.62 guard.
+- **V.69** — the run-loop applies a fought node's outcome only through
+  `economy.apply_node_result(run, result)` (once per fight, never re-resolving);
+  combat exits via `on_exit(result)` (commit-on-start). Extends V.64.
 
 ## File map
 
@@ -340,6 +367,8 @@ opens the admin panel. Quit → `page.window.destroy()`.
 | `CombatSession` + pure cue/queue model (`build_playback`) | `src/ui/combat_playback.py` |
 | Combat view (canvas board, stepper drive loop, inspect, end panel) | `src/ui/views/combat.py` |
 | Prep view (placement + shop + bench + preview + tooltips, T.23a) | `src/ui/views/prep.py` |
+| Reward view (post-fight panel, T.15a) | `src/ui/views/reward.py` |
+| Reward orchestrator (`apply_node_result`, V.69) | `src/game/economy.py` |
 | Shared hex-board pixel geometry (combat + Prep) | `src/ui/components/board_geometry.py` |
 | Dev harness launcher → `CombatSession` | `src/ui/views/dev_harness.py` |
 | Main menu (`/`, T.9) — New Run/Continue/Playfight/Quit | `src/ui/views/menu.py` |

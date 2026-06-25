@@ -10,14 +10,16 @@ Tempest for rush buy-ups). See SPEC §D.13 (champion economy), §D.14 (team cap)
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from random import Random
 from typing import TYPE_CHECKING, Final
 
 from .content import CHAMPION_DEF_BY_ID, build_champion_at_level
 from .encounter import economy_seed
+from .models import CombatOutcome, RunStatus
 
-if TYPE_CHECKING:  # avoid a hard import cycle; Run only needed for typing
-    from .models import Run
+if TYPE_CHECKING:  # avoid a hard import cycle; Run/BattleResult only for typing
+    from .models import BattleResult, Run
 
 # ---------------------------------------------------------------------------
 # Amber income (SPEC §D.13)
@@ -197,6 +199,47 @@ def apply_node_income(run: "Run", won: bool, node_index: int) -> int:
     granted = node_income(run.amber, won, run.seed, node_index)
     run.amber += granted
     return granted
+
+
+@dataclass(frozen=True)
+class NodeResultSummary:
+    """What one fought node did to the run — the reward-panel's display payload."""
+
+    won: bool
+    amber_gained: int
+    tempest_gained: int
+    terminal: bool          # run.is_complete() after applying
+    status: RunStatus       # IN_PROGRESS | VICTORY | DEFEAT
+
+
+def apply_node_result(run: "Run", result: "BattleResult") -> NodeResultSummary:
+    """Apply one fought node's outcome to ``run`` — the single reward-step
+    orchestrator (V.69). Appends ``result`` to ``run.battle_log``, grants seeded
+    income (win bonus on a win only, V.2) and, **on a win**, fight tempest +
+    marks the current node CLEARED + advances (→ ``VICTORY`` if it was the last
+    node); a non-win (LOSS/DRAW) sets ``status = DEFEAT``. Pure progression — no
+    Flet, no re-resolve, no I/O (the producer autosaves after, V.65). The producer
+    calls this **exactly once per fight** (V.64).
+    """
+    node_index = run.current_node_index
+    won = result.outcome == CombatOutcome.WIN
+    run.battle_log.append(result)
+    amber_gained = apply_node_income(run, won, node_index)
+    tempest_gained = 0
+    if won:
+        grant_fight_tempest(run)            # +TEMPEST_PER_FIGHT, cascades rank-ups
+        tempest_gained = TEMPEST_PER_FIGHT
+        run.mark_current_node_cleared()
+        run.advance_to_next_node()          # → status VICTORY if no next node
+    else:
+        run.status = RunStatus.DEFEAT
+    return NodeResultSummary(
+        won=won,
+        amber_gained=amber_gained,
+        tempest_gained=tempest_gained,
+        terminal=run.is_complete(),
+        status=run.status,
+    )
 
 
 def _materialize_champion(run: "Run", champion_id: str, level: int) -> None:

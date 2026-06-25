@@ -50,19 +50,48 @@ def _pop(page: ft.Page) -> None:
         page.update()
 
 
+def _pop_to_root(page: ft.Page) -> None:
+    """Unwind the whole `page.views` stack back to the menu, firing each view's
+    on-pop handler (stops combat autoplay + the Trail refresher, V.66)."""
+    while len(page.views) > 1:
+        _pop(page)
+
+
+def _finish_combat(page: ft.Page, run, node, result) -> None:
+    """Reward step (T.15a, V.64/V.69) — the run-loop *producer*. Applies the fought
+    node's outcome through the single game-side orchestrator, autosaves the run
+    (V.65), then shows the reward panel. Continue routes back to a fresh Trail (loop
+    continues) or, on a terminal run, the menu (T.15a interim → Summary in T.15b)."""
+    from src.game.economy import apply_node_result
+    from src.game.save import default_save_dir, save_run
+    from src.ui.views.reward import build_reward_view
+
+    summary = apply_node_result(run, result)
+    save_run(run, default_save_dir() / f"{run.run_id}.json")  # node-boundary autosave
+
+    def _continue() -> None:
+        _pop_to_root(page)  # drop reward + combat + prep + stale trail → menu
+        if not summary.terminal:
+            _push_trail(page, run)  # fresh Trail at the new current node
+        # terminal → stay on the menu (15a interim; Summary lands in 15b)
+
+    page.views.append(build_reward_view(page, run, summary, on_continue=_continue))
+    page.update()
+
+
 def _push_prep(page: ft.Page, run, node) -> None:
     """Play-Next landing — the full Prep view (T.23a). Placement + shop + bench +
     preview + tooltips over the finished economy/combat backend (V.63). Start-Combat
-    builds a `CombatSession` and opens the combat view; the reward/progression step
-    lands in T.15 (15a), so for now combat exit pops back to Prep (result dropped)."""
+    builds a `CombatSession` and opens the combat view; on any exit the reward step
+    applies the resolved result (commit-on-start, V.69) and shows the reward panel."""
     from src.ui.views.combat import build_combat_view
     from src.ui.views.prep import build_prep_view
 
     def _open_combat(session) -> None:
-        # T.15 (15a) threads the BattleResult out via on_exit(result) for the reward
-        # step; until then exit just pops the combat view back to Prep, dropping the
-        # result (V.64 — the reward/progression producer is the loop, not the view).
-        page.views.append(build_combat_view(page, session, on_exit=lambda: _pop(page)))
+        page.views.append(build_combat_view(
+            page, session,
+            on_exit=lambda result: _finish_combat(page, run, node, result),
+        ))
         page.update()
 
     page.views.append(
@@ -123,7 +152,8 @@ def _push_playfight(page: ft.Page) -> None:
     from src.ui.views.dev_harness import build_dev_harness_view
 
     def _open_combat(session) -> None:
-        page.views.append(build_combat_view(page, session, on_exit=lambda: _pop(page)))
+        # Non-loop producer — ignores the BattleResult (V.64), just pops to the harness.
+        page.views.append(build_combat_view(page, session, on_exit=lambda _result: _pop(page)))
         page.update()
 
     page.views.append(build_dev_harness_view(page, _open_combat))
