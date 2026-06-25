@@ -50,34 +50,27 @@ def _pop(page: ft.Page) -> None:
         page.update()
 
 
-def _push_prep_stub(page: ft.Page, run, node) -> None:
-    """Minimal Play-Next landing (T.11) — the full Prep view lands in T.23 (23a).
+def _push_prep(page: ft.Page, run, node) -> None:
+    """Play-Next landing — the full Prep view (T.23a). Placement + shop + bench +
+    preview + tooltips over the finished economy/combat backend (V.63). Start-Combat
+    builds a `CombatSession` and opens the combat view; the reward/progression step
+    lands in T.15 (15a), so for now combat exit pops back to Prep (result dropped)."""
+    from src.ui.views.combat import build_combat_view
+    from src.ui.views.prep import build_prep_view
 
-    Confirms the Trail → Prep seam (the current node + its deterministic enemy
-    squad) until `ui/views/prep.py` exists. Clearly-marked placeholder."""
-    from src.game.encounter import node_encounter
-    from src.ui.theme import (
-        BG, FONT_SIZE_BODY, FONT_SIZE_DISPLAY, SPACING_LG, SPACING_MD,
-        SPACING_XXL, TEXT_MUTED, TEXT_PRIMARY,
-    )
+    def _open_combat(session) -> None:
+        # T.15 (15a) threads the BattleResult out via on_exit(result) for the reward
+        # step; until then exit just unwinds to the Trail (V.64 producer is the loop).
+        page.views.append(build_combat_view(page, session, on_exit=lambda: _pop(page)))
+        page.update()
 
-    enc = node_encounter(run.seed, node, weather=node.weather)
-    body = ft.Column(
-        [
-            ft.Text(f"Prep — Node {node.index}: {node.city}", size=FONT_SIZE_DISPLAY,
-                    weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
-            ft.Text(f"{node.node_type.value} · {node.weather.value} · "
-                    f"{len(enc.enemies)} enemies", size=FONT_SIZE_BODY, color=TEXT_PRIMARY),
-            ft.Container(height=SPACING_LG),
-            ft.Text("Full Prep (placement + shop) arrives in T.23.",
-                    size=FONT_SIZE_BODY, color=TEXT_MUTED),
-            ft.TextButton("← Back to Trail", on_click=lambda _e: _pop(page)),
-        ],
-        spacing=SPACING_MD, horizontal_alignment=ft.CrossAxisAlignment.CENTER, tight=True,
+    page.views.append(
+        build_prep_view(
+            page, run, node,
+            on_start_combat=_open_combat,
+            on_back=lambda: _pop(page),
+        )
     )
-    root = ft.Container(bgcolor=BG, expand=True, alignment=ft.Alignment.CENTER,
-                        padding=SPACING_XXL, content=body)
-    page.views.append(ft.View(route="/prep", controls=[root], padding=0))
     page.update()
 
 
@@ -95,7 +88,7 @@ def _push_trail(page: ft.Page, run) -> None:
     page.views.append(
         build_trail_view(
             page, run,
-            on_play_next=lambda node: _push_prep_stub(page, run, node),
+            on_play_next=lambda node: _push_prep(page, run, node),
             on_save_exit=_save_exit,
         )
     )

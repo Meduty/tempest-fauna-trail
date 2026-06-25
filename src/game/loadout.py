@@ -28,6 +28,59 @@ from src.game.weather_effects import CombatModifier, WEATHER_BUFF_BASE, combat_m
 from src.game import abilities as _abilities  # noqa: F401 — triggers @register decorators
 
 
+# Player deployment zone — columns 0..ALLIED_ZONE_MAX_Q-1 (cols 0–2), matching the
+# T.24 enemy-formation player half (player 0–2 / enemy 7–9). The Prep view confines
+# hand-placement to this zone (V.68); the V.62 engine guard underneath still checks
+# on-board / no-dup / known-piece across both sides.
+ALLIED_ZONE_MAX_Q = 3
+
+
+def validate_team_positions(
+    team: list[Champion],
+    positions: dict[str, tuple[int, int]],
+    *,
+    zone_max_q: int = ALLIED_ZONE_MAX_Q,
+) -> None:
+    """Validate a Prep hand-placement (champion_id → (q, r)) **team-only** (V.68).
+
+    A team-only superset of the V.62 engine guard: it additionally knows which
+    pieces are the player's (roster ids) and confines them to the allied
+    deployment zone. Raises ``ValueError`` unless **every key names a champion in
+    ``team``**, **every cell is in-zone** (``0 <= q < zone_max_q``,
+    ``0 <= r < BOARD_HEIGHT``), and **no two share a cell**. Empty ``positions``
+    (Auto-Place) passes — combat then uses the default formation (byte-identical,
+    V.2). Call before building the ``CombatSession``; the engine re-checks
+    on-board/no-dup/known-piece for both sides under V.62.
+    """
+    from src.game.combat.engine import BOARD_HEIGHT
+
+    team_ids = {champion.id for champion in team}
+    seen: dict[tuple[int, int], str] = {}
+    for champ_id, cell in positions.items():
+        if champ_id not in team_ids:
+            raise ValueError(
+                f"team_positions[{champ_id!r}] names no champion on the team "
+                f"(roster ids: {sorted(team_ids)})."
+            )
+        q, r = cell
+        if not (0 <= q < zone_max_q):
+            raise ValueError(
+                f"team_positions[{champ_id!r}] = ({q},{r}) is outside the allied "
+                f"deployment zone (columns 0..{zone_max_q - 1})."
+            )
+        if not (0 <= r < BOARD_HEIGHT):
+            raise ValueError(
+                f"team_positions[{champ_id!r}] = ({q},{r}) row is off-board "
+                f"(0..{BOARD_HEIGHT - 1})."
+            )
+        if cell in seen:
+            raise ValueError(
+                f"team_positions: {champ_id!r} and {seen[cell]!r} both placed on "
+                f"cell ({q},{r})."
+            )
+        seen[cell] = champ_id
+
+
 def make_slot(ability_id: str) -> ActiveSlot:
     """Build an `ActiveSlot` seeded from the ability's `ABILITY_MANA` statline
     (V.48, T.29c). Cost/cap/start/priority are authored on the ability def, not
