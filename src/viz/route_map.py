@@ -119,7 +119,7 @@ def _circle(x: float, y: float, r: float, color: str, *, fill: bool) -> cv.Circl
 
 def build_route_map(
     run: Run,
-    weather_for: Callable[[Node], WeatherState],
+    weather_for: Callable[[Node], WeatherState | None],
     on_select: Callable[[int], None],
     selected_index: int | None = None,
 ) -> ft.Control:

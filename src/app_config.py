@@ -82,7 +82,7 @@ def save_api_key(key: str, path: Path | None = None) -> None:
 def stored_api_key(path: Path | None = None) -> str | None:
     """The key saved in the config file (ignoring env), or ``None``."""
     val = load_config(path).get(_API_KEY_FIELD)
-    return val if isinstance(val, str) and val.strip() else None
+    return val.strip() if isinstance(val, str) and val.strip() else None
 
 
 def resolve_api_key(path: Path | None = None) -> str | None:

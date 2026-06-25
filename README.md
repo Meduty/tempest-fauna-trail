@@ -32,8 +32,10 @@ cp .env.example .env
 
 ### Weather API key (optional, but recommended)
 
-Live weather drives combat, so the Trail wants an [OpenWeather](https://openweathermap.org/api)
-key (free tier is plenty). Configure it **either** way:
+The Trail shows live weather per city, so it wants an [OpenWeather](https://openweathermap.org/api)
+key (free tier is plenty). Display only — combat resolves on the node's deterministic
+default weather (V.66), so outcomes never depend on the live feed. Configure the key
+**either** way:
 
 1. **`.env` file** (preferred for local dev) — `cp .env.example .env`, then edit the
    one line:

@@ -9,8 +9,9 @@ done here; Play Next hands the node to the host (Prep → combat).
 started on open and **stopped on pop / Save & Exit** (the returned `ft.View` carries
 the stop handler on `view.data`, which `main._pop` fires — same convention the combat
 view uses for its autoplay thread). All HTTP runs on the refresher's worker thread;
-the view never blocks on a fetch. Missing/`UNKNOWN` entries render the city
-`default_weather` placeholder.
+the view never blocks on a fetch. Display is **tri-state (V.66):** `UNKNOWN`
+entries render as `?` "pending" (never a fake default), `SUBSTITUTE` shows the
+city default flagged `fallback`, `LIVE` shows the fetched weather.
 """
 
 from __future__ import annotations
