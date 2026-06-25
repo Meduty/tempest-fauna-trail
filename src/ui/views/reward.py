@@ -1,10 +1,14 @@
-"""Reward view (T.15a, route `/reward`) — the post-fight node-result panel.
+"""Reward view (T.15a + T.38, route `/reward`) — the post-fight node-result panel.
 
 Pure presentation (V.63/V.1): it reads the `NodeResultSummary` the producer
-already computed via `economy.apply_node_result` (V.69) plus the live `Run`; it
-recomputes no economy/progression number. One **Continue** button hands control
-back to the producer, which routes to the Trail (loop continues) or — on a
-terminal run — the Summary/menu (T.15b).
+already computed via `economy.apply_node_result` (V.69/V.70/V.71) plus the live
+`Run`; it recomputes no economy/progression number. It surfaces **Hearts**
+remaining + the node's **type rewards** (REWARD loot / CHALLENGE payload) and,
+for a pending CHALLENGE `champion_offer`, an interactive **Recruit / Skip** that
+mutates the run only through `economy.recruit_challenge_offer` (the choice lives
+here, the mutation in `game/`). One **Continue** button hands control back to the
+producer, which routes to the Trail (loop continues) or — on a terminal run —
+the Summary/menu (T.15b).
 """
 
 from __future__ import annotations
@@ -13,7 +17,8 @@ from typing import Callable
 
 import flet as ft
 
-from src.game.economy import NodeResultSummary
+from src.game.content import CHAMPION_DEF_BY_ID
+from src.game.economy import NodeResultSummary, recruit_challenge_offer
 from src.game.models import NodeState, Run, RunStatus
 from src.ui.theme import (
     ACCENT,
@@ -44,7 +49,7 @@ def build_reward_view(
     *,
     on_continue: Callable[[], None],
 ) -> ft.View:
-    """Build the Reward view for a fought node's ``summary`` (T.15a).
+    """Build the Reward view for a fought node's ``summary`` (T.15a + T.38).
 
     ``on_continue()`` is the producer's router — Trail on a continuing run, or
     Summary/menu when ``summary.terminal``.
@@ -58,7 +63,11 @@ def build_reward_view(
     elif summary.won:
         banner, color = "Node Cleared", SUCCESS
     else:
-        banner, color = "Held the Line", WARNING  # non-terminal non-win (unreachable in MVP)
+        banner, color = "Held the Line", WARNING  # survivable loss (Hearts model, V.71)
+
+    hearts = summary.hearts_remaining
+    hearts_str = ("♥" * hearts) if hearts > 0 else "—"
+    hearts_color = DANGER if hearts <= 1 else TEXT_PRIMARY
 
     rows: list[ft.Control] = [
         ft.Text(banner, size=FONT_SIZE_DISPLAY, weight=ft.FontWeight.BOLD, color=color),
@@ -67,8 +76,64 @@ def build_reward_view(
         _stat_row("Amber", f"{run.amber}", TEXT_PRIMARY),
         _stat_row("Tempest gained", f"+{summary.tempest_gained}", ACCENT),
         _stat_row("Rank", f"{run.tempest_rank}", ACCENT),
+        _stat_row("Hearts", hearts_str, hearts_color),
         _stat_row("Nodes cleared", f"{cleared} / {len(run.route)}", TEXT_PRIMARY),
     ]
+
+    # Type-reward block (REWARD loot / CHALLENGE amber+components) — win only (V.70).
+    reward_bits = [_pretty(item_id) for item_id in summary.item_ids]
+    if summary.bonus_amber:
+        reward_bits.append(f"+{summary.bonus_amber} Amber")
+    if reward_bits:
+        rows.append(ft.Container(height=SPACING_SM))
+        rows.append(ft.Text("Rewards", size=FONT_SIZE_CAPTION, color=TEXT_MUTED))
+        rows.append(
+            ft.Container(
+                ft.Text(" · ".join(reward_bits), size=FONT_SIZE_BODY, color=SUCCESS),
+                bgcolor=SURFACE_ELEVATED, border_radius=CARD_RADIUS,
+                padding=SPACING_SM,
+            )
+        )
+
+    # Interactive CHALLENGE recruit — pending offer applied only via the game
+    # function on Recruit (V.63 — view chooses, game mutates).
+    if summary.champion_offer:
+        champ_def = CHAMPION_DEF_BY_ID.get(summary.champion_offer)
+        offer_name = champ_def.name if champ_def is not None else summary.champion_offer
+        offer_slot = ft.Container()
+
+        def _recruit(_e: ft.ControlEvent) -> None:
+            recruit_challenge_offer(run, summary.champion_offer)  # type: ignore[arg-type]
+            offer_slot.content = ft.Text(
+                f"✓ Recruited {offer_name}", size=FONT_SIZE_BODY, color=SUCCESS,
+            )
+            page.update()
+
+        def _skip(_e: ft.ControlEvent) -> None:
+            offer_slot.content = ft.Text(
+                f"Skipped {offer_name}", size=FONT_SIZE_BODY, color=TEXT_MUTED,
+            )
+            page.update()
+
+        offer_slot.content = ft.Column(
+            [
+                ft.Text(f"Recruit {offer_name}?", size=FONT_SIZE_BODY, color=TEXT_PRIMARY),
+                ft.Row(
+                    [
+                        ft.FilledButton("Recruit", on_click=_recruit,
+                                        style=ft.ButtonStyle(bgcolor=ACCENT)),
+                        ft.OutlinedButton("Skip", on_click=_skip),
+                    ],
+                    spacing=SPACING_SM,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
+            ],
+            spacing=SPACING_SM,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            tight=True,
+        )
+        rows.append(ft.Container(height=SPACING_SM))
+        rows.append(offer_slot)
 
     continue_label = "Continue ▶"
     if summary.terminal:
@@ -88,6 +153,11 @@ def build_reward_view(
     root = ft.Container(bgcolor=BG, expand=True, alignment=ft.Alignment.CENTER,
                         padding=SPACING_XL, content=card)
     return ft.View(route="/reward", controls=[root], padding=0)
+
+
+def _pretty(item_id: str) -> str:
+    """Render a content id (`apex_fang`) as a display label (`Apex Fang`)."""
+    return item_id.replace("_", " ").title()
 
 
 def _stat_row(label: str, value: str, color: str) -> ft.Control:

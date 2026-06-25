@@ -1,12 +1,12 @@
 # UI — main menu + combat view + dev harness (LIVING)
 
 > **Status:** ✅ for the main menu (T.9), combat view core + dev harness (T.12a),
-> **RunStart (T.10)**, **Trail (T.11)**, **Prep (T.23a — full economy, no items)**,
+> **RunStart (T.10)**, **Trail (T.11)**, **Prep (T.23a/b — full economy + items)**,
 > **Reward + result-out seam (T.15a)**, **Summary (T.13 — canvas damage chart)**,
-> **routing + Continue (T.15b)**. The **full menu→…→menu loop is live**: New Run →
-> RunStart → Trail → Prep → Combat → Reward → Trail, terminal → **Summary** → menu;
-> **Continue** loads the latest save into the Trail. Still unbuilt: Prep items (T.23b).
-> FROZEN design:
+> **routing + Continue (T.15b)**, **Prep items (T.23b)**. The **full menu→…→menu loop
+> is live**: New Run → RunStart → Trail → Prep → Combat → Reward → Trail, terminal →
+> **Summary** → menu; **Continue** loads the latest save into the Trail. **MVP run-loop
+> slice complete.** FROZEN design:
 > [`views_spec.md`](../../design/systems/views_spec.md). Audited by `/check`.
 
 ## RunStart (T.10) — `game/run_init.py` + `ui/views/run_start.py`
@@ -104,6 +104,12 @@ number.
 - **Shop / preview / tooltips:** shop slots (`run.shop_offers`, cost via `champion_cost`),
   deterministic enemy preview (`node_encounter`, with affinity-clash hints via
   `ring_relation`), and a tap-to-inspect stat panel (raw sheet read off the `Champion`).
+- **Items (T.23b):** the inspect panel's item section equips/unequips through the
+  `game/inventory.py` seam (V.63, never inline): equipped chips unequip on click;
+  inventory chips equip onto the selected champion. `equip_item` **auto-combines on
+  double-equip** (the incoming item + a held component that form a recipe →
+  the combined item in one slot, `items.combine`), else fills a free slot (≤3);
+  `unequip_item` returns the item whole. Deterministic (first held partner, V.2).
 - **Start-Combat:** `team = run.roster` placed pieces; `validate_team_positions(team,
   positions)` (`game/loadout.py`, V.68 — zone + roster-id, on top of the V.62 engine
   guard); builds `CombatSession(team, enemies, weather=node.weather, run_mods=
@@ -118,28 +124,35 @@ renders a fight only through `resolve_combat` + the forward `CombatReplay`
 stepper + `inspect_at_tick` + the recorded `BattleResult` stream, and implements
 **no** combat math. `ui/` imports `game/`, never the reverse (V.1).
 
-## Reward (T.15a) — `ui/views/reward.py` + `economy.apply_node_result`
+## Reward (T.15a + T.38) — `ui/views/reward.py` + `economy.apply_node_result`
 
 The post-fight panel (route `/reward`). The run-loop **producer** (`main.py::_finish_combat`)
 is what closes a node — not the view:
 
 1. `economy.apply_node_result(run, result) -> NodeResultSummary` — the single game-side
-   reward orchestrator (V.69): appends `result` to `run.battle_log`, grants seeded income
-   (win bonus on a win only, V.2) and — **on a win** — fight tempest (`grant_fight_tempest`,
-   cascades rank-ups) + `mark_current_node_cleared` + `advance_to_next_node` (→ `VICTORY`
-   if last); a non-win (LOSS/DRAW) sets `status = DEFEAT`. Called **exactly once per fight**,
-   never re-resolves.
-2. node-boundary autosave via `save.save_run` (V.65).
+   reward orchestrator (V.69/V.70/V.71): appends `result` to `run.battle_log`, grants seeded
+   income (win bonus on a win only, V.2) and — **on a win** — fight tempest (`grant_fight_tempest`,
+   cascades rank-ups) + the node's **type auto-reward** (`generate_node_reward` → REWARD loot
+   to `Run.inventory` / CHALLENGE amber+components+tempest; `champion_offer` surfaced *pending*,
+   V.70) + `mark_current_node_cleared` + `advance_to_next_node` (→ `VICTORY` if last). A
+   **non-win** decrements `Run.hearts` (Hearts model, V.71): a non-boss/non-final loss with
+   `hearts > 0` survives (CLEARED + advance), while a **BOSS_FIGHT loss**, a **final-node loss**,
+   or `hearts <= 0` sets `status = DEFEAT`. Unique payouts are win-only ⇒ a loss is reward-zeroed.
+   Called **exactly once per fight**, never re-resolves.
+2. node-boundary autosave via `save.save_run` (V.65) — `Run.hearts` round-trips (back-compat default 3).
 3. `build_reward_view(page, run, summary, *, on_continue)` — pure presentation off the
-   `NodeResultSummary` + live `Run` (outcome banner, Amber/tempest/rank, nodes cleared).
-   **Continue** → the producer's router (`main.py::_finish_combat`): a continuing run pops
-   the stack to the menu and pushes a **fresh Trail** at the new current node; a terminal
-   run (victory/defeat) pushes the **Summary** view → menu (T.15b).
+   `NodeResultSummary` + live `Run`: outcome banner (incl. **"Held the Line"** for a survivable
+   loss), Amber/tempest/rank, **Hearts** (♥, DANGER-tinted when ≤1), nodes cleared, a **Rewards**
+   block (loot items + bonus Amber), and — for a pending CHALLENGE `champion_offer` — an
+   interactive **Recruit / Skip** that mutates the run only via `economy.recruit_challenge_offer`
+   (V.63 — the view chooses, `game/` mutates; recompute nothing). **Continue** → the producer's
+   router (`main.py::_finish_combat`): a continuing run pops to the menu and pushes a **fresh
+   Trail** at the new current node; a terminal run pushes the **Summary** view → menu (T.15b).
 
 ## Summary (T.13) — `viz/run_summary.py` + `ui/views/summary.py`
 
 The run-end screen (route `/summary`). Mirrors the route-map's graded-viz shape
-(V.70): a **pure data fn** + a **canvas builder** — no `ft.BarChart` (removed from
+(V.72): a **pure data fn** + a **canvas builder** — no `ft.BarChart` (removed from
 Flet core ≥0.85).
 
 - `viz/run_summary.py::run_summary_specs(run) -> list[BarSpec]` — one `BarSpec(index,
@@ -379,7 +392,7 @@ opens the admin panel. Quit → `page.window.destroy()`.
 - **V.69** — the run-loop applies a fought node's outcome only through
   `economy.apply_node_result(run, result)` (once per fight, never re-resolving);
   combat exits via `on_exit(result)` (commit-on-start). Extends V.64.
-- **V.70** — graded viz (`route_map`, `run_summary`) is hand-drawn on `flet.canvas`
+- **V.72** — graded viz (`route_map`, `run_summary`) is hand-drawn on `flet.canvas`
   (pure `*_specs` data fn + canvas builder, asserts data not pixels); no dependency on
   Flet's removed core chart widgets (`ft.BarChart`/`LineChart`/`PieChart`, ≥0.85).
 
@@ -392,7 +405,7 @@ opens the admin panel. Quit → `page.window.destroy()`.
 | Prep view (placement + shop + bench + preview + tooltips, T.23a) | `src/ui/views/prep.py` |
 | Reward view (post-fight panel, T.15a) | `src/ui/views/reward.py` |
 | Reward orchestrator (`apply_node_result`, V.69) | `src/game/economy.py` |
-| Run-summary view + canvas damage chart (T.13, V.70) | `src/ui/views/summary.py`, `src/viz/run_summary.py` |
+| Run-summary view + canvas damage chart (T.13, V.72) | `src/ui/views/summary.py`, `src/viz/run_summary.py` |
 | Shared hex-board pixel geometry (combat + Prep) | `src/ui/components/board_geometry.py` |
 | Dev harness launcher → `CombatSession` | `src/ui/views/dev_harness.py` |
 | Main menu (`/`, T.9) — New Run/Continue/Playfight/Quit | `src/ui/views/menu.py` |

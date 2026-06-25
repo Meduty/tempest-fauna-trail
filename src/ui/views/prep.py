@@ -35,6 +35,7 @@ from src.game.economy import (
     try_rank_up_with_amber,
 )
 from src.game.encounter import node_encounter
+from src.game.inventory import equip_item, unequip_item
 from src.game.loadout import ALLIED_ZONE_MAX_Q, validate_team_positions
 from src.game.models import Champion, Node, NodeType, Run
 from src.game.shop import buy_from_shop, reroll_cost, reroll_shop
@@ -220,6 +221,22 @@ def build_prep_view(
         if not try_rank_up_with_amber(run):
             _flash("Can't rank up (max rank or not enough Amber).")
         _render()
+
+    # --- items (equip seam, T.23b — all through game/inventory.py, V.63) --------
+    def _equip(item_id: str) -> None:
+        champ = _champ_by_id(state["selected"]) if isinstance(state["selected"], str) else None
+        if champ is None:
+            _flash("Select a champion first.")
+            return
+        if equip_item(run, champ, item_id):
+            _render()
+        else:
+            _flash("Can't equip (no free slot and no combine).")
+
+    def _unequip(item_id: str) -> None:
+        champ = _champ_by_id(state["selected"]) if isinstance(state["selected"], str) else None
+        if champ is not None and unequip_item(run, champ, item_id):
+            _render()
 
     # --- start combat -----------------------------------------------------------
     def _start_combat(_e: object = None) -> None:
@@ -465,6 +482,25 @@ def build_prep_view(
             spacing=SPACING_SM,
         )
 
+    def _item_chip(item_id: str, *, equipped: bool, count: int = 0) -> ft.Control:
+        label = item_id if count <= 1 else f"{item_id} ×{count}"
+        return ft.Container(
+            ft.Row(
+                [
+                    ft.Text(label, size=10, color=TEXT_PRIMARY),
+                    ft.Text("×" if equipped else "+", size=10,
+                            color=DANGER if equipped else SUCCESS,
+                            weight=ft.FontWeight.BOLD),
+                ],
+                spacing=4, tight=True,
+            ),
+            bgcolor=SURFACE_ELEVATED, border_radius=CARD_RADIUS,
+            padding=ft.Padding(left=6, right=6, top=2, bottom=2),
+            tooltip="Unequip" if equipped else "Equip onto selected",
+            on_click=(lambda _e, i=item_id: _unequip(i)) if equipped
+            else (lambda _e, i=item_id: _equip(i)),
+        )
+
     def _build_inspect() -> ft.Control:
         cid = state["selected"]
         champ = _champ_by_id(cid) if isinstance(cid, str) else None
@@ -488,8 +524,20 @@ def build_prep_view(
             ft.Column([_stat_row(l, v) for l, v in primary], spacing=2, expand=True),
             ft.Column([_stat_row(l, v) for l, v in premium], spacing=2, expand=True),
         ], spacing=SPACING_SM))
+        # Items — equip seam (T.23b). Equipped chips unequip on click; inventory
+        # chips equip onto this champion (auto-combine on double-equip).
+        rows.append(ft.Divider(height=8, color=SURFACE_ELEVATED))
+        rows.append(ft.Text(f"Items ({len(champ.items)}/3)", size=11, color=TEXT_MUTED))
         if champ.items:
-            rows.append(_stat_row("items", ", ".join(champ.items)))
+            rows.append(ft.Row([_item_chip(i, equipped=True) for i in champ.items],
+                               spacing=SPACING_XS, wrap=True))
+        else:
+            rows.append(ft.Text("(none equipped)", size=11, color=TEXT_MUTED))
+        inv = [(iid, n) for iid, n in run.inventory.items() if n > 0]
+        if inv:
+            rows.append(ft.Text("Inventory", size=11, color=TEXT_MUTED))
+            rows.append(ft.Row([_item_chip(iid, equipped=False, count=n) for iid, n in inv],
+                               spacing=SPACING_XS, wrap=True))
         if champ.traits:
             rows.append(_stat_row("traits", ", ".join(champ.traits)))
         # Sell control (only for owned, copy-tracked units).

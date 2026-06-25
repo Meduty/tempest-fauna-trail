@@ -21,6 +21,10 @@ def _win():
     return SimpleNamespace(outcome=CombatOutcome.WIN, team_damage_dealt={}, node_id="")
 
 
+def _loss():
+    return SimpleNamespace(outcome=CombatOutcome.LOSS, team_damage_dealt={}, node_id="")
+
+
 def test_full_run_of_wins_reaches_victory():
     run = new_run(5, champion_offer(5)[0])
     steps = 0
@@ -33,13 +37,17 @@ def test_full_run_of_wins_reaches_victory():
     assert steps == len(run.route)
 
 
-def test_first_loss_ends_the_run():
+def test_losses_deplete_hearts_then_defeat():
+    """Hearts model (T.38, V.71) — a loss is survivable; the run ends only when
+    Hearts hit 0 (nodes 2-4 here are non-boss, non-final)."""
     run = new_run(5, champion_offer(5)[0])
-    apply_node_result(run, _win())                      # clear node 1
-    apply_node_result(run, SimpleNamespace(             # lose node 2
-        outcome=CombatOutcome.LOSS, team_damage_dealt={}, node_id=""))
+    apply_node_result(run, _win())                      # clear node 1, hearts intact
+    assert run.hearts == 3 and run.status == RunStatus.IN_PROGRESS
+    for expected_hearts in (2, 1, 0):
+        apply_node_result(run, _loss())
+        assert run.hearts == expected_hearts
     assert run.status == RunStatus.DEFEAT
-    assert len(run.battle_log) == 2
+    assert len(run.battle_log) == 4
 
 
 def test_save_load_roundtrip_with_real_battle(tmp_path):

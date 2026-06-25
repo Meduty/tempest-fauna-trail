@@ -56,7 +56,21 @@ def combine(a: str, b: str) -> str | None:
 ```
 Returns the combined item ID or `None` if no recipe exists.
 
-## Equip pipeline
+## Prep equip seam (`game/inventory.py`, T.23b)
+
+The Prep view moves items between `Run.inventory` and `Champion.items` **only**
+through `game/inventory.py` (V.63 — never inline):
+
+- `equip_item(run, champion, item_id) -> bool` — consumes one from inventory onto
+  the champion. **Auto-combines on double-equip:** if the champion already holds a
+  component that pairs with `item_id` into a recipe (`items.combine`), the two fuse
+  into the combined item in a single slot (works even at the 3-item cap); otherwise
+  the item takes a free slot (≤3, the `Champion` cap). The combine partner is the
+  **first** held item that pairs — deterministic, no RNG (V.2).
+- `unequip_item(run, champion, item_id) -> bool` — returns the item whole to
+  inventory (no de-combine).
+
+## Equip pipeline (combat-side)
 
 `compile_loadout` (loadout.py) applies items at **step 2.5** — after weather
 modifiers (step 2) but before trait resolution (step 3).

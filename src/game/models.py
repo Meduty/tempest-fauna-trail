@@ -724,6 +724,9 @@ class Run:
     augment_state: dict[str, Any] = field(default_factory=dict)
     content_version: str = "1.0.0"
     difficulty_coefficient: float = 1.0
+    # Hearts — survivable-loss counter (T.38, V.71). A non-win costs one Heart;
+    # run ends (DEFEAT) only at 0 (or a boss/final-node loss). Plain int, no RNG.
+    hearts: int = 3
 
     def __post_init__(self) -> None:
         if self.schema_version < 1:
@@ -732,6 +735,8 @@ class Run:
             raise ValueError("Run route must contain at least one node.")
         if self.amber < 0:
             raise ValueError("Run amber must be >= 0.")
+        if self.hearts < 0:
+            raise ValueError("Run hearts must be >= 0.")
         if self.tempest < 0:
             raise ValueError("Run tempest must be >= 0.")
         _require_range(self.tempest_rank, "Run tempest_rank", 1, 10)
@@ -848,6 +853,7 @@ class Run:
             "battle_log": [result.to_dict() for result in self.battle_log],
             "content_version": self.content_version,
             "difficulty_coefficient": self.difficulty_coefficient,
+            "hearts": self.hearts,
         }
 
     @classmethod
@@ -880,4 +886,5 @@ class Run:
             augment_state=dict(payload.get("augment_state", {})),
             content_version=payload.get("content_version", "1.0.0"),
             difficulty_coefficient=payload.get("difficulty_coefficient", 1.0),
+            hearts=payload.get("hearts", 3),  # pre-T.38 saves → default 3 (V.71)
         )

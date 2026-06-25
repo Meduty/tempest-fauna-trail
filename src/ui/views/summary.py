@@ -1,7 +1,7 @@
 """Run-summary view (T.13, route `/summary`) — the run-end screen.
 
 Pure presentation (V.63/V.1): outcome banner + the canvas damage-per-battle chart
-(`viz/run_summary.build_run_summary`, V.70) + final stats, all read off the live
+(`viz/run_summary.build_run_summary`, V.72) + final stats, all read off the live
 `Run`. One **Return to Menu** button. The terminal → Summary routing is wired by
 the producer in T.15b; this view is built + verified standalone here.
 """

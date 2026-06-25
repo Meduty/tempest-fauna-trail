@@ -5,7 +5,7 @@ Mirrors :mod:`src.viz.route_map`: a **pure data** function
 normalization — never pixels) + a **canvas builder** (:func:`build_run_summary`)
 that turns specs into ``cv.Rect``/``cv.Line``/``cv.Text`` shapes. Flet 0.85 removed
 the core chart widgets (``ft.BarChart``/``LineChart``/``PieChart`` → optional
-``flet-charts``), so the run-loop's graded viz is drawn by hand (V.70).
+``flet-charts``), so the run-loop's graded viz is drawn by hand (V.72).
 
 One bar per fought battle (``run.battle_log``), height ∝ team damage dealt,
 coloured by outcome (win → success, loss → danger).
@@ -54,7 +54,7 @@ def run_summary_specs(run: Run) -> list[BarSpec]:
 
     ``damage`` = ``sum(result.team_damage_dealt.values())``; ``height_frac`` is
     max-normalized across the log (the biggest bar = ``1.0``; an empty or all-zero
-    log ⇒ ``0.0``, no divide-by-zero). Deterministic + Flet-free (V.2/V.70).
+    log ⇒ ``0.0``, no divide-by-zero). Deterministic + Flet-free (V.2/V.72).
     """
     damages = [sum(r.team_damage_dealt.values()) for r in run.battle_log]
     peak = max(damages, default=0)
@@ -74,7 +74,7 @@ def run_summary_specs(run: Run) -> list[BarSpec]:
 
 
 def build_run_summary(run: Run) -> ft.Control:
-    """Render the damage-per-battle chart as a `flet.canvas` bar chart (V.70).
+    """Render the damage-per-battle chart as a `flet.canvas` bar chart (V.72).
 
     Empty log ⇒ a "No battles fought" text (no canvas). Pure presentation over
     :func:`run_summary_specs` — recomputes nothing (V.63).

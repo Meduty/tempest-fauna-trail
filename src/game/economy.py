@@ -15,8 +15,8 @@ from random import Random
 from typing import TYPE_CHECKING, Final
 
 from .content import CHAMPION_DEF_BY_ID, build_champion_at_level
-from .encounter import economy_seed
-from .models import CombatOutcome, RunStatus
+from .encounter import economy_seed, generate_node_reward
+from .models import CombatOutcome, NodeType, RunStatus
 
 if TYPE_CHECKING:  # avoid a hard import cycle; Run/BattleResult only for typing
     from .models import BattleResult, Run
@@ -210,36 +210,102 @@ class NodeResultSummary:
     tempest_gained: int
     terminal: bool          # run.is_complete() after applying
     status: RunStatus       # IN_PROGRESS | VICTORY | DEFEAT
+    hearts_remaining: int = 3
+    item_ids: tuple[str, ...] = ()      # type-reward loot deposited to inventory (win only)
+    bonus_amber: int = 0                # CHALLENGE reward amber, beyond base income (win only)
+    champion_offer: str | None = None   # pending CHALLENGE recruit — applied via recruit_challenge_offer
+
+
+def _is_last_node(run: "Run", node: "Node") -> bool:
+    """True if ``node`` is the final route node (no node has a greater index)."""
+    return not any(other.index > node.index for other in run.route)
 
 
 def apply_node_result(run: "Run", result: "BattleResult") -> NodeResultSummary:
     """Apply one fought node's outcome to ``run`` — the single reward-step
-    orchestrator (V.69). Appends ``result`` to ``run.battle_log``, grants seeded
-    income (win bonus on a win only, V.2) and, **on a win**, fight tempest +
-    marks the current node CLEARED + advances (→ ``VICTORY`` if it was the last
-    node); a non-win (LOSS/DRAW) sets ``status = DEFEAT``. Pure progression — no
-    Flet, no re-resolve, no I/O (the producer autosaves after, V.65). The producer
-    calls this **exactly once per fight** (V.64).
+    orchestrator (V.69/V.70/V.71). Appends ``result`` to ``run.battle_log`` and
+    grants seeded income (win bonus on a win only, V.2).
+
+    **On a win:** fight tempest + the node's **type auto-reward** (V.70) —
+    ``generate_node_reward`` loot → ``Run.inventory``, CHALLENGE amber → ``amber``,
+    tempest bonus → ``grant_tempest``; the CHALLENGE ``champion_offer`` is surfaced
+    *pending* (``NodeResultSummary.champion_offer``), **not** auto-applied (player
+    Recruit via :func:`recruit_challenge_offer`). Then marks CLEARED + advances
+    (→ ``VICTORY`` if last).
+
+    **On a non-win (LOSS/DRAW, V.60):** decrements ``Run.hearts`` (Hearts model,
+    V.71). A **non-boss, non-final** loss with ``hearts > 0`` marks CLEARED +
+    advances (survive); a **BOSS_FIGHT loss** (hard gate), a **final-node loss**,
+    or ``hearts <= 0`` sets ``status = DEFEAT``. Unique payouts are win-only ⇒ a
+    loss yields base income+interest with no win-bonus/type reward.
+
+    Pure progression — no Flet, no re-resolve, no I/O (the producer autosaves
+    after, V.65). The producer calls this **exactly once per fight** (V.64).
     """
+    node = run.current_node()           # captured before advancing (None only if not in progress)
     node_index = run.current_node_index
     won = result.outcome == CombatOutcome.WIN
     run.battle_log.append(result)
     amber_gained = apply_node_income(run, won, node_index)
     tempest_gained = 0
+    item_ids: tuple[str, ...] = ()
+    bonus_amber = 0
+    champion_offer: str | None = None
     if won:
         grant_fight_tempest(run)            # +TEMPEST_PER_FIGHT, cascades rank-ups
         tempest_gained = TEMPEST_PER_FIGHT
+        reward = generate_node_reward(run.seed, node) if node is not None else None
+        if reward is not None:              # REWARD loot / CHALLENGE payload (V.70)
+            for item_id in reward.item_ids:
+                run.inventory[item_id] = run.inventory.get(item_id, 0) + 1
+            run.amber += reward.amber
+            if reward.tempest_bonus:
+                grant_tempest(run, reward.tempest_bonus)
+                tempest_gained += reward.tempest_bonus
+            item_ids = tuple(reward.item_ids)
+            bonus_amber = reward.amber
+            champion_offer = reward.champion_offer
         run.mark_current_node_cleared()
         run.advance_to_next_node()          # → status VICTORY if no next node
-    else:
-        run.status = RunStatus.DEFEAT
+    else:                                   # Hearts model (V.71): loss is survivable
+        run.hearts -= 1
+        is_boss = node is not None and node.node_type == NodeType.BOSS_FIGHT
+        is_last = node is None or _is_last_node(run, node)
+        if run.hearts <= 0 or is_boss or is_last:
+            run.status = RunStatus.DEFEAT   # hearts gone OR boss gate OR final node
+        else:
+            run.mark_current_node_cleared() # resolved (CLEARED, no FAILED state)
+            run.advance_to_next_node()      # survive → next node
     return NodeResultSummary(
         won=won,
         amber_gained=amber_gained,
         tempest_gained=tempest_gained,
         terminal=run.is_complete(),
         status=run.status,
+        hearts_remaining=run.hearts,
+        item_ids=item_ids,
+        bonus_amber=bonus_amber,
+        champion_offer=champion_offer,
     )
+
+
+def recruit_challenge_offer(run: "Run", champion_id: str) -> bool:
+    """Recruit a CHALLENGE ``champion_offer`` to the bench (T.38, V.70).
+
+    Materializes ``champion_id`` at level 1 on ``run.bench`` (mirrors a 1-copy
+    buy via :func:`_materialize_champion`). Returns ``False`` (no-op) for an
+    unknown id or one already owned (in ``champion_copies``) — no Amber refund,
+    no duplicate. The player's Recruit click routes here (V.63 — view chooses,
+    game mutates); Skip simply never calls it.
+    """
+    if champion_id not in CHAMPION_DEF_BY_ID:
+        return False
+    if run.champion_copies.get(champion_id):
+        return False
+    run.champion_copies[champion_id] = 1
+    fresh = build_champion_at_level(champion_id, 1)
+    run.bench.append(fresh)
+    return True
 
 
 def _materialize_champion(run: "Run", champion_id: str, level: int) -> None:

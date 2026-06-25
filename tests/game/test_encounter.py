@@ -299,3 +299,57 @@ class TestNodeEncounter:
         expected = generate_boss_encounter(0, boss.index, stage_of(boss.index))
         assert enc.map_effect_id == expected.map_effect_id
         assert len(enc.enemies) == len(expected.all_enemies)
+
+
+# ---------------------------------------------------------------------------
+# generate_node_reward — single reward-payload source (T.38, V.70)
+# ---------------------------------------------------------------------------
+
+class TestGenerateNodeReward:
+    def _route(self):
+        from src.game.route import build_route
+        return build_route()
+
+    def _node(self, node_type):
+        from src.game.route import build_route
+        return next(n for n in build_route() if n.node_type is node_type)
+
+    def test_reward_node_matches_generate_reward_loot(self) -> None:
+        from src.game.encounter import generate_node_reward, generate_reward_loot
+        from src.game.models import NodeType
+
+        node = self._node(NodeType.REWARD)
+        reward = generate_node_reward(7, node)
+        assert reward is not None
+        assert reward.item_ids == list(generate_reward_loot(7, node.index).item_ids)
+        assert reward.amber == 0 and reward.champion_offer is None
+
+    def test_challenge_node_matches_generate_challenge(self) -> None:
+        from src.game.encounter import generate_challenge, generate_node_reward
+        from src.game.models import NodeType
+        from src.game.route import stage_of
+
+        node = self._node(NodeType.CHALLENGE)
+        _squad, expected = generate_challenge(7, node.index, stage_of(node.index), node.weather)
+        reward = generate_node_reward(7, node)
+        assert reward is not None
+        assert reward.amber == expected.amber
+        assert reward.tempest_bonus == expected.tempest_bonus
+        assert reward.item_ids == [expected.component_offer, expected.themed_component]
+        assert reward.champion_offer == (expected.champion_offer or None)
+
+    def test_non_reward_types_return_none(self) -> None:
+        from src.game.encounter import generate_node_reward
+        from src.game.models import NodeType
+
+        for ntype in (NodeType.FIGHT, NodeType.BOSS_FIGHT, NodeType.AUGMENT, NodeType.SUPPLY):
+            assert generate_node_reward(7, self._node(ntype)) is None
+
+    def test_deterministic_same_seed(self) -> None:
+        from src.game.encounter import generate_node_reward
+        from src.game.models import NodeType
+
+        node = self._node(NodeType.CHALLENGE)
+        a = generate_node_reward(123, node)
+        b = generate_node_reward(123, node)
+        assert a == b
