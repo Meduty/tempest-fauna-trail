@@ -67,10 +67,15 @@ def _finish_combat(page: ft.Page, run, node, result) -> None:
     from src.ui.views.reward import build_reward_view
     from src.ui.views.summary import build_summary_view
 
+    save_path = default_save_dir() / f"{run.run_id}.json"
     summary = apply_node_result(run, result)
-    save_run(run, default_save_dir() / f"{run.run_id}.json")  # node-boundary autosave
+    save_run(run, save_path)  # node-boundary autosave (pre-reward-panel state)
 
     def _continue() -> None:
+        # Re-autosave: the reward panel's interactive choices (T.38 Recruit) mutate
+        # the run *after* the first save, so persist again before leaving the node
+        # boundary — else a recruit is lost if the player quits here (V.65).
+        save_run(run, save_path)
         _pop_to_root(page)  # drop reward + combat + prep + stale trail → menu
         if summary.terminal:
             # Run over (victory/defeat) → the run-summary screen, then the menu (T.15b).
