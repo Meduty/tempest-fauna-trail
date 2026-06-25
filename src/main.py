@@ -60,7 +60,8 @@ def _push_prep(page: ft.Page, run, node) -> None:
 
     def _open_combat(session) -> None:
         # T.15 (15a) threads the BattleResult out via on_exit(result) for the reward
-        # step; until then exit just unwinds to the Trail (V.64 producer is the loop).
+        # step; until then exit just pops the combat view back to Prep, dropping the
+        # result (V.64 — the reward/progression producer is the loop, not the view).
         page.views.append(build_combat_view(page, session, on_exit=lambda: _pop(page)))
         page.update()
 
