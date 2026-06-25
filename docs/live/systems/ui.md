@@ -2,10 +2,11 @@
 
 > **Status:** ✅ for the main menu (T.9), combat view core + dev harness (T.12a),
 > **RunStart (T.10)**, **Trail (T.11)**, **Prep (T.23a — full economy, no items)**,
-> **Reward + result-out seam (T.15a)**, **Summary (T.13 — canvas damage chart)**. Still
-> unbuilt: terminal/Continue routing (T.15b), Prep items (T.23b). **New Run is live**
-> (→ RunStart → champion pick → **Trail** → **Prep** → **Combat** → **Reward** → Trail);
-> the Summary view exists but terminal→Summary + Continue land in T.15b. FROZEN design:
+> **Reward + result-out seam (T.15a)**, **Summary (T.13 — canvas damage chart)**,
+> **routing + Continue (T.15b)**. The **full menu→…→menu loop is live**: New Run →
+> RunStart → Trail → Prep → Combat → Reward → Trail, terminal → **Summary** → menu;
+> **Continue** loads the latest save into the Trail. Still unbuilt: Prep items (T.23b).
+> FROZEN design:
 > [`views_spec.md`](../../design/systems/views_spec.md). Audited by `/check`.
 
 ## RunStart (T.10) — `game/run_init.py` + `ui/views/run_start.py`
@@ -131,9 +132,9 @@ is what closes a node — not the view:
 2. node-boundary autosave via `save.save_run` (V.65).
 3. `build_reward_view(page, run, summary, *, on_continue)` — pure presentation off the
    `NodeResultSummary` + live `Run` (outcome banner, Amber/tempest/rank, nodes cleared).
-   **Continue** → the producer's router: a continuing run pops the stack to the menu and
-   pushes a **fresh Trail** at the new current node; a terminal run stays on the menu
-   (T.15a interim → Summary in T.15b).
+   **Continue** → the producer's router (`main.py::_finish_combat`): a continuing run pops
+   the stack to the menu and pushes a **fresh Trail** at the new current node; a terminal
+   run (victory/defeat) pushes the **Summary** view → menu (T.15b).
 
 ## Summary (T.13) — `viz/run_summary.py` + `ui/views/summary.py`
 
@@ -151,7 +152,8 @@ Flet core ≥0.85).
   empty log ⇒ a "No battles fought" text.
 - `ui/views/summary.py::build_summary_view(page, run, *, on_menu)` — outcome banner
   (Victory/Defeat) + the chart + stat chips (nodes cleared / battles / Amber / rank) +
-  Return-to-Menu. Terminal→Summary routing is wired by the producer in T.15b.
+  Return-to-Menu. The producer (`main.py::_finish_combat`) routes a terminal run here
+  (T.15b); the menu **Continue** loads the latest save → Trail.
 
 ## The seam — `CombatSession`
 

@@ -65,15 +65,19 @@ def _finish_combat(page: ft.Page, run, node, result) -> None:
     from src.game.economy import apply_node_result
     from src.game.save import default_save_dir, save_run
     from src.ui.views.reward import build_reward_view
+    from src.ui.views.summary import build_summary_view
 
     summary = apply_node_result(run, result)
     save_run(run, default_save_dir() / f"{run.run_id}.json")  # node-boundary autosave
 
     def _continue() -> None:
         _pop_to_root(page)  # drop reward + combat + prep + stale trail → menu
-        if not summary.terminal:
+        if summary.terminal:
+            # Run over (victory/defeat) → the run-summary screen, then the menu (T.15b).
+            page.views.append(build_summary_view(page, run, on_menu=lambda: _pop(page)))
+            page.update()
+        else:
             _push_trail(page, run)  # fresh Trail at the new current node
-        # terminal → stay on the menu (15a interim; Summary lands in 15b)
 
     page.views.append(build_reward_view(page, run, summary, on_continue=_continue))
     page.update()
@@ -175,7 +179,19 @@ def _game_ui(page: ft.Page) -> None:
         page.window.destroy()
 
     def _continue() -> None:
-        """Continue placeholder — load-into-Trail wired in T.15 (15b)."""
+        """Resume the most-recent saved run into the Trail (T.15b). Picks the latest
+        `*.json` by mtime; a corrupt/unreadable save is ignored (stays on the menu)."""
+        from src.game.save import load_run
+
+        saves = sorted(default_save_dir().glob("*.json"),
+                       key=lambda p: p.stat().st_mtime, reverse=True)
+        for path in saves:
+            try:
+                run = load_run(path)
+            except Exception:  # noqa: BLE001 — skip a corrupt/newer save, try the next
+                continue
+            _push_trail(page, run)
+            return
 
     def _open_settings() -> None:
         from src.ui.views.settings import build_settings_view

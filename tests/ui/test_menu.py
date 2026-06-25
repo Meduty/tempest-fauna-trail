@@ -61,12 +61,20 @@ def test_menu_has_four_entries_with_expected_enabled_state():
     assert not by_text["Quit"].disabled
 
 
-def test_continue_hint_reflects_save_presence():
+def test_continue_enables_when_save_present():
     no_save = {b.content: b for b in _buttons(_build(save_exists=False)[0])}
     has_save = {b.content: b for b in _buttons(_build(save_exists=True)[0])}
+    # No save → disabled with a hint; save present → live Continue (T.15b).
+    assert no_save["Continue"].disabled is True
     assert no_save["Continue"].tooltip == "No saved run found."
-    # save present → the hint switches to the run-shell-pending note
-    assert has_save["Continue"].tooltip != no_save["Continue"].tooltip
+    assert not has_save["Continue"].disabled
+
+
+def test_continue_fires_when_enabled():
+    view, calls = _build(save_exists=True)
+    by_text = {b.content: b for b in _buttons(view)}
+    by_text["Continue"].on_click(None)
+    assert calls["continue"] == 1
 
 
 def test_live_buttons_fire_their_intent():
