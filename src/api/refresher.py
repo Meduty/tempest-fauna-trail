@@ -30,6 +30,7 @@ class WeatherRefresher:
         *,
         tick_interval: float = 60.0,
         rng_seed: int | None = None,
+        on_tick: Callable[[list[str]], None] | None = None,
     ) -> None:
         """
         Args:
@@ -40,6 +41,11 @@ class WeatherRefresher:
                 converts this to a 0-based list offset internally.
             tick_interval: Seconds between ticks (default 60).
             rng_seed: Optional seed for C-stream random (for testing).
+            on_tick: Optional callback fired (on the worker thread) after each
+                tick with the fetched city ids — lets a UI repaint when cache
+                entries flip LIVE/SUBSTITUTE (T.11). Default ``None`` keeps every
+                existing caller byte-identical. Exceptions are logged, never
+                propagated (a UI error must not kill the refresher).
         """
         if tick_interval <= 0:
             raise ValueError(f"tick_interval must be > 0, got {tick_interval!r}")
@@ -49,6 +55,7 @@ class WeatherRefresher:
         self._get_current_node_index = get_current_node_index
         self._tick_interval = tick_interval
         self._rng = random.Random(rng_seed)
+        self._on_tick_cb = on_tick
 
         self._city_ids = cache.city_ids
         self._num_cities = len(self._city_ids)
@@ -128,6 +135,12 @@ class WeatherRefresher:
                 fetch_and_cache(self._cache, self._client, city_id, city_def)
             except Exception:  # noqa: BLE001
                 logger.warning("Refresher fetch failed for %s", city_id, exc_info=True)
+
+        if self._on_tick_cb is not None:
+            try:
+                self._on_tick_cb(selected)
+            except Exception:  # noqa: BLE001
+                logger.warning("Refresher on_tick callback failed", exc_info=True)
 
         return selected
 
