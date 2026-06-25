@@ -243,6 +243,8 @@ def apply_node_result(run: "Run", result: "BattleResult") -> NodeResultSummary:
     after, V.65). The producer calls this **exactly once per fight** (V.64).
     """
     node = run.current_node()           # captured before advancing (None only if not in progress)
+    if node is None:                    # guard *before* any mutation — never leave a partial run (V.64)
+        raise ValueError("apply_node_result requires an in-progress run with a current node.")
     node_index = run.current_node_index
     won = result.outcome == CombatOutcome.WIN
     run.battle_log.append(result)
@@ -254,7 +256,7 @@ def apply_node_result(run: "Run", result: "BattleResult") -> NodeResultSummary:
     if won:
         grant_fight_tempest(run)            # +TEMPEST_PER_FIGHT, cascades rank-ups
         tempest_gained = TEMPEST_PER_FIGHT
-        reward = generate_node_reward(run.seed, node) if node is not None else None
+        reward = generate_node_reward(run.seed, node)   # node guaranteed non-None (guarded above)
         if reward is not None:              # REWARD loot / CHALLENGE payload (V.70)
             for item_id in reward.item_ids:
                 run.inventory[item_id] = run.inventory.get(item_id, 0) + 1
@@ -269,8 +271,8 @@ def apply_node_result(run: "Run", result: "BattleResult") -> NodeResultSummary:
         run.advance_to_next_node()          # → status VICTORY if no next node
     else:                                   # Hearts model (V.71): loss is survivable
         run.hearts -= 1
-        is_boss = node is not None and node.node_type == NodeType.BOSS_FIGHT
-        is_last = node is None or _is_last_node(run, node)
+        is_boss = node.node_type == NodeType.BOSS_FIGHT
+        is_last = _is_last_node(run, node)
         if run.hearts <= 0 or is_boss or is_last:
             run.status = RunStatus.DEFEAT   # hearts gone OR boss gate OR final node
         else:

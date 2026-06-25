@@ -59,7 +59,7 @@ def test_save_load_roundtrip_with_real_battle(tmp_path):
     result = resolve_combat(team, enemies, WeatherState.CLEAR, node_id="n1-Lisbon")
     run.battle_log.append(result)
     run.amber = 17
-    run.advance_to_next_node  # noqa: B018 — (no call; just keep node-1 current)
+    assert run.current_node_index == 1  # never advanced — node-1 stays current for the round-trip
 
     path = tmp_path / f"{run.run_id}.json"
     save_run(run, path)

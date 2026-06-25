@@ -1,4 +1,4 @@
-"""T.13 — `run_summary_specs` pure data + `build_run_summary` builder (V.70/V.2).
+"""T.13 — `run_summary_specs` pure data + `build_run_summary` builder (V.72/V.2).
 
 Asserts structure (counts / values / normalization / outcome), never pixels
 (mirrors `test_route_map.py`). Battle-log entries are stubs — `run_summary_specs`

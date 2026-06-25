@@ -103,10 +103,15 @@ def build_reward_view(
         offer_slot = ft.Container()
 
         def _recruit(_e: ft.ControlEvent) -> None:
-            recruit_challenge_offer(run, summary.champion_offer)  # type: ignore[arg-type]
-            offer_slot.content = ft.Text(
-                f"✓ Recruited {offer_name}", size=FONT_SIZE_BODY, color=SUCCESS,
-            )
+            recruited = recruit_challenge_offer(run, summary.champion_offer)  # type: ignore[arg-type]
+            if recruited:                       # only claim success when the game state changed
+                offer_slot.content = ft.Text(
+                    f"✓ Recruited {offer_name}", size=FONT_SIZE_BODY, color=SUCCESS,
+                )
+            else:                               # already owned / unknown id — no-op, no false claim
+                offer_slot.content = ft.Text(
+                    f"Already recruited {offer_name}", size=FONT_SIZE_BODY, color=TEXT_MUTED,
+                )
             page.update()
 
         def _skip(_e: ft.ControlEvent) -> None:
@@ -135,9 +140,9 @@ def build_reward_view(
         rows.append(ft.Container(height=SPACING_SM))
         rows.append(offer_slot)
 
-    continue_label = "Continue ▶"
-    if summary.terminal:
-        continue_label = "View Summary ▶" if summary.status == RunStatus.VICTORY else "Continue ▶"
+    # Terminal runs (VICTORY *and* DEFEAT) route to the Summary view (main.py),
+    # so the label must read "View Summary" for both — not just victory.
+    continue_label = "View Summary ▶" if summary.terminal else "Continue ▶"
 
     rows.append(ft.Container(height=SPACING_LG))
     rows.append(
