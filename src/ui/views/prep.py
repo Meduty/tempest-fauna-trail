@@ -161,20 +161,26 @@ def build_prep_view(
                 return
             run.bench.remove(champ)
             run.roster.append(champ)
-        # If the target cell is occupied by another champion, swap cells.
+        # If the target cell is occupied by another champion, relocate it. Reserve
+        # the dragged unit's target cell *first* so the occupant can't be reassigned
+        # back onto it (a board→board drag swaps into the dragged unit's old cell;
+        # a bench drop sends the occupant to a different free cell, else the bench).
         occupant = next((cid for cid, c in team_positions.items() if c == cell), None)
+        old = team_positions.get(champ_id)
+        team_positions[champ_id] = cell
         if occupant is not None and occupant != champ_id:
-            old = team_positions.get(champ_id)
             if old is not None:
                 team_positions[occupant] = old
             else:
-                del team_positions[occupant]
-                # occupant stays on board only if the dragged one had a cell;
-                # otherwise push the displaced occupant to the first free cell.
-                free = _free_cell()
+                free = _free_cell()  # target cell now reserved → never returned
                 if free is not None:
                     team_positions[occupant] = free
-        team_positions[champ_id] = cell
+                else:
+                    occ = _champ_by_id(occupant)
+                    if occ is not None and occ in run.roster:
+                        run.roster.remove(occ)
+                        run.bench.append(occ)
+                    team_positions.pop(occupant, None)
         _render()
 
     def _send_to_bench(champ_id: str) -> None:
