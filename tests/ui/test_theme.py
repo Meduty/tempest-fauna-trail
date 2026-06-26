@@ -128,13 +128,19 @@ class TestStatAndTagIcons:
 
         assert STAT_ICONS["ms"] == ft.Icons.DIRECTIONS_RUN
 
-    def test_damage_type_tags_have_weapon_and_wand(self):
+    def test_damage_type_glyphs(self):
+        # Physical = a custom sword asset (no fitting Material glyph); magic = wand.
+        import os
+
         import flet as ft
 
-        from src.ui.theme import ABILITY_TAG_ICONS
+        from src.ui.theme import ABILITY_TAG_ICONS, SWORD_ICON_ASSET
 
-        assert ABILITY_TAG_ICONS["physical"] == ft.Icons.HARDWARE
+        assert "physical" not in ABILITY_TAG_ICONS  # owned by the inline sword asset
         assert ABILITY_TAG_ICONS["magic"] == ft.Icons.AUTO_FIX_HIGH
+        assert SWORD_ICON_ASSET.endswith(".svg")
+        # The asset actually exists on disk under src/assets.
+        assert os.path.exists(os.path.join("src", "assets", SWORD_ICON_ASSET))
 
 
 class TestSemanticPalette:

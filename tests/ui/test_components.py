@@ -279,16 +279,41 @@ class TestIconography:
         assert stat_glyph("MS").icon == STAT_ICONS["ms"]   # case-insensitive
         assert stat_glyph("nonsense") is None
 
-    def test_tag_glyphs_skips_unmapped_and_caps(self):
-        from src.ui.components.iconography import tag_glyphs
+    def test_inline_effect_text_injects_icon_after_damage(self):
+        from src.ui.components.iconography import inline_effect_text
+        from src.ui.theme import SWORD_ICON_ASSET
 
-        # "hybrid" is unmapped → skipped; cap respected.
-        glyphs = tag_glyphs(("physical", "hybrid", "magic", "heal", "stun", "slow"),
-                            max_n=3)
-        assert len(glyphs) == 3
-        assert all(isinstance(g, ft.Icon) for g in glyphs)
+        row = inline_effect_text("deal 120 physical damage to the target")
+        assert isinstance(row, ft.Row)
+        # The sword image follows the "physical damage" run.
+        kinds = [type(c).__name__ for c in row.controls]
+        assert "Image" in kinds
+        img = next(c for c in row.controls if isinstance(c, ft.Image))
+        assert img.src == SWORD_ICON_ASSET
+        # And it lands right after the run that ends in "damage".
+        idx = row.controls.index(img)
+        assert isinstance(row.controls[idx - 1], ft.Text)
+        assert row.controls[idx - 1].value.endswith("damage")
 
-    def test_tag_glyphs_empty(self):
-        from src.ui.components.iconography import tag_glyphs
+    def test_inline_effect_text_magic_uses_material_wand(self):
+        from src.ui.components.iconography import inline_effect_text
+        from src.ui.theme import ABILITY_TAG_ICONS
 
-        assert tag_glyphs(()) == []
+        row = inline_effect_text("a blast of magic damage")
+        icons = [c for c in row.controls if isinstance(c, ft.Icon)]
+        assert any(i.icon == ABILITY_TAG_ICONS["magic"] for i in icons)
+
+    def test_inline_effect_text_plain_text_no_icons(self):
+        from src.ui.components.iconography import inline_effect_text
+
+        row = inline_effect_text("the target is knocked back briefly")
+        assert all(isinstance(c, ft.Text) for c in row.controls)
+
+    def test_inline_effect_text_reassembles_words(self):
+        # No word is dropped or duplicated (the icon is additive).
+        from src.ui.components.iconography import inline_effect_text
+
+        text = "heal an ally for 80 and grant a shield"
+        row = inline_effect_text(text)
+        words = " ".join(c.value for c in row.controls if isinstance(c, ft.Text))
+        assert words == text

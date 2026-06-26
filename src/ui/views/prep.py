@@ -71,10 +71,10 @@ from src.ui.components.iconography import (
     clash_legend,
     clash_marker,
     favor_tone,
+    inline_effect_text,
     rich_tooltip,
     role_glyph,
     stat_glyph,
-    tag_glyphs,
     trait_glyph,
 )
 from src.ui.components.trait_synergies import trait_synergies_panel
@@ -924,16 +924,12 @@ def build_prep_view(
                 if rendered is None:
                     out.append(ft.Text(f"• {aid}", size=11, color=TEXT_MUTED))
                     continue
-                # Name + effect-tag glyphs (physical = weapon, magic = wand, …) so
-                # the ability's effect reads at a glance, not only from the prose.
-                out.append(ft.Row(
-                    [ft.Text(rendered.name, size=11, color=ACCENT,
-                             weight=ft.FontWeight.BOLD),
-                     *tag_glyphs(rendered.tags, size=13)],
-                    spacing=SPACING_XS, wrap=True,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                ))
-                out.append(ft.Text(rendered.text, size=11, color=TEXT_PRIMARY))
+                out.append(ft.Text(rendered.name, size=11, color=ACCENT,
+                                   weight=ft.FontWeight.BOLD))
+                # Blurb with inline effect glyphs — the icon sits right after the
+                # keyword (physical damage ⚔, movement runner, heal, …).
+                out.append(inline_effect_text(rendered.text, size=11,
+                                              color=TEXT_PRIMARY))
                 if rendered.formula:
                     out.append(ft.Text(rendered.formula, size=10, color=TEXT_MUTED,
                                        font_family=FONT_MONO))

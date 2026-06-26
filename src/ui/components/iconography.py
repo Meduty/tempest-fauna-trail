@@ -9,6 +9,8 @@ each view (Prep, Combat, the badges, the synergy panel).
 
 from __future__ import annotations
 
+import re
+
 import flet as ft
 
 from src.game.models import WeatherState
@@ -26,6 +28,7 @@ from src.ui.theme import (
     SUCCESS,
     SURFACE,
     SURFACE_ELEVATED,
+    SWORD_ICON_ASSET,
     TEXT_MUTED,
     TEXT_PRIMARY,
     TIER_BRONZE,
@@ -156,23 +159,71 @@ def stat_glyph(
     return ft.Icon(icon, size=size, color=color)
 
 
-def tag_glyphs(
-    tags: tuple[str, ...], *, size: int = 13, max_n: int = 4,
-) -> list[ft.Control]:
-    """Glyph chips for an ability's effect tags — physical = weapon, magic = wand,
-    haste = runner, etc. Only mapped tags render (no fallback clutter), capped at
-    ``max_n``, each tooltipped by tag name. Order follows ``tags``."""
-    out: list[ft.Control] = []
-    for tag in tags:
-        icon = ABILITY_TAG_ICONS.get(tag)
-        if icon is None:
-            continue
-        g = ft.Icon(icon, size=size, color=TEXT_MUTED)
-        g.tooltip = tag
-        out.append(g)
-        if len(out) >= max_n:
-            break
-    return out
+# Prose keyword (normalized, lowercased, letters only) → effect key. Inline icons
+# are injected right after the matching word in a blurb (e.g. "physical damage ⚔").
+_INLINE_KEYWORDS: dict[str, str] = {
+    "physical": "physical",
+    "magic": "magic", "magical": "magic",
+    "heal": "heal", "heals": "heal", "healing": "heal",
+    "shield": "shield", "shields": "shield", "barrier": "shield",
+    "stun": "stun", "stuns": "stun", "stunned": "stun",
+    "slow": "slow", "slows": "slow", "slowed": "slow",
+    "burn": "burn", "burns": "burn", "burning": "burn",
+    "poison": "poison", "poisoned": "poison", "poisons": "poison",
+    "mana": "mana",
+    "armor": "armor",
+    "movement": "haste", "movespeed": "haste",
+    "crit": "crit", "critical": "crit",
+}
+
+
+def _norm(word: str) -> str:
+    """Lowercase a prose word and strip non-letters (so ``"damage,"`` → ``"damage"``)."""
+    return re.sub(r"[^a-z]", "", word.lower())
+
+
+def _effect_icon(key: str, *, size: int, color: str) -> ft.Control | None:
+    """The glyph for an effect/stat key — physical damage from the custom sword
+    asset (no fitting Material glyph), everything else a tinted Material icon."""
+    if key == "physical":
+        return ft.Image(src=SWORD_ICON_ASSET, width=size, height=size, color=color)
+    icon = ABILITY_TAG_ICONS.get(key) or STAT_ICONS.get(key)
+    return ft.Icon(icon, size=size, color=color) if icon else None
+
+
+def inline_effect_text(
+    text: str, *, size: int = 11, color: str = TEXT_PRIMARY,
+    icon_color: str | None = None,
+) -> ft.Control:
+    """Render blurb prose with effect glyphs **inline** — the icon sits right after
+    the keyword it describes (``"deal 120 physical damage ⚔ to the target"``).
+
+    Word-walks the text (with a ``"<type> damage"`` lookahead so the damage glyph
+    lands after the noun) and lays the runs + icons out in a wrapping Row, so a
+    long blurb still flows. Unmatched words are plain text; pure presentation."""
+    glyph_color = icon_color if icon_color is not None else TEXT_MUTED
+    words = text.split()
+    controls: list[ft.Control] = []
+    i = 0
+    while i < len(words):
+        norm = _norm(words[i])
+        nxt = _norm(words[i + 1]) if i + 1 < len(words) else ""
+        key: str | None = None
+        consumed = 1
+        # "physical/magic damage" → glyph after "damage" (reads as the operator wrote).
+        if norm in ("physical", "magic", "magical") and nxt.startswith("damag"):
+            key = "physical" if norm == "physical" else "magic"
+            consumed = 2
+        elif norm in _INLINE_KEYWORDS:
+            key = _INLINE_KEYWORDS[norm]
+        controls.append(ft.Text(" ".join(words[i:i + consumed]), size=size, color=color))
+        if key is not None:
+            icon = _effect_icon(key, size=size + 2, color=glyph_color)
+            if icon is not None:
+                controls.append(icon)
+        i += consumed
+    return ft.Row(controls, wrap=True, spacing=4, run_spacing=2,
+                  vertical_alignment=ft.CrossAxisAlignment.CENTER)
 
 
 # --------------------------------------------------------------------------

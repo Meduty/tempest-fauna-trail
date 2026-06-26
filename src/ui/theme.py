@@ -111,8 +111,9 @@ STAT_ICONS: dict[str, str] = {
 # parsing the blurb: physical damage = a weapon glyph (HARDWARE — Material has no
 # literal sword), magic = a wand, movement = a runner, etc. Unmapped tags are
 # simply skipped (no fallback clutter).
+# NOTE: physical damage has no fitting Material glyph (the hammer reads wrong),
+# so it renders from a custom SVG asset (SWORD_ICON_ASSET) — see iconography.
 ABILITY_TAG_ICONS: dict[str, str] = {
-    "physical": ft.Icons.HARDWARE,
     "magic": ft.Icons.AUTO_FIX_HIGH,
     "haste": ft.Icons.DIRECTIONS_RUN,
     "tempo": ft.Icons.SPEED,
@@ -142,6 +143,10 @@ ABILITY_TAG_ICONS: dict[str, str] = {
     "ultimate": ft.Icons.AUTO_AWESOME,
     "evasion": ft.Icons.VISIBILITY_OFF,
 }
+
+# Custom SVG glyph for physical damage (no fitting Material icon). Path is
+# relative to the Flet assets dir (src/assets); tinted via ft.Image(color=...).
+SWORD_ICON_ASSET: str = "icons/sword.svg"
 
 # --- Semantic Palette ---
 BG = "#1C1C1E"
