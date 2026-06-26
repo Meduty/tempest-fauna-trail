@@ -10,6 +10,7 @@ from src.game.models import WeatherState
 from src.game.weather_effects import WEATHER_BUFF_BASE, WEATHER_DEBUFF_BASE
 from src.ui.theme import (
     AFFINITY_COLORS,
+    AFFINITY_ICONS,
     CARD_RADIUS,
     FONT_SIZE_BODY,
     FONT_SIZE_CAPTION,
@@ -23,16 +24,6 @@ from src.ui.theme import (
 
 # Staleness threshold: 2 hours (per §V.11 / D.17)
 _STALE_THRESHOLD_S = 2 * 60 * 60
-
-# Weather icon fallback glyphs
-_WEATHER_ICONS: dict[WeatherState, str] = {
-    WeatherState.CLEAR: ft.Icons.WB_SUNNY,
-    WeatherState.CLOUDY: ft.Icons.CLOUD,
-    WeatherState.MIST: ft.Icons.BLUR_ON,
-    WeatherState.RAIN: ft.Icons.WATER_DROP,
-    WeatherState.SNOW: ft.Icons.AC_UNIT,
-    WeatherState.THUNDER: ft.Icons.FLASH_ON,
-}
 
 _BADGE_SIZES = {
     "sm": {"icon_size": 16, "font_size": FONT_SIZE_CAPTION, "padding": SPACING_XS},
@@ -114,7 +105,7 @@ def weather_badge(
         else:
             controls.append(
                 ft.Icon(
-                    _WEATHER_ICONS[weather],
+                    AFFINITY_ICONS[weather],
                     color=color,
                     size=cfg["icon_size"],
                 )

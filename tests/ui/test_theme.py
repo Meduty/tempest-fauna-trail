@@ -5,6 +5,7 @@ import re
 from src.game.models import WeatherState
 from src.ui.theme import (
     AFFINITY_COLORS,
+    AFFINITY_ICONS,
     ANIM_COMBAT_TICK,
     ANIM_FAST,
     ANIM_NORMAL,
@@ -68,6 +69,86 @@ class TestAffinityColors:
             assert ratio >= 4.5, (
                 f"{ws.value}: contrast {ratio:.2f} < 4.5 against BG"
             )
+
+
+class TestAffinityIcons:
+    def test_has_all_weather_states(self):
+        assert set(AFFINITY_ICONS.keys()) == set(WeatherState)
+
+    def test_all_non_empty(self):
+        for ws, icon in AFFINITY_ICONS.items():
+            assert icon, f"{ws}: empty icon"
+
+
+class TestTraitIcons:
+    def test_every_registered_trait_has_an_icon(self):
+        # Color-only states are ambiguous; every synergy gets a glyph. Guards the
+        # TRAIT_ICONS map against drifting from TRAIT_REGISTRY (new/renamed traits).
+        import src.game.traits  # noqa: F401 — populate TRAIT_REGISTRY
+        from src.game.registries import TRAIT_REGISTRY
+        from src.ui.theme import TRAIT_ICONS
+
+        assert set(TRAIT_ICONS) == set(TRAIT_REGISTRY), (
+            f"missing: {set(TRAIT_REGISTRY) - set(TRAIT_ICONS)}; "
+            f"orphan: {set(TRAIT_ICONS) - set(TRAIT_REGISTRY)}"
+        )
+
+    def test_weather_traits_reuse_affinity_glyph(self):
+        # All six weather-themed Callings must read identically to their affinity
+        # (SPEC V.81 + docs/live/systems/ui.md).
+        from src.ui.theme import TRAIT_ICONS
+
+        for trait, weather in (
+            ("Frostbound", WeatherState.SNOW),
+            ("Galvanized", WeatherState.THUNDER),
+            ("Overcast", WeatherState.CLOUDY),
+            ("Shrouded", WeatherState.MIST),
+            ("Stormfed", WeatherState.RAIN),
+            ("Sunlit", WeatherState.CLEAR),
+        ):
+            assert TRAIT_ICONS[trait] == AFFINITY_ICONS[weather], trait
+
+
+class TestRoleIcons:
+    def test_every_roster_role_has_an_icon(self):
+        # Every role the roster actually uses must have a glyph (guards ROLE_ICONS
+        # against a new role slipping in without an icon).
+        from src.game.content import CHAMPION_DEF_BY_ID, build_champion_at_level
+        from src.ui.theme import ROLE_ICON_ASSETS, ROLE_ICONS
+
+        roles = {build_champion_at_level(cid, 1).role for cid in CHAMPION_DEF_BY_ID}
+        known = set(ROLE_ICONS) | set(ROLE_ICON_ASSETS)
+        missing = {r for r in roles if r.lower() not in known}
+        assert not missing, f"roles without an icon: {missing}"
+
+
+class TestStatAndTagIcons:
+    def test_stat_icons_non_empty(self):
+        from src.ui.theme import STAT_ICONS
+
+        assert STAT_ICONS and all(STAT_ICONS.values())
+
+    def test_movespeed_has_a_runner(self):
+        # The operator's "shoe with motion" — movement must read as movement.
+        import flet as ft
+
+        from src.ui.theme import STAT_ICONS
+
+        assert STAT_ICONS["ms"] == ft.Icons.DIRECTIONS_RUN
+
+    def test_damage_type_glyphs(self):
+        # Physical = a custom sword asset (no fitting Material glyph); magic = wand.
+        import os
+
+        import flet as ft
+
+        from src.ui.theme import ABILITY_TAG_ICONS, SWORD_ICON_ASSET
+
+        assert "physical" not in ABILITY_TAG_ICONS  # owned by the inline sword asset
+        assert ABILITY_TAG_ICONS["magic"] == ft.Icons.AUTO_FIX_HIGH
+        assert SWORD_ICON_ASSET.endswith(".svg")
+        # The asset actually exists on disk under src/assets.
+        assert os.path.exists(os.path.join("src", "assets", SWORD_ICON_ASSET))
 
 
 class TestSemanticPalette:

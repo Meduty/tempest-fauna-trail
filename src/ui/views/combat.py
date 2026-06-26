@@ -23,6 +23,7 @@ import flet.canvas as cv
 
 from src.game.ability_text import TICKS_PER_SECOND, render_for
 from src.game.traits import preview_team_traits
+from src.ui.components.iconography import affinity_marker
 from src.ui.components.trait_synergies import trait_synergies_panel
 from src.ui.components.board_geometry import (
     BOARD_H,
@@ -736,10 +737,15 @@ def build_combat_view(
         sel = state["selected"]
         pv = next((p for p in pieces if p.id == sel), None)
         if pv is not None:
-            controls.append(ft.Text(
-                name_by_id.get(pv.id, pv.id), size=15, weight=ft.FontWeight.BOLD,
-                color=AFFINITY_COLORS.get(pv.affinity, TEXT_PRIMARY),
-            ))
+            aff_glyph = affinity_marker(pv.affinity, size=18)
+            aff_glyph.tooltip = pv.affinity.value.capitalize()
+            controls.append(ft.Row([
+                ft.Text(
+                    name_by_id.get(pv.id, pv.id), size=15, weight=ft.FontWeight.BOLD,
+                    color=AFFINITY_COLORS.get(pv.affinity, TEXT_PRIMARY), expand=True,
+                ),
+                aff_glyph,
+            ], vertical_alignment=ft.CrossAxisAlignment.START))
             controls.append(ft.Text(
                 f"{pv.affinity.value} · {'enemy' if pv.is_enemy else 'ally'}"
                 + (" · summon" if pv.summon else ""),

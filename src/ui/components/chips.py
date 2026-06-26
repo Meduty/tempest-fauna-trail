@@ -5,6 +5,7 @@ from __future__ import annotations
 import flet as ft
 
 from src.game.models import WeatherState
+from src.ui.components.iconography import affinity_glyph
 from src.ui.theme import (
     AFFINITY_COLORS,
     BG,
@@ -32,11 +33,18 @@ def affinity_chip(
     cfg = _CHIP_SIZES.get(size, _CHIP_SIZES["sm"])
     color = AFFINITY_COLORS[affinity]
     return ft.Container(
-        content=ft.Text(
-            affinity.value.capitalize(),
-            size=cfg["font_size"],
-            color=BG,
-            weight=ft.FontWeight.W_500,
+        content=ft.Row(
+            [
+                affinity_glyph(affinity, size=cfg["font_size"] + 1, color=BG),
+                ft.Text(
+                    affinity.value.capitalize(),
+                    size=cfg["font_size"],
+                    color=BG,
+                    weight=ft.FontWeight.W_500,
+                ),
+            ],
+            spacing=SPACING_XS,
+            tight=True,
         ),
         bgcolor=color,
         border_radius=CHIP_RADIUS,

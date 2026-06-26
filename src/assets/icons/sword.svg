@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#FFFFFF">
+  <g transform="rotate(45 12 12)">
+    <!-- blade: tapered point at top -->
+    <polygon points="11,2.5 13,2.5 13,13 12,15 11,13"/>
+    <!-- crossguard -->
+    <rect x="7.5" y="13" width="9" height="2" rx="0.6"/>
+    <!-- grip -->
+    <rect x="11.1" y="15" width="1.8" height="4"/>
+    <!-- pommel -->
+    <circle cx="12" cy="20.2" r="1.5"/>
+  </g>
+</svg>

@@ -66,6 +66,17 @@ from src.game.weather_effects import (
 )
 from src.ui.combat_playback import CombatSession
 from src.ui.components.board_geometry import BOARD_H, BOARD_W, COL_W, ROW_H, cell_xy
+from src.ui.components.iconography import (
+    affinity_marker,
+    clash_legend,
+    clash_marker,
+    favor_tone,
+    inline_effect_text,
+    rich_tooltip,
+    role_glyph,
+    stat_glyph,
+    trait_glyph,
+)
 from src.ui.components.trait_synergies import trait_synergies_panel
 from src.ui.components.weather_badge import weather_badge
 from src.ui.theme import (
@@ -498,8 +509,7 @@ def build_prep_view(
             ft.Column(
                 [
                     ft.Row([
-                        ft.Container(width=10, height=10, border_radius=5,
-                                     bgcolor=AFFINITY_COLORS[cdef.affinity]),
+                        affinity_marker(cdef.affinity, size=14),
                         ft.Text(cdef.name, size=FONT_SIZE_CAPTION, color=TEXT_PRIMARY,
                                 expand=True, no_wrap=True),
                         ft.Container(
@@ -557,21 +567,21 @@ def build_prep_view(
         team_affinities = {c.affinity for c in run.roster}
         rows: list[ft.Control] = []
         for e in enc.enemies[:10]:
-            # Affinity clash hint: does any team affinity prey on / hunt this enemy?
-            hint = "·"
-            hint_color = TEXT_MUTED
+            # Affinity clash hint: the strongest relation any team affinity has to
+            # this enemy (predator ▲ green, prey ▼ red, neutral · muted).
+            best_rel = RingRelation.NEUTRAL
             for aff in team_affinities:
                 rel = ring_relation(aff, e.affinity)
                 if rel in (RingRelation.PRIMARY_PREDATOR, RingRelation.SECONDARY_PREDATOR):
-                    hint, hint_color = "↑", SUCCESS
+                    best_rel = rel
                     break
                 if rel in (RingRelation.PRIMARY_PREY, RingRelation.SECONDARY_PREY):
-                    hint, hint_color = "↓", DANGER
+                    best_rel = rel
+            hint, hint_color = clash_marker(best_rel)
             rows.append(
                 ft.Row(
                     [
-                        ft.Container(width=8, height=8, border_radius=4,
-                                     bgcolor=AFFINITY_COLORS[e.affinity]),
+                        affinity_marker(e.affinity, size=13),
                         ft.Text(e.name, size=FONT_SIZE_CAPTION, color=TEXT_PRIMARY,
                                 expand=True, no_wrap=True),
                         ft.Text(hint, size=FONT_SIZE_CAPTION, color=hint_color),
@@ -588,8 +598,10 @@ def build_prep_view(
         if enc.map_effect_id:
             header += f" · map: {enc.map_effect_id}"
         return ft.Column(
-            [ft.Text(header, size=FONT_SIZE_H3, color=TEXT_PRIMARY,
-                     weight=ft.FontWeight.BOLD)] + rows,
+            [ft.Row([ft.Text(header, size=FONT_SIZE_H3, color=TEXT_PRIMARY,
+                             weight=ft.FontWeight.BOLD, expand=True),
+                     clash_legend()],
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER)] + rows,
             spacing=SPACING_XS,
         )
 
@@ -663,7 +675,6 @@ def build_prep_view(
                 ft.Text("Combat weather", size=FONT_SIZE_H3, color=TEXT_PRIMARY,
                         weight=ft.FontWeight.BOLD),
                 weather_badge(weather=w, size="sm"),
-                ft.Text(w.value, size=FONT_SIZE_CAPTION, color=TEXT_MUTED),
             ], spacing=SPACING_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
         ]
         if w == WeatherState.CLEAR:
@@ -680,14 +691,11 @@ def build_prep_view(
             rel = ring_relation(aff, w)
             mod = combat_modifier(aff, w)
             deltas = _favor_deltas(mod)
-            buffed = rel in (RingRelation.SELF, RingRelation.PRIMARY_PREDATOR,
-                             RingRelation.SECONDARY_PREDATOR)
-            tone = SUCCESS if buffed else DANGER
+            tone = favor_tone(rel)
             mine = aff in team_affs
-            # Header: affinity + a tone-tinted favor badge; "◀ you" flags own stakes.
+            # Header: affinity glyph + a tone-tinted favor badge; "◀ you" flags own stakes.
             header = ft.Row([
-                ft.Container(width=8, height=8, border_radius=4,
-                             bgcolor=AFFINITY_COLORS[aff]),
+                affinity_marker(aff, size=13),
                 ft.Text(aff.value, size=11, color=TEXT_PRIMARY, no_wrap=True,
                         weight=ft.FontWeight.BOLD),
                 ft.Container(
@@ -769,10 +777,13 @@ def build_prep_view(
 
     # --- stat inspect (tooltip panel) ------------------------------------------
     def _stat_row(label: str, value: str) -> ft.Control:
+        glyph = stat_glyph(label, size=12)
+        icon_cell: ft.Control = glyph if glyph is not None else ft.Container(width=12)
         return ft.Row(
-            [ft.Text(label, size=11, color=TEXT_MUTED, width=64),
+            [icon_cell,
+             ft.Text(label, size=11, color=TEXT_MUTED, width=50),
              ft.Text(value, size=11, color=TEXT_PRIMARY)],
-            spacing=SPACING_SM,
+            spacing=SPACING_XS,
         )
 
     def _item_chip(item_id: str, *, equipped: bool, count: int = 0) -> ft.Control:
@@ -817,17 +828,39 @@ def build_prep_view(
             bgcolor=SURFACE_ELEVATED, border_radius=CARD_RADIUS,
             border=ft.Border.all(1, marker_color) if kind != "component" else None,
             padding=ft.Padding(left=6, right=6, top=2, bottom=2),
-            tooltip="\n".join(desc_lines),
+            tooltip=rich_tooltip("\n".join(desc_lines), tone=marker_color),
             on_click=(lambda _e, i=item_id: _unequip(i)) if equipped
             else (lambda _e, i=item_id: _equip(i)),
         )
 
+    def _piece_icon_cluster(champ: Champion) -> ft.Control:
+        """Top-right identity glyphs on a piece infocard: the affinity glyph (in its
+        affinity color) + one glyph per synergy trait, each tooltipped by name."""
+        aff = affinity_marker(champ.affinity, size=18)
+        aff.tooltip = champ.affinity.value.capitalize()
+        glyphs: list[ft.Control] = [aff]
+        for t in champ.traits:
+            g = trait_glyph(t, size=16, color=TEXT_PRIMARY)
+            g.tooltip = t
+            glyphs.append(g)
+        return ft.Row(glyphs, spacing=SPACING_XS, tight=True, wrap=False)
+
     def _champ_header(champ: Champion) -> list[ft.Control]:
-        """Name + role line — affinity · role [role_code] · level/tier."""
+        """Name + role line — affinity · role [role_code] · level/tier; identity
+        glyphs (affinity + traits) pinned top-right."""
         rc = f" [{champ.role_code}]" if champ.role_code else ""
+        role_ic = role_glyph(champ.role, size=16, color=AFFINITY_COLORS[champ.affinity])
+        name_row: list[ft.Control] = [
+            ft.Text(champ.name, size=FONT_SIZE_H3,
+                    color=AFFINITY_COLORS[champ.affinity],
+                    weight=ft.FontWeight.BOLD, expand=True),
+            _piece_icon_cluster(champ),
+        ]
+        if role_ic is not None:
+            name_row.insert(0, role_ic)
         return [
-            ft.Text(champ.name, size=FONT_SIZE_H3, color=AFFINITY_COLORS[champ.affinity],
-                    weight=ft.FontWeight.BOLD),
+            ft.Row(name_row, spacing=SPACING_XS,
+                   vertical_alignment=ft.CrossAxisAlignment.START),
             ft.Text(f"{champ.affinity.value} · {champ.role}{rc} · L{champ.level} T{champ.tier}",
                     size=FONT_SIZE_CAPTION, color=TEXT_MUTED),
             _level_line(champ.id),
@@ -893,7 +926,10 @@ def build_prep_view(
                     continue
                 out.append(ft.Text(rendered.name, size=11, color=ACCENT,
                                    weight=ft.FontWeight.BOLD))
-                out.append(ft.Text(rendered.text, size=11, color=TEXT_PRIMARY))
+                # Blurb with inline effect glyphs — the icon sits right after the
+                # keyword (physical damage ⚔, movement runner, heal, …).
+                out.append(inline_effect_text(rendered.text, size=11,
+                                              color=TEXT_PRIMARY))
                 if rendered.formula:
                     out.append(ft.Text(rendered.formula, size=10, color=TEXT_MUTED,
                                        font_family=FONT_MONO))

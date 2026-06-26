@@ -211,3 +211,131 @@ class TestTraitChip:
         for size in ("sm", "md"):
             chip = trait_chip(label="Skirmisher", size=size)
             assert isinstance(chip, ft.Container)
+
+
+class TestIconography:
+    """Shared affinity/weather/trait glyph + tone helpers."""
+
+    def test_affinity_glyph_all_states(self):
+        from src.ui.components.iconography import affinity_glyph
+        from src.ui.theme import AFFINITY_ICONS
+
+        for ws in WeatherState:
+            g = affinity_glyph(ws)
+            assert isinstance(g, ft.Icon)
+            assert g.icon == AFFINITY_ICONS[ws]
+
+    def test_favor_tone_buff_debuff_neutral(self):
+        from src.game.weather_effects import RingRelation
+        from src.ui.components.iconography import favor_tone
+
+        assert favor_tone(RingRelation.SELF) == SUCCESS
+        assert favor_tone(RingRelation.PRIMARY_PREDATOR) == SUCCESS
+        assert favor_tone(RingRelation.PRIMARY_PREY) == DANGER
+        assert favor_tone(RingRelation.NEUTRAL) not in (SUCCESS, DANGER)
+
+    def test_clash_marker_colors_match_tone(self):
+        from src.game.weather_effects import RingRelation
+        from src.ui.components.iconography import clash_marker, favor_tone
+
+        for rel in RingRelation:
+            _glyph, color = clash_marker(rel)
+            assert color == favor_tone(rel)
+
+    def test_trait_glyph_tier_colors(self):
+        from src.ui.components.iconography import trait_glyph
+        from src.ui.theme import TEXT_MUTED, TIER_BRONZE, TIER_GOLD, TIER_SILVER
+
+        assert trait_glyph("Beast", cleared=1).color == TIER_BRONZE
+        assert trait_glyph("Beast", cleared=2).color == TIER_SILVER
+        assert trait_glyph("Beast", cleared=3).color == TIER_GOLD
+        assert trait_glyph("Beast", active=False).color == TEXT_MUTED
+
+    def test_trait_glyph_unknown_tag_uses_fallback(self):
+        from src.ui.components.iconography import trait_glyph
+        from src.ui.theme import TRAIT_ICON_FALLBACK
+
+        assert trait_glyph("NotARealTag").icon == TRAIT_ICON_FALLBACK
+
+    def test_rich_tooltip_is_tooltip(self):
+        from src.ui.components.iconography import rich_tooltip
+
+        tip = rich_tooltip("hello", tone=SUCCESS)
+        assert isinstance(tip, ft.Tooltip)
+        assert tip.message == "hello"
+
+    def test_role_glyph_known_and_unknown(self):
+        from src.ui.components.iconography import role_glyph
+        from src.ui.theme import ROLE_ICONS
+
+        g = role_glyph("tank")
+        assert isinstance(g, ft.Icon) and g.icon == ROLE_ICONS["tank"]
+        assert role_glyph("not_a_role") is None
+
+    def test_role_glyph_swashbuckler_uses_sword_asset(self):
+        # Swashbuckler is a duelist — no Material blade, so a custom sword asset.
+        from src.ui.components.iconography import role_glyph
+        from src.ui.theme import SWORD_ICON_ASSET
+
+        g = role_glyph("swashbuckler")
+        assert isinstance(g, ft.Image) and g.src == SWORD_ICON_ASSET
+
+    def test_stat_glyph_known_and_unknown(self):
+        from src.ui.components.iconography import stat_glyph
+        from src.ui.theme import STAT_ICONS
+
+        assert stat_glyph("MS").icon == STAT_ICONS["ms"]   # case-insensitive
+        assert stat_glyph("nonsense") is None
+
+    def test_inline_effect_text_injects_icon_after_damage(self):
+        from src.ui.components.iconography import inline_effect_text
+        from src.ui.theme import SWORD_ICON_ASSET
+
+        row = inline_effect_text("deal 120 physical damage to the target")
+        assert isinstance(row, ft.Row)
+        # The sword image follows the "physical damage" run.
+        kinds = [type(c).__name__ for c in row.controls]
+        assert "Image" in kinds
+        img = next(c for c in row.controls if isinstance(c, ft.Image))
+        assert img.src == SWORD_ICON_ASSET
+        # And it lands right after the run that ends in "damage".
+        idx = row.controls.index(img)
+        assert isinstance(row.controls[idx - 1], ft.Text)
+        assert row.controls[idx - 1].value.endswith("damage")
+
+    def test_inline_effect_text_magic_uses_material_wand(self):
+        from src.ui.components.iconography import inline_effect_text
+        from src.ui.theme import ABILITY_TAG_ICONS
+
+        row = inline_effect_text("a blast of magic damage")
+        icons = [c for c in row.controls if isinstance(c, ft.Icon)]
+        assert any(i.icon == ABILITY_TAG_ICONS["magic"] for i in icons)
+
+    def test_inline_effect_text_two_word_move_speed(self):
+        # "Move Speed" is two words — the runner glyph must still land after it.
+        from src.ui.components.iconography import inline_effect_text
+        from src.ui.theme import STAT_ICONS
+
+        row = inline_effect_text("Grants +10 Move Speed for the whole battle.")
+        icons = [c for c in row.controls if isinstance(c, ft.Icon)]
+        assert any(i.icon == STAT_ICONS["ms"] for i in icons)
+        # The two words stay one run, icon right after.
+        run = next(c for c in row.controls
+                   if isinstance(c, ft.Text) and "Move Speed" in c.value)
+        idx = row.controls.index(run)
+        assert isinstance(row.controls[idx + 1], ft.Icon)
+
+    def test_inline_effect_text_plain_text_no_icons(self):
+        from src.ui.components.iconography import inline_effect_text
+
+        row = inline_effect_text("the target is knocked back briefly")
+        assert all(isinstance(c, ft.Text) for c in row.controls)
+
+    def test_inline_effect_text_reassembles_words(self):
+        # No word is dropped or duplicated (the icon is additive).
+        from src.ui.components.iconography import inline_effect_text
+
+        text = "heal an ally for 80 and grant a shield"
+        row = inline_effect_text(text)
+        words = " ".join(c.value for c in row.controls if isinstance(c, ft.Text))
+        assert words == text
