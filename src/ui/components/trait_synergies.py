@@ -57,8 +57,9 @@ def _trait_tooltip(tp: TraitPreview) -> str:
             tp.active and tp.next_threshold is None
         )
         mark = "●" if cleared else "○"
-        stat = f" ({r.stat_line})" if r.stat_line else ""
-        lines.append(f"{mark} @{r.count}{stat} — {r.text}")
+        stat = f" {r.stat_line}" if r.stat_line else ""
+        # Scope says who it hits: carriers (tag-sharers) vs the whole team.
+        lines.append(f"{mark} @{r.count} [{r.scope}]{stat} — {r.text}")
     return "\n".join(lines)
 
 

@@ -45,11 +45,15 @@ class TraitMeta:
 
 @dataclass(frozen=True)
 class RenderedRung:
-    """One rendered trait breakpoint — count label + effect text + derived stats."""
+    """One rendered trait breakpoint — count label + effect text + derived stats.
+
+    ``scope`` says who the rung affects: ``"carriers"`` (only tag-sharing pieces,
+    `PER_TRAIT_PIECE`) or ``"team"`` (whole player team, `TEAM_WIDE`)."""
 
     count: object                   # int breakpoint, or "full" (dynamic apex)
     text: str
     stat_line: str = ""
+    scope: str = "carriers"
 
 
 @dataclass(frozen=True)
@@ -140,15 +144,25 @@ def render_trait(trait_id: str) -> RenderedTrait | None:
     or ``None`` if the trait has no `TRAIT_META`. Each rung's stat line is derived
     from `_packs.TRAIT_STAT_PACKS` (the same muls/adds the bundle applies, V.79).
     Pure (V.1/V.80)."""
+    from src.game.registries import TRAIT_REGISTRY
     from src.game.traits.meta import TRAIT_META
     from src.game.traits._packs import TRAIT_STAT_PACKS
+    from src.game.traits.types import TraitScope
 
     meta = TRAIT_META.get(trait_id)
     if meta is None:
         return None
     packs = {label: (muls, adds) for label, muls, adds in TRAIT_STAT_PACKS.get(trait_id, [])}
+    # Per-breakpoint scope from the live factory (count label → "carriers"/"team").
+    scopes: dict[object, str] = {}
+    for bp in TRAIT_REGISTRY.get(trait_id, lambda: [])():
+        label = bp.count if isinstance(bp.count, int) else "full"
+        scopes[label] = "team" if bp.scope is TraitScope.TEAM_WIDE else "carriers"
     rungs: list[RenderedRung] = []
     for count, text in meta.rungs.items():
         muls, adds = packs.get(count, ({}, {}))
-        rungs.append(RenderedRung(count=count, text=text, stat_line=stat_line(muls, adds)))
+        rungs.append(RenderedRung(
+            count=count, text=text, stat_line=stat_line(muls, adds),
+            scope=scopes.get(count, "carriers"),
+        ))
     return RenderedTrait(name=meta.name, blurb=meta.blurb, rungs=tuple(rungs))

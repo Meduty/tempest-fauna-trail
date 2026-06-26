@@ -168,6 +168,25 @@ def test_render_trait_derives_stat_line_from_packs():
     assert any(r.count == "full" for r in render_trait("Packmate").rungs)
 
 
+def test_render_trait_rung_scope_matches_factory():
+    # Each rung's scope ("carriers"/"team") must match the breakpoint's TraitScope.
+    from src.game.traits.types import TraitScope
+    for tid in TRAIT_REGISTRY:
+        by_count = {bp.count if isinstance(bp.count, int) else "full": bp
+                    for bp in TRAIT_REGISTRY[tid]()}
+        for r in render_trait(tid).rungs:
+            expected = "team" if by_count[r.count].scope is TraitScope.TEAM_WIDE else "carriers"
+            assert r.scope == expected, f"{tid} @{r.count}: scope {r.scope} != {expected}"
+
+
+def test_apex_rungs_go_team_wide():
+    # The classic Kinship/Calling shape: body = carriers, apex = team.
+    beast = {r.count: r.scope for r in render_trait("Beast").rungs}
+    assert beast[2] == "carriers" and beast[8] == "team"
+    # Packmate is team-wide on every rung by design.
+    assert all(r.scope == "team" for r in render_trait("Packmate").rungs)
+
+
 def test_render_trait_unknown_is_none():
     assert render_trait("not_a_trait") is None
 

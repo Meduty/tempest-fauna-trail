@@ -227,7 +227,8 @@ Player-facing trait text flows through the shared description render-layer:
   never re-typed → can't drift, V.79). Pure, no Flet/mutation (V.80).
 - **Consumer:** `ui/components/trait_synergies.py::trait_synergies_panel` tooltips
   (Prep **and** Combat) — trait blurb + every breakpoint (`● cleared` / `○`) with
-  its stat line + effect text.
+  its **scope** (`[carriers]` = tag-sharers only / `[team]` = whole team, from the
+  rung's `TraitScope`), stat line, and effect text.
 
 ## Invariants
 - V.21 (unique-id count, RNG-free, replay-stable), V.22 (every `Champion.traits`
