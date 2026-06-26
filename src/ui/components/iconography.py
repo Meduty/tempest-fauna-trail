@@ -172,8 +172,17 @@ _INLINE_KEYWORDS: dict[str, str] = {
     "poison": "poison", "poisoned": "poison", "poisons": "poison",
     "mana": "mana",
     "armor": "armor",
-    "movement": "haste", "movespeed": "haste",
+    "movespeed": "haste",
     "crit": "crit", "critical": "crit",
+}
+
+# Two-word phrases (checked before single words) — the glyph lands after the noun,
+# so "physical damage ⚔" and "+10 Move Speed 🏃" read the way they're written.
+_INLINE_PHRASES: dict[str, str] = {
+    "physical damage": "physical",
+    "magic damage": "magic", "magical damage": "magic",
+    "move speed": "haste", "movement speed": "haste",
+    "attack speed": "as",
 }
 
 
@@ -210,9 +219,9 @@ def inline_effect_text(
         nxt = _norm(words[i + 1]) if i + 1 < len(words) else ""
         key: str | None = None
         consumed = 1
-        # "physical/magic damage" → glyph after "damage" (reads as the operator wrote).
-        if norm in ("physical", "magic", "magical") and nxt.startswith("damag"):
-            key = "physical" if norm == "physical" else "magic"
+        # Two-word phrase first (glyph after the noun), else a single keyword.
+        if nxt and f"{norm} {nxt}" in _INLINE_PHRASES:
+            key = _INLINE_PHRASES[f"{norm} {nxt}"]
             consumed = 2
         elif norm in _INLINE_KEYWORDS:
             key = _INLINE_KEYWORDS[norm]

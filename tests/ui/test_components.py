@@ -303,6 +303,20 @@ class TestIconography:
         icons = [c for c in row.controls if isinstance(c, ft.Icon)]
         assert any(i.icon == ABILITY_TAG_ICONS["magic"] for i in icons)
 
+    def test_inline_effect_text_two_word_move_speed(self):
+        # "Move Speed" is two words — the runner glyph must still land after it.
+        from src.ui.components.iconography import inline_effect_text
+        from src.ui.theme import STAT_ICONS
+
+        row = inline_effect_text("Grants +10 Move Speed for the whole battle.")
+        icons = [c for c in row.controls if isinstance(c, ft.Icon)]
+        assert any(i.icon == STAT_ICONS["ms"] for i in icons)
+        # The two words stay one run, icon right after.
+        run = next(c for c in row.controls
+                   if isinstance(c, ft.Text) and "Move Speed" in c.value)
+        idx = row.controls.index(run)
+        assert isinstance(row.controls[idx + 1], ft.Icon)
+
     def test_inline_effect_text_plain_text_no_icons(self):
         from src.ui.components.iconography import inline_effect_text
 
