@@ -29,6 +29,7 @@ from src.game.encounter import node_encounter
 from src.game.models import Node, NodeState, NodeType, NodeWeatherState, Run, WeatherState
 from src.game.route import CITIES, ROUTE_CITY_IDS, city_id_for_node
 from src.game.weather_effects import RingRelation, ring_relation
+from src.ui.components.iconography import affinity_marker
 from src.ui.components.weather_badge import weather_badge
 from src.viz.route_map import build_route_map
 from src.ui.theme import (
@@ -198,12 +199,10 @@ def build_trail_view(
         enc = node_encounter(run.seed, node)
         rows: list[ft.Control] = []
         for e in enc.enemies[:8]:
-            dot = ft.Container(width=8, height=8, border_radius=4,
-                               bgcolor=AFFINITY_COLORS[e.affinity])
             rows.append(
                 ft.Row(
                     [
-                        dot,
+                        affinity_marker(e.affinity, size=13),
                         ft.Text(f"{e.name}", size=FONT_SIZE_CAPTION, color=TEXT_PRIMARY,
                                 expand=True, no_wrap=True),
                         ft.Text(f"T{e.tier} L{e.level}", size=FONT_SIZE_CAPTION,

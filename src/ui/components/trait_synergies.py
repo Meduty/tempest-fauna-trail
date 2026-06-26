@@ -15,6 +15,7 @@ import flet as ft
 
 from src.game.describe import render_trait
 from src.game.traits import TraitPreview
+from src.ui.components.iconography import rich_tooltip, trait_glyph
 from src.ui.theme import (
     CARD_RADIUS,
     FONT_SIZE_H3,
@@ -74,10 +75,12 @@ def _trait_row(tp: TraitPreview) -> ft.Control:
     )
     pips = [_rung_pip(t, lit=tp.count >= t) for t in rungs]
     tip = _trait_tooltip(tp)
+    # TFT-style: a trait glyph that lights by tier (bronze/silver/gold = rungs
+    # cleared) when active, greyed when dormant.
+    cleared = sum(1 for t in rungs if tp.count >= t)
 
     header = ft.Row([
-        ft.Container(width=6, height=6, border_radius=3,
-                     bgcolor=SUCCESS if active else SURFACE_ELEVATED),
+        trait_glyph(tp.trait, size=16, cleared=cleared, active=active),
         ft.Text(tp.trait, size=12, no_wrap=True, expand=True,
                 color=name_color,
                 weight=ft.FontWeight.BOLD if active else ft.FontWeight.W_400),
@@ -95,7 +98,7 @@ def _trait_row(tp: TraitPreview) -> ft.Control:
         border_radius=CARD_RADIUS,
         padding=ft.Padding(left=8, right=8, top=5, bottom=5),
         opacity=1.0 if active else 0.6,
-        tooltip=tip,
+        tooltip=rich_tooltip(tip, tone=SUCCESS if active else None),
     )
 
 

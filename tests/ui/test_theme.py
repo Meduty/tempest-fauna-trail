@@ -5,6 +5,7 @@ import re
 from src.game.models import WeatherState
 from src.ui.theme import (
     AFFINITY_COLORS,
+    AFFINITY_ICONS,
     ANIM_COMBAT_TICK,
     ANIM_FAST,
     ANIM_NORMAL,
@@ -68,6 +69,37 @@ class TestAffinityColors:
             assert ratio >= 4.5, (
                 f"{ws.value}: contrast {ratio:.2f} < 4.5 against BG"
             )
+
+
+class TestAffinityIcons:
+    def test_has_all_weather_states(self):
+        assert set(AFFINITY_ICONS.keys()) == set(WeatherState)
+
+    def test_all_non_empty(self):
+        for ws, icon in AFFINITY_ICONS.items():
+            assert icon, f"{ws}: empty icon"
+
+
+class TestTraitIcons:
+    def test_every_registered_trait_has_an_icon(self):
+        # Color-only states are ambiguous; every synergy gets a glyph. Guards the
+        # TRAIT_ICONS map against drifting from TRAIT_REGISTRY (new/renamed traits).
+        import src.game.traits  # noqa: F401 — populate TRAIT_REGISTRY
+        from src.game.registries import TRAIT_REGISTRY
+        from src.ui.theme import TRAIT_ICONS
+
+        assert set(TRAIT_ICONS) == set(TRAIT_REGISTRY), (
+            f"missing: {set(TRAIT_REGISTRY) - set(TRAIT_ICONS)}; "
+            f"orphan: {set(TRAIT_ICONS) - set(TRAIT_REGISTRY)}"
+        )
+
+    def test_weather_traits_reuse_affinity_glyph(self):
+        # The six weather-themed Callings must read identically to their affinity.
+        from src.ui.theme import TRAIT_ICONS
+
+        assert TRAIT_ICONS["Frostbound"] == AFFINITY_ICONS[WeatherState.SNOW]
+        assert TRAIT_ICONS["Sunlit"] == AFFINITY_ICONS[WeatherState.CLEAR]
+        assert TRAIT_ICONS["Stormfed"] == AFFINITY_ICONS[WeatherState.RAIN]
 
 
 class TestSemanticPalette:

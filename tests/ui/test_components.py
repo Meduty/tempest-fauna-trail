@@ -211,3 +211,55 @@ class TestTraitChip:
         for size in ("sm", "md"):
             chip = trait_chip(label="Skirmisher", size=size)
             assert isinstance(chip, ft.Container)
+
+
+class TestIconography:
+    """Shared affinity/weather/trait glyph + tone helpers."""
+
+    def test_affinity_glyph_all_states(self):
+        from src.ui.components.iconography import affinity_glyph
+        from src.ui.theme import AFFINITY_ICONS
+
+        for ws in WeatherState:
+            g = affinity_glyph(ws)
+            assert isinstance(g, ft.Icon)
+            assert g.icon == AFFINITY_ICONS[ws]
+
+    def test_favor_tone_buff_debuff_neutral(self):
+        from src.game.weather_effects import RingRelation
+        from src.ui.components.iconography import favor_tone
+
+        assert favor_tone(RingRelation.SELF) == SUCCESS
+        assert favor_tone(RingRelation.PRIMARY_PREDATOR) == SUCCESS
+        assert favor_tone(RingRelation.PRIMARY_PREY) == DANGER
+        assert favor_tone(RingRelation.NEUTRAL) not in (SUCCESS, DANGER)
+
+    def test_clash_marker_colors_match_tone(self):
+        from src.game.weather_effects import RingRelation
+        from src.ui.components.iconography import clash_marker, favor_tone
+
+        for rel in RingRelation:
+            _glyph, color = clash_marker(rel)
+            assert color == favor_tone(rel)
+
+    def test_trait_glyph_tier_colors(self):
+        from src.ui.components.iconography import trait_glyph
+        from src.ui.theme import TEXT_MUTED, TIER_BRONZE, TIER_GOLD, TIER_SILVER
+
+        assert trait_glyph("Beast", cleared=1).color == TIER_BRONZE
+        assert trait_glyph("Beast", cleared=2).color == TIER_SILVER
+        assert trait_glyph("Beast", cleared=3).color == TIER_GOLD
+        assert trait_glyph("Beast", active=False).color == TEXT_MUTED
+
+    def test_trait_glyph_unknown_tag_uses_fallback(self):
+        from src.ui.components.iconography import trait_glyph
+        from src.ui.theme import TRAIT_ICON_FALLBACK
+
+        assert trait_glyph("NotARealTag").icon == TRAIT_ICON_FALLBACK
+
+    def test_rich_tooltip_is_tooltip(self):
+        from src.ui.components.iconography import rich_tooltip
+
+        tip = rich_tooltip("hello", tone=SUCCESS)
+        assert isinstance(tip, ft.Tooltip)
+        assert tip.message == "hello"

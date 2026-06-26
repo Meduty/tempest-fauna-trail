@@ -1,8 +1,10 @@
 """Design tokens for the Tempest Fauna Trail UI.
 
 Import these constants in any src/ui/ module.  Never import from game/ into
-this module beyond WeatherState (for the affinity color map).
+this module beyond WeatherState (for the affinity color/icon maps).
 """
+
+import flet as ft
 
 from src.game.models import WeatherState
 
@@ -15,6 +17,62 @@ AFFINITY_COLORS: dict[WeatherState, str] = {
     WeatherState.SNOW: "#E0E0E0",
     WeatherState.THUNDER: "#FFD54F",
 }
+
+# --- Affinity / Weather Icons (per WeatherState) ---
+# Affinity == WeatherState (V.6), so one glyph map serves both the weather badge
+# and every affinity marker — color alone is ambiguous + colorblind-hostile, the
+# icon disambiguates at a glance. Canonical here; consumers never redefine it.
+AFFINITY_ICONS: dict[WeatherState, str] = {
+    WeatherState.CLEAR: ft.Icons.WB_SUNNY,
+    WeatherState.CLOUDY: ft.Icons.CLOUD,
+    WeatherState.MIST: ft.Icons.BLUR_ON,
+    WeatherState.RAIN: ft.Icons.WATER_DROP,
+    WeatherState.SNOW: ft.Icons.AC_UNIT,
+    WeatherState.THUNDER: ft.Icons.FLASH_ON,
+}
+
+# --- Trait Icons (TFT-style per-synergy glyph) ---
+# One Material glyph per synergy trait so the trait list + piece infocards read
+# at a glance. The six weather-themed Callings reuse their affinity glyph above
+# so the synergy and its weather read identically; the rest get a thematic icon.
+# Keys MUST match TRAIT_REGISTRY ids exactly (guarded by a UI test).
+TRAIT_ICONS: dict[str, str] = {
+    # weather-themed Callings → reuse the affinity glyph
+    "Frostbound": AFFINITY_ICONS[WeatherState.SNOW],
+    "Galvanized": AFFINITY_ICONS[WeatherState.THUNDER],
+    "Overcast": AFFINITY_ICONS[WeatherState.CLOUDY],
+    "Shrouded": AFFINITY_ICONS[WeatherState.MIST],
+    "Stormfed": AFFINITY_ICONS[WeatherState.RAIN],
+    "Sunlit": AFFINITY_ICONS[WeatherState.CLEAR],
+    # role / kinship traits
+    "Beast": ft.Icons.PETS,
+    "Bruiser": ft.Icons.SPORTS_MMA,
+    "Channeler": ft.Icons.AUTO_FIX_HIGH,
+    "Guardian": ft.Icons.SHIELD,
+    "Hunter": ft.Icons.GPS_FIXED,
+    "Mender": ft.Icons.HEALING,
+    "Multicaster": ft.Icons.AUTORENEW,
+    "Mystic": ft.Icons.AUTO_FIX_NORMAL,
+    "Packmate": ft.Icons.GROUPS,
+    "Primordial": ft.Icons.WHATSHOT,
+    "Scaled": ft.Icons.LAYERS,
+    "Skirmisher": ft.Icons.SPORTS_KABADDI,
+    "Skyborn": ft.Icons.FLIGHT,
+    "Spirit": ft.Icons.AUTO_AWESOME,
+    "Stalker": ft.Icons.VISIBILITY_OFF,
+    "Swarm": ft.Icons.GRAIN,
+    "Tidekin": ft.Icons.WAVES,
+    "Trickster": ft.Icons.THEATER_COMEDY,
+    "Warden": ft.Icons.ADD_MODERATOR,
+}
+
+# Fallback glyph for any trait tag without a dedicated icon (open-ended tags, V.8).
+TRAIT_ICON_FALLBACK: str = ft.Icons.WORKSPACE_PREMIUM
+
+# --- Synergy tier colors (TFT bronze/silver/gold by rungs cleared) ---
+TIER_BRONZE = "#CD7F32"
+TIER_SILVER = "#C0C0C0"
+TIER_GOLD = "#FFD54F"
 
 # --- Semantic Palette ---
 BG = "#1C1C1E"
