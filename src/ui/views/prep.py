@@ -76,7 +76,6 @@ from src.ui.theme import (
     FONT_SIZE_CAPTION,
     FONT_SIZE_DISPLAY,
     FONT_MONO,
-    FONT_SIZE_H2,
     FONT_SIZE_H3,
     SPACING_LG,
     SPACING_MD,
@@ -821,8 +820,8 @@ def build_prep_view(
                    ("MS", f"{champ.move_speed}"), ("MR", f"{champ.mana_regen}"),
                    ("crit", f"{champ.crit_chance * 100:.0f}%")]
         return ft.Row([
-            ft.Column([_stat_row(l, v) for l, v in primary], spacing=2, expand=True),
-            ft.Column([_stat_row(l, v) for l, v in premium], spacing=2, expand=True),
+            ft.Column([_stat_row(lbl, v) for lbl, v in primary], spacing=2, expand=True),
+            ft.Column([_stat_row(lbl, v) for lbl, v in premium], spacing=2, expand=True),
         ], spacing=SPACING_SM)
 
     def _ability_block(champ: Champion) -> list[ft.Control]:

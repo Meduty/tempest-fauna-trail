@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from random import Random
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from .content import (
     ChampionDef,
@@ -32,6 +32,12 @@ from .items.base import BASE_COMPONENTS
 from .models import Enemy, WeatherState
 from .route import StageDef, stage_of
 from .scaling import level_scale_stats, power
+
+if TYPE_CHECKING:
+    # Annotation-only imports — kept out of the runtime surface (the bodies
+    # import these locally where needed); satisfies the string annotations below.
+    from .bosses.data import BossEncounterResult
+    from .models import Node
 
 # ---------------------------------------------------------------------------
 # Seed channels
@@ -430,7 +436,7 @@ def roll_squad(
 
         # Check composition — accept if ok, or accept unconditionally on last attempt
         comp_ok = _check_composition(squad_defs, len(squad_defs))
-        total_cost = sum(power(d.tier, l) for d, l in zip(squad_defs, squad_levels))
+        total_cost = sum(power(d.tier, lvl) for d, lvl in zip(squad_defs, squad_levels))
 
         if comp_ok:
             # Accept this squad
