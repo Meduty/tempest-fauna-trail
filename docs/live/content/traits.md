@@ -31,7 +31,9 @@
 - `game/traits/_packs.py` — `stat_pack_bundle` (mul/add `Modifier`s; an
   `attack_speed` mul moves tie-order on its own now that AS is a float, V.34 /
   T.29-pre — no `milli_AS` rider) + `define_trait` shorthand (registers a trait
-  from `(count, scope, muls, adds)` rungs).
+  from `(count, scope, muls, adds)` rungs). `define_trait` also records each rung's
+  raw `(label, muls, adds)` in **`TRAIT_STAT_PACKS`** so the description layer can
+  derive a rung's stat line from the same numbers the bundle applies (T.41b, V.79).
 - `game/traits/{affinities,kinships,callings}.py` — the 25 trait factories
   (declarative stat-pack rungs). Imported by `traits/__init__`, which registers
   them into `TRAIT_REGISTRY` as a side effect.
@@ -212,11 +214,28 @@ omitted from the apex, mirroring the `on_death_spawn` `trait`-guard.
   lower tiers (e.g. Dusk Bat T2). Primordial shop access is augment-gated (T.31);
   trait factories ship ready-but-dormant.
 
+## Descriptions (T.41b) — `game/traits/meta.py` + `game/describe.py`
+Player-facing trait text flows through the shared description render-layer:
+- **`traits/meta.py::TRAIT_META: dict[str, TraitMeta]`** — authored **name + blurb
+  + per-breakpoint `text`** for all **25** traits (transcribed from
+  `trait_catalog.md`, reconciled to the **code's** counts — a few drifted during
+  T.28b/c balance: **Bruiser** apex @10 not @8, **Stalker** apex @8 not @7). Each
+  trait's `rungs` keys **== its `factory()` breakpoint counts** (V.79, test-guarded).
+- **`describe.render_trait(id) -> RenderedTrait(name, blurb, rungs)`** — each
+  `RenderedRung(count, text, stat_line)` pairs the authored effect text with a
+  **stat line derived from `_packs.TRAIT_STAT_PACKS`** (the rung's `muls`/`adds`,
+  never re-typed → can't drift, V.79). Pure, no Flet/mutation (V.80).
+- **Consumer:** `ui/components/trait_synergies.py::trait_synergies_panel` tooltips
+  (Prep **and** Combat) — trait blurb + every breakpoint (`● cleared` / `○`) with
+  its stat line + effect text.
+
 ## Invariants
 - V.21 (unique-id count, RNG-free, replay-stable), V.22 (every `Champion.traits`
   tag resolves in `TRAIT_REGISTRY`; ≥1 Kinship + ≥1 Calling; Primordial at T10),
   V.37 (apex/dynamic-threshold + primitive determinism), **V.40 (hexproof targeting
   — single-target acquisition excludes `HEXPROOF`; AoE still hits; `pierces_hexproof`
   bypass; B.15)**, **V.41 (cumulative rungs — a higher rung re-includes every lower
-  rung's mechanic; sole exception carrier-movement at a TEAM apex; B.16)**. Guarded
-  by `tests/game/test_traits.py` + `tests/game/test_hexproof.py` + `content.py` self-asserts.
+  rung's mechanic; sole exception carrier-movement at a TEAM apex; B.16)**,
+  **V.79 (every trait has `TRAIT_META` with one description per `factory()`
+  breakpoint; stat line derived from `TRAIT_STAT_PACKS`; T.41b)**. Guarded
+  by `tests/game/test_traits.py` + `tests/game/test_describe.py` + `tests/game/test_hexproof.py` + `content.py` self-asserts.

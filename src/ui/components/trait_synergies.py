@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import flet as ft
 
+from src.game.describe import render_trait
 from src.game.traits import TraitPreview
 from src.ui.theme import (
     CARD_RADIUS,
@@ -39,6 +40,28 @@ def _rung_pip(value: int, *, lit: bool) -> ft.Control:
     )
 
 
+def _trait_tooltip(tp: TraitPreview) -> str:
+    """Rich tooltip: trait blurb + every breakpoint's effect text + derived stat
+    line (T.41b `describe.render_trait`), cleared rungs marked ●. Falls back to a
+    numeric line if the trait has no metadata."""
+    rt = render_trait(tp.trait)
+    if rt is None:
+        if tp.next_threshold is not None:
+            return f"{tp.trait}: {tp.count} carriers · next rung at {tp.next_threshold}"
+        return f"{tp.trait}: {tp.count} carriers · top rung cleared"
+    lines = [f"{rt.name} — {rt.blurb}", f"Carriers: {tp.count}"]
+    for r in rt.rungs:
+        # Cleared if an int rung the count reached; the dynamic apex ("full") is
+        # marked cleared only when the top rung is reached (next_threshold is None).
+        cleared = (tp.count >= r.count) if isinstance(r.count, int) else (
+            tp.active and tp.next_threshold is None
+        )
+        mark = "●" if cleared else "○"
+        stat = f" ({r.stat_line})" if r.stat_line else ""
+        lines.append(f"{mark} @{r.count}{stat} — {r.text}")
+    return "\n".join(lines)
+
+
 def _trait_row(tp: TraitPreview) -> ft.Control:
     """One trait: name + count badge + rung-ladder pips. Active = bright + a SUCCESS
     rail; dormant = greyed."""
@@ -49,11 +72,7 @@ def _trait_row(tp: TraitPreview) -> ft.Control:
         t for t in (tp.threshold, tp.next_threshold) if t
     )
     pips = [_rung_pip(t, lit=tp.count >= t) for t in rungs]
-    # Numeric tooltip — TFT-style "you have N, next at M".
-    if tp.next_threshold is not None:
-        tip = f"{tp.trait}: {tp.count} carriers · next rung at {tp.next_threshold}"
-    else:
-        tip = f"{tp.trait}: {tp.count} carriers · top rung cleared"
+    tip = _trait_tooltip(tp)
 
     header = ft.Row([
         ft.Container(width=6, height=6, border_radius=3,

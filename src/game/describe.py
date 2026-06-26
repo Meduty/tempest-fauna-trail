@@ -32,6 +32,36 @@ class ItemMeta:
 
 
 @dataclass(frozen=True)
+class TraitMeta:
+    """Authored presentation metadata for one trait (transcribed from
+    `docs/design/content/trait_catalog.md`). `rungs` maps each breakpoint count
+    (int, or ``"full"`` for the dynamic apex) → its effect description. Stat lines
+    are derived from `_packs.TRAIT_STAT_PACKS`, not stored here (V.79)."""
+
+    name: str
+    blurb: str
+    rungs: dict[object, str]
+
+
+@dataclass(frozen=True)
+class RenderedRung:
+    """One rendered trait breakpoint — count label + effect text + derived stats."""
+
+    count: object                   # int breakpoint, or "full" (dynamic apex)
+    text: str
+    stat_line: str = ""
+
+
+@dataclass(frozen=True)
+class RenderedTrait:
+    """A rendered trait description — name + blurb + per-breakpoint rungs."""
+
+    name: str
+    blurb: str
+    rungs: tuple[RenderedRung, ...] = ()
+
+
+@dataclass(frozen=True)
 class RenderedEntry:
     """A rendered description — pure data, no UI dependency. Shared by every
     description domain (items, traits, augments) and UI panel."""
@@ -103,3 +133,22 @@ def render_item(item_id: str, *, derive_stats: bool = True) -> RenderedEntry | N
         return None
     line = _bundle_stat_line(item_id) if derive_stats else ""
     return RenderedEntry(name=meta.name, text=meta.blurb, stat_line=line)
+
+
+def render_trait(trait_id: str) -> RenderedTrait | None:
+    """Render one trait id → `RenderedTrait` (name + blurb + per-breakpoint rungs),
+    or ``None`` if the trait has no `TRAIT_META`. Each rung's stat line is derived
+    from `_packs.TRAIT_STAT_PACKS` (the same muls/adds the bundle applies, V.79).
+    Pure (V.1/V.80)."""
+    from src.game.traits.meta import TRAIT_META
+    from src.game.traits._packs import TRAIT_STAT_PACKS
+
+    meta = TRAIT_META.get(trait_id)
+    if meta is None:
+        return None
+    packs = {label: (muls, adds) for label, muls, adds in TRAIT_STAT_PACKS.get(trait_id, [])}
+    rungs: list[RenderedRung] = []
+    for count, text in meta.rungs.items():
+        muls, adds = packs.get(count, ({}, {}))
+        rungs.append(RenderedRung(count=count, text=text, stat_line=stat_line(muls, adds)))
+    return RenderedTrait(name=meta.name, blurb=meta.blurb, rungs=tuple(rungs))
