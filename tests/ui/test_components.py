@@ -263,3 +263,32 @@ class TestIconography:
         tip = rich_tooltip("hello", tone=SUCCESS)
         assert isinstance(tip, ft.Tooltip)
         assert tip.message == "hello"
+
+    def test_role_glyph_known_and_unknown(self):
+        from src.ui.components.iconography import role_glyph
+        from src.ui.theme import ROLE_ICONS
+
+        g = role_glyph("tank")
+        assert isinstance(g, ft.Icon) and g.icon == ROLE_ICONS["tank"]
+        assert role_glyph("not_a_role") is None
+
+    def test_stat_glyph_known_and_unknown(self):
+        from src.ui.components.iconography import stat_glyph
+        from src.ui.theme import STAT_ICONS
+
+        assert stat_glyph("MS").icon == STAT_ICONS["ms"]   # case-insensitive
+        assert stat_glyph("nonsense") is None
+
+    def test_tag_glyphs_skips_unmapped_and_caps(self):
+        from src.ui.components.iconography import tag_glyphs
+
+        # "hybrid" is unmapped → skipped; cap respected.
+        glyphs = tag_glyphs(("physical", "hybrid", "magic", "heal", "stun", "slow"),
+                            max_n=3)
+        assert len(glyphs) == 3
+        assert all(isinstance(g, ft.Icon) for g in glyphs)
+
+    def test_tag_glyphs_empty(self):
+        from src.ui.components.iconography import tag_glyphs
+
+        assert tag_glyphs(()) == []

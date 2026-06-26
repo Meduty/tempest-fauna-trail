@@ -102,6 +102,41 @@ class TestTraitIcons:
         assert TRAIT_ICONS["Stormfed"] == AFFINITY_ICONS[WeatherState.RAIN]
 
 
+class TestRoleIcons:
+    def test_every_roster_role_has_an_icon(self):
+        # Every role the roster actually uses must have a glyph (guards ROLE_ICONS
+        # against a new role slipping in without an icon).
+        from src.game.content import CHAMPION_DEF_BY_ID, build_champion_at_level
+        from src.ui.theme import ROLE_ICONS
+
+        roles = {build_champion_at_level(cid, 1).role for cid in CHAMPION_DEF_BY_ID}
+        missing = {r for r in roles if r.lower() not in ROLE_ICONS}
+        assert not missing, f"roles without an icon: {missing}"
+
+
+class TestStatAndTagIcons:
+    def test_stat_icons_non_empty(self):
+        from src.ui.theme import STAT_ICONS
+
+        assert STAT_ICONS and all(STAT_ICONS.values())
+
+    def test_movespeed_has_a_runner(self):
+        # The operator's "shoe with motion" — movement must read as movement.
+        import flet as ft
+
+        from src.ui.theme import STAT_ICONS
+
+        assert STAT_ICONS["ms"] == ft.Icons.DIRECTIONS_RUN
+
+    def test_damage_type_tags_have_weapon_and_wand(self):
+        import flet as ft
+
+        from src.ui.theme import ABILITY_TAG_ICONS
+
+        assert ABILITY_TAG_ICONS["physical"] == ft.Icons.HARDWARE
+        assert ABILITY_TAG_ICONS["magic"] == ft.Icons.AUTO_FIX_HIGH
+
+
 class TestSemanticPalette:
     def test_all_hex_format(self):
         from src.ui import theme

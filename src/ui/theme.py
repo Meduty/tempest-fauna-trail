@@ -74,6 +74,75 @@ TIER_BRONZE = "#CD7F32"
 TIER_SILVER = "#C0C0C0"
 TIER_GOLD = "#FFD54F"
 
+# --- Role Icons (one glyph per champion role, shown next to the piece name) ---
+# Keys MUST match the roster's role vocabulary (guarded by a UI test).
+ROLE_ICONS: dict[str, str] = {
+    "assassin": ft.Icons.CONTENT_CUT,
+    "bruiser": ft.Icons.SPORTS_MMA,
+    "mage": ft.Icons.AUTO_STORIES,
+    "marksman": ft.Icons.TRACK_CHANGES,
+    "spellblade": ft.Icons.FLARE,
+    "spellslinger": ft.Icons.BUBBLE_CHART,
+    "support": ft.Icons.VOLUNTEER_ACTIVISM,
+    "swashbuckler": ft.Icons.SAILING,
+    "tank": ft.Icons.SHIELD,
+}
+
+# --- Stat Icons (glyph per stat, keyed by lowercased short label) ---
+# Used to decorate the structured stat readouts (the infocard stat grid, the
+# weather-favor deltas) so a number reads at a glance. Movespeed = a running
+# figure (the "shoe with motion" idea).
+STAT_ICONS: dict[str, str] = {
+    "hp": ft.Icons.FAVORITE,
+    "str": ft.Icons.FITNESS_CENTER,
+    "int": ft.Icons.PSYCHOLOGY,
+    "as": ft.Icons.SPEED,
+    "ms": ft.Icons.DIRECTIONS_RUN,
+    "mr": ft.Icons.OPACITY,
+    "armor": ft.Icons.SHIELD,
+    "res": ft.Icons.SECURITY,
+    "crit": ft.Icons.STAR,
+    "range": ft.Icons.STRAIGHTEN,
+    "threat": ft.Icons.GPS_FIXED,
+}
+
+# --- Ability effect-tag Icons (the semantic tags `ability_text` already emits) ---
+# Rendered as small glyph chips next to an ability so its effect reads without
+# parsing the blurb: physical damage = a weapon glyph (HARDWARE — Material has no
+# literal sword), magic = a wand, movement = a runner, etc. Unmapped tags are
+# simply skipped (no fallback clutter).
+ABILITY_TAG_ICONS: dict[str, str] = {
+    "physical": ft.Icons.HARDWARE,
+    "magic": ft.Icons.AUTO_FIX_HIGH,
+    "haste": ft.Icons.DIRECTIONS_RUN,
+    "tempo": ft.Icons.SPEED,
+    "heal": ft.Icons.HEALING,
+    "lifesteal": ft.Icons.BLOODTYPE,
+    "antiheal": ft.Icons.HEART_BROKEN,
+    "shield": ft.Icons.SHIELD,
+    "defense": ft.Icons.SECURITY,
+    "stun": ft.Icons.STARS,
+    "slow": ft.Icons.HOURGLASS_BOTTOM,
+    "root": ft.Icons.ANCHOR,
+    "freeze": ft.Icons.AC_UNIT,
+    "disarm": ft.Icons.DO_NOT_TOUCH,
+    "control": ft.Icons.PAN_TOOL,
+    "burn": ft.Icons.LOCAL_FIRE_DEPARTMENT,
+    "poison": ft.Icons.SCIENCE,
+    "mana": ft.Icons.OPACITY,
+    "crit": ft.Icons.STAR,
+    "aoe": ft.Icons.WIFI_TETHERING,
+    "buff": ft.Icons.TRENDING_UP,
+    "scaling": ft.Icons.TRENDING_UP,
+    "debuff": ft.Icons.TRENDING_DOWN,
+    "execute": ft.Icons.CRISIS_ALERT,
+    "summon": ft.Icons.GROUP_ADD,
+    "team": ft.Icons.GROUPS,
+    "support": ft.Icons.VOLUNTEER_ACTIVISM,
+    "ultimate": ft.Icons.AUTO_AWESOME,
+    "evasion": ft.Icons.VISIBILITY_OFF,
+}
+
 # --- Semantic Palette ---
 BG = "#1C1C1E"
 SURFACE = "#2C2C2E"

@@ -14,12 +14,15 @@ import flet as ft
 from src.game.models import WeatherState
 from src.game.weather_effects import RingRelation
 from src.ui.theme import (
+    ABILITY_TAG_ICONS,
     AFFINITY_COLORS,
     AFFINITY_ICONS,
     CARD_RADIUS,
     DANGER,
     FONT_MONO,
     FONT_SIZE_CAPTION,
+    ROLE_ICONS,
+    STAT_ICONS,
     SUCCESS,
     SURFACE,
     SURFACE_ELEVATED,
@@ -124,6 +127,52 @@ def trait_glyph(
     if color is None:
         color = _tier_color(cleared) if active else TEXT_MUTED
     return ft.Icon(icon, size=size, color=color)
+
+
+# --------------------------------------------------------------------------
+# Role / stat / ability-tag glyphs
+# --------------------------------------------------------------------------
+def role_glyph(
+    role: str, *, size: int = 15, color: str = TEXT_MUTED,
+) -> ft.Icon | None:
+    """The champion-role glyph (assassin/mage/tank/…), or ``None`` for an unknown
+    role. Tooltipped by the caller. Shown next to a piece's name."""
+    icon = ROLE_ICONS.get(role.lower())
+    if icon is None:
+        return None
+    g = ft.Icon(icon, size=size, color=color)
+    g.tooltip = role.capitalize()
+    return g
+
+
+def stat_glyph(
+    label: str, *, size: int = 12, color: str = TEXT_MUTED,
+) -> ft.Icon | None:
+    """The glyph for a stat short-label (``"STR"``, ``"MS"``, …), or ``None`` if the
+    stat has no icon. Case-insensitive."""
+    icon = STAT_ICONS.get(label.lower())
+    if icon is None:
+        return None
+    return ft.Icon(icon, size=size, color=color)
+
+
+def tag_glyphs(
+    tags: tuple[str, ...], *, size: int = 13, max_n: int = 4,
+) -> list[ft.Control]:
+    """Glyph chips for an ability's effect tags — physical = weapon, magic = wand,
+    haste = runner, etc. Only mapped tags render (no fallback clutter), capped at
+    ``max_n``, each tooltipped by tag name. Order follows ``tags``."""
+    out: list[ft.Control] = []
+    for tag in tags:
+        icon = ABILITY_TAG_ICONS.get(tag)
+        if icon is None:
+            continue
+        g = ft.Icon(icon, size=size, color=TEXT_MUTED)
+        g.tooltip = tag
+        out.append(g)
+        if len(out) >= max_n:
+            break
+    return out
 
 
 # --------------------------------------------------------------------------

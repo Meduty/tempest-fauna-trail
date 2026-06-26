@@ -72,6 +72,9 @@ from src.ui.components.iconography import (
     clash_marker,
     favor_tone,
     rich_tooltip,
+    role_glyph,
+    stat_glyph,
+    tag_glyphs,
     trait_glyph,
 )
 from src.ui.components.trait_synergies import trait_synergies_panel
@@ -774,10 +777,13 @@ def build_prep_view(
 
     # --- stat inspect (tooltip panel) ------------------------------------------
     def _stat_row(label: str, value: str) -> ft.Control:
+        glyph = stat_glyph(label, size=12)
+        icon_cell: ft.Control = glyph if glyph is not None else ft.Container(width=12)
         return ft.Row(
-            [ft.Text(label, size=11, color=TEXT_MUTED, width=64),
+            [icon_cell,
+             ft.Text(label, size=11, color=TEXT_MUTED, width=50),
              ft.Text(value, size=11, color=TEXT_PRIMARY)],
-            spacing=SPACING_SM,
+            spacing=SPACING_XS,
         )
 
     def _item_chip(item_id: str, *, equipped: bool, count: int = 0) -> ft.Control:
@@ -843,13 +849,18 @@ def build_prep_view(
         """Name + role line — affinity · role [role_code] · level/tier; identity
         glyphs (affinity + traits) pinned top-right."""
         rc = f" [{champ.role_code}]" if champ.role_code else ""
+        role_ic = role_glyph(champ.role, size=16, color=AFFINITY_COLORS[champ.affinity])
+        name_row: list[ft.Control] = [
+            ft.Text(champ.name, size=FONT_SIZE_H3,
+                    color=AFFINITY_COLORS[champ.affinity],
+                    weight=ft.FontWeight.BOLD, expand=True),
+            _piece_icon_cluster(champ),
+        ]
+        if role_ic is not None:
+            name_row.insert(0, role_ic)
         return [
-            ft.Row([
-                ft.Text(champ.name, size=FONT_SIZE_H3,
-                        color=AFFINITY_COLORS[champ.affinity],
-                        weight=ft.FontWeight.BOLD, expand=True),
-                _piece_icon_cluster(champ),
-            ], vertical_alignment=ft.CrossAxisAlignment.START),
+            ft.Row(name_row, spacing=SPACING_XS,
+                   vertical_alignment=ft.CrossAxisAlignment.START),
             ft.Text(f"{champ.affinity.value} · {champ.role}{rc} · L{champ.level} T{champ.tier}",
                     size=FONT_SIZE_CAPTION, color=TEXT_MUTED),
             _level_line(champ.id),
@@ -913,8 +924,15 @@ def build_prep_view(
                 if rendered is None:
                     out.append(ft.Text(f"• {aid}", size=11, color=TEXT_MUTED))
                     continue
-                out.append(ft.Text(rendered.name, size=11, color=ACCENT,
-                                   weight=ft.FontWeight.BOLD))
+                # Name + effect-tag glyphs (physical = weapon, magic = wand, …) so
+                # the ability's effect reads at a glance, not only from the prose.
+                out.append(ft.Row(
+                    [ft.Text(rendered.name, size=11, color=ACCENT,
+                             weight=ft.FontWeight.BOLD),
+                     *tag_glyphs(rendered.tags, size=13)],
+                    spacing=SPACING_XS, wrap=True,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ))
                 out.append(ft.Text(rendered.text, size=11, color=TEXT_PRIMARY))
                 if rendered.formula:
                     out.append(ft.Text(rendered.formula, size=10, color=TEXT_MUTED,
