@@ -17,3 +17,20 @@ This content doc is a thin pointer; the real material lives in:
   `ITEM_REGISTRY` / `RUN_ACTION_REGISTRY`.
 - **As-designed lore + intent** (frozen) → `docs/design/content/item_catalog.md`.
 - **Build rationale** (frozen) → `docs/design/tasks/t29_item_engine_plan.md`.
+
+## Descriptions (T.41a) — `game/items/meta.py` + `game/describe.py`
+
+Player-facing item text flows through the shared description render-layer:
+
+- **`items/meta.py::ITEM_META: dict[str, ItemMeta]`** — authored **name + blurb**
+  for **all 50** `ITEM_REGISTRY` ids (transcribed from the frozen
+  `item_catalog.md`). `set(ITEM_META) == set(ITEM_REGISTRY)` is test-guarded (V.78).
+  The blurb is *effect/flavor prose only* — no stat numbers.
+- **`describe.render_item(id) -> RenderedEntry(name, text, stat_line)`** — the
+  **stat line is derived by introspecting the item's `EffectBundle`** (the
+  registered factory built with a null owner; `Modifier` mul→`+12% STR`, add→flat,
+  crit/pen%→percentage). The number shown is exactly the number combat applies and
+  cannot drift (V.78); rendering has no side effect (V.80).
+- **Consumer:** the Prep item chips (`ui/views/prep.py::_item_chip`) show the
+  rendered name + a tooltip (name · stat line — blurb · kind/action hint), replacing
+  the old Title-case `_item_label` stopgap. (Trait descriptions: T.41b.)

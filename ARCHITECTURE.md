@@ -156,6 +156,14 @@ directly. It plugs in through three declarative primitives, then reacts through 
   V.38 — tooltip can't drift from combat). Pure, no Flet (V.1). An AST guard
   (`test_no_orphan_stat_reads`) fails the build on any handler stat-read not backed by a
   `Magnitude`.
+- **Description render-layer** (`game/describe.py` + `items/meta.py` + `traits/meta.py`, T.41)
+  — the same pattern for **champion-independent** content (items + traits): `RenderedEntry` /
+  `RenderedTrait` (name + blurb + stat line) from a per-domain `*_META` (authored name/blurb,
+  transcribed from the design catalogs; trait rung counts reconciled to code, V.79). The
+  **stat line is derived from the live numbers** — introspected from the item's `EffectBundle`
+  (V.78) or from `traits/_packs.TRAIT_STAT_PACKS` (V.79), never re-typed, so it can't drift;
+  no `Magnitude` machinery (these grant fixed %, not caster-scaled). Pure, no Flet, no mutation
+  (V.80). Consumed by the Prep item chips + the `trait_synergies_panel` tooltips (Prep + Combat).
 
 > **V.15 / V.22 / V.17 / V.38 / V.46 / V.47 — every id resolves + every scaler is visible.**
 > Any `ability_id`, `passive_id`, `trait` tag, or augment id referenced by content data must

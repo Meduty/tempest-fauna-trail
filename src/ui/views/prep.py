@@ -43,6 +43,7 @@ from src.game.economy import (
 )
 from src.game.encounter import node_encounter
 from src.game.inventory import equip_item, unequip_item
+from src.game.describe import render_item
 from src.game.items.base import BASE_COMPONENTS, SPIRIT_GEM
 from src.game import augments as _augments  # noqa: F401 — populate AUGMENT_REGISTRY
 from src.game.registries import AUGMENT_REGISTRY
@@ -776,7 +777,11 @@ def build_prep_view(
 
     def _item_chip(item_id: str, *, equipped: bool, count: int = 0) -> ft.Control:
         kind = _item_kind(item_id)
-        label = _item_label(item_id)
+        # Authored name + blurb + derived stat line via the shared render-layer
+        # (T.41a/V.78); _item_label is a defensive fallback (every registered item
+        # has ITEM_META, V.78).
+        rendered = render_item(item_id)
+        label = rendered.name if rendered is not None else _item_label(item_id)
         if count > 1:
             label = f"{label} ×{count}"
         # Kind drives colour + a marker so a raw component (can still fuse) reads
@@ -788,6 +793,16 @@ def build_prep_view(
             "combined": ("✦", SUCCESS, "Combined item — final, won't fuse further."),
         }[kind]
         action_tip = "Click to unequip." if equipped else "Click to equip on selected unit."
+        # Tooltip: name · stat line — blurb, then the kind + action hint.
+        desc_lines: list[str] = []
+        if rendered is not None:
+            head = rendered.name
+            if rendered.stat_line:
+                head = f"{head} · {rendered.stat_line}"
+            desc_lines.append(head)
+            if rendered.text:
+                desc_lines.append(rendered.text)
+        desc_lines.append(f"{kind_tip} {action_tip}")
         return ft.Container(
             ft.Row(
                 [
@@ -802,7 +817,7 @@ def build_prep_view(
             bgcolor=SURFACE_ELEVATED, border_radius=CARD_RADIUS,
             border=ft.Border.all(1, marker_color) if kind != "component" else None,
             padding=ft.Padding(left=6, right=6, top=2, bottom=2),
-            tooltip=f"{kind_tip} {action_tip}",
+            tooltip="\n".join(desc_lines),
             on_click=(lambda _e, i=item_id: _unequip(i)) if equipped
             else (lambda _e, i=item_id: _equip(i)),
         )

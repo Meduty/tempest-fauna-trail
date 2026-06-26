@@ -49,6 +49,14 @@ def stat_pack_bundle(
 Rung = tuple
 
 
+# trait_id -> [(rung label, muls, adds), …] — the raw stat packs per breakpoint,
+# captured at registration so the description layer (T.41b, `describe.render_trait`)
+# can derive each rung's stat line from the *same* numbers the bundle applies
+# (V.79 — the shown stat can't drift from combat). Label is the int breakpoint or
+# "full" for the dynamic apex (mirrors `source_id`).
+TRAIT_STAT_PACKS: dict[str, list[tuple[object, dict[str, float], dict[str, float]]]] = {}
+
+
 def define_trait(trait_id: str, *rungs: Rung) -> None:
     """Register a trait. Each rung is `(count, scope, muls[, adds[, hooks]])`.
 
@@ -57,6 +65,7 @@ def define_trait(trait_id: str, *rungs: Rung) -> None:
     for a rung is built once per target piece.
     """
     breakpoints: list[TraitBreakpoint] = []
+    stat_packs: list[tuple[object, dict[str, float], dict[str, float]]] = []
     for rung in rungs:
         count: Union[int, DynamicThreshold] = rung[0]
         scope: TraitScope = rung[1]
@@ -65,6 +74,7 @@ def define_trait(trait_id: str, *rungs: Rung) -> None:
         hook_builders = rung[4] if len(rung) > 4 else []
         label = count if isinstance(count, int) else "full"
         source_id = f"trait:{trait_id}@{label}"
+        stat_packs.append((label, muls, adds))
 
         # Bind loop vars via defaults so each factory captures its own rung.
         def _factory(piece: Piece, _sid=source_id, _m=muls, _a=adds, _hb=hook_builders) -> EffectBundle:
@@ -75,4 +85,5 @@ def define_trait(trait_id: str, *rungs: Rung) -> None:
 
         breakpoints.append(TraitBreakpoint(count=count, scope=scope, bundle_factory=_factory))
 
+    TRAIT_STAT_PACKS[trait_id] = stat_packs
     register_trait(trait_id)(lambda _bps=breakpoints: _bps)
