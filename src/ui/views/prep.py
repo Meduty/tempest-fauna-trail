@@ -43,6 +43,7 @@ from src.game.economy import (
 )
 from src.game.encounter import node_encounter
 from src.game.inventory import equip_item, unequip_item
+from src.game.items.base import BASE_COMPONENTS, SPIRIT_GEM
 from src.game import augments as _augments  # noqa: F401 — populate AUGMENT_REGISTRY
 from src.game.registries import AUGMENT_REGISTRY
 from src.game.traits import preview_team_traits
@@ -121,6 +122,25 @@ _MOD_FIELDS: tuple[tuple[str, str], ...] = (
     ("ms_mult", "MS"), ("mr_mult", "MR"), ("hp_mult", "HP"),
     ("armor_mult", "armor"), ("res_mult", "RES"), ("thr_mult", "threat"),
 )
+
+
+def _item_label(item_id: str) -> str:
+    """snake_case item id → Title Case display (stopgap until the item render-layer
+    lands authored names — see the deferred trait/item/augment text system)."""
+    return item_id.replace("_", " ").title()
+
+
+def _item_kind(item_id: str) -> str:
+    """Classify an item id for display: ``component`` (raw, can still fuse),
+    ``gem`` (Spirit Gem → emblem), or ``combined`` (terminal, won't fuse).
+
+    Mirrors the combine rules in ``items.combine`` (B.34): only raw components
+    (and Spirit Gem) are recipe inputs; everything else is a finished item."""
+    if item_id in BASE_COMPONENTS:
+        return "component"
+    if item_id == SPIRIT_GEM:
+        return "gem"
+    return "combined"
 
 
 def _favor_deltas(mod: CombatModifier) -> str:
@@ -752,10 +772,23 @@ def build_prep_view(
         )
 
     def _item_chip(item_id: str, *, equipped: bool, count: int = 0) -> ft.Control:
-        label = item_id if count <= 1 else f"{item_id} ×{count}"
+        kind = _item_kind(item_id)
+        label = _item_label(item_id)
+        if count > 1:
+            label = f"{label} ×{count}"
+        # Kind drives colour + a marker so a raw component (can still fuse) reads
+        # differently from a finished combined item (terminal). See _item_kind.
+        marker, marker_color, kind_tip = {
+            "component": ("◆", ACCENT, "Raw component — equip a 2nd raw component "
+                          "on this unit to fuse them."),
+            "gem": ("✧", WARNING, "Spirit Gem — fuse with a component to craft an emblem."),
+            "combined": ("✦", SUCCESS, "Combined item — final, won't fuse further."),
+        }[kind]
+        action_tip = "Click to unequip." if equipped else "Click to equip on selected unit."
         return ft.Container(
             ft.Row(
                 [
+                    ft.Text(marker, size=10, color=marker_color),
                     ft.Text(label, size=10, color=TEXT_PRIMARY),
                     ft.Text("×" if equipped else "+", size=10,
                             color=DANGER if equipped else SUCCESS,
@@ -764,8 +797,9 @@ def build_prep_view(
                 spacing=4, tight=True,
             ),
             bgcolor=SURFACE_ELEVATED, border_radius=CARD_RADIUS,
+            border=ft.Border.all(1, marker_color) if kind != "component" else None,
             padding=ft.Padding(left=6, right=6, top=2, bottom=2),
-            tooltip="Unequip" if equipped else "Equip onto selected",
+            tooltip=f"{kind_tip} {action_tip}",
             on_click=(lambda _e, i=item_id: _unequip(i)) if equipped
             else (lambda _e, i=item_id: _equip(i)),
         )
