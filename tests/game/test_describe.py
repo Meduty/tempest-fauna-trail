@@ -102,9 +102,19 @@ def test_unknown_item_renders_none():
 # V.80 — pure presentation: no Flet, deterministic, no mutation
 # --------------------------------------------------------------------------
 def test_describe_module_has_no_flet():
+    # V.80: zero Flet coupling. Check actual import nodes (AST), not a substring —
+    # the word "flet" in a docstring/comment must not false-fail or false-pass.
+    import ast
+    import inspect
+
     import src.game.describe as d
-    src = __import__("inspect").getsource(d)
-    assert "flet" not in src and "import ft" not in src
+
+    tree = ast.parse(inspect.getsource(d))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            assert all(not n.name.startswith("flet") for n in node.names), node.names
+        elif isinstance(node, ast.ImportFrom):
+            assert node.module is None or not node.module.startswith("flet"), node.module
 
 
 def test_render_is_deterministic():
