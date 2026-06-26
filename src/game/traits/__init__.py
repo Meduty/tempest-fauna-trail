@@ -117,7 +117,9 @@ class TraitPreview:
 
 
 def preview_team_traits(
-    team: list[Any], board_cap: int | None = None
+    team: list[Any],
+    board_cap: int | None = None,
+    bonus_counts: dict[str, int] | None = None,
 ) -> list[TraitPreview]:
     """Pure pre-combat trait tally for the UI — every registered trait the team
     carries, with carrier count + cleared/next breakpoints (V.1, RNG-free V.2).
@@ -127,18 +129,21 @@ def preview_team_traits(
     `_resolve_traits` roll-up (V.21) but exposes **partial** progress too (count
     below the first rung), so the panel can grey unfilled traits like TFT.
     ``board_cap`` defaults to the fielded size (the combat convention) for dynamic
-    thresholds. Sorted cleared-first, then by trait name."""
+    thresholds. ``bonus_counts`` adds augment Crest/Crown trait counts (V.21) so
+    the preview matches what combat actually clears — including emblem-only tags
+    with no fielded carrier. Sorted cleared-first, then by trait name."""
     cap = board_cap if board_cap is not None else len(team)
+    bonus_counts = bonus_counts or {}
     carriers: dict[str, set[str]] = defaultdict(set)
     for piece in team:
         for tag in _piece_tags(piece):
             carriers[tag].add(piece.id)
     out: list[TraitPreview] = []
-    for tag, ids in carriers.items():
+    for tag in set(carriers) | set(bonus_counts):
         factory = TRAIT_REGISTRY.get(tag)
         if factory is None:
             continue
-        count = len(ids)
+        count = len(carriers[tag]) + bonus_counts.get(tag, 0)
         thresholds = sorted(
             bp.count(team, cap) if callable(bp.count) else bp.count for bp in factory()
         )

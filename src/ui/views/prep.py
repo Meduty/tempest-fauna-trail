@@ -619,7 +619,10 @@ def build_prep_view(
         Active synergies read prominently, dormant ones greyed (TFT-style) — via
         the shared ``trait_synergies_panel`` component (also used by Combat)."""
         placed = [c for c in run.roster if c.id in team_positions]
-        previews = preview_team_traits(placed, board_cap=len(placed)) if placed else []
+        # Augment Crest/Crown trait bonus (V.21) — match what combat will clear.
+        bonus = run.augment_state.get("trait_bonus")
+        previews = preview_team_traits(
+            placed, board_cap=len(placed), bonus_counts=bonus) if placed else []
         return trait_synergies_panel(previews)
 
     # --- items bench (T.23b) — inventory components, click to equip on selected -

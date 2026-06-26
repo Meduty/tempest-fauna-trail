@@ -809,8 +809,12 @@ def build_combat_view(
             size=11, color=TEXT_MUTED, selectable=True,
         ))
         # Trait synergies for the fielded team — same TFT-style panel as Prep,
-        # so active vs dormant reads identically across views.
-        team_previews = preview_team_traits(list(session.team))
+        # so active vs dormant reads identically across views. Pass the augment
+        # Crest/Crown trait bonus (same source loadout uses, V.21) so the panel
+        # matches what combat actually cleared.
+        _aug_state = getattr(session.run_mods, "augment_state", None) or {}
+        team_previews = preview_team_traits(
+            list(session.team), bonus_counts=_aug_state.get("trait_bonus"))
         if team_previews:
             controls.append(trait_synergies_panel(team_previews, title="Synergies"))
         inspect_col.controls = controls
