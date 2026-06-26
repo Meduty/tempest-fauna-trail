@@ -27,19 +27,41 @@ from typing import Callable
 
 import flet as ft
 
+from src.game.ability_text import render_for
 from src.game.combat import BOARD_HEIGHT
-from src.game.content import CHAMPION_DEF_BY_ID
+from src.game.content import CHAMPION_DEF_BY_ID, build_champion_at_level
 from src.game.economy import (
+    LEVEL_COPY_THRESHOLDS,
+    MAX_LEVEL,
     champion_cost,
+    is_max_rank,
+    level_from_copies,
+    rank_up_cost_amber,
     sell_champion,
+    tempest_threshold,
     try_rank_up_with_amber,
 )
 from src.game.encounter import node_encounter
 from src.game.inventory import equip_item, unequip_item
+from src.game import augments as _augments  # noqa: F401 — populate AUGMENT_REGISTRY
+from src.game.registries import AUGMENT_REGISTRY
+from src.game.traits import preview_team_traits
 from src.game.loadout import ALLIED_ZONE_MAX_Q, validate_team_positions
-from src.game.models import Champion, Node, NodeType, Run
-from src.game.shop import buy_from_shop, reroll_cost, reroll_shop
-from src.game.weather_effects import RingRelation, ring_relation
+from src.game.models import Champion, Node, NodeType, Run, WeatherState
+from src.game.shop import (
+    RANK_TIER_WEIGHTS,
+    buy_from_shop,
+    refresh_shop,
+    reroll_cost,
+    reroll_shop,
+    toggle_shop_freeze,
+)
+from src.game.weather_effects import (
+    CombatModifier,
+    RingRelation,
+    combat_modifier,
+    ring_relation,
+)
 from src.ui.combat_playback import CombatSession
 from src.ui.components.board_geometry import BOARD_H, BOARD_W, COL_W, ROW_H, cell_xy
 from src.ui.components.weather_badge import weather_badge
@@ -52,6 +74,7 @@ from src.ui.theme import (
     FONT_SIZE_BODY,
     FONT_SIZE_CAPTION,
     FONT_SIZE_DISPLAY,
+    FONT_MONO,
     FONT_SIZE_H2,
     FONT_SIZE_H3,
     SPACING_LG,
@@ -81,6 +104,37 @@ def _initials(name: str) -> str:
     return (parts[0][0] + parts[1][0]).upper()
 
 
+# Weather Favor presentation (V.5/T.2) — relation → (label, color-token name).
+# Buffs reach strong/medium/weak; debuffs only medium/weak (no strong debuff).
+_FAVOR_LABEL: dict[RingRelation, str] = {
+    RingRelation.SELF: "buffed (strong)",
+    RingRelation.PRIMARY_PREDATOR: "buffed (medium)",
+    RingRelation.SECONDARY_PREDATOR: "buffed (weak)",
+    RingRelation.SECONDARY_PREY: "debuffed (weak)",
+    RingRelation.PRIMARY_PREY: "debuffed (medium)",
+    RingRelation.NEUTRAL: "no effect",
+}
+
+# CombatModifier field → display label, in render order.
+_MOD_FIELDS: tuple[tuple[str, str], ...] = (
+    ("str_mult", "STR"), ("int_mult", "INT"), ("as_mult", "AS"),
+    ("ms_mult", "MS"), ("mr_mult", "MR"), ("hp_mult", "HP"),
+    ("armor_mult", "armor"), ("res_mult", "RES"), ("thr_mult", "threat"),
+)
+
+
+def _favor_deltas(mod: CombatModifier) -> str:
+    """Human summary of a CombatModifier's deviations (e.g. ``+30% HP, +30% RES``)."""
+    parts: list[str] = []
+    for field_name, label in _MOD_FIELDS:
+        mult = getattr(mod, field_name)
+        if abs(mult - 1.0) >= 0.005:
+            parts.append(f"{(mult - 1.0) * 100:+.0f}% {label}")
+    if mod.attack_range_delta:
+        parts.append(f"{mod.attack_range_delta:+d} range")
+    return ", ".join(parts)
+
+
 def build_prep_view(
     page: ft.Page,
     run: Run,
@@ -95,12 +149,20 @@ def build_prep_view(
     ``on_back()`` returns to the Trail. The reward/progression step (applying the
     ``BattleResult``) is the host's job (T.15, V.64) — Prep only produces the input.
     """
-    # team_positions: champion_id -> (q, r) board cell. The board shows run.roster
+    # team_positions: champion_id -> (q, r) board cell, **persisted on the Run** so
+    # the formation survives Prep→Combat→Prep + Save&Exit. The board shows run.roster
     # (the deployable field, capped at tempest_rank); run.bench holds reserves.
-    team_positions: dict[str, tuple[int, int]] = {}
-    state: dict[str, object] = {"selected": None}
+    team_positions: dict[str, tuple[int, int]] = run.team_positions
+    # `selected` = owned champ id (board/bench inspect); `shop_sel` = shop offer
+    # champion id under preview. Mutually exclusive — selecting one clears the other.
+    state: dict[str, object] = {"selected": None, "shop_sel": None}
 
     enc = node_encounter(run.seed, node, weather=node.weather)
+
+    # Auto-reroll the shop on every Prep entry (V.75) — frozen slots persist across
+    # phases (refresh_shop keeps them). Idempotent on re-entry of the same node
+    # (deterministic roll, V.2). The view mutates the shop only through game/shop.
+    refresh_shop(run)
 
     # --- team / board state helpers --------------------------------------------
     def _cap() -> int:
@@ -205,9 +267,25 @@ def build_prep_view(
         else:
             _flash("Can't buy (unaffordable, maxed, or empty slot).")
 
+    def _buy_by_id(cid: str) -> None:
+        """Buy from the first shop slot offering ``cid`` (preview-panel Buy)."""
+        slot = next((i for i, c in enumerate(run.shop_offers) if c == cid), None)
+        if slot is None:
+            _flash("That offer is gone.")
+            return
+        if buy_from_shop(run, slot):
+            state["shop_sel"] = None
+            _after_economy()
+        else:
+            _flash("Can't buy (unaffordable, maxed, or empty slot).")
+
     def _reroll() -> None:
         if not reroll_shop(run):
             _flash("Can't reroll (not enough Amber).")
+        _render()
+
+    def _toggle_freeze(slot: int) -> None:
+        toggle_shop_freeze(run, slot)
         _render()
 
     def _sell(champ_id: str) -> None:
@@ -378,58 +456,78 @@ def build_prep_view(
             on_accept=_bench_accept,
         )
 
-    # --- shop -------------------------------------------------------------------
-    def _build_shop() -> ft.Control:
-        rows: list[ft.Control] = [
-            ft.Row(
+    # --- shop (top strip — horizontal 5-slot rail) -----------------------------
+    def _shop_slot_card(slot: int, cid: str | None) -> ft.Control:
+        if cid is None:
+            return ft.Container(
+                ft.Text("— sold —", size=FONT_SIZE_CAPTION, color=TEXT_MUTED,
+                        text_align=ft.TextAlign.CENTER),
+                width=140, height=84, alignment=ft.Alignment.CENTER,
+                bgcolor=SURFACE_ELEVATED, border_radius=CARD_RADIUS,
+            )
+        cdef = CHAMPION_DEF_BY_ID.get(cid)
+        if cdef is None:
+            return ft.Container(width=140, height=84)
+        cost = champion_cost(cdef.tier)
+        affordable = run.amber >= cost
+        owned = run.champion_copies.get(cid, 0)
+        frozen = slot < len(run.shop_frozen) and run.shop_frozen[slot]
+        border_color = ACCENT if state["shop_sel"] == cid else (ACCENT if frozen else None)
+        return ft.Container(
+            ft.Column(
                 [
-                    ft.Text("Shop", size=FONT_SIZE_H3, color=TEXT_PRIMARY,
-                            weight=ft.FontWeight.BOLD),
-                    ft.Container(expand=True),
-                    ft.OutlinedButton(
-                        f"Reroll ({reroll_cost(run.shop_rerolls)})",
-                        on_click=lambda _e: _reroll(),
+                    ft.Row([
+                        ft.Container(width=10, height=10, border_radius=5,
+                                     bgcolor=AFFINITY_COLORS[cdef.affinity]),
+                        ft.Text(cdef.name, size=FONT_SIZE_CAPTION, color=TEXT_PRIMARY,
+                                expand=True, no_wrap=True),
+                        ft.Container(
+                            ft.Text("❄" if frozen else "✛", size=12,
+                                    color=ACCENT if frozen else TEXT_MUTED),
+                            on_click=lambda _e, s=slot: _toggle_freeze(s),
+                            tooltip="Unfreeze slot" if frozen else "Freeze slot (kept on reroll)",
+                            padding=2,
+                        ),
+                    ], spacing=SPACING_XS),
+                    ft.Row([
+                        ft.Text(f"T{cdef.tier}", size=FONT_SIZE_CAPTION, color=TEXT_MUTED),
+                        *([ft.Text(f"●{owned}", size=FONT_SIZE_CAPTION, color=ACCENT,
+                                   tooltip="copies owned (3 combine → next level)")] if owned else []),
+                        ft.Container(expand=True),
+                    ], spacing=SPACING_XS),
+                    ft.FilledButton(
+                        f"Buy {cost}⨀", width=124, height=28,
+                        on_click=lambda _e, s=slot: _buy(s),
+                        disabled=not affordable,
+                        style=ft.ButtonStyle(bgcolor=ACCENT if affordable else SURFACE_ELEVATED),
                     ),
                 ],
+                spacing=4, tight=True,
             ),
-        ]
-        for slot, cid in enumerate(run.shop_offers):
-            if cid is None:
-                rows.append(ft.Container(
-                    ft.Text("— sold —", size=FONT_SIZE_CAPTION, color=TEXT_MUTED),
-                    bgcolor=SURFACE_ELEVATED, border_radius=CARD_RADIUS,
-                    padding=SPACING_SM,
-                ))
-                continue
-            cdef = CHAMPION_DEF_BY_ID.get(cid)
-            if cdef is None:
-                continue
-            cost = champion_cost(cdef.tier)
-            affordable = run.amber >= cost
-            rows.append(
-                ft.Container(
-                    ft.Row(
-                        [
-                            ft.Container(width=10, height=10, border_radius=5,
-                                         bgcolor=AFFINITY_COLORS[cdef.affinity]),
-                            ft.Text(cdef.name, size=FONT_SIZE_BODY, color=TEXT_PRIMARY,
-                                    expand=True, no_wrap=True),
-                            ft.Text(f"T{cdef.tier}", size=FONT_SIZE_CAPTION,
-                                    color=TEXT_MUTED),
-                            ft.FilledButton(
-                                f"{cost}⨀",
-                                on_click=lambda _e, s=slot: _buy(s),
-                                disabled=not affordable,
-                                style=ft.ButtonStyle(bgcolor=ACCENT if affordable else SURFACE_ELEVATED),
-                            ),
-                        ],
-                        spacing=SPACING_SM,
-                    ),
-                    bgcolor=SURFACE_ELEVATED, border_radius=CARD_RADIUS,
-                    padding=ft.Padding(left=SPACING_SM, right=SPACING_SM, top=4, bottom=4),
-                )
-            )
-        return ft.Column(rows, spacing=SPACING_SM)
+            width=140, height=84,
+            bgcolor=SURFACE_ELEVATED, border_radius=CARD_RADIUS,
+            padding=ft.Padding(left=SPACING_SM, right=SPACING_SM, top=6, bottom=6),
+            border=ft.Border.all(2 if frozen else 1, border_color) if border_color else None,
+            on_click=lambda _e, c=cid: _select_shop(c),
+            tooltip="Inspect — role, abilities, stats",
+        )
+
+    def _build_shop() -> ft.Control:
+        header = ft.Row([
+            ft.Text("Shop", size=FONT_SIZE_H3, color=TEXT_PRIMARY, weight=ft.FontWeight.BOLD),
+            ft.Text(f"Rank {run.tempest_rank} odds", size=FONT_SIZE_CAPTION, color=TEXT_MUTED),
+            ft.Container(expand=True),
+            _chip("Amber", f"{run.amber}", WARNING),
+            ft.OutlinedButton(
+                f"Reroll ({reroll_cost(run.shop_rerolls)}⨀)",
+                on_click=lambda _e: _reroll(),
+            ),
+        ], spacing=SPACING_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+        rail = ft.Row(
+            [_shop_slot_card(slot, cid) for slot, cid in enumerate(run.shop_offers)],
+            spacing=SPACING_SM, scroll=ft.ScrollMode.AUTO,
+        )
+        return ft.Column([header, rail], spacing=SPACING_SM)
 
     # --- enemy preview ----------------------------------------------------------
     def _build_enemy_preview() -> ft.Control:
@@ -474,6 +572,166 @@ def build_prep_view(
             spacing=SPACING_XS,
         )
 
+    # --- augments panel (T.31) -------------------------------------------------
+    def _build_augments() -> ft.Control:
+        rows: list[ft.Control] = [
+            ft.Text("Augments", size=FONT_SIZE_H3, color=TEXT_PRIMARY,
+                    weight=ft.FontWeight.BOLD),
+        ]
+        if not run.active_augments:
+            rows.append(ft.Text("None yet — earned at Augment nodes.",
+                                size=FONT_SIZE_CAPTION, color=TEXT_MUTED))
+        for aid in run.active_augments:
+            aug = AUGMENT_REGISTRY.get(aid)
+            name = aug.name if aug is not None else aid
+            blurb = aug.blurb if aug is not None else ""
+            rows.append(ft.Container(
+                ft.Text(name, size=11, color=TEXT_PRIMARY, no_wrap=True),
+                bgcolor=SURFACE_ELEVATED, border_radius=CARD_RADIUS,
+                padding=ft.Padding(left=8, right=8, top=3, bottom=3),
+                tooltip=blurb or None,
+            ))
+        return ft.Column(rows, spacing=SPACING_XS)
+
+    # --- traits panel (T.28a) --------------------------------------------------
+    def _build_traits() -> ft.Control:
+        """Live trait synergies for the **placed** team (preview_team_traits, V.21).
+        Cleared rungs are highlighted; partials greyed (TFT-style)."""
+        placed = [c for c in run.roster if c.id in team_positions]
+        previews = preview_team_traits(placed, board_cap=len(placed)) if placed else []
+        rows: list[ft.Control] = [
+            ft.Text("Traits", size=FONT_SIZE_H3, color=TEXT_PRIMARY,
+                    weight=ft.FontWeight.BOLD),
+        ]
+        if not previews:
+            rows.append(ft.Text("Place units to see synergies.",
+                                size=FONT_SIZE_CAPTION, color=TEXT_MUTED))
+        for tp in previews:
+            cleared = tp.threshold > 0
+            target = tp.next_threshold if tp.next_threshold is not None else tp.threshold
+            rows.append(ft.Row([
+                ft.Container(width=6, height=6, border_radius=3,
+                             bgcolor=SUCCESS if cleared else SURFACE_ELEVATED),
+                ft.Text(tp.trait, size=11, no_wrap=True, expand=True,
+                        color=TEXT_PRIMARY if cleared else TEXT_MUTED),
+                ft.Text(f"{tp.count}/{target}", size=11,
+                        color=SUCCESS if cleared else TEXT_MUTED),
+            ], spacing=SPACING_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER))
+        return ft.Column(rows, spacing=2)
+
+    # --- items bench (T.23b) — inventory components, click to equip on selected -
+    def _build_items() -> ft.Control:
+        rows: list[ft.Control] = [
+            ft.Text("Items", size=FONT_SIZE_H3, color=TEXT_PRIMARY,
+                    weight=ft.FontWeight.BOLD),
+        ]
+        inv = [(iid, n) for iid, n in run.inventory.items() if n > 0]
+        if not inv:
+            rows.append(ft.Text("No components — won at Reward nodes.",
+                                size=FONT_SIZE_CAPTION, color=TEXT_MUTED))
+        else:
+            sel = isinstance(state["selected"], str) and _champ_by_id(state["selected"]) is not None
+            rows.append(ft.Text(
+                "Click to equip on selected unit." if sel else "Select a unit to equip.",
+                size=10, color=TEXT_MUTED))
+            rows.append(ft.Row(
+                [_item_chip(iid, equipped=False, count=n) for iid, n in inv],
+                spacing=SPACING_XS, wrap=True,
+            ))
+        return ft.Column(rows, spacing=SPACING_XS)
+
+    # --- weather favor panel (T.2) ---------------------------------------------
+    def _build_weather_panel() -> ft.Control:
+        """The upcoming-fight weather + how it buffs/debuffs each affinity.
+
+        Combat always uses ``node.weather`` (V.2/V.66). For each affinity we read
+        ``combat_modifier(affinity, node.weather)`` — the same Weather Favor the
+        engine applies at init — and summarize its stat deltas. CLEAR is inert.
+        Affinities the team fields are marked so the player sees their own stakes.
+        """
+        w = node.weather
+        team_affs = {c.affinity for c in run.roster}
+        rows: list[ft.Control] = [
+            ft.Row([
+                ft.Text("Combat weather", size=FONT_SIZE_H3, color=TEXT_PRIMARY,
+                        weight=ft.FontWeight.BOLD),
+                weather_badge(weather=w, size="sm"),
+                ft.Text(w.value, size=FONT_SIZE_CAPTION, color=TEXT_MUTED),
+            ], spacing=SPACING_SM, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        ]
+        if w == WeatherState.CLEAR:
+            rows.append(ft.Text("Clear — no affinity favored.", size=FONT_SIZE_CAPTION,
+                                color=TEXT_MUTED))
+            return ft.Column(rows, spacing=SPACING_XS)
+        # Order: strongest buff → strongest debuff, by ring relation to the weather.
+        _order = [RingRelation.SELF, RingRelation.PRIMARY_PREDATOR,
+                  RingRelation.SECONDARY_PREDATOR, RingRelation.SECONDARY_PREY,
+                  RingRelation.PRIMARY_PREY]
+        affs = [a for a in WeatherState if a != WeatherState.CLEAR]
+        affs.sort(key=lambda a: _order.index(ring_relation(a, w)))
+        for aff in affs:
+            rel = ring_relation(aff, w)
+            mod = combat_modifier(aff, w)
+            deltas = _favor_deltas(mod)
+            buffed = rel in (RingRelation.SELF, RingRelation.PRIMARY_PREDATOR,
+                             RingRelation.SECONDARY_PREDATOR)
+            tone = SUCCESS if buffed else DANGER
+            mine = " ◀ you" if aff in team_affs else ""
+            rows.append(ft.Row([
+                ft.Container(width=8, height=8, border_radius=4,
+                             bgcolor=AFFINITY_COLORS[aff]),
+                ft.Text(aff.value, size=11, color=TEXT_PRIMARY, width=58, no_wrap=True),
+                ft.Text(_FAVOR_LABEL[rel], size=10, color=tone, width=96, no_wrap=True),
+                ft.Text(deltas or "—", size=10, color=TEXT_MUTED, expand=True),
+                ft.Text(mine, size=10, color=ACCENT, weight=ft.FontWeight.BOLD),
+            ], spacing=SPACING_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER))
+        return ft.Column(rows, spacing=SPACING_XS)
+
+    # --- shop tier-odds panel (SPEC §D.15 / §V.20) -----------------------------
+    def _tier_pct(rank: int) -> list[tuple[int, float]]:
+        """Normalized per-tier draw probability at a Tempest rank (weights → %)."""
+        weights = RANK_TIER_WEIGHTS.get(rank, {})
+        total = sum(weights.values()) or 1.0
+        return [(t, weights[t] / total * 100.0) for t in sorted(weights)]
+
+    def _odds_column(rank: int, title: str, *, dim: bool = False) -> ft.Control:
+        head_color = TEXT_MUTED if dim else TEXT_PRIMARY
+        bars: list[ft.Control] = [
+            ft.Text(title, size=11, color=head_color, weight=ft.FontWeight.BOLD),
+        ]
+        for tier, pct in _tier_pct(rank):
+            bars.append(ft.Row([
+                ft.Text(f"T{tier}", size=10, color=TEXT_MUTED, width=22),
+                ft.Container(
+                    width=max(2.0, pct * 1.1), height=7, border_radius=3,
+                    bgcolor=ft.Colors.with_opacity(0.45 if dim else 1.0, ACCENT),
+                ),
+                ft.Text(f"{pct:.0f}%", size=10, color=head_color),
+            ], spacing=SPACING_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER))
+        return ft.Column(bars, spacing=2, expand=True)
+
+    def _build_shop_odds() -> ft.Control:
+        """Shop tier-probability distribution at the current Tempest rank.
+
+        Tier odds are gated by **Tempest rank** (``RANK_TIER_WEIGHTS``, V.20) —
+        ranking up both widens the team cap *and* lifts/widens the tier band.
+        Showing the next rank beside the current one quantifies exactly what a
+        rank-up buys, so the player can judge whether the Amber rush is worth it.
+        """
+        rank = run.tempest_rank
+        cols: list[ft.Control] = [_odds_column(rank, f"Rank {rank} (now)")]
+        if (rank + 1) in RANK_TIER_WEIGHTS:
+            cols.append(_odds_column(rank + 1, f"Rank {rank + 1} (next)", dim=True))
+        return ft.Column([
+            ft.Text("Shop tier odds", size=FONT_SIZE_H3, color=TEXT_PRIMARY,
+                    weight=ft.FontWeight.BOLD),
+            ft.Row(cols, spacing=SPACING_MD,
+                   vertical_alignment=ft.CrossAxisAlignment.START),
+            ft.Text("Odds follow your Tempest rank — ranking up widens the team cap "
+                    "and lifts the tier band shown here.",
+                    size=10, color=TEXT_MUTED),
+        ], spacing=SPACING_XS)
+
     # --- stat inspect (tooltip panel) ------------------------------------------
     def _stat_row(label: str, value: str) -> ft.Control:
         return ft.Row(
@@ -501,31 +759,126 @@ def build_prep_view(
             else (lambda _e, i=item_id: _equip(i)),
         )
 
-    def _build_inspect() -> ft.Control:
-        cid = state["selected"]
-        champ = _champ_by_id(cid) if isinstance(cid, str) else None
-        if champ is None:
-            return ft.Text("Tap a champion to inspect.", size=FONT_SIZE_CAPTION,
-                           color=TEXT_MUTED)
-        # Raw sheet + a couple of derived rates (read straight off the Champion).
-        rows: list[ft.Control] = [
+    def _champ_header(champ: Champion) -> list[ft.Control]:
+        """Name + role line — affinity · role [role_code] · level/tier."""
+        rc = f" [{champ.role_code}]" if champ.role_code else ""
+        return [
             ft.Text(champ.name, size=FONT_SIZE_H3, color=AFFINITY_COLORS[champ.affinity],
                     weight=ft.FontWeight.BOLD),
-            ft.Text(f"{champ.affinity.value} · {champ.role} · L{champ.level} T{champ.tier}",
+            ft.Text(f"{champ.affinity.value} · {champ.role}{rc} · L{champ.level} T{champ.tier}",
                     size=FONT_SIZE_CAPTION, color=TEXT_MUTED),
+            _level_line(champ.id),
         ]
+
+    def _traits_chips(champ: Champion) -> list[ft.Control]:
+        """Trait tags as chips (Kinship/Calling + any authored tags). Shown in the
+        shop preview + owned inspect so the player can read synergies pre-buy."""
+        if not champ.traits:
+            return []
+        chips = [
+            ft.Container(
+                ft.Text(t, size=10, color=TEXT_PRIMARY),
+                bgcolor=SURFACE_ELEVATED, border_radius=CARD_RADIUS,
+                padding=ft.Padding(left=6, right=6, top=2, bottom=2),
+            )
+            for t in champ.traits
+        ]
+        return [ft.Row(chips, spacing=SPACING_XS, wrap=True)]
+
+    def _level_line(cid: str) -> ft.Control:
+        """Copy-combine progress (3 copies → L2, 9 → L3). Buying duplicates of a
+        champion auto-levels it (TFT-style); this line surfaces that progress."""
+        copies = run.champion_copies.get(cid, 0)
+        if copies >= LEVEL_COPY_THRESHOLDS[-1]:
+            return ft.Text(f"★ L{MAX_LEVEL} maxed · {copies}/{copies} copies",
+                           size=10, color=WARNING)
+        nxt = next(t for t in LEVEL_COPY_THRESHOLDS if t > copies)
+        nxt_lvl = level_from_copies(nxt)
+        if copies == 0:
+            txt = f"not owned · {nxt} copies → L{nxt_lvl}"
+        else:
+            lvl = level_from_copies(copies)
+            txt = f"L{lvl} · {copies}/{nxt} copies → L{nxt_lvl}"
+        return ft.Text(txt, size=10, color=ACCENT)
+
+    def _stat_grid(champ: Champion) -> ft.Control:
         primary = [("HP", f"{champ.max_hp}"), ("STR", f"{champ.strength}"),
                    ("INT", f"{champ.intelligence}"), ("AS", f"{champ.attack_speed:.1f}"),
                    ("range", f"{champ.attack_range}")]
         premium = [("armor", f"{champ.armor}"), ("res", f"{champ.resistance}"),
                    ("MS", f"{champ.move_speed}"), ("MR", f"{champ.mana_regen}"),
                    ("crit", f"{champ.crit_chance * 100:.0f}%")]
-        rows.append(ft.Row([
+        return ft.Row([
             ft.Column([_stat_row(l, v) for l, v in primary], spacing=2, expand=True),
             ft.Column([_stat_row(l, v) for l, v in premium], spacing=2, expand=True),
-        ], spacing=SPACING_SM))
-        # Items — equip seam (T.23b). Equipped chips unequip on click; inventory
-        # chips equip onto this champion (auto-combine on double-equip).
+        ], spacing=SPACING_SM)
+
+    def _ability_block(champ: Champion) -> list[ft.Control]:
+        """Actives + passive, each with name + live-rendered blurb + formula.
+        Numbers render against ``champ`` (Champion exposes ``.stat()``, V.38)."""
+        out: list[ft.Control] = []
+        for header, ids in (("Actives", list(champ.active_abilities)),
+                            ("Passive", [champ.passive_ability])):
+            ids = [a for a in ids if a]
+            if not ids:
+                continue
+            out.append(ft.Text(header, size=11, color=TEXT_MUTED, weight=ft.FontWeight.BOLD))
+            for aid in ids:
+                rendered = render_for(aid, champ)
+                if rendered is None:
+                    out.append(ft.Text(f"• {aid}", size=11, color=TEXT_MUTED))
+                    continue
+                out.append(ft.Text(rendered.name, size=11, color=ACCENT,
+                                   weight=ft.FontWeight.BOLD))
+                out.append(ft.Text(rendered.text, size=11, color=TEXT_PRIMARY))
+                if rendered.formula:
+                    out.append(ft.Text(rendered.formula, size=10, color=TEXT_MUTED,
+                                       font_family=FONT_MONO))
+        return out
+
+    def _build_shop_preview(cid: str) -> ft.Control:
+        cdef = CHAMPION_DEF_BY_ID.get(cid)
+        if cdef is None:
+            return ft.Text("Unknown champion.", size=FONT_SIZE_CAPTION, color=TEXT_MUTED)
+        champ = build_champion_at_level(cid, 1)   # read-only stat/ability sheet
+        cost = champion_cost(cdef.tier)
+        affordable = run.amber >= cost
+        return ft.Column(
+            [
+                ft.Text("Shop preview", size=10, color=TEXT_MUTED),
+                *_champ_header(champ),
+                *_traits_chips(champ),
+                _stat_grid(champ),
+                ft.Divider(height=8, color=SURFACE_ELEVATED),
+                *_ability_block(champ),
+                ft.Container(height=SPACING_XS),
+                ft.FilledButton(
+                    f"Buy {cost}⨀",
+                    on_click=lambda _e, c=cid: _buy_by_id(c),
+                    disabled=not affordable,
+                    style=ft.ButtonStyle(bgcolor=ACCENT if affordable else SURFACE_ELEVATED),
+                ),
+            ],
+            spacing=SPACING_XS, scroll=ft.ScrollMode.AUTO,
+        )
+
+    def _build_inspect() -> ft.Control:
+        shop_cid = state["shop_sel"]
+        if isinstance(shop_cid, str):
+            return _build_shop_preview(shop_cid)
+        cid = state["selected"]
+        champ = _champ_by_id(cid) if isinstance(cid, str) else None
+        if champ is None:
+            return ft.Text("Tap a champion (board, bench, or shop) to inspect.",
+                           size=FONT_SIZE_CAPTION, color=TEXT_MUTED)
+        # Raw sheet + a couple of derived rates (read straight off the Champion).
+        rows: list[ft.Control] = [*_champ_header(champ), *_traits_chips(champ),
+                                  _stat_grid(champ)]
+        # Abilities — actives + passive, live-rendered (T.34/V.38).
+        rows.append(ft.Divider(height=8, color=SURFACE_ELEVATED))
+        rows.extend(_ability_block(champ))
+        # Equipped items — unequip on click (T.23b). The inventory **bench** lives
+        # in the left Items panel (click a component there to equip onto this unit).
         rows.append(ft.Divider(height=8, color=SURFACE_ELEVATED))
         rows.append(ft.Text(f"Items ({len(champ.items)}/3)", size=11, color=TEXT_MUTED))
         if champ.items:
@@ -533,13 +886,6 @@ def build_prep_view(
                                spacing=SPACING_XS, wrap=True))
         else:
             rows.append(ft.Text("(none equipped)", size=11, color=TEXT_MUTED))
-        inv = [(iid, n) for iid, n in run.inventory.items() if n > 0]
-        if inv:
-            rows.append(ft.Text("Inventory", size=11, color=TEXT_MUTED))
-            rows.append(ft.Row([_item_chip(iid, equipped=False, count=n) for iid, n in inv],
-                               spacing=SPACING_XS, wrap=True))
-        if champ.traits:
-            rows.append(_stat_row("traits", ", ".join(champ.traits)))
         # Sell control (only for owned, copy-tracked units).
         if champ.id in run.champion_copies:
             rows.append(ft.Container(height=SPACING_XS))
@@ -551,31 +897,63 @@ def build_prep_view(
 
     def _select(cid: str) -> None:
         state["selected"] = cid
+        state["shop_sel"] = None
+        _render()
+
+    def _select_shop(cid: str) -> None:
+        state["shop_sel"] = cid
+        state["selected"] = None
         _render()
 
     # --- holders + render -------------------------------------------------------
+    def _panel() -> ft.Container:
+        return ft.Container(bgcolor=SURFACE, border_radius=CARD_RADIUS, padding=SPACING_MD)
+
     board_holder = ft.Container()
     bench_holder = ft.Container()
-    shop_holder = ft.Container(bgcolor=SURFACE, border_radius=CARD_RADIUS,
-                               padding=SPACING_MD)
-    preview_holder = ft.Container(bgcolor=SURFACE, border_radius=CARD_RADIUS,
-                                  padding=SPACING_MD)
+    shop_holder = _panel()
+    odds_holder = _panel()
+    weather_holder = _panel()
+    augments_holder = _panel()
+    traits_holder = _panel()
+    items_holder = _panel()
+    preview_holder = _panel()
     inspect_holder = ft.Container(bgcolor=SURFACE, border_radius=CARD_RADIUS,
-                                  padding=SPACING_MD, width=300)
+                                  padding=SPACING_MD)
     resources_holder = ft.Row(spacing=SPACING_SM)
 
     def _resources() -> list[ft.Control]:
-        return [
+        controls: list[ft.Control] = [
             _chip("Amber", f"{run.amber}", WARNING),
             _chip("Rank", f"{run.tempest_rank}", ACCENT),
             _chip("Field", f"{len(run.roster)}/{_cap()}", TEXT_PRIMARY),
-            ft.OutlinedButton("Rank Up", on_click=lambda _e: _rank_up()),
         ]
+        if is_max_rank(run.tempest_rank):
+            controls.append(_chip("Tempest", "MAX", TEXT_MUTED))
+            controls.append(ft.OutlinedButton("Rank Up", disabled=True))
+        else:
+            need = tempest_threshold(run.tempest_rank)
+            cost = rank_up_cost_amber(run.tempest, run.tempest_rank)
+            controls.append(_chip("Tempest", f"{run.tempest}/{need}", ACCENT))
+            controls.append(ft.OutlinedButton(
+                f"Rank Up ({cost}⨀)",
+                on_click=lambda _e: _rank_up(),
+                disabled=cost > run.amber,
+                tooltip=(f"Rank {run.tempest_rank}→{run.tempest_rank + 1}: needs {need} "
+                         f"Tempest (have {run.tempest}). Pay {cost} Amber to finish now "
+                         f"(1 Amber = 1 Tempest)."),
+            ))
+        return controls
 
     def _render() -> None:
         board_holder.content = _build_board()
         bench_holder.content = _build_bench()
         shop_holder.content = _build_shop()
+        odds_holder.content = _build_shop_odds()
+        weather_holder.content = _build_weather_panel()
+        augments_holder.content = _build_augments()
+        traits_holder.content = _build_traits()
+        items_holder.content = _build_items()
         preview_holder.content = _build_enemy_preview()
         inspect_holder.content = _build_inspect()
         resources_holder.controls = _resources()
@@ -614,34 +992,49 @@ def build_prep_view(
         vertical_alignment=ft.CrossAxisAlignment.CENTER, spacing=SPACING_MD,
     )
 
-    # --- assembly ---------------------------------------------------------------
+    # --- assembly (TFT-style: shop on top · left info · center board · right sheet)
+    # Left rail — weather + synergies + augments + item bench + shop odds.
     left_col = ft.Column(
+        [weather_holder, traits_holder, augments_holder, items_holder, odds_holder],
+        spacing=SPACING_MD, width=250, scroll=ft.ScrollMode.AUTO,
+    )
+    # Center — the hex board (the "map"), the bench below it, then the actions.
+    center_col = ft.Column(
         [
             ft.Container(board_holder, alignment=ft.Alignment.CENTER),
             bench_holder,
+            bottom,
         ],
-        spacing=SPACING_MD, expand=True, scroll=ft.ScrollMode.AUTO,
+        spacing=SPACING_MD, expand=True,
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        scroll=ft.ScrollMode.AUTO,
     )
+    # Right — the champion sheet (tooltips) + the deterministic enemy preview.
     right_col = ft.Column(
-        [shop_holder, preview_holder, inspect_holder],
-        spacing=SPACING_MD, width=320, scroll=ft.ScrollMode.AUTO,
+        [inspect_holder, preview_holder],
+        spacing=SPACING_MD, width=300, scroll=ft.ScrollMode.AUTO,
     )
     body = ft.Column(
         [
             top_bar,
             ft.Divider(height=1, color=SURFACE_ELEVATED),
-            ft.Row([left_col, right_col], spacing=SPACING_LG,
+            shop_holder,
+            ft.Row([left_col, center_col, right_col], spacing=SPACING_LG,
                    vertical_alignment=ft.CrossAxisAlignment.START, expand=True),
-            bottom,
         ],
         spacing=SPACING_MD, expand=True,
     )
     root = ft.Container(bgcolor=BG, expand=True, padding=SPACING_XL, content=body)
     view = ft.View(route="/prep", controls=[root], padding=0)
 
-    # Initial team layout: cap the field, auto-place into the default formation.
+    # Initial team layout: cap the field, then **restore the persisted formation**
+    # (run.team_positions). First-ever Prep entry has none → default auto-place;
+    # otherwise prune stale ids + fill any newly-added champions (V.2 packing).
     _normalize_roster()
-    _auto_place()
+    if not team_positions:
+        _auto_place()
+    else:
+        _ensure_placed()
     _render()
     return view
 

@@ -747,6 +747,10 @@ class Run:
     # 9 copies → L3). shop_offers holds the 5 current slots (None = bought/empty).
     champion_copies: dict[str, int] = field(default_factory=dict)
     shop_offers: list[str | None] = field(default_factory=list)
+    # Per-slot freeze (TFT-style): a frozen slot is **not** rerolled on reroll and
+    # **persists across Prep phases** (the per-node auto-refresh keeps it). Parallel
+    # to shop_offers; default all-False, save-persisted. Buying/empty clears it.
+    shop_frozen: list[bool] = field(default_factory=list)
     shop_rerolls: int = 0
     # Augment system (T.31). active_augments holds picked augment ids in run order;
     # augment_state carries quest progress + RUN-scope flags (e.g. trait_bonus,
@@ -759,6 +763,11 @@ class Run:
     # Hearts — survivable-loss counter (T.38, V.71). A non-win costs one Heart;
     # run ends (DEFEAT) only at 0 (or a boss/final-node loss). Plain int, no RNG.
     hearts: int = 3
+    # Persisted board placement (Prep). champion id -> (q, r) cell; survives
+    # Prep→Combat→Prep and Save&Exit so the player's formation sticks between
+    # fights. Stale ids (sold/benched champions) are pruned by the Prep view on
+    # entry; serialized as nested lists (JSON has no tuples).
+    team_positions: dict[str, tuple[int, int]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.schema_version < 1:
@@ -910,6 +919,7 @@ class Run:
             "tempest_rank": self.tempest_rank,
             "champion_copies": dict(self.champion_copies),
             "shop_offers": list(self.shop_offers),
+            "shop_frozen": list(self.shop_frozen),
             "shop_rerolls": self.shop_rerolls,
             "active_augments": list(self.active_augments),
             "augment_state": self.augment_state,
@@ -922,6 +932,8 @@ class Run:
             "content_version": self.content_version,
             "difficulty_coefficient": self.difficulty_coefficient,
             "hearts": self.hearts,
+            # (q, r) tuples → nested lists for JSON (V.36).
+            "team_positions": {cid: [q, r] for cid, (q, r) in self.team_positions.items()},
         }
 
     @classmethod
@@ -949,10 +961,16 @@ class Run:
             tempest_rank=payload.get("tempest_rank", 1),
             champion_copies=dict(payload.get("champion_copies", {})),
             shop_offers=list(payload.get("shop_offers", [])),
+            shop_frozen=list(payload.get("shop_frozen", [])),
             shop_rerolls=payload.get("shop_rerolls", 0),
             active_augments=list(payload.get("active_augments", [])),
             augment_state=dict(payload.get("augment_state", {})),
             content_version=payload.get("content_version", "1.0.0"),
             difficulty_coefficient=payload.get("difficulty_coefficient", 1.0),
             hearts=payload.get("hearts", 3),  # pre-T.38 saves → default 3 (V.71)
+            # nested lists → (q, r) tuples; pre-positions saves default to empty.
+            team_positions={
+                cid: tuple(cell)
+                for cid, cell in payload.get("team_positions", {}).items()
+            },
         )

@@ -99,6 +99,7 @@ def _make_run() -> Run:
         champion_copies={"champ_blaze_fox": 3},
         shop_offers=["champ_x", None, "champ_y"],
         shop_rerolls=1,
+        team_positions={"champ_blaze_fox": (1, 2)},
     )
 
 
@@ -144,6 +145,17 @@ def test_round_trip_through_disk(tmp_path):
     assert loaded.amber == 10
     assert loaded.tempest_rank == 2
     assert loaded.battle_log[0].events[0].note == "crit"
+    # Board placement survives disk round-trip as (q, r) tuples (V.76).
+    assert loaded.team_positions == {"champ_blaze_fox": (1, 2)}
+
+
+def test_team_positions_default_empty_for_legacy_saves():
+    # Pre-positions saves omit the key → empty dict, tuples on read.
+    run = _make_run()
+    payload = run.to_dict()
+    del payload["team_positions"]
+    restored = Run.from_dict(payload)
+    assert restored.team_positions == {}
 
 
 # 2. Atomic write — no temp left behind, parent dir auto-created.

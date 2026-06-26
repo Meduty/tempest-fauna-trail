@@ -90,36 +90,53 @@ calls into `game/` for every number; computes none itself.
 - **Wiring (`main.py`):** New Run → RunStart → `_push_trail`; Play Next →
   `_push_prep` (the full Prep view, T.23a); Save & Exit → autosave + `_pop` to menu.
 
-## Prep (T.23a) — `ui/views/prep.py`
+## Prep (T.23a, layout/panels T.40) — `ui/views/prep.py`
 
 The pre-combat decision layer (route `/prep`). Pure presentation over the finished
 economy/combat backend (V.63/V.1): it mutates `Run` **only** through `game/economy.py`
-/ `game/shop.py` (buy/reroll/sell/supply, `try_rank_up_with_amber`) and resolves combat
-**only** by building a `CombatSession` — it recomputes no Amber/cost/level/encounter
-number.
+/ `game/shop.py` (buy/reroll/sell/supply, `try_rank_up_with_amber`, `toggle_shop_freeze`)
+and resolves combat **only** by building a `CombatSession` — it recomputes no
+Amber/cost/level/encounter number.
 
-- **Placement → `team_positions`:** the player arranges the team on the hex board (Flet
-  `Draggable` tokens + per-cell `DragTarget`, TFT-style bench↔board) within the **allied
-  deployment zone** (columns `0..ALLIED_ZONE_MAX_Q-1` = 0–2, V.68). `run.roster` = the
-  deployable field (capped at `tempest_rank`); `run.bench` = reserves; dragging moves a
-  champion between the two lists. Each placed champion gets a `team_positions[id] = (q,r)`.
+- **TFT-style layout (T.40):** **shop on top** (full-width 5-slot rail), then three
+  columns — **left rail** = combat-weather · traits · augments · item-bench · shop-odds
+  panels; **center** = the hex board ("map") + bench below + the action row (Auto-Place /
+  Reset / Start Combat); **right** = the champion sheet (inspect) + enemy preview. Each
+  panel is a `_render()`-rebuilt holder.
+- **Placement → `Run.team_positions` (persisted, V.76):** the player arranges the team on
+  the hex board (Flet `Draggable` tokens + per-cell `DragTarget`, TFT-style bench↔board)
+  within the **allied deployment zone** (columns `0..ALLIED_ZONE_MAX_Q-1` = 0–2, V.68).
+  `run.roster` = the deployable field (capped at `tempest_rank`); `run.bench` = reserves.
+  The view **binds `team_positions = run.team_positions`** and mutates it in place, so the
+  formation **survives Prep→Combat→Prep + Save&Exit**. On entry it prunes stale ids + fills
+  new champions (`_ensure_placed`); a first-ever entry with none falls back to default
+  `assign_spawns` packing (V.62/V.2).
 - **Auto-Place / Reset** = the default packing `champion i → (i // 7, i % 7)`, mirroring
   `engine.assign_spawns` so it's **byte-identical** to `positions=None` (V.62/V.2).
 - **Shared geometry:** the hex pixel layout lives in `ui/components/board_geometry.py`
   (`cell_xy`, `COL_W`, `ROW_H`, `BOARD_W/H`), reused by the combat view — one coordinate
   source, no drift.
-- **Shop / preview / tooltips:** shop slots (`run.shop_offers`, cost via `champion_cost`,
-  owned-copy `●N` badge from `run.champion_copies`), deterministic enemy preview
-  (`node_encounter`, with affinity-clash hints via `ring_relation`), and a tap-to-inspect
-  panel. Inspecting works from **board, bench, or shop** — clicking a shop slot sets
-  `state["shop_sel"]` and the panel shows a **read-only preview** built from
-  `content.build_champion_at_level(id, 1)` with a Buy button (`buy_from_shop` via the
-  first matching slot); selecting an owned token sets `state["selected"]` (the two are
-  mutually exclusive). The panel shows **name · affinity · role `[role_code]` · L/T**, a
-  stat grid, **copy-combine progress** (`level_from_copies` / `LEVEL_COPY_THRESHOLDS` —
-  3 copies → L2, 9 → L3), and the **actives + passive** rendered live via
-  `ability_text.render_for(id, champ)` (name + blurb + formula, against the `Champion`'s
-  own `.stat()`, source-of-truth B / V.38).
+- **Shop top rail (T.40) + freeze (V.75):** horizontal 5-slot rail (`run.shop_offers`, cost
+  via `champion_cost`, owned-copy `●N` badge from `run.champion_copies`). The shop
+  **auto-rerolls on every Prep entry** (`refresh_shop(run)` at view build) — frozen slots
+  persist. Each slot has a **freeze toggle** (❄/✛ → `toggle_shop_freeze`); a frozen slot
+  shows a 2px accent border and is kept across rerolls **and** Prep phases. Clicking a slot
+  (not the freeze/Buy buttons) inspects it.
+- **Inspect panel (right):** tap-to-inspect works from **board, bench, or shop** — a shop
+  slot sets `state["shop_sel"]` → a **read-only preview** from
+  `content.build_champion_at_level(id, 1)` + Buy (`buy_from_shop` via the first matching
+  slot); an owned token sets `state["selected"]` (mutually exclusive). Shows **name ·
+  affinity · role `[role_code]` · L/T**, **trait chips** (`champ.traits`), a stat grid,
+  **copy-combine progress** (`level_from_copies` / `LEVEL_COPY_THRESHOLDS` — 3→L2, 9→L3),
+  and the **actives + passive** rendered live via `ability_text.render_for(id, champ)`
+  (name + blurb + formula, against the `Champion`'s own `.stat()`, source-of-truth B/V.38).
+  Equipped items unequip on click; the inventory **bench** lives in the left Items panel.
+- **Left-rail panels (T.40):** **Augments** — `run.active_augments` names from
+  `AUGMENT_REGISTRY` (blurb tooltips). **Traits** — `traits.preview_team_traits(placed,
+  board_cap)` (new pure tally, V.21/V.1): every trait the **placed** team carries, cleared
+  rungs highlighted + partials greyed (`count/next_threshold`), cleared-first sort. **Items**
+  — the inventory component bench; clicking a chip equips onto the selected unit via the
+  `game/inventory.py` seam (auto-combine on double-equip, V.2).
 - **Rank-up affordance:** the top-bar resources row shows `Tempest {have}/{tempest_threshold(rank)}`
   and a **`Rank Up ({rank_up_cost_amber}⨀)`** button (disabled when unaffordable or at
   `MAX_RANK`, with a tooltip explaining 1 Amber = 1 Tempest). All numbers read from
@@ -129,17 +146,17 @@ number.
   `weather_effects.ring_relation`, with the per-stat deltas summarized from
   `weather_effects.combat_modifier(affinity, weather)` (Weather Favor the engine applies at
   init). Team-fielded affinities are flagged. CLEAR ⇒ "no affinity favored".
-- **Shop tier-odds panel:** renders the current route stage's tier distribution from
-  `shop.STAGE_TIER_WEIGHTS[stage_of(node.index).index]` (normalized to %), beside the
-  next stage's for comparison. Notes explicitly that odds follow **route stage, not
-  Tempest rank** (rank only grows the field/deploy cap) — the honest model, since
-  `shop.roll_shop` is stage-gated, never rank-gated.
-- **Items (T.23b):** the inspect panel's item section equips/unequips through the
-  `game/inventory.py` seam (V.63, never inline): equipped chips unequip on click;
-  inventory chips equip onto the selected champion. `equip_item` **auto-combines on
-  double-equip** (the incoming item + a held component that form a recipe →
-  the combined item in one slot, `items.combine`), else fills a free slot (≤3);
-  `unequip_item` returns the item whole. Deterministic (first held partner, V.2).
+- **Shop tier-odds panel:** renders the current Tempest rank's tier distribution from
+  `shop.RANK_TIER_WEIGHTS[run.tempest_rank]` (normalized to %), beside the **next rank's**
+  for comparison. Odds are **rank-gated** (V.74) — ranking up both widens the team cap
+  and lifts/widens the tier band, so the panel quantifies exactly what an Amber rank-rush
+  buys. The note tells the player odds follow Tempest rank.
+- **Items (T.23b):** all equip/unequip routes through the `game/inventory.py` seam (V.63,
+  never inline) — the left **item bench** equips a component onto the selected unit; the
+  inspect panel's equipped chips unequip on click. `equip_item` **auto-combines on
+  double-equip** (incoming item + a held component that form a recipe → the combined item
+  in one slot, `items.combine`), else fills a free slot (≤3); `unequip_item` returns the
+  item whole. Deterministic (first held partner, V.2).
 - **Start-Combat:** `team = run.roster` placed pieces; `validate_team_positions(team,
   positions)` (`game/loadout.py`, V.68 — zone + roster-id, on top of the V.62 engine
   guard); builds `CombatSession(team, enemies, weather=node.weather, run_mods=
