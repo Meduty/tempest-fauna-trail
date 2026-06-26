@@ -43,6 +43,7 @@ from src.game.economy import (
 )
 from src.game.encounter import node_encounter
 from src.game.inventory import equip_item, unequip_item
+from src.game.items.base import BASE_COMPONENTS, SPIRIT_GEM
 from src.game import augments as _augments  # noqa: F401 — populate AUGMENT_REGISTRY
 from src.game.registries import AUGMENT_REGISTRY
 from src.game.traits import preview_team_traits
@@ -64,6 +65,7 @@ from src.game.weather_effects import (
 )
 from src.ui.combat_playback import CombatSession
 from src.ui.components.board_geometry import BOARD_H, BOARD_W, COL_W, ROW_H, cell_xy
+from src.ui.components.trait_synergies import trait_synergies_panel
 from src.ui.components.weather_badge import weather_badge
 from src.ui.theme import (
     ACCENT,
@@ -75,7 +77,6 @@ from src.ui.theme import (
     FONT_SIZE_CAPTION,
     FONT_SIZE_DISPLAY,
     FONT_MONO,
-    FONT_SIZE_H2,
     FONT_SIZE_H3,
     SPACING_LG,
     SPACING_MD,
@@ -121,6 +122,25 @@ _MOD_FIELDS: tuple[tuple[str, str], ...] = (
     ("ms_mult", "MS"), ("mr_mult", "MR"), ("hp_mult", "HP"),
     ("armor_mult", "armor"), ("res_mult", "RES"), ("thr_mult", "threat"),
 )
+
+
+def _item_label(item_id: str) -> str:
+    """snake_case item id → Title Case display (stopgap until the item render-layer
+    lands authored names — see the deferred trait/item/augment text system)."""
+    return item_id.replace("_", " ").title()
+
+
+def _item_kind(item_id: str) -> str:
+    """Classify an item id for display: ``component`` (raw, can still fuse),
+    ``gem`` (Spirit Gem → emblem), or ``combined`` (terminal, won't fuse).
+
+    Mirrors the combine rules in ``items.combine`` (B.34): only raw components
+    (and Spirit Gem) are recipe inputs; everything else is a finished item."""
+    if item_id in BASE_COMPONENTS:
+        return "component"
+    if item_id == SPIRIT_GEM:
+        return "gem"
+    return "combined"
 
 
 def _favor_deltas(mod: CombatModifier) -> str:
@@ -596,28 +616,14 @@ def build_prep_view(
     # --- traits panel (T.28a) --------------------------------------------------
     def _build_traits() -> ft.Control:
         """Live trait synergies for the **placed** team (preview_team_traits, V.21).
-        Cleared rungs are highlighted; partials greyed (TFT-style)."""
+        Active synergies read prominently, dormant ones greyed (TFT-style) — via
+        the shared ``trait_synergies_panel`` component (also used by Combat)."""
         placed = [c for c in run.roster if c.id in team_positions]
-        previews = preview_team_traits(placed, board_cap=len(placed)) if placed else []
-        rows: list[ft.Control] = [
-            ft.Text("Traits", size=FONT_SIZE_H3, color=TEXT_PRIMARY,
-                    weight=ft.FontWeight.BOLD),
-        ]
-        if not previews:
-            rows.append(ft.Text("Place units to see synergies.",
-                                size=FONT_SIZE_CAPTION, color=TEXT_MUTED))
-        for tp in previews:
-            cleared = tp.threshold > 0
-            target = tp.next_threshold if tp.next_threshold is not None else tp.threshold
-            rows.append(ft.Row([
-                ft.Container(width=6, height=6, border_radius=3,
-                             bgcolor=SUCCESS if cleared else SURFACE_ELEVATED),
-                ft.Text(tp.trait, size=11, no_wrap=True, expand=True,
-                        color=TEXT_PRIMARY if cleared else TEXT_MUTED),
-                ft.Text(f"{tp.count}/{target}", size=11,
-                        color=SUCCESS if cleared else TEXT_MUTED),
-            ], spacing=SPACING_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER))
-        return ft.Column(rows, spacing=2)
+        # Augment Crest/Crown trait bonus (V.21) — match what combat will clear.
+        bonus = run.augment_state.get("trait_bonus")
+        previews = preview_team_traits(
+            placed, board_cap=len(placed), bonus_counts=bonus) if placed else []
+        return trait_synergies_panel(previews)
 
     # --- items bench (T.23b) — inventory components, click to equip on selected -
     def _build_items() -> ft.Control:
@@ -676,15 +682,43 @@ def build_prep_view(
             buffed = rel in (RingRelation.SELF, RingRelation.PRIMARY_PREDATOR,
                              RingRelation.SECONDARY_PREDATOR)
             tone = SUCCESS if buffed else DANGER
-            mine = " ◀ you" if aff in team_affs else ""
-            rows.append(ft.Row([
+            mine = aff in team_affs
+            # Header: affinity + a tone-tinted favor badge; "◀ you" flags own stakes.
+            header = ft.Row([
                 ft.Container(width=8, height=8, border_radius=4,
                              bgcolor=AFFINITY_COLORS[aff]),
-                ft.Text(aff.value, size=11, color=TEXT_PRIMARY, width=58, no_wrap=True),
-                ft.Text(_FAVOR_LABEL[rel], size=10, color=tone, width=96, no_wrap=True),
-                ft.Text(deltas or "—", size=10, color=TEXT_MUTED, expand=True),
-                ft.Text(mine, size=10, color=ACCENT, weight=ft.FontWeight.BOLD),
-            ], spacing=SPACING_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER))
+                ft.Text(aff.value, size=11, color=TEXT_PRIMARY, no_wrap=True,
+                        weight=ft.FontWeight.BOLD),
+                ft.Container(
+                    ft.Text(_FAVOR_LABEL[rel], size=9, color=tone, no_wrap=True),
+                    bgcolor=ft.Colors.with_opacity(0.15, tone),
+                    border_radius=CARD_RADIUS,
+                    padding=ft.Padding(left=6, right=6, top=1, bottom=1),
+                ),
+                ft.Container(expand=True),
+                *([ft.Text("◀ you", size=10, color=ACCENT,
+                           weight=ft.FontWeight.BOLD)] if mine else []),
+            ], spacing=SPACING_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+            # Stat deltas as discrete chips — size to content, never char-wrap.
+            chips = [
+                ft.Container(
+                    ft.Text(part, size=10, color=tone, no_wrap=True),
+                    bgcolor=SURFACE,
+                    border_radius=CARD_RADIUS,
+                    padding=ft.Padding(left=5, right=5, top=1, bottom=1),
+                )
+                for part in (deltas.split(", ") if deltas else [])
+            ] or [ft.Text("—", size=10, color=TEXT_MUTED)]
+            rows.append(ft.Container(
+                ft.Column([
+                    header,
+                    ft.Row(chips, spacing=4, wrap=True, run_spacing=4),
+                ], spacing=4),
+                bgcolor=SURFACE_ELEVATED,
+                border=ft.Border(left=ft.BorderSide(2, tone)),
+                border_radius=CARD_RADIUS,
+                padding=ft.Padding(left=8, right=8, top=5, bottom=5),
+            ))
         return ft.Column(rows, spacing=SPACING_XS)
 
     # --- shop tier-odds panel (SPEC §D.15 / §V.20) -----------------------------
@@ -741,10 +775,23 @@ def build_prep_view(
         )
 
     def _item_chip(item_id: str, *, equipped: bool, count: int = 0) -> ft.Control:
-        label = item_id if count <= 1 else f"{item_id} ×{count}"
+        kind = _item_kind(item_id)
+        label = _item_label(item_id)
+        if count > 1:
+            label = f"{label} ×{count}"
+        # Kind drives colour + a marker so a raw component (can still fuse) reads
+        # differently from a finished combined item (terminal). See _item_kind.
+        marker, marker_color, kind_tip = {
+            "component": ("◆", ACCENT, "Raw component — equip a 2nd raw component "
+                          "on this unit to fuse them."),
+            "gem": ("✧", WARNING, "Spirit Gem — fuse with a component to craft an emblem."),
+            "combined": ("✦", SUCCESS, "Combined item — final, won't fuse further."),
+        }[kind]
+        action_tip = "Click to unequip." if equipped else "Click to equip on selected unit."
         return ft.Container(
             ft.Row(
                 [
+                    ft.Text(marker, size=10, color=marker_color),
                     ft.Text(label, size=10, color=TEXT_PRIMARY),
                     ft.Text("×" if equipped else "+", size=10,
                             color=DANGER if equipped else SUCCESS,
@@ -753,8 +800,9 @@ def build_prep_view(
                 spacing=4, tight=True,
             ),
             bgcolor=SURFACE_ELEVATED, border_radius=CARD_RADIUS,
+            border=ft.Border.all(1, marker_color) if kind != "component" else None,
             padding=ft.Padding(left=6, right=6, top=2, bottom=2),
-            tooltip="Unequip" if equipped else "Equip onto selected",
+            tooltip=f"{kind_tip} {action_tip}",
             on_click=(lambda _e, i=item_id: _unequip(i)) if equipped
             else (lambda _e, i=item_id: _equip(i)),
         )
@@ -809,8 +857,8 @@ def build_prep_view(
                    ("MS", f"{champ.move_speed}"), ("MR", f"{champ.mana_regen}"),
                    ("crit", f"{champ.crit_chance * 100:.0f}%")]
         return ft.Row([
-            ft.Column([_stat_row(l, v) for l, v in primary], spacing=2, expand=True),
-            ft.Column([_stat_row(l, v) for l, v in premium], spacing=2, expand=True),
+            ft.Column([_stat_row(lbl, v) for lbl, v in primary], spacing=2, expand=True),
+            ft.Column([_stat_row(lbl, v) for lbl, v in premium], spacing=2, expand=True),
         ], spacing=SPACING_SM)
 
     def _ability_block(champ: Champion) -> list[ft.Control]:

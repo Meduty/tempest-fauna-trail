@@ -32,6 +32,8 @@ from src.game.encounter import (
     generate_boss_encounter,
     generate_challenge,
 )
+from src.game.items import combine
+from src.game.items.base import BASE_COMPONENTS
 from src.game.map_effects import (
     MAP_EFFECT_CLASSES,
     DefensiveLeyEffect,
@@ -97,10 +99,11 @@ class TestChallengeReward:
             assert reward.champion_offer in squad_ids
 
     def test_component_offer_is_valid_base_component(self):
-        valid = {"bow", "tear", "rod", "belt", "sword", "cloak"}
+        # Reward components MUST come from the recipe vocabulary, else they have
+        # no recipe and can never fuse (B.34, V.77). Source of truth = items.base.
         for stage in STAGES:
             _, reward = generate_challenge(42, stage.index * 10, stage)
-            assert reward.component_offer in valid
+            assert reward.component_offer in BASE_COMPONENTS
 
 
 # ---------------------------------------------------------------------------
@@ -230,6 +233,29 @@ class TestChallengeAffinityDistribution:
         """Every WeatherState must have an entry in AFFINITY_THEMED_COMPONENT."""
         for ws in WeatherState:
             assert ws in AFFINITY_THEMED_COMPONENT, f"Missing themed component for {ws}"
+
+    def test_reward_components_are_recipe_vocabulary(self):
+        """B.34/V.77 guard: every reward component (themed + random pool) is a
+        real recipe input. The T.21 reward vocab once drifted from the T.29a
+        recipe vocab, so granted components could never fuse."""
+        from src.game.encounter import _BASE_COMPONENTS
+
+        for comp in AFFINITY_THEMED_COMPONENT.values():
+            assert comp in BASE_COMPONENTS, f"themed component {comp!r} has no recipe"
+        for comp in _BASE_COMPONENTS:
+            assert comp in BASE_COMPONENTS, f"random-pool component {comp!r} has no recipe"
+
+    def test_any_two_reward_components_fuse(self):
+        """Any pair of *grantable* reward components must combine into a real
+        item (V.77) — the player-facing promise that two components fuse. Covers
+        the full reward surface: themed components AND the random reward pool
+        (`_BASE_COMPONENTS`), since either can be granted."""
+        from src.game.encounter import _BASE_COMPONENTS
+
+        comps = sorted(set(AFFINITY_THEMED_COMPONENT.values()) | set(_BASE_COMPONENTS))
+        for a in comps:
+            for b in comps:
+                assert combine(a, b) is not None, f"{a}+{b} does not fuse"
 
 
 # ---------------------------------------------------------------------------

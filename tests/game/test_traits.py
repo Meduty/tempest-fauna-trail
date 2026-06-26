@@ -319,3 +319,33 @@ def test_preview_team_traits_exposes_partials_and_is_deterministic():
 
 def test_preview_team_traits_empty_for_no_team():
     assert preview_team_traits([]) == []
+
+
+def test_preview_bonus_counts_matches_combat_clearing():
+    """Augment Crest/Crown trait bonus must raise the previewed count (and can
+    surface an emblem-only tag with no fielded carrier), so the panel matches
+    what combat actually clears (V.21)."""
+    team = _team(*list(CHAMPION_DEF_BY_ID)[:4])
+    base = {p.trait: p for p in preview_team_traits(team)}
+    # Bump an existing carried trait by +2 → its previewed count rises by 2.
+    some_tag = next(iter(base))
+    bumped = {p.trait: p for p in preview_team_traits(team, bonus_counts={some_tag: 2})}
+    assert bumped[some_tag].count == base[some_tag].count + 2
+    # An emblem-only tag (no fielded carrier) still appears once granted by bonus.
+    emblem = {p.trait: p for p in preview_team_traits(team, bonus_counts={"Hunter": 3})}
+    assert emblem["Hunter"].count >= 3
+
+
+def test_preview_exposes_full_rung_ladder_and_active_flag():
+    """TraitPreview carries the full ascending rung ladder + an `active` flag so
+    the shared TFT panel can light cleared pips (prep & combat)."""
+    team = _team(*list(CHAMPION_DEF_BY_ID)[:6])
+    for p in preview_team_traits(team):
+        # Ladder is ascending and every threshold is a positive breakpoint.
+        assert list(p.thresholds) == sorted(p.thresholds)
+        assert all(t > 0 for t in p.thresholds)
+        # The cleared threshold is the highest rung ≤ count (0 if none cleared).
+        lit = [t for t in p.thresholds if p.count >= t]
+        assert p.threshold == (max(lit) if lit else 0)
+        # active mirrors "≥1 rung cleared".
+        assert p.active == (p.threshold > 0)

@@ -133,8 +133,12 @@ Amber/cost/level/encounter number.
   Equipped items unequip on click; the inventory **bench** lives in the left Items panel.
 - **Left-rail panels (T.40):** **Augments** — `run.active_augments` names from
   `AUGMENT_REGISTRY` (blurb tooltips). **Traits** — `traits.preview_team_traits(placed,
-  board_cap)` (new pure tally, V.21/V.1): every trait the **placed** team carries, cleared
-  rungs highlighted + partials greyed (`count/next_threshold`), cleared-first sort. **Items**
+  board_cap, bonus_counts=run.augment_state['trait_bonus'])` (pure tally, V.21/V.1) rendered
+  via the shared `ui/components/trait_synergies.py::trait_synergies_panel` (used by Combat
+  too). TFT-style: **active** synergies (≥1 rung cleared, `TraitPreview.active`) read
+  prominently with a SUCCESS rail + lit rung-ladder pips (`TraitPreview.thresholds`); **dormant**
+  ones (carried, below the first rung) are greyed under a "Dormant" divider. `bonus_counts`
+  folds in augment Crest/Crown so the preview matches what combat clears. **Items**
   — the inventory component bench; clicking a chip equips onto the selected unit via the
   `game/inventory.py` seam (auto-combine on double-equip, V.2).
 - **Rank-up affordance:** the top-bar resources row shows `Tempest {have}/{tempest_threshold(rank)}`
@@ -143,9 +147,11 @@ Amber/cost/level/encounter number.
   `game/economy.py` — the view computes none.
 - **Combat-weather panel:** for `node.weather` (the live-locked combat weather — frozen at
   Prep-entry on the Trail, T.39/V.73), lists each non-CLEAR affinity ordered strongest-buff → strongest-debuff via
-  `weather_effects.ring_relation`, with the per-stat deltas summarized from
-  `weather_effects.combat_modifier(affinity, weather)` (Weather Favor the engine applies at
-  init). Team-fielded affinities are flagged. CLEAR ⇒ "no affinity favored".
+  `weather_effects.ring_relation`. Each affinity is a **mini-card** (tone-coloured left rail):
+  header row = colour dot · name · tone-tinted favor badge (`_FAVOR_LABEL`) · "◀ you" when
+  the team fields that affinity; below it the per-stat deltas from
+  `weather_effects.combat_modifier(affinity, weather)` render as **discrete chips** (one per
+  stat, so they size to content and never char-wrap in the narrow rail). CLEAR ⇒ "no affinity favored".
 - **Shop tier-odds panel:** renders the current Tempest rank's tier distribution from
   `shop.RANK_TIER_WEIGHTS[run.tempest_rank]` (normalized to %), beside the **next rank's**
   for comparison. Odds are **rank-gated** (V.74) — ranking up both widens the team cap
@@ -156,7 +162,11 @@ Amber/cost/level/encounter number.
   inspect panel's equipped chips unequip on click. `equip_item` **auto-combines on
   double-equip** (incoming item + a held component that form a recipe → the combined item
   in one slot, `items.combine`), else fills a free slot (≤3); `unequip_item` returns the
-  item whole. Deterministic (first held partner, V.2).
+  item whole. Deterministic (first held partner, V.2). Chips classify each item via
+  `prep._item_kind` — **component** (raw, ◆, can still fuse) · **gem** (Spirit Gem, ✧) ·
+  **combined** (✦, terminal, bordered) — with an explanatory tooltip, and Title-case the
+  snake_case id (`_item_label`, stopgap until the authored item render-layer). Reward drops
+  grant ids from `items.base.BASE_COMPONENTS` so two reward components always fuse (V.77).
 - **Start-Combat:** `team = run.roster` placed pieces; `validate_team_positions(team,
   positions)` (`game/loadout.py`, V.68 — zone + roster-id, on top of the V.62 engine
   guard); builds `CombatSession(team, enemies, weather=node.weather, run_mods=
@@ -291,8 +301,10 @@ Zones (views_spec §7.3):
   statuses, **ability descriptions** (`render_for` against a `PieceView` stat-shim
   → name + live blurb + formula, for team *and* enemy pieces), equipped
   `champion.items`, `champion.traits`; a global sub-panel shows active augments
-  (`session.run_mods.augments`) + cleared `result.trait_activations`. Hover a token
-  for the same ability blurbs as a tooltip.
+  (`session.run_mods.augments`) + the **shared trait-synergy panel** (the same
+  `trait_synergies_panel` Prep uses, over `preview_team_traits(session.team,
+  bonus_counts=run_mods.augment_state['trait_bonus'])`) so active vs dormant reads
+  identically across views. Hover a token for the same ability blurbs as a tooltip.
 - **Floating numbers:** the step's `pre_beats` (interstitial DOTs) reveal by a
   **tick cutoff** (`state["reveal_tick"]`) — same-tick DOTs pop together, paced
   **real-time** (`playback_delay_s`, 1 game-s ≈ 1 real-s) via `_play_step`/
