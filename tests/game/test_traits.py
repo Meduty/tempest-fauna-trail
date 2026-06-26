@@ -5,8 +5,6 @@ dynamic thresholds (Packmate @full-board), HP re-sync, vocabulary, and the
 V.22 roster guard. Mechanic primitives (kiting/revive/…) are T.28b/c.
 """
 
-import pytest
-
 from src.game.content import (
     CALLING_TAGS,
     CHAMPION_DEF_BY_ID,
@@ -16,7 +14,12 @@ from src.game.content import (
 from src.game.loadout import compile_loadout
 from src.game.models import BattleResult, CombatOutcome, WeatherState
 from src.game.registries import TRAIT_REGISTRY
-from src.game.traits import TraitScope, _resolve_traits, affinity_trait
+from src.game.traits import (
+    TraitScope,
+    _resolve_traits,
+    affinity_trait,
+    preview_team_traits,
+)
 from src.game.piece import Piece
 
 
@@ -282,3 +285,37 @@ def test_trait_rungs_are_cumulative_for_mechanics():
                 f"{trait_id}: rung {hi.count} drops {sorted(dropped)} present at the "
                 f"lower rung {lo.count} (cumulative-rung violation, V.41)"
             )
+
+
+# --------------------------------------------------------------------------
+# preview_team_traits — UI pre-combat tally (read-only, V.1/V.2)
+# --------------------------------------------------------------------------
+def test_preview_team_traits_matches_resolver_on_cleared():
+    team = _team(*list(CHAMPION_DEF_BY_ID)[:6])
+    cleared = _resolve_traits(team, len(team))  # Champions duck-type as pieces
+    previews = {p.trait: p for p in preview_team_traits(team)}
+    # Every cleared trait appears with the same count + threshold.
+    for tag, (bp, count, thr) in cleared.items():
+        assert previews[tag].count == count
+        assert previews[tag].threshold == thr
+    # Cleared-first ordering (threshold>0 sorts before partials).
+    seen_partial = False
+    for p in preview_team_traits(team):
+        if p.threshold == 0:
+            seen_partial = True
+        elif seen_partial:
+            raise AssertionError("cleared trait sorted after a partial one")
+
+
+def test_preview_team_traits_exposes_partials_and_is_deterministic():
+    team = _team(*list(CHAMPION_DEF_BY_ID)[:4])
+    a = preview_team_traits(team)
+    b = preview_team_traits(team)
+    assert a == b  # pure, RNG-free (V.2)
+    # A partial (uncleared) trait reports threshold 0 with a next_threshold to reach.
+    partials = [p for p in a if p.threshold == 0]
+    assert all(p.next_threshold is not None and p.next_threshold > p.count for p in partials)
+
+
+def test_preview_team_traits_empty_for_no_team():
+    assert preview_team_traits([]) == []

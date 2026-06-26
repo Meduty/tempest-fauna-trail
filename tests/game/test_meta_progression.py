@@ -255,17 +255,28 @@ def test_roll_shop_is_deterministic() -> None:
     assert len(a) == shop.SHOP_SLOTS
 
 
-def test_roll_shop_stage_one_only_tiers_one_and_two() -> None:
+def test_roll_shop_rank_one_only_tiers_one_and_two() -> None:
     for visit in range(1, 30):
         assert set(_tiers(shop.roll_shop(7, visit, 1))) <= {1, 2}
 
 
-def test_roll_shop_stage_six_can_reach_high_tiers() -> None:
+def test_roll_shop_max_rank_can_reach_high_tiers() -> None:
     seen: set[int] = set()
     for visit in range(1, 200):
-        seen.update(_tiers(shop.roll_shop(11, visit, 6)))
-    assert max(seen) >= 7  # high-tier band is reachable
+        seen.update(_tiers(shop.roll_shop(11, visit, 10)))
+    assert max(seen) >= 8  # high-tier band is reachable at max rank
     assert 10 not in seen  # T10 Primordials never appear
+
+
+def test_roll_shop_rank_gates_tier_ceiling() -> None:
+    # The tier band lifts monotonically with rank — higher ranks unlock higher
+    # tiers (pure rank-gating, no stage input).
+    for rank in range(1, 11):
+        ceiling = max(shop.RANK_TIER_WEIGHTS[rank])
+        seen: set[int] = set()
+        for visit in range(1, 60):
+            seen.update(_tiers(shop.roll_shop(rank * 13, visit, rank)))
+        assert max(seen) <= ceiling
 
 
 def test_reroll_changes_offers_deterministically() -> None:
@@ -281,7 +292,7 @@ def test_refresh_shop_populates_and_resets_rerolls() -> None:
     shop.refresh_shop(run)
     assert len(run.shop_offers) == shop.SHOP_SLOTS
     assert run.shop_rerolls == 0
-    assert set(_tiers(run.shop_offers)) <= {1, 2}  # stage 1
+    assert set(_tiers(run.shop_offers)) <= {1, 2}  # rank 1 (default Tempest rank)
 
 
 def test_first_reroll_free_then_costs_one_amber() -> None:
@@ -293,6 +304,54 @@ def test_first_reroll_free_then_costs_one_amber() -> None:
     assert run.amber == 4 and run.shop_rerolls == 2
 
 
+# --- shop freeze (V.75) ----------------------------------------------------
+def test_freeze_slot_survives_reroll() -> None:
+    run = _run(node_index=1, amber=99)
+    shop.refresh_shop(run)
+    kept = run.shop_offers[2]
+    assert shop.toggle_shop_freeze(run, 2) is True
+    assert run.shop_frozen[2] is True
+    shop.reroll_shop(run)
+    assert run.shop_offers[2] == kept  # frozen slot untouched by reroll
+    assert run.shop_frozen[2] is True
+
+
+def test_freeze_persists_across_refresh_node_entry() -> None:
+    run = _run(node_index=1, amber=99)
+    shop.refresh_shop(run)
+    kept = run.shop_offers[0]
+    shop.toggle_shop_freeze(run, 0)
+    run.current_node_index = 2          # simulate advancing to the next node's Prep
+    shop.refresh_shop(run)              # per-entry auto-refresh
+    assert run.shop_offers[0] == kept   # frozen card carried across Prep phases
+    assert run.shop_frozen[0] is True
+
+
+def test_buy_clears_freeze_on_slot() -> None:
+    run = _run(node_index=1, amber=99)
+    shop.refresh_shop(run)
+    shop.toggle_shop_freeze(run, 1)
+    assert shop.buy_from_shop(run, 1) is True
+    assert run.shop_offers[1] is None
+    assert run.shop_frozen[1] is False  # bought slot unfrozen
+
+
+def test_cannot_freeze_empty_slot() -> None:
+    run = _run(node_index=1, amber=99)
+    shop.refresh_shop(run)
+    assert shop.buy_from_shop(run, 0) is True  # slot 0 now None
+    assert shop.toggle_shop_freeze(run, 0) is False
+    assert run.shop_frozen[0] is False
+
+
+def test_unfreeze_toggles_back() -> None:
+    run = _run(node_index=1, amber=99)
+    shop.refresh_shop(run)
+    assert shop.toggle_shop_freeze(run, 3) is True
+    assert shop.toggle_shop_freeze(run, 3) is False  # toggles off
+    assert run.shop_frozen[3] is False
+
+
 def test_reroll_blocked_when_unaffordable() -> None:
     run = _run(node_index=1, amber=0)
     shop.refresh_shop(run)
@@ -301,11 +360,11 @@ def test_reroll_blocked_when_unaffordable() -> None:
     assert run.shop_rerolls == 1
 
 
-def test_generate_supply_offer_deterministic_and_stage_scaled() -> None:
+def test_generate_supply_offer_deterministic_and_rank_scaled() -> None:
     a = shop.generate_supply_offer(55, 6, 1)
     assert a == shop.generate_supply_offer(55, 6, 1)  # deterministic
     assert len(a) == shop.SUPPLY_SLOTS
-    assert set(_tiers(a)) <= {1, 2}  # stage 1 tier-scaled
+    assert set(_tiers(a)) <= {1, 2}  # rank 1 tier-scaled
 
 
 def test_take_supply_champion_is_free_recruit() -> None:

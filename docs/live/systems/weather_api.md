@@ -40,6 +40,27 @@ across three streams and fetches each, returning the fetched `city_id`s:
 
 Dedupe across streams keeps it to ≤3 API calls/min.
 
+## Node weather lifecycle — persisted on the `Run` (T.39, V.73)
+
+The cache/refresher are **fetch-scheduling + freshness** only; the **persisted source
+of truth is the `Run` `Node`**. Each `Node` (`game/models.py`) carries:
+
+| Field | Meaning |
+|---|---|
+| `weather: WeatherState` | the **effective** game weather all systems read — `default_weather` placeholder until a live fetch overwrites it (T4 §2) |
+| `weather_state: NodeWeatherState` | `UNKNOWN` (never fetched → display `?`) / `LIVE` / `SUBSTITUTE` — distinct from `api.cache.CacheState` (game-local enum; importing CacheState would cycle) |
+| `weather_locked: bool` | frozen for the run; the refresher skips it |
+
+The Trail copies fetched cache values onto the `Run` via the **pure game-side mutators**
+`Run.set_node_live_weather(node_index, weather, *, is_substitute)` and
+`Run.lock_node_weather(node_index)` only — the cache/refresher never touch game state
+(V.10). `set_node_live_weather` is a **no-op on a locked node**. The **current** node's
+weather **locks at the Trail→Prep transition** (`trail.py::_play_next` → `lock_node_weather`,
+persisted by `main._push_prep`'s `save_run`); an `UNKNOWN` node freezes `default_weather`
+flagged `SUBSTITUTE`. Locking before the fight keeps the CHALLENGE squad roll +
+`generate_node_reward` byte-identical (load-bearing for V.70). Pre-T.39 saves lack the two
+new fields → `UNKNOWN`/`False` on read (no `schema_version` bump).
+
 ## Invariants this system owns
 
 - **V.3** — the API key is never logged.
@@ -56,3 +77,4 @@ Dedupe across streams keeps it to ≤3 API calls/min.
 | Per-city cache | `api/cache.py` (`WeatherCache`, `CacheEntry`, `CacheState`, `fetch_and_cache`) |
 | 3-stream tick loop | `api/refresher.py` (`WeatherRefresher.tick`) |
 | id → state mapping | `models.py::WeatherState.from_openweather_id` |
+| persisted node lifecycle | `models.py` (`Node.weather`/`weather_state`/`weather_locked`, `NodeWeatherState`, `Run.set_node_live_weather`/`lock_node_weather`); write-through + lock in `ui/views/trail.py` |

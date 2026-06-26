@@ -51,7 +51,8 @@ calls into `game/` for every number; computes none itself.
     team-wide Weather Favor (`weather_effects.ring_relation` tally ↑/·/↓), and the
     deterministic **enemy preview** via `encounter.node_encounter(run.seed, node,
     weather=…)` (boss `map_effect_id` surfaced). The **Play Next Encounter** button
-    shows only on the `CURRENT` node → `on_play_next(node)`.
+    shows only on the `CURRENT` node → `_play_next(node)`: **locks the current node's
+    weather** (`run.lock_node_weather`, T.39/V.73) before `on_play_next(node)`.
   - **Team summary** — Amber / Tempest rank / bench counts + roster rows
     (affinity dot, name, `L{level} {role}`, HP).
   - **Live weather (V.66/V.4)** — the view **owns** a T.7 `WeatherCache(ROUTE_CITY_IDS)`
@@ -64,13 +65,19 @@ calls into `game/` for every number; computes none itself.
     → `asyncio.run_coroutine_threadsafe`, the same pattern combat-view autoplay uses) —
     a bare `page.update()` from a `threading.Timer` thread is unreliable on desktop.
     A **no-key banner** ("Add one in Settings") shows when no key resolves.
-    **Display is tri-state by `CacheState` (V.66):** UNKNOWN → a `?` "weather pending"
-    chip (map label `?`, favor `— pending`) — **never a concrete weather it hasn't
-    fetched**; SUBSTITUTE → the city default weather **flagged `fallback`**; LIVE → the
-    weather badge unflagged. **No API key** (or `WeatherClient` `ValueError`) ⇒ refresher
-    skipped, so **every node stays UNKNOWN → `?`** until a key is configured. The enemy
-    preview/favor-generation still derive from the node's `default_weather`
-    deterministically (V.2) — *display* weather ≠ *game-logic* weather. The view is
+    **Display is tri-state by `node.weather_state` (T.39/V.73, was `CacheState`):**
+    UNKNOWN → a `?` "weather pending" chip (map label `?`, favor `— pending`) — **never a
+    concrete weather it hasn't fetched**; SUBSTITUTE → the city default weather **flagged
+    `fallback`**; LIVE → the weather badge unflagged. **No API key** (or `WeatherClient`
+    `ValueError`) ⇒ refresher skipped, so **every node stays UNKNOWN → `?`** until a key
+    is configured. **Persistence (T.39/V.73):** `_weather_status` reads the **persisted
+    `Run` `Node`** (not the ephemeral cache), and `_sync_cache_to_run()` (called each
+    `_render`) write-throughs fetched cache values onto the `Run` via
+    `run.set_node_live_weather` (no-op on locked nodes) — so weather **survives Trail
+    re-open + Save&Exit** instead of resetting to `?` (fixes B.33). `node.weather` is now
+    the **live-locked** game weather (no longer pinned to `default_weather`): combat Weather
+    Favor + the CHALLENGE 30% live-weather slot read it; FIGHT squad theming stays on stage
+    affinity (deterministic, V.2). The view is
     **lifecycle-bounded**: `view.data` is
     the refresher-stop handler that `main._pop` fires before popping, and **Save & Exit**
     stops it explicitly then autosaves via `save.save_run` (V.65/V.36) → menu.
@@ -83,41 +90,82 @@ calls into `game/` for every number; computes none itself.
 - **Wiring (`main.py`):** New Run → RunStart → `_push_trail`; Play Next →
   `_push_prep` (the full Prep view, T.23a); Save & Exit → autosave + `_pop` to menu.
 
-## Prep (T.23a) — `ui/views/prep.py`
+## Prep (T.23a, layout/panels T.40) — `ui/views/prep.py`
 
 The pre-combat decision layer (route `/prep`). Pure presentation over the finished
 economy/combat backend (V.63/V.1): it mutates `Run` **only** through `game/economy.py`
-/ `game/shop.py` (buy/reroll/sell/supply, `try_rank_up_with_amber`) and resolves combat
-**only** by building a `CombatSession` — it recomputes no Amber/cost/level/encounter
-number.
+/ `game/shop.py` (buy/reroll/sell/supply, `try_rank_up_with_amber`, `toggle_shop_freeze`)
+and resolves combat **only** by building a `CombatSession` — it recomputes no
+Amber/cost/level/encounter number.
 
-- **Placement → `team_positions`:** the player arranges the team on the hex board (Flet
-  `Draggable` tokens + per-cell `DragTarget`, TFT-style bench↔board) within the **allied
-  deployment zone** (columns `0..ALLIED_ZONE_MAX_Q-1` = 0–2, V.68). `run.roster` = the
-  deployable field (capped at `tempest_rank`); `run.bench` = reserves; dragging moves a
-  champion between the two lists. Each placed champion gets a `team_positions[id] = (q,r)`.
+- **TFT-style layout (T.40):** **shop on top** (full-width 5-slot rail), then three
+  columns — **left rail** = combat-weather · traits · augments · item-bench · shop-odds
+  panels; **center** = the hex board ("map") + bench below + the action row (Auto-Place /
+  Reset / Start Combat); **right** = the champion sheet (inspect) + enemy preview. Each
+  panel is a `_render()`-rebuilt holder.
+- **Placement → `Run.team_positions` (persisted, V.76):** the player arranges the team on
+  the hex board (Flet `Draggable` tokens + per-cell `DragTarget`, TFT-style bench↔board)
+  within the **allied deployment zone** (columns `0..ALLIED_ZONE_MAX_Q-1` = 0–2, V.68).
+  `run.roster` = the deployable field (capped at `tempest_rank`); `run.bench` = reserves.
+  The view **binds `team_positions = run.team_positions`** and mutates it in place, so the
+  formation **survives Prep→Combat→Prep + Save&Exit**. On entry it prunes stale ids + fills
+  new champions (`_ensure_placed`); a first-ever entry with none falls back to default
+  `assign_spawns` packing (V.62/V.2).
 - **Auto-Place / Reset** = the default packing `champion i → (i // 7, i % 7)`, mirroring
   `engine.assign_spawns` so it's **byte-identical** to `positions=None` (V.62/V.2).
 - **Shared geometry:** the hex pixel layout lives in `ui/components/board_geometry.py`
   (`cell_xy`, `COL_W`, `ROW_H`, `BOARD_W/H`), reused by the combat view — one coordinate
   source, no drift.
-- **Shop / preview / tooltips:** shop slots (`run.shop_offers`, cost via `champion_cost`),
-  deterministic enemy preview (`node_encounter`, with affinity-clash hints via
-  `ring_relation`), and a tap-to-inspect stat panel (raw sheet read off the `Champion`).
-- **Items (T.23b):** the inspect panel's item section equips/unequips through the
-  `game/inventory.py` seam (V.63, never inline): equipped chips unequip on click;
-  inventory chips equip onto the selected champion. `equip_item` **auto-combines on
-  double-equip** (the incoming item + a held component that form a recipe →
-  the combined item in one slot, `items.combine`), else fills a free slot (≤3);
-  `unequip_item` returns the item whole. Deterministic (first held partner, V.2).
+- **Shop top rail (T.40) + freeze (V.75):** horizontal 5-slot rail (`run.shop_offers`, cost
+  via `champion_cost`, owned-copy `●N` badge from `run.champion_copies`). The shop
+  **auto-rerolls on every Prep entry** (`refresh_shop(run)` at view build) — frozen slots
+  persist. Each slot has a **freeze toggle** (❄/✛ → `toggle_shop_freeze`); a frozen slot
+  shows a 2px accent border and is kept across rerolls **and** Prep phases. Clicking a slot
+  (not the freeze/Buy buttons) inspects it.
+- **Inspect panel (right):** tap-to-inspect works from **board, bench, or shop** — a shop
+  slot sets `state["shop_sel"]` → a **read-only preview** from
+  `content.build_champion_at_level(id, 1)` + Buy (`buy_from_shop` via the first matching
+  slot); an owned token sets `state["selected"]` (mutually exclusive). Shows **name ·
+  affinity · role `[role_code]` · L/T**, **trait chips** (`champ.traits`), a stat grid,
+  **copy-combine progress** (`level_from_copies` / `LEVEL_COPY_THRESHOLDS` — 3→L2, 9→L3),
+  and the **actives + passive** rendered live via `ability_text.render_for(id, champ)`
+  (name + blurb + formula, against the `Champion`'s own `.stat()`, source-of-truth B/V.38).
+  Equipped items unequip on click; the inventory **bench** lives in the left Items panel.
+- **Left-rail panels (T.40):** **Augments** — `run.active_augments` names from
+  `AUGMENT_REGISTRY` (blurb tooltips). **Traits** — `traits.preview_team_traits(placed,
+  board_cap)` (new pure tally, V.21/V.1): every trait the **placed** team carries, cleared
+  rungs highlighted + partials greyed (`count/next_threshold`), cleared-first sort. **Items**
+  — the inventory component bench; clicking a chip equips onto the selected unit via the
+  `game/inventory.py` seam (auto-combine on double-equip, V.2).
+- **Rank-up affordance:** the top-bar resources row shows `Tempest {have}/{tempest_threshold(rank)}`
+  and a **`Rank Up ({rank_up_cost_amber}⨀)`** button (disabled when unaffordable or at
+  `MAX_RANK`, with a tooltip explaining 1 Amber = 1 Tempest). All numbers read from
+  `game/economy.py` — the view computes none.
+- **Combat-weather panel:** for `node.weather` (the live-locked combat weather — frozen at
+  Prep-entry on the Trail, T.39/V.73), lists each non-CLEAR affinity ordered strongest-buff → strongest-debuff via
+  `weather_effects.ring_relation`, with the per-stat deltas summarized from
+  `weather_effects.combat_modifier(affinity, weather)` (Weather Favor the engine applies at
+  init). Team-fielded affinities are flagged. CLEAR ⇒ "no affinity favored".
+- **Shop tier-odds panel:** renders the current Tempest rank's tier distribution from
+  `shop.RANK_TIER_WEIGHTS[run.tempest_rank]` (normalized to %), beside the **next rank's**
+  for comparison. Odds are **rank-gated** (V.74) — ranking up both widens the team cap
+  and lifts/widens the tier band, so the panel quantifies exactly what an Amber rank-rush
+  buys. The note tells the player odds follow Tempest rank.
+- **Items (T.23b):** all equip/unequip routes through the `game/inventory.py` seam (V.63,
+  never inline) — the left **item bench** equips a component onto the selected unit; the
+  inspect panel's equipped chips unequip on click. `equip_item` **auto-combines on
+  double-equip** (incoming item + a held component that form a recipe → the combined item
+  in one slot, `items.combine`), else fills a free slot (≤3); `unequip_item` returns the
+  item whole. Deterministic (first held partner, V.2).
 - **Start-Combat:** `team = run.roster` placed pieces; `validate_team_positions(team,
   positions)` (`game/loadout.py`, V.68 — zone + roster-id, on top of the V.62 engine
   guard); builds `CombatSession(team, enemies, weather=node.weather, run_mods=
   RunModifiers.from_run(run), node_id, map_effect_id, positions=team_positions)` —
   shape-identical to the dev-harness producer — and hands it to the host. The
   reward/progression step (applying the `BattleResult`) is the host's job (T.15, V.64);
-  Prep only produces the input. Combat weather = the node default (deterministic, V.2),
-  decoupled from the displayed live weather (V.66).
+  Prep only produces the input. Combat weather = `node.weather` — the **live-locked** value
+  frozen at Prep-entry (T.39/V.73); reproducible because the locked value is saved (replay
+  reads the same; FIGHT squads stay on stage affinity, V.2).
 
 The combat view is **pure presentation over the replay backend** (V.56): it
 renders a fight only through `resolve_combat` + the forward `CombatReplay`

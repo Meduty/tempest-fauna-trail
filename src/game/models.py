@@ -45,6 +45,23 @@ class NodeState(str, Enum):
     CLEARED = "cleared"
 
 
+class NodeWeatherState(str, Enum):
+    """Persisted per-node weather lifecycle (T.39, V.73). Display-facing source of
+    truth on the `Run` `Node` — distinct from `api.cache.CacheState` (which lives in
+    the I/O layer; importing it here would cycle `models → api → game.route`).
+
+    UNKNOWN     — never fetched; `node.weather` holds the `default_weather`
+                  placeholder, displayed as "?" pending (never as live weather).
+    LIVE        — last fetch succeeded; `node.weather` is the live value.
+    SUBSTITUTE  — last fetch failed (or a lock froze an unfetched node); `node.weather`
+                  holds `default_weather`, displayed flagged as a fallback.
+    """
+
+    UNKNOWN = "unknown"
+    LIVE = "live"
+    SUBSTITUTE = "substitute"
+
+
 class RunStatus(str, Enum):
     IN_PROGRESS = "in_progress"
     VICTORY = "victory"
@@ -358,12 +375,19 @@ class Node:
     id: str
     index: int
     city: str
+    # `weather` is the EFFECTIVE game weather all systems read (combat Weather Favor,
+    # CHALLENGE 30% live-weather slot, CHALLENGE reward). Starts as the city
+    # `default_weather` placeholder; a live fetch overwrites it; the Prep-entry lock
+    # freezes it (T4 §2, V.73). `weather_state` carries the freshness the value can't
+    # (never-fetched vs real); `weather_locked` freezes the node (refresher skips it).
     weather: WeatherState
     node_type: NodeType = NodeType.FIGHT
     state: NodeState = NodeState.UPCOMING
     enemy_pool_id: str | None = None
     reward_table_id: str | None = None
     augment_pool_id: str | None = None
+    weather_state: NodeWeatherState = NodeWeatherState.UNKNOWN
+    weather_locked: bool = False
 
     def __post_init__(self) -> None:
         if self.index < 1:
@@ -380,6 +404,8 @@ class Node:
             "enemy_pool_id": self.enemy_pool_id,
             "reward_table_id": self.reward_table_id,
             "augment_pool_id": self.augment_pool_id,
+            "weather_state": self.weather_state.value,
+            "weather_locked": self.weather_locked,
         }
 
     @classmethod
@@ -394,6 +420,12 @@ class Node:
             enemy_pool_id=payload.get("enemy_pool_id"),
             reward_table_id=payload.get("reward_table_id"),
             augment_pool_id=payload.get("augment_pool_id"),
+            # pre-T.39 saves lack these → UNKNOWN/False (re-fetch live on next Trail
+            # open; no schema bump needed, V.73).
+            weather_state=_parse_enum(
+                NodeWeatherState, payload.get("weather_state", "unknown"), "weather_state"
+            ),
+            weather_locked=payload.get("weather_locked", False),
         )
 
 
@@ -715,6 +747,10 @@ class Run:
     # 9 copies → L3). shop_offers holds the 5 current slots (None = bought/empty).
     champion_copies: dict[str, int] = field(default_factory=dict)
     shop_offers: list[str | None] = field(default_factory=list)
+    # Per-slot freeze (TFT-style): a frozen slot is **not** rerolled on reroll and
+    # **persists across Prep phases** (the per-node auto-refresh keeps it). Parallel
+    # to shop_offers; default all-False, save-persisted. Buying/empty clears it.
+    shop_frozen: list[bool] = field(default_factory=list)
     shop_rerolls: int = 0
     # Augment system (T.31). active_augments holds picked augment ids in run order;
     # augment_state carries quest progress + RUN-scope flags (e.g. trait_bonus,
@@ -727,6 +763,11 @@ class Run:
     # Hearts — survivable-loss counter (T.38, V.71). A non-win costs one Heart;
     # run ends (DEFEAT) only at 0 (or a boss/final-node loss). Plain int, no RNG.
     hearts: int = 3
+    # Persisted board placement (Prep). champion id -> (q, r) cell; survives
+    # Prep→Combat→Prep and Save&Exit so the player's formation sticks between
+    # fights. Stale ids (sold/benched champions) are pruned by the Prep view on
+    # entry; serialized as nested lists (JSON has no tuples).
+    team_positions: dict[str, tuple[int, int]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.schema_version < 1:
@@ -828,6 +869,42 @@ class Run:
         next_node.state = NodeState.CURRENT
         self.current_node_index = next_node.index
 
+    def set_node_live_weather(
+        self, node_index: int, weather: WeatherState, *, is_substitute: bool
+    ) -> None:
+        """Write a fetched live/substitute weather onto a node (T.39, V.73).
+
+        The Trail's cache→`Run` write-through calls this; the cache/refresher never
+        touch game state (V.10). **No-op on a locked node** — once the current node
+        locks at Prep-entry, the refresher keeps refreshing the city but its value is
+        frozen here. Idempotent. Unknown ``node_index`` is silently ignored (the
+        refresher may tick over a node set not present)."""
+        for node in self.route:
+            if node.index == node_index:
+                if node.weather_locked:
+                    return
+                node.weather = weather
+                node.weather_state = (
+                    NodeWeatherState.SUBSTITUTE if is_substitute else NodeWeatherState.LIVE
+                )
+                return
+
+    def lock_node_weather(self, node_index: int) -> WeatherState:
+        """Freeze a node's weather for the rest of the run (T.39, V.73).
+
+        Fired at the Trail→Prep transition for the current node. An ``UNKNOWN`` node
+        (never fetched — no API key / fetch not landed) freezes its ``default_weather``
+        placeholder flagged ``SUBSTITUTE`` (V.13 fail path — no client needed).
+        Idempotent: a second call is a no-op. Returns the frozen weather."""
+        for node in self.route:
+            if node.index == node_index:
+                if not node.weather_locked:
+                    if node.weather_state is NodeWeatherState.UNKNOWN:
+                        node.weather_state = NodeWeatherState.SUBSTITUTE
+                    node.weather_locked = True
+                return node.weather
+        raise ValueError(f"No route node with index {node_index} to lock.")
+
     def is_complete(self) -> bool:
         return self.status in {RunStatus.VICTORY, RunStatus.DEFEAT}
 
@@ -842,6 +919,7 @@ class Run:
             "tempest_rank": self.tempest_rank,
             "champion_copies": dict(self.champion_copies),
             "shop_offers": list(self.shop_offers),
+            "shop_frozen": list(self.shop_frozen),
             "shop_rerolls": self.shop_rerolls,
             "active_augments": list(self.active_augments),
             "augment_state": self.augment_state,
@@ -854,6 +932,8 @@ class Run:
             "content_version": self.content_version,
             "difficulty_coefficient": self.difficulty_coefficient,
             "hearts": self.hearts,
+            # (q, r) tuples → nested lists for JSON (V.36).
+            "team_positions": {cid: [q, r] for cid, (q, r) in self.team_positions.items()},
         }
 
     @classmethod
@@ -881,10 +961,16 @@ class Run:
             tempest_rank=payload.get("tempest_rank", 1),
             champion_copies=dict(payload.get("champion_copies", {})),
             shop_offers=list(payload.get("shop_offers", [])),
+            shop_frozen=list(payload.get("shop_frozen", [])),
             shop_rerolls=payload.get("shop_rerolls", 0),
             active_augments=list(payload.get("active_augments", [])),
             augment_state=dict(payload.get("augment_state", {})),
             content_version=payload.get("content_version", "1.0.0"),
             difficulty_coefficient=payload.get("difficulty_coefficient", 1.0),
             hearts=payload.get("hearts", 3),  # pre-T.38 saves → default 3 (V.71)
+            # nested lists → (q, r) tuples; pre-positions saves default to empty.
+            team_positions={
+                cid: tuple(cell)
+                for cid, cell in payload.get("team_positions", {}).items()
+            },
         )

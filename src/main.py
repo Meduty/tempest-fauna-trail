@@ -93,8 +93,13 @@ def _push_prep(page: ft.Page, run, node) -> None:
     preview + tooltips over the finished economy/combat backend (V.63). Start-Combat
     builds a `CombatSession` and opens the combat view; on any exit the reward step
     applies the resolved result (commit-on-start, V.69) and shows the reward panel."""
+    from src.game.save import default_save_dir, save_run
     from src.ui.views.combat import build_combat_view
     from src.ui.views.prep import build_prep_view
+
+    # Persist the Prep-entry weather lock (the Trail froze the current node's weather
+    # in-memory; durable-save it now so the locked value survives quit/Continue — V.65/V.73).
+    save_run(run, default_save_dir() / f"{run.run_id}.json")
 
     def _open_combat(session) -> None:
         page.views.append(build_combat_view(

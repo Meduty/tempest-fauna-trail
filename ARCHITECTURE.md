@@ -305,6 +305,16 @@ B: window `[current+1..+6]`; C: uniform random) → bounded API usage, staleness
 `substitute` (V.3, V.13). Key via `OPENWEATHER_API_KEY`, **never logged** (V.3). All HTTP
 on a worker thread (V.4).
 
+**Persistence (T.39, V.73).** The cache is the fetch-scheduling/freshness layer; the
+**persisted source of truth is the `Run` `Node`**: each node carries `weather` (the
+effective game weather — `default_weather` placeholder until a live fetch overwrites it),
+`weather_state: NodeWeatherState` {`unknown`/`live`/`substitute`}, and `weather_locked`.
+The Trail writes fetched cache values onto the `Run` via the pure game-side mutators
+`Run.set_node_live_weather` / `Run.lock_node_weather` only (cache/refresher stay stateless
+re: game, V.10). The **current** node's weather **locks at the Trail→Prep transition** (frozen
+for the run; refresher skips locked nodes) — so live weather reaches combat (Weather Favor,
+CHALLENGE rolls) while staying byte-identical across the fight + reward (load-bearing for V.70).
+
 ---
 
 ## 11. UI & visualization (mostly planned)
@@ -408,8 +418,9 @@ depend on it:
 ## 15. End-to-end: what happens in one fight
 
 1. Player advances to a node; `encounter.py` generates the enemy squad from the seed;
-   `formation.py` places them; the node's weather is read (from `Run`'s frozen snapshot,
-   or fetched + locked via the API layer).
+   `formation.py` places them; the node's weather is read from the persisted `Node`
+   (`node.weather` — live values written through from the cache while on the Trail, then
+   **frozen by the Prep-entry lock**, T.39/V.73).
 2. `resolve_combat(team, enemies, weather)` is called.
 3. `compile_loadout` builds runtime `Piece`s, applies **Weather Favor** to base stats,
    subscribes passive `Hook`s to a fresh `EventBus`, wires boss phase/death hooks.
