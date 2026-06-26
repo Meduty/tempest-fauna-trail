@@ -76,7 +76,7 @@ TIER_GOLD = "#FFD54F"
 
 # Custom SVG glyph for physical damage / the swashbuckler (no fitting Material
 # icon). Path is relative to the Flet assets dir (src/assets); tinted via
-# ft.Image(color=...).
+# ft.Image(color=..., color_blend_mode=SRC_IN) — see iconography._asset_icon.
 SWORD_ICON_ASSET: str = "icons/sword.svg"
 
 # --- Role Icons (one glyph per champion role, shown next to the piece name) ---

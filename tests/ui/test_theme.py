@@ -94,12 +94,19 @@ class TestTraitIcons:
         )
 
     def test_weather_traits_reuse_affinity_glyph(self):
-        # The six weather-themed Callings must read identically to their affinity.
+        # All six weather-themed Callings must read identically to their affinity
+        # (SPEC V.81 + docs/live/systems/ui.md).
         from src.ui.theme import TRAIT_ICONS
 
-        assert TRAIT_ICONS["Frostbound"] == AFFINITY_ICONS[WeatherState.SNOW]
-        assert TRAIT_ICONS["Sunlit"] == AFFINITY_ICONS[WeatherState.CLEAR]
-        assert TRAIT_ICONS["Stormfed"] == AFFINITY_ICONS[WeatherState.RAIN]
+        for trait, weather in (
+            ("Frostbound", WeatherState.SNOW),
+            ("Galvanized", WeatherState.THUNDER),
+            ("Overcast", WeatherState.CLOUDY),
+            ("Shrouded", WeatherState.MIST),
+            ("Stormfed", WeatherState.RAIN),
+            ("Sunlit", WeatherState.CLEAR),
+        ):
+            assert TRAIT_ICONS[trait] == AFFINITY_ICONS[weather], trait
 
 
 class TestRoleIcons:
