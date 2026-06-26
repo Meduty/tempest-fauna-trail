@@ -506,8 +506,7 @@ def build_prep_view(
             ft.Column(
                 [
                     ft.Row([
-                        ft.Container(width=10, height=10, border_radius=5,
-                                     bgcolor=AFFINITY_COLORS[cdef.affinity]),
+                        affinity_marker(cdef.affinity, size=14),
                         ft.Text(cdef.name, size=FONT_SIZE_CAPTION, color=TEXT_PRIMARY,
                                 expand=True, no_wrap=True),
                         ft.Container(
