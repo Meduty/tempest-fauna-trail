@@ -272,6 +272,14 @@ class TestIconography:
         assert isinstance(g, ft.Icon) and g.icon == ROLE_ICONS["tank"]
         assert role_glyph("not_a_role") is None
 
+    def test_role_glyph_swashbuckler_uses_sword_asset(self):
+        # Swashbuckler is a duelist — no Material blade, so a custom sword asset.
+        from src.ui.components.iconography import role_glyph
+        from src.ui.theme import SWORD_ICON_ASSET
+
+        g = role_glyph("swashbuckler")
+        assert isinstance(g, ft.Image) and g.src == SWORD_ICON_ASSET
+
     def test_stat_glyph_known_and_unknown(self):
         from src.ui.components.iconography import stat_glyph
         from src.ui.theme import STAT_ICONS

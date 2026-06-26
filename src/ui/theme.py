@@ -74,6 +74,11 @@ TIER_BRONZE = "#CD7F32"
 TIER_SILVER = "#C0C0C0"
 TIER_GOLD = "#FFD54F"
 
+# Custom SVG glyph for physical damage / the swashbuckler (no fitting Material
+# icon). Path is relative to the Flet assets dir (src/assets); tinted via
+# ft.Image(color=...).
+SWORD_ICON_ASSET: str = "icons/sword.svg"
+
 # --- Role Icons (one glyph per champion role, shown next to the piece name) ---
 # Keys MUST match the roster's role vocabulary (guarded by a UI test).
 ROLE_ICONS: dict[str, str] = {
@@ -84,8 +89,13 @@ ROLE_ICONS: dict[str, str] = {
     "spellblade": ft.Icons.FLARE,
     "spellslinger": ft.Icons.BUBBLE_CHART,
     "support": ft.Icons.VOLUNTEER_ACTIVISM,
-    "swashbuckler": ft.Icons.SAILING,
     "tank": ft.Icons.SHIELD,
+}
+
+# Roles whose glyph is a custom SVG asset (no fitting Material icon). The
+# swashbuckler is a duelist/swordsman — Material has no blade, so reuse the sword.
+ROLE_ICON_ASSETS: dict[str, str] = {
+    "swashbuckler": SWORD_ICON_ASSET,
 }
 
 # --- Stat Icons (glyph per stat, keyed by lowercased short label) ---
@@ -143,10 +153,6 @@ ABILITY_TAG_ICONS: dict[str, str] = {
     "ultimate": ft.Icons.AUTO_AWESOME,
     "evasion": ft.Icons.VISIBILITY_OFF,
 }
-
-# Custom SVG glyph for physical damage (no fitting Material icon). Path is
-# relative to the Flet assets dir (src/assets); tinted via ft.Image(color=...).
-SWORD_ICON_ASSET: str = "icons/sword.svg"
 
 # --- Semantic Palette ---
 BG = "#1C1C1E"

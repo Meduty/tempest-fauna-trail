@@ -107,10 +107,11 @@ class TestRoleIcons:
         # Every role the roster actually uses must have a glyph (guards ROLE_ICONS
         # against a new role slipping in without an icon).
         from src.game.content import CHAMPION_DEF_BY_ID, build_champion_at_level
-        from src.ui.theme import ROLE_ICONS
+        from src.ui.theme import ROLE_ICON_ASSETS, ROLE_ICONS
 
         roles = {build_champion_at_level(cid, 1).role for cid in CHAMPION_DEF_BY_ID}
-        missing = {r for r in roles if r.lower() not in ROLE_ICONS}
+        known = set(ROLE_ICONS) | set(ROLE_ICON_ASSETS)
+        missing = {r for r in roles if r.lower() not in known}
         assert not missing, f"roles without an icon: {missing}"
 
 

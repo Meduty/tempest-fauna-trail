@@ -23,6 +23,7 @@ from src.ui.theme import (
     DANGER,
     FONT_MONO,
     FONT_SIZE_CAPTION,
+    ROLE_ICON_ASSETS,
     ROLE_ICONS,
     STAT_ICONS,
     SUCCESS,
@@ -137,13 +138,18 @@ def trait_glyph(
 # --------------------------------------------------------------------------
 def role_glyph(
     role: str, *, size: int = 15, color: str = TEXT_MUTED,
-) -> ft.Icon | None:
+) -> ft.Control | None:
     """The champion-role glyph (assassin/mage/tank/…), or ``None`` for an unknown
-    role. Tooltipped by the caller. Shown next to a piece's name."""
-    icon = ROLE_ICONS.get(role.lower())
-    if icon is None:
-        return None
-    g = ft.Icon(icon, size=size, color=color)
+    role. Some roles (swashbuckler) use a custom SVG asset; the rest a Material
+    icon. Tooltipped by the role name. Shown next to a piece's name."""
+    asset = ROLE_ICON_ASSETS.get(role.lower())
+    if asset is not None:
+        g: ft.Control = ft.Image(src=asset, width=size, height=size, color=color)
+    else:
+        icon = ROLE_ICONS.get(role.lower())
+        if icon is None:
+            return None
+        g = ft.Icon(icon, size=size, color=color)
     g.tooltip = role.capitalize()
     return g
 
