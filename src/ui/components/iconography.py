@@ -144,7 +144,7 @@ def role_glyph(
     icon. Tooltipped by the role name. Shown next to a piece's name."""
     asset = ROLE_ICON_ASSETS.get(role.lower())
     if asset is not None:
-        g: ft.Control = ft.Image(src=asset, width=size, height=size, color=color)
+        g: ft.Control = _asset_icon(asset, size=size, color=color)
     else:
         icon = ROLE_ICONS.get(role.lower())
         if icon is None:
@@ -197,11 +197,20 @@ def _norm(word: str) -> str:
     return re.sub(r"[^a-z]", "", word.lower())
 
 
+def _asset_icon(src: str, *, size: int, color: str) -> ft.Image:
+    """A tinted SVG-asset glyph. ``SRC_IN`` replaces the asset's opaque pixels with
+    ``color`` regardless of the SVG's own fill, so tinting is reliable cross-platform."""
+    return ft.Image(
+        src=src, width=size, height=size,
+        color=color, color_blend_mode=ft.BlendMode.SRC_IN,
+    )
+
+
 def _effect_icon(key: str, *, size: int, color: str) -> ft.Control | None:
     """The glyph for an effect/stat key — physical damage from the custom sword
     asset (no fitting Material glyph), everything else a tinted Material icon."""
     if key == "physical":
-        return ft.Image(src=SWORD_ICON_ASSET, width=size, height=size, color=color)
+        return _asset_icon(SWORD_ICON_ASSET, size=size, color=color)
     icon = ABILITY_TAG_ICONS.get(key) or STAT_ICONS.get(key)
     return ft.Icon(icon, size=size, color=color) if icon else None
 

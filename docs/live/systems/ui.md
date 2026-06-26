@@ -456,10 +456,45 @@ opens the admin panel. Quit → `page.window.destroy()`.
   (pure `*_specs` data fn + canvas builder, asserts data not pixels); no dependency on
   Flet's removed core chart widgets (`ft.BarChart`/`LineChart`/`PieChart`, ≥0.85).
 
+## Iconography — `ui/components/iconography.py` + `ui/theme.py` maps
+
+Shared glyph + tone helpers so every affinity / weather / trait / role / stat /
+ability-effect state pairs **colour with a glyph** (colourblind-safe, reads at a
+glance). Pure presentation; canonical token maps live in `theme.py`, behaviour in
+`iconography.py`.
+
+- **Token maps (`theme.py`):** `AFFINITY_ICONS` (== `WeatherState`, also used by
+  `weather_badge`), `TRAIT_ICONS` (one per `TRAIT_REGISTRY` id; the six weather
+  Callings reuse their affinity glyph) + `TRAIT_ICON_FALLBACK`, `ROLE_ICONS` +
+  `ROLE_ICON_ASSETS` (swashbuckler → the sword asset), `STAT_ICONS`,
+  `ABILITY_TAG_ICONS`, `TIER_BRONZE/SILVER/GOLD`, `SWORD_ICON_ASSET`
+  (`icons/sword.svg` — physical damage + swashbuckler; Material has no blade).
+- **Helpers (`iconography.py`):** `affinity_glyph`/`affinity_marker`, `favor_tone`
+  + `clash_marker`/`clash_legend` (buff green ▲ / debuff red ▼ / neutral),
+  `trait_glyph` (tier-coloured by rungs cleared, greyed when dormant), `role_glyph`
+  (Image for asset roles, Icon otherwise), `stat_glyph`, `rich_tooltip` (dark card +
+  tone border — Flet tooltips are single-style, so structure carries meaning via
+  markers), and **`inline_effect_text`** — renders blurb prose with effect glyphs
+  **inline** at the keyword (`"deal 120 physical damage ⚔ to the target"`), via a
+  word-walk + two-word phrase map (`physical damage`, `move speed`, …) laid out in a
+  wrapping Row.
+- **Consumers:** Prep (enemy preview, weather panel, shop slots, item tooltips,
+  infocard role/affinity/trait glyphs + stat-grid + inline ability blurbs), Combat
+  (trait panel + inspect affinity glyph), Trail (enemy preview), `affinity_chip`,
+  `weather_badge`, `trait_synergies_panel`.
+- **Drift guards (tests):** every `TRAIT_REGISTRY` trait has a `TRAIT_ICONS` entry,
+  every `WeatherState` an `AFFINITY_ICONS` entry, every roster role an icon in
+  `ROLE_ICONS`/`ROLE_ICON_ASSETS`, and the sword asset exists on disk.
+- **Combat infocard gap:** the combat inspect renders `PieceView` (no `role`/
+  `traits`/ability blurbs — abilities are a string tooltip), so it only gets the
+  affinity glyph today; full parity with the Prep infocard waits on the combat-view
+  rework (plumb role/traits onto `PieceView` or share an infocard component).
+
 ## File map
 
 | Concern | File |
 |---|---|
+| Shared iconography (glyph/tone helpers, inline effect text) | `src/ui/components/iconography.py`, `src/ui/theme.py` |
 | `CombatSession` + pure cue/queue model (`build_playback`) | `src/ui/combat_playback.py` |
 | Combat view (canvas board, stepper drive loop, inspect, end panel) | `src/ui/views/combat.py` |
 | Prep view (placement + shop + bench + preview + tooltips, T.23a) | `src/ui/views/prep.py` |
