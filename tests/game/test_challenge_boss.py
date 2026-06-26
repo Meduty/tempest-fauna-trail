@@ -100,7 +100,7 @@ class TestChallengeReward:
 
     def test_component_offer_is_valid_base_component(self):
         # Reward components MUST come from the recipe vocabulary, else they have
-        # no recipe and can never fuse (B.34, V.74). Source of truth = items.base.
+        # no recipe and can never fuse (B.34, V.77). Source of truth = items.base.
         for stage in STAGES:
             _, reward = generate_challenge(42, stage.index * 10, stage)
             assert reward.component_offer in BASE_COMPONENTS
@@ -235,7 +235,7 @@ class TestChallengeAffinityDistribution:
             assert ws in AFFINITY_THEMED_COMPONENT, f"Missing themed component for {ws}"
 
     def test_reward_components_are_recipe_vocabulary(self):
-        """B.34/V.74 guard: every reward component (themed + random pool) is a
+        """B.34/V.77 guard: every reward component (themed + random pool) is a
         real recipe input. The T.21 reward vocab once drifted from the T.29a
         recipe vocab, so granted components could never fuse."""
         from src.game.encounter import _BASE_COMPONENTS
@@ -246,7 +246,7 @@ class TestChallengeAffinityDistribution:
             assert comp in BASE_COMPONENTS, f"random-pool component {comp!r} has no recipe"
 
     def test_any_two_reward_components_fuse(self):
-        """Any pair of reward components must combine into a real item (V.74) —
+        """Any pair of reward components must combine into a real item (V.77) —
         the player-facing promise that two components fuse."""
         comps = sorted(set(AFFINITY_THEMED_COMPONENT.values()))
         for a in comps:

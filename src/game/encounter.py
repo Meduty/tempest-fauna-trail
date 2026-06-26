@@ -602,7 +602,7 @@ CHALLENGE_TEAM_SIZE: Final[dict[int, int]] = {
 # Base components thematically linked to each affinity (challenge reward).
 # IDs are drawn from the recipe vocabulary (`items.base.BASE_COMPONENTS`) so the
 # granted component actually has recipes — equipping two reward components must
-# fuse via `items.combine` (B.34, V.74). The flavour mirrors each component's
+# fuse via `items.combine` (B.34, V.77). The flavour mirrors each component's
 # stat theme in `items/combined.py`.
 AFFINITY_THEMED_COMPONENT: Final[dict[WeatherState, str]] = {
     WeatherState.CLEAR:   "fang",        # +STR, direct power — the sunlit warrior
