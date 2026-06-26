@@ -26,7 +26,7 @@ from src.api.refresher import WeatherRefresher
 from src.api.weather import WeatherClient
 from src.app_config import resolve_api_key
 from src.game.encounter import node_encounter
-from src.game.models import Node, NodeState, NodeType, Run, WeatherState
+from src.game.models import Node, NodeState, NodeType, NodeWeatherState, Run, WeatherState
 from src.game.route import CITIES, ROUTE_CITY_IDS, city_id_for_node
 from src.game.weather_effects import RingRelation, ring_relation
 from src.ui.components.weather_badge import weather_badge
@@ -82,18 +82,35 @@ def build_trail_view(
     api_key = resolve_api_key()
     client = WeatherClient(api_key=api_key) if api_key else None
 
-    def _weather_status(node: Node) -> tuple[CacheState, WeatherState | None]:
-        """Cache state + displayed weather for ``node``.
+    def _sync_cache_to_run() -> None:
+        """Write-through fetched cache weather into the persisted ``Run`` (T.39, V.73).
 
-        UNKNOWN ⇒ ``(UNKNOWN, None)`` — the live value is **not yet known**, so the
-        view shows a ``"?"`` placeholder rather than the city default (the default
-        is for game logic only, never passed off as live data). LIVE/SUBSTITUTE ⇒
-        the cached weather + its state (SUBSTITUTE is flagged as a fallback).
-        """
-        entry = cache.get(city_id_for_node(node.index))
-        if entry.state is not CacheState.UNKNOWN and entry.result is not None:
-            return entry.state, entry.result.state
-        return CacheState.UNKNOWN, None
+        The ``Run`` `Node` is the source of truth for display + game logic; the cache
+        is the fetch-scheduling/freshness layer. For every node, copy a non-UNKNOWN
+        cache entry onto the node via the pure game-side mutator (a no-op on a locked
+        node — the refresher keeps refreshing the city but the value stays frozen,
+        V.10/V.73). Cheap (≤50 reads), run before each render."""
+        for node in run.route:
+            entry = cache.get(city_id_for_node(node.index))
+            if entry.state is CacheState.UNKNOWN or entry.result is None:
+                continue
+            run.set_node_live_weather(
+                node.index, entry.result.state,
+                is_substitute=entry.state is CacheState.SUBSTITUTE,
+            )
+
+    def _weather_status(node: Node) -> tuple[NodeWeatherState, WeatherState | None]:
+        """Persisted weather state + displayed weather for ``node`` (T.39, V.73).
+
+        Reads the **persisted ``Run`` ``Node``** (not the ephemeral cache) so weather
+        survives Trail re-open + Save&Exit. UNKNOWN ⇒ ``(UNKNOWN, None)`` — the live
+        value is **not yet known**, so the view shows ``"?"`` rather than the city
+        default (the default backs game logic only, never shown as live data).
+        LIVE/SUBSTITUTE ⇒ the node's weather + state (SUBSTITUTE flags a fallback;
+        a locked node reads its frozen LIVE/SUBSTITUTE value)."""
+        if node.weather_state is NodeWeatherState.UNKNOWN:
+            return NodeWeatherState.UNKNOWN, None
+        return node.weather_state, node.weather
 
     def _map_weather(node: Node) -> WeatherState | None:
         """Map-label weather: the known value, else ``None`` (renders ``"?"``)."""
@@ -116,6 +133,7 @@ def build_trail_view(
         _render()
 
     def _render() -> None:
+        _sync_cache_to_run()  # persist latest fetched weather onto Run before paint (V.73)
         map_holder.content = build_route_map(
             run, _map_weather, _on_select, selected_index=state["selected"]
         )
@@ -220,7 +238,7 @@ def build_trail_view(
                 padding=ft.Padding(left=8, right=8, top=4, bottom=4),
             )
         row = [weather_badge(weather=wx, size="sm")]
-        if cstate is CacheState.SUBSTITUTE:  # fetch failed → city default, flagged
+        if cstate is NodeWeatherState.SUBSTITUTE:  # fetch failed → city default, flagged
             row.append(ft.Text("fallback", size=FONT_SIZE_CAPTION, color=WARNING))
         return ft.Row(row, spacing=SPACING_XS, tight=True)
 
@@ -254,7 +272,7 @@ def build_trail_view(
             controls.append(
                 ft.FilledButton(
                     "Play Next Encounter ▶",
-                    on_click=lambda _e: on_play_next(node),
+                    on_click=lambda _e: _play_next(node),
                     style=ft.ButtonStyle(bgcolor=ACCENT),
                 )
             )
@@ -348,6 +366,13 @@ def build_trail_view(
     def _save_exit() -> None:
         _stop_refresher()
         on_save_exit()
+
+    def _play_next(node: Node) -> None:
+        """Trail→Prep transition. Lock the current node's weather (V.73) so it stops
+        refreshing and is frozen for the fight + reward (load-bearing for V.70
+        byte-identity), then hand off to the host (which saves — V.65)."""
+        run.lock_node_weather(run.current_node_index)
+        on_play_next(node)
 
     # `main._pop` fires `view.data(None)` before popping → stops the worker thread.
     view.data = _stop_refresher

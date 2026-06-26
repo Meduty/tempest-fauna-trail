@@ -353,3 +353,30 @@ class TestGenerateNodeReward:
         a = generate_node_reward(123, node)
         b = generate_node_reward(123, node)
         assert a == b
+
+    def test_lock_keeps_challenge_weather_stable_across_refresh(self) -> None:
+        """V.73 is load-bearing for V.70: once node.weather is live/mutable, locking
+        before the fight keeps the CHALLENGE squad roll and reward byte-identical even
+        if a refresher tick lands mid-fight."""
+        from src.game.encounter import generate_node_reward, node_encounter
+        from src.game.models import NodeState, NodeType, Run, RunStatus
+
+        node = self._node(NodeType.CHALLENGE)
+        node.state = NodeState.CURRENT
+        run = Run(
+            run_id="r", schema_version=1, seed=7, status=RunStatus.IN_PROGRESS,
+            roster=[], bench=[], route=[node], current_node_index=node.index,
+        )
+        run.set_node_live_weather(node.index, WeatherState.THUNDER, is_substitute=False)
+        run.lock_node_weather(node.index)
+
+        before_squad = [(e.name, e.affinity, e.tier) for e in node_encounter(7, node).enemies]
+        before_reward = generate_node_reward(7, node)
+
+        # Refresher tick tries to change the weather after lock → must be ignored.
+        run.set_node_live_weather(node.index, WeatherState.CLEAR, is_substitute=False)
+        assert node.weather == WeatherState.THUNDER
+
+        after_squad = [(e.name, e.affinity, e.tier) for e in node_encounter(7, node).enemies]
+        assert before_squad == after_squad
+        assert before_reward == generate_node_reward(7, node)

@@ -222,3 +222,85 @@ def test_penetration_fields_roundtrip_and_validate() -> None:
 
     with pytest.raises(ValueError, match="penetration_pct"):
         Champion.from_dict({**champ.to_dict(), "penetration_pct": 1.5})
+
+
+# --- T.39 — persistent node weather lifecycle + Prep-entry lock (V.73) ---------
+
+def test_node_weather_lifecycle_defaults_and_roundtrip() -> None:
+    """New fields default to UNKNOWN/False and round-trip through to_dict/from_dict."""
+    from src.game.models import NodeWeatherState
+
+    node = Node(id="n", index=1, city="X", weather=WeatherState.CLEAR)
+    assert node.weather_state is NodeWeatherState.UNKNOWN
+    assert node.weather_locked is False
+
+    node.weather_state = NodeWeatherState.LIVE
+    node.weather_locked = True
+    loaded = Node.from_dict(node.to_dict())
+    assert loaded.weather_state is NodeWeatherState.LIVE
+    assert loaded.weather_locked is True
+
+
+def test_node_weather_backcompat_pre_t39_save() -> None:
+    """Pre-T.39 payloads (fields absent) load as UNKNOWN/False — no schema bump."""
+    from src.game.models import NodeWeatherState
+
+    payload = {
+        "id": "node_01", "index": 1, "city": "Reykjavik",
+        "weather": "snow", "node_type": "fight", "state": "current",
+    }
+    node = Node.from_dict(payload)
+    assert node.weather_state is NodeWeatherState.UNKNOWN
+    assert node.weather_locked is False
+    assert node.weather == WeatherState.SNOW
+
+
+def test_set_node_live_weather_sets_state() -> None:
+    from src.game.models import NodeWeatherState
+
+    run = _make_run()
+    run.set_node_live_weather(1, WeatherState.THUNDER, is_substitute=False)
+    assert run.route[0].weather == WeatherState.THUNDER
+    assert run.route[0].weather_state is NodeWeatherState.LIVE
+
+    run.set_node_live_weather(2, WeatherState.MIST, is_substitute=True)
+    assert run.route[1].weather == WeatherState.MIST
+    assert run.route[1].weather_state is NodeWeatherState.SUBSTITUTE
+
+
+def test_set_node_live_weather_is_noop_on_locked_node() -> None:
+    run = _make_run()
+    frozen = run.lock_node_weather(1)
+    # Refresher tick tries to overwrite a locked node → ignored.
+    run.set_node_live_weather(1, WeatherState.CLOUDY, is_substitute=False)
+    assert run.route[0].weather == frozen  # unchanged
+
+
+def test_lock_node_weather_freezes_and_is_idempotent() -> None:
+    from src.game.models import NodeWeatherState
+
+    run = _make_run()
+    # Node 1 fetched LIVE first → lock preserves the live value + state.
+    run.set_node_live_weather(1, WeatherState.RAIN, is_substitute=False)
+    assert run.lock_node_weather(1) == WeatherState.RAIN
+    assert run.route[0].weather_locked is True
+    assert run.route[0].weather_state is NodeWeatherState.LIVE
+    # Second call: no-op.
+    assert run.lock_node_weather(1) == WeatherState.RAIN
+
+
+def test_lock_unknown_node_freezes_default_as_substitute() -> None:
+    """Locking a never-fetched node freezes default_weather flagged SUBSTITUTE (V.13)."""
+    from src.game.models import NodeWeatherState
+
+    run = _make_run()  # node 1 starts UNKNOWN, weather=SNOW (the placeholder)
+    assert run.route[0].weather_state is NodeWeatherState.UNKNOWN
+    assert run.lock_node_weather(1) == WeatherState.SNOW
+    assert run.route[0].weather_state is NodeWeatherState.SUBSTITUTE
+    assert run.route[0].weather_locked is True
+
+
+def test_lock_node_weather_unknown_index_raises() -> None:
+    run = _make_run()
+    with pytest.raises(ValueError, match="No route node with index 99"):
+        run.lock_node_weather(99)
