@@ -246,9 +246,13 @@ class TestChallengeAffinityDistribution:
             assert comp in BASE_COMPONENTS, f"random-pool component {comp!r} has no recipe"
 
     def test_any_two_reward_components_fuse(self):
-        """Any pair of reward components must combine into a real item (V.77) —
-        the player-facing promise that two components fuse."""
-        comps = sorted(set(AFFINITY_THEMED_COMPONENT.values()))
+        """Any pair of *grantable* reward components must combine into a real
+        item (V.77) — the player-facing promise that two components fuse. Covers
+        the full reward surface: themed components AND the random reward pool
+        (`_BASE_COMPONENTS`), since either can be granted."""
+        from src.game.encounter import _BASE_COMPONENTS
+
+        comps = sorted(set(AFFINITY_THEMED_COMPONENT.values()) | set(_BASE_COMPONENTS))
         for a in comps:
             for b in comps:
                 assert combine(a, b) is not None, f"{a}+{b} does not fuse"
