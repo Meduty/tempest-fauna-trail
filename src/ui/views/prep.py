@@ -64,6 +64,7 @@ from src.game.weather_effects import (
 )
 from src.ui.combat_playback import CombatSession
 from src.ui.components.board_geometry import BOARD_H, BOARD_W, COL_W, ROW_H, cell_xy
+from src.ui.components.trait_synergies import trait_synergies_panel
 from src.ui.components.weather_badge import weather_badge
 from src.ui.theme import (
     ACCENT,
@@ -596,28 +597,11 @@ def build_prep_view(
     # --- traits panel (T.28a) --------------------------------------------------
     def _build_traits() -> ft.Control:
         """Live trait synergies for the **placed** team (preview_team_traits, V.21).
-        Cleared rungs are highlighted; partials greyed (TFT-style)."""
+        Active synergies read prominently, dormant ones greyed (TFT-style) — via
+        the shared ``trait_synergies_panel`` component (also used by Combat)."""
         placed = [c for c in run.roster if c.id in team_positions]
         previews = preview_team_traits(placed, board_cap=len(placed)) if placed else []
-        rows: list[ft.Control] = [
-            ft.Text("Traits", size=FONT_SIZE_H3, color=TEXT_PRIMARY,
-                    weight=ft.FontWeight.BOLD),
-        ]
-        if not previews:
-            rows.append(ft.Text("Place units to see synergies.",
-                                size=FONT_SIZE_CAPTION, color=TEXT_MUTED))
-        for tp in previews:
-            cleared = tp.threshold > 0
-            target = tp.next_threshold if tp.next_threshold is not None else tp.threshold
-            rows.append(ft.Row([
-                ft.Container(width=6, height=6, border_radius=3,
-                             bgcolor=SUCCESS if cleared else SURFACE_ELEVATED),
-                ft.Text(tp.trait, size=11, no_wrap=True, expand=True,
-                        color=TEXT_PRIMARY if cleared else TEXT_MUTED),
-                ft.Text(f"{tp.count}/{target}", size=11,
-                        color=SUCCESS if cleared else TEXT_MUTED),
-            ], spacing=SPACING_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER))
-        return ft.Column(rows, spacing=2)
+        return trait_synergies_panel(previews)
 
     # --- items bench (T.23b) — inventory components, click to equip on selected -
     def _build_items() -> ft.Control:
@@ -676,15 +660,43 @@ def build_prep_view(
             buffed = rel in (RingRelation.SELF, RingRelation.PRIMARY_PREDATOR,
                              RingRelation.SECONDARY_PREDATOR)
             tone = SUCCESS if buffed else DANGER
-            mine = " ◀ you" if aff in team_affs else ""
-            rows.append(ft.Row([
+            mine = aff in team_affs
+            # Header: affinity + a tone-tinted favor badge; "◀ you" flags own stakes.
+            header = ft.Row([
                 ft.Container(width=8, height=8, border_radius=4,
                              bgcolor=AFFINITY_COLORS[aff]),
-                ft.Text(aff.value, size=11, color=TEXT_PRIMARY, width=58, no_wrap=True),
-                ft.Text(_FAVOR_LABEL[rel], size=10, color=tone, width=96, no_wrap=True),
-                ft.Text(deltas or "—", size=10, color=TEXT_MUTED, expand=True),
-                ft.Text(mine, size=10, color=ACCENT, weight=ft.FontWeight.BOLD),
-            ], spacing=SPACING_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER))
+                ft.Text(aff.value, size=11, color=TEXT_PRIMARY, no_wrap=True,
+                        weight=ft.FontWeight.BOLD),
+                ft.Container(
+                    ft.Text(_FAVOR_LABEL[rel], size=9, color=tone, no_wrap=True),
+                    bgcolor=ft.Colors.with_opacity(0.15, tone),
+                    border_radius=CARD_RADIUS,
+                    padding=ft.Padding(left=6, right=6, top=1, bottom=1),
+                ),
+                ft.Container(expand=True),
+                *([ft.Text("◀ you", size=10, color=ACCENT,
+                           weight=ft.FontWeight.BOLD)] if mine else []),
+            ], spacing=SPACING_XS, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+            # Stat deltas as discrete chips — size to content, never char-wrap.
+            chips = [
+                ft.Container(
+                    ft.Text(part, size=10, color=tone, no_wrap=True),
+                    bgcolor=SURFACE,
+                    border_radius=CARD_RADIUS,
+                    padding=ft.Padding(left=5, right=5, top=1, bottom=1),
+                )
+                for part in (deltas.split(", ") if deltas else [])
+            ] or [ft.Text("—", size=10, color=TEXT_MUTED)]
+            rows.append(ft.Container(
+                ft.Column([
+                    header,
+                    ft.Row(chips, spacing=4, wrap=True, run_spacing=4),
+                ], spacing=4),
+                bgcolor=SURFACE_ELEVATED,
+                border=ft.Border(left=ft.BorderSide(2, tone)),
+                border_radius=CARD_RADIUS,
+                padding=ft.Padding(left=8, right=8, top=5, bottom=5),
+            ))
         return ft.Column(rows, spacing=SPACING_XS)
 
     # --- shop tier-odds panel (SPEC §D.15 / §V.20) -----------------------------

@@ -108,6 +108,12 @@ class TraitPreview:
     count: int               # unique carriers (V.21)
     threshold: int           # highest cleared breakpoint (0 = below the first rung)
     next_threshold: int | None  # next rung to clear, or None at the top rung
+    thresholds: tuple[int, ...] = ()  # full rung ladder, ascending (TFT-style pips)
+
+    @property
+    def active(self) -> bool:
+        """True once at least one breakpoint is cleared (TFT 'active' synergy)."""
+        return self.threshold > 0
 
 
 def preview_team_traits(
@@ -138,7 +144,7 @@ def preview_team_traits(
         )
         cleared = max((t for t in thresholds if count >= t), default=0)
         nxt = next((t for t in thresholds if t > count), None)
-        out.append(TraitPreview(tag, count, cleared, nxt))
+        out.append(TraitPreview(tag, count, cleared, nxt, tuple(thresholds)))
     out.sort(key=lambda p: (p.threshold == 0, p.trait))
     return out
 

@@ -22,6 +22,8 @@ import flet as ft
 import flet.canvas as cv
 
 from src.game.ability_text import TICKS_PER_SECOND, render_for
+from src.game.traits import preview_team_traits
+from src.ui.components.trait_synergies import trait_synergies_panel
 from src.ui.components.board_geometry import (
     BOARD_H,
     BOARD_W,
@@ -806,12 +808,11 @@ def build_combat_view(
             "Augments: " + (", ".join(augs) if augs else "none"),
             size=11, color=TEXT_MUTED, selectable=True,
         ))
-        if result.trait_activations:
-            controls.append(ft.Text("Cleared traits:", size=11, color=TEXT_MUTED))
-            controls.extend(
-                ft.Text(f"• {tid} ({n}) ≥{thr}", size=11, color=TEXT_MUTED)
-                for tid, n, thr in result.trait_activations
-            )
+        # Trait synergies for the fielded team — same TFT-style panel as Prep,
+        # so active vs dormant reads identically across views.
+        team_previews = preview_team_traits(list(session.team))
+        if team_previews:
+            controls.append(trait_synergies_panel(team_previews, title="Synergies"))
         inspect_col.controls = controls
 
     # ---------- combat-end panel ----------
