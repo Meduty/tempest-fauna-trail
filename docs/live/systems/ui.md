@@ -364,7 +364,12 @@ Zones (views_spec §7.3):
   tooltip). **Sudden-death** (tick ≥ `SUDDEN_DEATH_TICK`): header badge + board
   border tint + a `DANGER` divider in the queue.
 - **Autoplay = real-time (T.12b):** `_autoplay_loop` advances one step then
-  `_play_step` drips DOTs + action paced by the tick gap (1s ≈ 1s, clamped).
+  `_play_step` drips DOTs + action paced by the tick gap (1s ≈ 1s, clamped). After the
+  action reveals, autoplay **holds it on screen for a real-time dwell** (`_ACTION_DWELL_S`,
+  gated on an action/footprint beat; `anim_token`-interrupt-guarded) before advancing —
+  the canvas FX (swoosh/arrow) + floating damage numbers have no client-side tween, so
+  without the dwell the next step's `_advance_to` wiped them sub-frame (B.35; partial D.28
+  mitigation, not the full rework).
 - **Boss (T.12b):** `CombatSession.map_effect_id` → the view resolves via
   `resolve_boss_combat` + builds `CombatReplay(map_effect_id=…)`; the board tints
   map-effect tiles (`_CELL_COLORS` over `replay.board_cells()`). Dev harness adds a

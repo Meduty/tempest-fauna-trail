@@ -112,6 +112,12 @@ _TWEEN_MS = 250              # token glide / bar-follow animation duration
 # chronological order, and the view reveals them one at a time this far apart so a
 # move→attack→… sequence reads in order instead of flashing all at once.
 _BEAT_STAGGER_S = 0.22
+# Real-time dwell autoplay holds a fully-revealed action on screen before advancing
+# to the next step. The canvas FX (swoosh/arrow) + floating damage numbers have no
+# client-side tween to commit them like the token glide, so without a dwell the next
+# step's advance wipes them sub-frame and the fight FX never paint (autoplay showed
+# movement but no combat animations).
+_ACTION_DWELL_S = 0.55
 
 # Map-effect cell tint by kind (boss board overlay, T.12b).
 _CELL_COLORS: dict[str, str] = {
@@ -972,12 +978,26 @@ def build_combat_view(
             # staggered autoplay is deferred polish (SPEC §T.12c / §D.28) — gating
             # autoplay's beats behind the drip made single-beat steps flash sub-frame
             # ("no animations"). Manual Next keeps the in-order reveal.
-            if playback.steps[cur].footprints or any(
+            step_cur = playback.steps[cur]
+            if step_cur.footprints or any(
                 b.event_type in (EVENT_HEAL, EVENT_STATUS)
-                for b in playback.steps[cur].beats
+                for b in step_cur.beats
             ):
                 state["fp_phase"] = 1.0
                 _render()
+            # Hold the fully-revealed action on screen for a real-time dwell. The
+            # canvas FX (swoosh/arrow) + floating damage numbers have NO client-side
+            # tween to commit them like the token glide — without this dwell the next
+            # iteration's `_advance_to` wipes them sub-frame, so the fight FX never
+            # paint under autoplay (movement glides fine via animate_position). Gate
+            # on an action beat so move-only steps keep their natural gliding pace.
+            if step_cur.footprints or any(
+                b.event_type in (EVENT_ATTACK, EVENT_ABILITY, EVENT_CAST, EVENT_HEAL, EVENT_STATUS)
+                for b in step_cur.beats
+            ):
+                await asyncio.sleep(_ACTION_DWELL_S)
+                if not state["alive"] or state["anim_token"] != token:
+                    break  # Next/Prev/Pause during the dwell → stale cursor, abort
 
     def _toggle_autoplay(_e: Any) -> None:
         state["playing"] = not state["playing"]
