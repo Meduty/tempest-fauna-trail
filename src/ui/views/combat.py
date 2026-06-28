@@ -992,7 +992,7 @@ def build_combat_view(
             # paint under autoplay (movement glides fine via animate_position). Gate
             # on an action beat so move-only steps keep their natural gliding pace.
             if step_cur.footprints or any(
-                b.event_type in (EVENT_ATTACK, EVENT_ABILITY, EVENT_CAST, EVENT_HEAL, EVENT_STATUS)
+                b.event_type in (EVENT_ATTACK, EVENT_ABILITY, EVENT_CAST, EVENT_DOT, EVENT_HEAL, EVENT_STATUS)
                 for b in step_cur.beats
             ):
                 await asyncio.sleep(_ACTION_DWELL_S)
