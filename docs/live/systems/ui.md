@@ -379,8 +379,10 @@ Zones (views_spec §7.3):
   is **strictly upcoming** (`tick > now`) — the resolved tick's entries drop off the
   rail as the cursor lands on them. The entry(ies) at `Playback.next_action_tick`
   (the next step's tick — what one `Next` resolves) render **bigger + accent-bordered**
-  ("next up", `animate_size`); fixed-width row with horizontal overflow so the layout
-  never shifts. **Status pips** under each token (colour by status, stack count,
+  ("next up", `animate_size`). The strip **`expand`s to the full header width** with
+  horizontal overflow scroll (more chips visible before scrolling). The control bar
+  (Prev/Next/Autoplay/Speed/End/Restart/Exit) **`wrap`s** so it never pushes a button
+  off-screen on a narrow window. **Status pips** under each token (colour by status, stack count,
   remaining-time tooltip). **Sudden-death** (tick ≥ `SUDDEN_DEATH_TICK`): header badge +
   board border tint + a `DANGER` divider in the queue.
 - **Autoplay = fixed cadence (T.12d_b, V.56):** `_autoplay_loop` advances one step,

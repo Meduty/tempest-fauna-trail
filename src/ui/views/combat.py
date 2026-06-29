@@ -380,10 +380,11 @@ def build_combat_view(
         content=board_stack, bgcolor=SURFACE, border_radius=8,
         padding=SPACING_SM, width=_BOARD_W + SPACING_MD, height=_BOARD_H + SPACING_MD,
     )
-    # Fixed width (= board) + horizontal overflow scroll, so the queue never
-    # resizes the layout (which made the inspect panel jump erratically).
+    # Full-width top strip (T.12d_a moved it out of the left column) — `expand` so
+    # it uses the whole header width, with horizontal overflow scroll for long
+    # queues (more chips visible before scrolling).
     queue_row = ft.Row(spacing=SPACING_SM, scroll=ft.ScrollMode.AUTO, height=64,
-                       width=_BOARD_W, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+                       expand=True, vertical_alignment=ft.CrossAxisAlignment.CENTER)
     inspect_col = ft.Column(spacing=SPACING_SM, width=300, scroll=ft.ScrollMode.AUTO)
     status_text = ft.Text("", size=12, color=TEXT_MUTED)
     sudden_death_badge = ft.Container(
@@ -779,9 +780,10 @@ def build_combat_view(
 
     def _build_queue() -> None:
         # The "next up" highlight = the next step's tick (lowest upcoming action),
-        # i.e. exactly what one Next press resolves (T.12d_b).
-        next_tick = playback.next_action_tick(state["cursor"])
+        # i.e. exactly what one Next press resolves (T.12d_b) — the first upcoming
+        # entry, derived from the same list so the queue isn't projected twice.
         entries = playback.queue(state["cursor"])
+        next_tick = entries[0].tick if entries else None
         controls: list[ft.Control] = []
         last_round: int | None = None
         sd_marked = False
@@ -886,7 +888,7 @@ def build_combat_view(
             return
         outcome = result.outcome
         won = outcome == CombatOutcome.WIN
-        rounds = result.rounds if hasattr(result, "rounds") else playback.steps[-1].round + 1 if playback.steps else 0
+        rounds = result.rounds  # BattleResult always carries rounds (models.py)
 
         # Per-champion damage table (T.12d_b): one row per fielded champion,
         # dealt/taken from BattleResult's per-piece dicts, sorted by dealt desc.
@@ -1069,6 +1071,9 @@ def build_combat_view(
 
     _build_speed()
 
+    # `wrap` so the controls flow onto a second line on a narrow window instead of
+    # overflowing the centre column (which pushed Exit off-screen, under the inspect
+    # panel). No expand spacer — that forced Exit to the far edge + broke wrapping.
     controls_row = ft.Row([
         ft.OutlinedButton("◀ Prev", on_click=lambda _e: _step(-1)),
         ft.FilledButton("Next ▶", on_click=lambda _e: _step(1)),
@@ -1076,9 +1081,8 @@ def build_combat_view(
         speed_row,
         ft.OutlinedButton("⏭ End", on_click=lambda _e: _fast_forward()),
         ft.TextButton("↺ Restart", on_click=lambda _e: _restart()),
-        ft.Container(expand=True),
         ft.TextButton("Exit", on_click=lambda _e: on_exit(result)),
-    ], spacing=SPACING_SM)
+    ], spacing=SPACING_SM, wrap=True, run_spacing=SPACING_XS)
 
     # ---------- layout (mirrors Prep: top bar · queue strip · 3-column body) ----
     header = ft.Row([
