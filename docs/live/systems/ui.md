@@ -318,10 +318,9 @@ Zones (views_spec §7.3):
   augments + synergy panel moved to the **left rail** (static for the fight). Hover a
   token for the same ability blurbs as a tooltip.
 - **Floating numbers:** the step's `pre_beats` (interstitial DOTs) reveal by a
-  **tick cutoff** (`state["reveal_tick"]`) — same-tick DOTs pop together, paced
-  **real-time** (`playback_delay_s`, 1 game-s ≈ 1 real-s) via `_play_step`/
-  `page.run_task`; then the action `beats` show. Coloured by damage type (legend on
-  screen); crit = `!` + size. (T.12b)
+  **tick cutoff** (`state["reveal_tick"]`, set to the step tick on advance) — same-
+  tick DOTs show together; the action `beats` reveal one at a time via the drip
+  (below). Coloured by damage type (legend on screen); crit = `!` + size. (T.12b)
 - **Token tween (T.12b):** tokens are **keyed overlay `Container`s** (`tok-{id}`,
   HP/mana/status pips `hp-`/`mp-`/`st-{id}`) with `animate_position` → they **glide**
   between cells; canvas keeps cells + slash/arrows + numbers. On an action the
@@ -357,31 +356,40 @@ Zones (views_spec §7.3):
   Both share the footprint **pop phase** (`fp_phase`); on manual `Next` the
   per-beat drip (`_drip_action_beats`) re-seeds the grow as each heal/status beat is
   revealed, so halo/flash animate like footprint shapes.
-- **Manual step = instant** full reveal of the static truth (action + arrows +
-  numbers + dots) so the DOTs+truth show, then the tick's **action beats reveal one
-  at a time** in recorded chronological order (intra-tick stagger): `_advance_to`
-  sets `reveal_n` to the step's full beat count (static truth for backward/seek), and
-  a forward `Next` re-seeds `reveal_n = 0` and `_drip_action_beats` reveals beats
-  `1..N` `_BEAT_STAGGER_S` apart — so when **multiple pieces act on one tick** you read
-  move→attack→… in order instead of all at once. Each newly-revealed beat pops its
-  footprint/halo/flash (`fp_phase`). Interrupt-safe (`anim_token`): a rapid Next
-  aborts the drip and the next advance shows everything. The **real-time DOT drip
-  stays autoplay-only**. ⚠ **Known-rough (D.28):** the stagger is **manual-`Next`
-  only** and feels clunky; **autoplay does not stagger** — it shows the tick's beats
-  together and is flagged for a **full rework** (pacing/illegibility).
-- **Action queue active highlight:** the entry(ies) at the current step's tick
-  ("resolving now") render **bigger + accent-bordered** (`animate_size`); fixed-width
-  row with horizontal overflow so the layout never shifts.
-  **Status pips** under each token (colour by status, stack count, remaining-time
-  tooltip). **Sudden-death** (tick ≥ `SUDDEN_DEATH_TICK`): header badge + board
-  border tint + a `DANGER` divider in the queue.
-- **Autoplay = real-time (T.12b):** `_autoplay_loop` advances one step then
-  `_play_step` drips DOTs + action paced by the tick gap (1s ≈ 1s, clamped). After the
-  action reveals, autoplay **holds it on screen for a real-time dwell** (`_ACTION_DWELL_S`,
-  gated on an action/footprint beat; `anim_token`-interrupt-guarded) before advancing —
-  the canvas FX (swoosh/arrow) + floating damage numbers have no client-side tween, so
-  without the dwell the next step's `_advance_to` wiped them sub-frame (B.35; partial D.28
-  mitigation, not the full rework).
+- **Sequential intra-tick reveal (T.12d_b, the one drip path):** the engine sorts +
+  resolves a tick's actions one by one; the view mirrors that. A forward `Next` (and
+  autoplay) re-seeds `reveal_n = 0`, then `_drip_action_beats` reveals beats `1..N` in
+  recorded chronological order, **each given its animation window before the next**
+  (`_BEAT_GAP_S` ≈ the `_TWEEN_MS` tween, scaled by the speed toggle) — so when
+  **multiple pieces act on one tick** you read *A moves → B moves → A attacks → B casts*
+  in order, not all at once. Each newly-revealed beat pops its footprint/halo/flash +
+  floating number (`fp_phase`). `_advance_to` sets `reveal_n` to the full beat count for
+  backward/seek (instant static truth). Interrupt-safe (`anim_token`): a rapid Next aborts
+  the drip and the next advance shows everything. **Autoplay reuses this exact path**
+  (no separate event-paced loop), so the stagger + every FX play under autoplay too.
+- **Death linger (T.12d_b):** a piece dying *during* a tick gets a `death` beat in the
+  step. `_death_markers(step, reveal_n, action_shown)` (pure, unit-tested) returns the
+  ids dying this tick + which have had their death beat revealed: until revealed the
+  piece reads as alive; once revealed it renders a **grayed body** (`_token(dead=True)`:
+  desaturated disc + `✕`, dimmed) that **stays on the board through the rest of the
+  tick's beats** so a later same-tick hit lands on a visible body, not an empty cell.
+  Pieces that died on an **earlier** tick are skipped entirely (gone). Fixes the old
+  "vanish then get attacked" flash.
+- **Action queue (future-only + next highlight, T.12d_b):** `Playback.queue(cursor)`
+  is **strictly upcoming** (`tick > now`) — the resolved tick's entries drop off the
+  rail as the cursor lands on them. The entry(ies) at `Playback.next_action_tick`
+  (the next step's tick — what one `Next` resolves) render **bigger + accent-bordered**
+  ("next up", `animate_size`); fixed-width row with horizontal overflow so the layout
+  never shifts. **Status pips** under each token (colour by status, stack count,
+  remaining-time tooltip). **Sudden-death** (tick ≥ `SUDDEN_DEATH_TICK`): header badge +
+  board border tint + a `DANGER` divider in the queue.
+- **Autoplay = fixed cadence (T.12d_b, V.56):** `_autoplay_loop` advances one step,
+  **awaits the same `_drip_action_beats`** (sequential beats + FX), then sleeps an
+  inter-tick dwell `_TICK_GAP_S` before the next step — both gaps scaled by the
+  **speed toggle** (`0.5×`/`1×`/`2×` → `_SPEED_FACTORS`, default `1×`). Wall-clock dwell
+  over the deterministic replay, never feeding the sim (V.2/V.14). Replaces the old
+  event-paced `_play_step` + the B.35 `_ACTION_DWELL_S` band-aid (both deleted —
+  closes D.28 (1)+(2)). `anim_token`-interrupt-guarded (Next/Prev/Pause/exit aborts).
 - **Boss (T.12b):** `CombatSession.map_effect_id` → the view resolves via
   `resolve_boss_combat` + builds `CombatReplay(map_effect_id=…)`; the board tints
   map-effect tiles (`_CELL_COLORS` over `replay.board_cells()`). Dev harness adds a
@@ -394,17 +402,19 @@ Zones (views_spec §7.3):
   target** so multi-hit ticks stay legible. Ability damage shows via the `ability`
   beat (V.54), basic hits via `attack`, bleeds via `dot`, heals via `heal`.
 - **Bottom controls:** **Next ▶** (default manual step), ◀ Prev, Autoplay toggle,
-  ⏭ End (fast-forward), ↺ Restart, Exit.
-- **Combat-end panel:** outcome / survivors / damage dealt-taken / **Continue**
-  (→ `on_exit`).
+  **speed toggle** (`0.5×`/`1×`/`2×`), ⏭ End (fast-forward), ↺ Restart, Exit.
+- **Combat-end panel (T.12d_b):** outcome banner + survivors + `rounds`/timed-out
+  line + a **per-champion damage table** (one row per fielded champion — name, damage
+  dealt, damage taken, from `BattleResult.team_damage_dealt`/`_taken`, sorted by dealt
+  desc, dead marked `✕`, monospace) + **Continue** (→ `on_exit`).
 
-**Playback driver:** manual step mutates the cursor + re-renders **instantly**
-(full reveal — action + numbers + DOTs at once; no async drip to out-race a rapid
-Next). Autoplay is opt-in, an **async loop** scheduled with `page.run_task(_autoplay_loop)`
-that advances one step then `_play_step` drips the interstitial DOTs + action paced
-by the tick gap (`playback_delay_s`, 1s ≈ 1s real, clamped; event-paced not
-tick=second, V.56). It never blocks the main thread and stops on view pop /
-toggle-off (the view's on-pop handler, stashed on `view.data`, clears an `alive`
+**Playback driver:** a forward `Next` re-seeds `reveal_n = 0` then runs the async
+`_drip_action_beats` (sequential beat reveal + FX); backward/seek re-renders the full
+static truth instantly. Autoplay is opt-in, an **async loop** (`page.run_task(_autoplay_loop)`)
+that advances one step, **awaits the same drip**, then sleeps the inter-tick gap — a
+fixed real-time cadence scaled by the speed toggle (V.56; wall-clock over a
+deterministic replay, never tick=second). It never blocks the main thread and stops
+on view pop / toggle-off (the view's on-pop handler, stashed on `view.data`, clears an `alive`
 flag). Displayed durations → seconds via `TICKS_PER_SECOND` (V.39).
 
 ## `ui/views/dev_harness.py` — launcher
@@ -457,7 +467,8 @@ opens the admin panel. Quit → `page.window.destroy()`.
 
 - **V.1** — `ui/` imports `game/`, never the reverse; no `game/` logic added here.
 - **V.56** — combat view is pure presentation over the replay backend; one
-  `CombatSession`, swappable producers; event-paced playback, not tick=second.
+  `CombatSession`, swappable producers; manual event-step default, **autoplay = fixed
+  real-time cadence** (speed toggle) over the deterministic replay, not tick=second.
 - **V.57** — resource truth (HP/mana/stats/position) is the live `CombatReplay`
   stepper, **never** the event stream's partial `hp_after` (B.28). The stream is
   animation cues + action-queue projection only.

@@ -154,15 +154,38 @@ def test_combat_session_is_flet_free_value_bundle():
         s.node_id = "x"
 
 
-def test_playback_delay_is_real_time_scaled_and_clamped():
-    from src.ui.combat_playback import (
-        playback_delay_s, PLAYBACK_MAX_DELAY_S, is_sudden_death, SUDDEN_DEATH_TICK,
-    )
-    assert playback_delay_s(0, 100) == 1.0          # 100 ticks = 1 game-second ≈ 1 real-second
-    assert playback_delay_s(500, 500) == 0.0        # same tick → no delay (grouped)
-    assert playback_delay_s(0, 10_000_000) == PLAYBACK_MAX_DELAY_S  # clamped
+def test_sudden_death_threshold():
+    from src.ui.combat_playback import is_sudden_death, SUDDEN_DEATH_TICK
     assert not is_sudden_death(SUDDEN_DEATH_TICK - 1)
     assert is_sudden_death(SUDDEN_DEATH_TICK)
+
+
+def test_queue_excludes_the_resolved_tick():
+    """T.12d_b: the queue is **strictly upcoming** — once the cursor lands on a
+    step's tick, that tick's entries drop off the rail (`tick > now`, not `>=`)."""
+    result, *_ = _result()
+    pb = build_playback(result)
+    if len(pb.steps) < 2:
+        pytest.skip("fight too short")
+    cur = 0
+    now = pb.tick_at(cur)
+    q = pb.queue(cur)
+    assert all(e.tick > now for e in q)            # nothing at/before the resolved tick
+    # the opening rail (cursor -1, tick 0) still lists every real action
+    assert pb.queue(-1)  # non-empty
+    assert all(e.tick > 0 for e in pb.queue(-1))
+
+
+def test_next_action_tick_is_lowest_upcoming():
+    """`next_action_tick` = the next step's tick (what one Next press resolves)."""
+    result, *_ = _result()
+    pb = build_playback(result)
+    if len(pb.steps) < 2:
+        pytest.skip("fight too short")
+    q = pb.queue(0)
+    assert pb.next_action_tick(0) == (q[0].tick if q else None)
+    # at the last cursor nothing is upcoming
+    assert pb.next_action_tick(len(pb.steps) - 1) is None
 
 
 def test_pre_beat_ticks_groups_distinct_ticks_ascending():
@@ -241,3 +264,35 @@ def test_combat_playback_has_no_flet_import():
     import src.ui.combat_playback as mod
     src = open(mod.__file__).read()
     assert "import flet" not in src and "from flet" not in src
+
+
+def test_death_markers_linger_rule():
+    """T.12d_b — a piece dying this tick stays a (grayed) body through the tick:
+    its id is in death_idx the whole step; it only *reveals* gray once its death
+    beat is dripped (index < reveal_n) and the action is shown."""
+    from src.ui.views.combat import _death_markers
+    from src.game.combat import resolve_combat, EVENT_DEATH
+    from src.game.content import CHAMPION_ROSTER, ENEMY_ROSTER
+    from src.game.models import WeatherState
+
+    team = [CHAMPION_ROSTER["champ_aurion"]]
+    enemies = list(ENEMY_ROSTER.values())[:6]
+    pb = build_playback(resolve_combat(team, enemies, weather=WeatherState.CLEAR))
+    step = next((s for s in pb.steps
+                 if any(b.event_type == EVENT_DEATH for b in s.beats)), None)
+    if step is None:
+        pytest.skip("no death in this fight")
+    death_i = next(i for i, b in enumerate(step.beats) if b.event_type == EVENT_DEATH)
+    dead_id = step.beats[death_i].actor_id
+
+    # action not yet shown → nobody grayed, but death_idx already knows the dier
+    revealed, idx = _death_markers(step, reveal_n=len(step.beats), action_shown=False)
+    assert dead_id in idx and revealed == set()
+    # drip hasn't reached the death beat → still reads alive
+    revealed, _ = _death_markers(step, reveal_n=death_i, action_shown=True)
+    assert dead_id not in revealed
+    # death beat revealed → grayed body
+    revealed, _ = _death_markers(step, reveal_n=death_i + 1, action_shown=True)
+    assert dead_id in revealed
+    # no step → empty
+    assert _death_markers(None, 0, True) == (set(), {})

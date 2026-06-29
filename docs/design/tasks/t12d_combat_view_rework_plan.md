@@ -245,3 +245,35 @@ None — no new game numbers. UI constants only: `_AUTOPLAY_BASE_S = 0.5`, `_SPE
 ## Handoff
 1. `/spec` to apply the §10 deltas (add T.12d_a/_b rows, amend V.56, add V.82, update D.28).
 2. `/build §T.12d_a` then `/build §T.12d_b`.
+
+---
+
+## Build addendum — T.12d_b (2026-06-29), two operator-requested folds
+
+Built T.12d_b with two requirements folded in beyond §3.3/§3.4 (operator playtest
+of the T.12d_a build):
+
+1. **Sequential, animation-gated intra-tick reveal (refines §3.3).** Rather than the
+   autoplay cadence merely *reusing* the Next reveal, the **single** `_drip_action_beats`
+   path (manual + autoplay) now reveals a tick's beats **one at a time in recorded
+   order, each given its animation window before the next** — the engine resolves a
+   tick's actions sequentially, so the view plays them the same way (*A moves → B moves
+   → A attacks → B casts*). Constants: `_BEAT_GAP_S = 0.18` (intra-tick), `_TICK_GAP_S =
+   0.40` (inter-tick dwell), `_TWEEN_MS = 180` (was 250, so the glide finishes inside the
+   beat gap); both gaps scaled by `_SPEED_FACTORS` (the §3.3 speed toggle). The old
+   event-paced `_play_step` + the B.35 `_ACTION_DWELL_S` band-aid are **deleted** — one
+   reveal path now, closing D.28 (1)+(2) together.
+2. **Death linger (new — not in original §3.x).** On a piece's death beat the token
+   turns into a **grayed body** (`_token(dead=True)`) and **stays on the board through
+   the rest of that tick's beats**, removed only when the cursor leaves the tick — so a
+   later same-tick hit lands on a visible body instead of an empty cell (the old
+   immediate-vanish let FX paint on nothing). Decision rule extracted to the pure,
+   unit-tested `_death_markers(step, reveal_n, action_shown)`.
+
+**Queue:** `Playback.queue` → `tick > now` (strictly upcoming) + `next_action_tick`;
+chips highlight the **next** step ("next up"), not the resolved tick. **End panel:**
+per-champion damage table (dealt/taken, sorted, dead marked `✕`) + rounds line.
+**Determinism:** all wall-clock/render only — sims byte-identical (1533 tests pass).
+No §B (planned polish; the death-vanish was a known cosmetic gap, not a regression).
+`combat_playback` dead pacing (`playback_delay_s`/`PLAYBACK_SPEED`/`PLAYBACK_MAX_DELAY_S`)
+removed; `pre_beat_ticks` kept (still groups interstitial DOTs).
