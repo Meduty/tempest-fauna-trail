@@ -107,6 +107,25 @@ def test_inspect_midfight_does_not_finalize_combat():
     assert any(v.alive and v.is_enemy for v in views)
 
 
+def test_piece_view_surfaces_role_and_traits():
+    """PieceView carries display-only role + the fielded trait set (V.82, T.12d_a)
+    so the combat infocard renders role/trait glyphs: a champion piece its role +
+    base traits, an enemy piece its role + empty traits. Never read by combat math."""
+    team, enemies, weather = _aurion_fight()
+    by_id = {v.id: v for v in inspect_at_tick(team, enemies, weather, tick=0)}
+
+    champ = team[0]
+    assert champ.role  # the source model carries a role
+    cview = by_id[champ.id]
+    assert cview.role == champ.role
+    assert cview.traits == tuple(champ.traits)
+
+    enemy = enemies[0]
+    eview = by_id[enemy.id]
+    assert eview.role == enemy.role
+    assert eview.traits == ()  # enemies field no traits (loadout.py)
+
+
 # --- T.12b: boss path (resolve_boss_combat promoted to src, V.59) ----------
 
 

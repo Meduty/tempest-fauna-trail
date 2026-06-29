@@ -22,9 +22,16 @@ import flet as ft
 import flet.canvas as cv
 
 from src.game.ability_text import TICKS_PER_SECOND, render_for
+from src.game.describe import render_item
 from src.game.traits import preview_team_traits
-from src.ui.components.iconography import affinity_marker
+from src.ui.components.infocard import (
+    PieceInfo,
+    infocard_abilities,
+    infocard_header,
+    infocard_stat_grid,
+)
 from src.ui.components.trait_synergies import trait_synergies_panel
+from src.ui.components.weather_badge import weather_badge
 from src.ui.components.board_geometry import (
     BOARD_H,
     BOARD_W,
@@ -41,6 +48,7 @@ from src.game.combat import (
     EVENT_ABILITY,
     EVENT_ATTACK,
     EVENT_CAST,
+    EVENT_DEATH,
     EVENT_DOT,
     EVENT_HEAL,
     EVENT_STATUS,
@@ -59,8 +67,6 @@ from src.ui.combat_playback import (
     build_playback,
     classify_intent,
     is_sudden_death,
-    playback_delay_s,
-    pre_beat_ticks,
 )
 from src.ui.components.meter_bar import meter_bar
 from src.ui.theme import (
@@ -106,18 +112,17 @@ _BAR_W = 34
 _BOARD_W = BOARD_W
 _BOARD_H = BOARD_H
 
-_TWEEN_MS = 250              # token glide / bar-follow animation duration
-# Delay between consecutive action beats *within one tick* (intra-tick stagger).
-# Multiple pieces can act on the same tick; the engine records their beats in
-# chronological order, and the view reveals them one at a time this far apart so a
-# move→attack→… sequence reads in order instead of flashing all at once.
-_BEAT_STAGGER_S = 0.22
-# Real-time dwell autoplay holds a fully-revealed action on screen before advancing
-# to the next step. The canvas FX (swoosh/arrow) + floating damage numbers have no
-# client-side tween to commit them like the token glide, so without a dwell the next
-# step's advance wipes them sub-frame and the fight FX never paint (autoplay showed
-# movement but no combat animations).
-_ACTION_DWELL_S = 0.55
+_TWEEN_MS = 180              # token glide / bar-follow / FX-pop animation duration
+# Sequential reveal cadence (T.12d_b). The engine sorts + resolves actions one by
+# one; the view mirrors that — within a tick it reveals each beat in recorded
+# (chronological) order, **one at a time, each beat's animation given time to play
+# before the next** (`_BEAT_GAP_S` ≈ the tween window), so a move→attack→cast
+# sequence reads as A moves → B moves → A attacks → B casts. **Between** ticks a
+# larger dwell (`_TICK_GAP_S`) separates one action moment from the next. Fast feel,
+# tunable. The 0.5×/1×/2× speed toggle scales both gaps via `_SPEED_FACTORS`.
+_BEAT_GAP_S = 0.18           # intra-tick: gap between consecutive beats of one tick
+_TICK_GAP_S = 0.40           # inter-tick: dwell after a tick's beats, before advancing
+_SPEED_FACTORS = {"0.5×": 2.0, "1×": 1.0, "2×": 0.5}  # multiplies both gaps
 
 # Map-effect cell tint by kind (boss board overlay, T.12b).
 _CELL_COLORS: dict[str, str] = {
@@ -265,6 +270,30 @@ class _ViewStatSource:
         return float(self._stats.get(name, 0.0))
 
 
+def _death_markers(
+    step: Any, reveal_n: int, action_shown: bool,
+) -> tuple[set[str], dict[str, int]]:
+    """Death-this-tick bookkeeping for the board (T.12d_b). Returns
+    `(revealed_death_ids, death_beat_index_by_id)` for the current `step`:
+
+    - `death_beat_index_by_id` — every piece with a `death` beat in this step, mapped
+      to that beat's index (so the render knows which pieces die *this* tick and can
+      keep them on the board instead of vanishing them).
+    - `revealed_death_ids` — those whose death beat has already been revealed by the
+      intra-tick drip (`index < reveal_n`, only once the action is shown) → render a
+      grayed body; the rest still read as alive until their death beat lands.
+
+    Pure (no Flet, no view state) so the linger rule is unit-testable + drift-safe."""
+    if step is None:
+        return set(), {}
+    death_idx: dict[str, int] = {}
+    for i, b in enumerate(step.beats):
+        if b.event_type == EVENT_DEATH and b.actor_id not in death_idx:
+            death_idx[b.actor_id] = i
+    revealed = {aid for aid, i in death_idx.items() if action_shown and i < reveal_n}
+    return revealed, death_idx
+
+
 def build_combat_view(
     page: ft.Page,
     session: CombatSession,
@@ -302,12 +331,19 @@ def build_combat_view(
     name_by_id: dict[str, str] = {c.id: c.name for c in session.team}
     name_by_id.update({e.id: e.name for e in session.enemies})
     champ_by_id = {c.id: c for c in session.team}
-    # Ability ids per piece (active + passive) for hover tooltips.
+    # Ability ids per piece — `abilities_by_id` (active+passive flat) for hover
+    # tooltips; `actives_by_id`/`passive_by_id` split for the shared infocard core.
     abilities_by_id: dict[str, list[str]] = {}
+    actives_by_id: dict[str, tuple[str, ...]] = {}
+    passive_by_id: dict[str, str] = {}
     for _unit in (*session.team, *session.enemies):
-        ids = list(getattr(_unit, "active_abilities", []) or [])
-        if getattr(_unit, "passive_ability", ""):
-            ids.append(_unit.passive_ability)
+        acts = tuple(getattr(_unit, "active_abilities", []) or [])
+        passive = getattr(_unit, "passive_ability", "") or ""
+        actives_by_id[_unit.id] = acts
+        passive_by_id[_unit.id] = passive
+        ids = list(acts)
+        if passive:
+            ids.append(passive)
         abilities_by_id[_unit.id] = ids
 
     def _ability_tooltip(pv: PieceView) -> str:
@@ -332,7 +368,11 @@ def build_combat_view(
         "anim_token": 0,       # invalidates an in-flight pre-beat drip on re-advance
         "fp_phase": 1.0,       # footprint-shape pop phase 0→1 (0 = tiny+clear seed, 1 = full). Cosmetic only.
         "reveal_n": 0,         # action beats of the current step revealed so far (intra-tick stagger)
+        "speed": "1×",         # autoplay cadence multiplier key (_SPEED_FACTORS)
     }
+
+    def _speed_factor() -> float:
+        return _SPEED_FACTORS.get(state["speed"], 1.0)
 
     # --- controls that get rebuilt each render ---
     board_stack = ft.Stack(width=_BOARD_W, height=_BOARD_H)
@@ -340,10 +380,12 @@ def build_combat_view(
         content=board_stack, bgcolor=SURFACE, border_radius=8,
         padding=SPACING_SM, width=_BOARD_W + SPACING_MD, height=_BOARD_H + SPACING_MD,
     )
-    # Fixed width (= board) + horizontal overflow scroll, so the queue never
-    # resizes the layout (which made the inspect panel jump erratically).
+    # Full-width top strip (T.12d_a moved it out of the left column). Fixed height +
+    # horizontal overflow scroll; wrapped in a full-width Container at assembly so it
+    # uses the whole header width WITHOUT `expand` (which, on a Row inside a Column,
+    # expands the *main* (vertical) axis and ballooned the strip's height).
     queue_row = ft.Row(spacing=SPACING_SM, scroll=ft.ScrollMode.AUTO, height=64,
-                       width=_BOARD_W, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+                       vertical_alignment=ft.CrossAxisAlignment.CENTER)
     inspect_col = ft.Column(spacing=SPACING_SM, width=300, scroll=ft.ScrollMode.AUTO)
     status_text = ft.Text("", size=12, color=TEXT_MUTED)
     sudden_death_badge = ft.Container(
@@ -391,13 +433,31 @@ def build_combat_view(
         state["reveal_n"] = len(_new_step.beats) if _new_step is not None else 0
 
     # ---------- board ----------
-    def _token(p: PieceView, cx: float, cy: float, offx: float = 0.0, offy: float = 0.0) -> ft.Control:
+    def _token(p: PieceView, cx: float, cy: float, offx: float = 0.0, offy: float = 0.0,
+               *, dead: bool = False) -> ft.Control:
         """Keyed overlay token (circle + initials). Keyed by piece id + given
         `animate_position` so a position change between renders **glides** (canvas
         shapes can't animate). `offx`/`offy` lunge the attacker toward its target
         on an action step (tweens out, returns next step). Doubles as the
-        click/inspect hit-target."""
+        click/inspect hit-target. `dead` → a **grayed-out body** (death-this-tick
+        marker, T.12d_b): the token stays on the board, desaturated + dimmed + ✕,
+        through the rest of the tick's beats so later same-tick FX land on a visible
+        body instead of an empty cell; removed once the cursor leaves the tick."""
         selected = p.id == state["selected"]
+        if dead:
+            return ft.Container(
+                key=f"tok-{p.id}",
+                left=cx - _TOKEN_R + offx, top=cy - _TOKEN_R + offy,
+                width=_TOKEN_R * 2, height=_TOKEN_R * 2,
+                border_radius=_TOKEN_R, bgcolor=SURFACE_ELEVATED, opacity=0.55,
+                border=ft.Border.all(2, TEXT_MUTED),
+                alignment=ft.Alignment.CENTER,
+                content=ft.Text("✕", size=14, weight=ft.FontWeight.BOLD, color=TEXT_MUTED),
+                on_click=lambda _e, pid=p.id: _select(pid),
+                tooltip=f"{name_by_id.get(p.id, p.id)} — defeated",
+                animate_opacity=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
+                animate_position=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
+            )
         return ft.Container(
             key=f"tok-{p.id}",
             left=cx - _TOKEN_R + offx, top=cy - _TOKEN_R + offy,
@@ -460,6 +520,13 @@ def build_combat_view(
         # chronological order) are drawn — the forward drip reveals them in turn so
         # multiple pieces acting on one tick animate in sequence, not all at once.
         revealed = step.beats[:state["reveal_n"]] if (action_shown and step is not None) else []
+
+        # Death-this-tick markers (T.12d_b) — see `_death_markers`: a piece dying
+        # *during* this tick reads as alive until its death beat is revealed, then
+        # grays out but **stays on the board** through the rest of the tick's beats
+        # (so a later same-tick hit lands on a visible body, not an empty cell).
+        # Pieces that died on an earlier tick are absent entirely.
+        revealed_deaths, death_idx = _death_markers(step, state["reveal_n"], action_shown)
 
         # Effect lines + attacker lunge — driven off the *effect* beats (attack/
         # ability/heal), NOT the `cast` activation marker (whose target is the
@@ -601,9 +668,15 @@ def build_combat_view(
                     ))
 
         for p in pieces:
-            if not p.alive:
-                continue
+            dies_this_tick = p.id in death_idx
+            if not p.alive and not dies_this_tick:
+                continue  # died on an earlier tick → already gone from the board
             cx, cy = _cell_xy(p.q, p.r)
+            # Gray body once this tick's death beat is revealed; until then (and for
+            # living pieces) render normally.
+            if dies_this_tick and p.id in revealed_deaths:
+                overlays.append(_token(p, cx, cy, dead=True))
+                continue  # no HP/mana/status bars on a defeated body
             ox, oy = lunge.get(p.id, (0.0, 0.0))
             overlays.append(_token(p, cx, cy, ox, oy))
             overlays.append(ft.Container(
@@ -682,8 +755,9 @@ def build_combat_view(
 
     # ---------- action queue ----------
     def _queue_chip(entry: QueueEntry, active: bool) -> ft.Control:
-        """One queue entry. `active` = currently resolving (this step's tick) →
-        bigger + accent highlight so the player sees what's being resolved."""
+        """One queue entry. `active` = the **next** step's action(s) (lowest upcoming
+        tick) → bigger + accent highlight so the player sees what a Next press will
+        resolve. The queue is strictly-upcoming (resolved entries drop off, T.12d_b)."""
         is_move = entry.is_move
         label = _initials(name_by_id.get(entry.actor_id, entry.actor_id))
         icon = "→" if is_move else ("✦" if entry.kind == EVENT_CAST else "⚔")
@@ -701,13 +775,16 @@ def build_combat_view(
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER, tight=True,
             ),
             tooltip=f"{name_by_id.get(entry.actor_id, entry.actor_id)} · {entry.kind} · {_secs(entry.tick)}"
-            + (" · resolving now" if active else ""),
+            + (" · next up" if active else ""),
             animate_size=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
         )
 
     def _build_queue() -> None:
-        now = playback.tick_at(state["cursor"])
+        # The "next up" highlight = the next step's tick (lowest upcoming action),
+        # i.e. exactly what one Next press resolves (T.12d_b) — the first upcoming
+        # entry, derived from the same list so the queue isn't projected twice.
         entries = playback.queue(state["cursor"])
+        next_tick = entries[0].tick if entries else None
         controls: list[ft.Control] = []
         last_round: int | None = None
         sd_marked = False
@@ -724,7 +801,7 @@ def build_combat_view(
                     width=2, height=44, bgcolor=ACCENT,
                     tooltip=f"round {e.round + 1}",
                 ))
-            controls.append(_queue_chip(e, active=(e.tick == now and state["cursor"] >= 0)))
+            controls.append(_queue_chip(e, active=(e.tick == next_tick)))
             last_round = e.round
         if not controls:
             controls = [ft.Text("— no upcoming actions —", size=12, color=TEXT_MUTED)]
@@ -738,97 +815,69 @@ def build_combat_view(
             spacing=SPACING_SM,
         )
 
+    def _piece_info(pv: PieceView) -> PieceInfo:
+        """Normalize a live `PieceView` into the shared `PieceInfo` (V.82). Stats
+        format the piece's current *effective* values; abilities render against
+        `_ViewStatSource(pv)` so blurbs track the live STR/AS ramp (V.38/V.57)."""
+        def _fmt(key: str) -> str:
+            v = pv.stats.get(key, 0.0)
+            if key in ("crit_chance", "penetration_pct"):
+                return f"{v * 100:.0f}%"
+            return f"{v:.0f}"
+
+        role_part = f" · {pv.role}" if pv.role else ""
+        subtitle = (f"{pv.affinity.value}{role_part} · {'enemy' if pv.is_enemy else 'ally'}"
+                    + (" · summon" if pv.summon else ""))
+        return PieceInfo(
+            name=name_by_id.get(pv.id, pv.id),
+            affinity=pv.affinity, role=pv.role, traits=tuple(pv.traits),
+            primary_stats=(("STR", _fmt("strength")), ("INT", _fmt("intelligence")),
+                           ("AS", _fmt("attack_speed")), ("armor", _fmt("armor")),
+                           ("res", _fmt("resistance")), ("range", _fmt("attack_range"))),
+            premium_stats=(("MS", _fmt("move_speed")), ("MR", _fmt("mana_regen")),
+                           ("crit", _fmt("crit_chance")), ("pen", _fmt("penetration")),
+                           ("pen%", _fmt("penetration_pct")), ("threat", _fmt("threat"))),
+            actives=actives_by_id.get(pv.id, ()), passive=passive_by_id.get(pv.id, ""),
+            stat_src=_ViewStatSource(pv), subtitle=subtitle,
+        )
+
     def _build_inspect(pieces: list[PieceView]) -> None:
         controls: list[ft.Control] = []
         sel = state["selected"]
         pv = next((p for p in pieces if p.id == sel), None)
         if pv is not None:
-            aff_glyph = affinity_marker(pv.affinity, size=18)
-            aff_glyph.tooltip = pv.affinity.value.capitalize()
-            controls.append(ft.Row([
-                ft.Text(
-                    name_by_id.get(pv.id, pv.id), size=15, weight=ft.FontWeight.BOLD,
-                    color=AFFINITY_COLORS.get(pv.affinity, TEXT_PRIMARY), expand=True,
-                ),
-                aff_glyph,
-            ], vertical_alignment=ft.CrossAxisAlignment.START))
-            controls.append(ft.Text(
-                f"{pv.affinity.value} · {'enemy' if pv.is_enemy else 'ally'}"
-                + (" · summon" if pv.summon else ""),
-                size=11, color=TEXT_MUTED,
-            ))
+            info = _piece_info(pv)
+            # Shared identity header (role/affinity/trait glyphs, V.82) + the live
+            # current-HP/barrier line (a combat-only extra over the core).
+            controls.append(infocard_header(info))
             controls.append(_stat_row("HP", f"{pv.hp} / {pv.max_hp}"))
             if pv.barrier_total:
                 controls.append(_stat_row("barrier", str(pv.barrier_total)))
-
-            # Two-column stat block: primary (combat) | premium (mr/pen/crit/…).
-            def _fmt(key: str) -> str:
-                v = pv.stats.get(key, 0.0)
-                if key in ("crit_chance", "penetration_pct"):
-                    return f"{v * 100:.0f}%"
-                return f"{v:.0f}"
-
-            primary = [("STR", "strength"), ("INT", "intelligence"), ("AS", "attack_speed"),
-                       ("armor", "armor"), ("res", "resistance"), ("range", "attack_range")]
-            premium = [("MS", "move_speed"), ("MR", "mana_regen"), ("crit", "crit_chance"),
-                       ("pen", "penetration"), ("pen%", "penetration_pct"), ("threat", "threat")]
-            controls.append(ft.Row([
-                ft.Column([_stat_row(lbl, _fmt(k), label_w=48) for lbl, k in primary],
-                          spacing=SPACING_XS, expand=True),
-                ft.Column([_stat_row(lbl, _fmt(k), label_w=48) for lbl, k in premium],
-                          spacing=SPACING_XS, expand=True),
-            ], spacing=SPACING_SM))
+            # Shared effective-stat grid, then live per-slot mana + statuses.
+            controls.append(infocard_stat_grid(info))
             for i, slot in enumerate(pv.mana):
                 controls.append(_stat_row(
                     f"mana[{i}]", f"{slot.current_mana} / {slot.max_mana} (cost {slot.mana_cost})"))
             for st in pv.statuses:
                 controls.append(_stat_row(
                     st.status_id, f"x{st.stacks} · {_secs(st.remaining_ticks)}"))
-            # Abilities (active + passive) with live-rendered descriptions — for
-            # any piece (team or enemy), against its current effective stats.
-            abil_ids = abilities_by_id.get(pv.id, [])
-            if abil_ids:
-                src = _ViewStatSource(pv)
+            # Shared ability blurbs (inline effect icons, live stats, V.82).
+            abil = infocard_abilities(info)
+            if abil:
                 controls.append(ft.Divider(height=8))
-                controls.append(ft.Text("Abilities", size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY))
-                for aid in abil_ids:
-                    rendered = render_for(aid, src)
-                    if rendered is None:
-                        continue
-                    controls.append(ft.Text(rendered.name, size=11, weight=ft.FontWeight.BOLD, color=ACCENT))
-                    controls.append(ft.Text(rendered.text, size=11, color=TEXT_MUTED))
-                    if rendered.formula:
-                        controls.append(ft.Text(
-                            rendered.formula, size=10, color=TEXT_MUTED, font_family=FONT_MONO))
+                controls.extend(abil)
+            # Items — read-only authored names (Prep keeps the interactive chips).
             champ = champ_by_id.get(pv.id)
-            if champ is not None:
-                if champ.items:
-                    controls.append(ft.Divider(height=8))
-                    controls.append(ft.Text("Items", size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY))
-                    controls.extend(ft.Text(f"• {i}", size=11, color=TEXT_MUTED) for i in champ.items)
-                if champ.traits:
-                    controls.append(ft.Text("Traits", size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY))
-                    controls.extend(ft.Text(f"• {t}", size=11, color=TEXT_MUTED) for t in champ.traits)
+            if champ is not None and champ.items:
+                controls.append(ft.Divider(height=8))
+                controls.append(ft.Text("Items", size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY))
+                for iid in champ.items:
+                    rendered = render_item(iid)
+                    controls.append(ft.Text(
+                        f"• {rendered.name if rendered is not None else iid}",
+                        size=11, color=TEXT_MUTED))
         else:
             controls.append(ft.Text("Click a piece to inspect.", size=12, color=TEXT_MUTED))
-
-        # global panel: active augments + cleared traits
-        controls.append(ft.Divider(height=12))
-        controls.append(ft.Text("Team", size=13, weight=ft.FontWeight.BOLD, color=ACCENT))
-        augs = list(getattr(session.run_mods, "augments", []) or [])
-        controls.append(ft.Text(
-            "Augments: " + (", ".join(augs) if augs else "none"),
-            size=11, color=TEXT_MUTED, selectable=True,
-        ))
-        # Trait synergies for the fielded team — same TFT-style panel as Prep,
-        # so active vs dormant reads identically across views. Pass the augment
-        # Crest/Crown trait bonus (same source loadout uses, V.21) so the panel
-        # matches what combat actually cleared.
-        _aug_state = getattr(session.run_mods, "augment_state", None) or {}
-        team_previews = preview_team_traits(
-            list(session.team), bonus_counts=_aug_state.get("trait_bonus"))
-        if team_previews:
-            controls.append(trait_synergies_panel(team_previews, title="Synergies"))
         inspect_col.controls = controls
 
     # ---------- combat-end panel ----------
@@ -840,8 +889,28 @@ def build_combat_view(
             return
         outcome = result.outcome
         won = outcome == CombatOutcome.WIN
-        dealt = sum(result.team_damage_dealt.values())
-        taken = sum(result.team_damage_taken.values())
+        rounds = result.rounds  # BattleResult always carries rounds (models.py)
+
+        # Per-champion damage table (T.12d_b): one row per fielded champion,
+        # dealt/taken from BattleResult's per-piece dicts, sorted by dealt desc.
+        def _cell(txt: str, w: int, color: str = TEXT_PRIMARY, bold: bool = False) -> ft.Control:
+            return ft.Text(txt, size=11, color=color, width=w, font_family=FONT_MONO,
+                           weight=ft.FontWeight.BOLD if bold else None, no_wrap=True)
+
+        rows: list[ft.Control] = [ft.Row([
+            _cell("Champion", 150, TEXT_MUTED, True), _cell("Dealt", 64, TEXT_MUTED, True),
+            _cell("Taken", 64, TEXT_MUTED, True),
+        ], spacing=SPACING_SM)]
+        survivors = set(result.surviving_team_ids)
+        for c in sorted(session.team, key=lambda c: result.team_damage_dealt.get(c.id, 0), reverse=True):
+            alive = c.id in survivors
+            rows.append(ft.Row([
+                _cell(("" if alive else "✕ ") + name_by_id.get(c.id, c.id), 150,
+                      TEXT_PRIMARY if alive else TEXT_MUTED),
+                _cell(str(result.team_damage_dealt.get(c.id, 0)), 64),
+                _cell(str(result.team_damage_taken.get(c.id, 0)), 64),
+            ], spacing=SPACING_SM))
+
         end_overlay.content = ft.Container(
             padding=SPACING_LG, border_radius=8, bgcolor=SURFACE_ELEVATED,
             content=ft.Column([
@@ -851,10 +920,12 @@ def build_combat_view(
                     color=SUCCESS if won else DANGER,
                 ),
                 ft.Text(f"Survivors — team {len(result.surviving_team_ids)} · "
-                        f"enemy {len(result.surviving_enemy_ids)}", size=12, color=TEXT_MUTED),
-                ft.Text(f"Damage dealt {dealt} · taken {taken}"
+                        f"enemy {len(result.surviving_enemy_ids)} · {rounds} rounds"
                         + (" · timed out" if result.timed_out else ""),
                         size=12, color=TEXT_MUTED),
+                ft.Divider(height=8),
+                ft.Column(rows, spacing=2, tight=True),
+                ft.Divider(height=8),
                 ft.FilledButton("Continue", on_click=lambda _e: on_exit(result)),
             ], spacing=SPACING_SM, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
         )
@@ -884,35 +955,21 @@ def build_combat_view(
         state["selected"] = pid
         _render()
 
-    async def _play_step(cursor_at: int, token: int) -> None:
-        """Reveal the step's interstitial DOTs (grouped by tick) then its action,
-        paced real-time (1s game ≈ 1s real, `playback_delay_s`). Same-tick DOTs
-        pop together; aborts if the cursor moved on (token mismatch)."""
-        step = playback.steps[cursor_at]
-        prev_tick = playback.tick_at(cursor_at - 1) if cursor_at > 0 else 0
-        # reveal targets = each distinct pre-beat tick, then the action tick.
-        targets = pre_beat_ticks(step)
-        if not targets or targets[-1] != step.tick:
-            targets = targets + [step.tick]
-        for t in targets:
-            await asyncio.sleep(playback_delay_s(prev_tick, t))
-            if not state["alive"] or state["anim_token"] != token or state["cursor"] != cursor_at:
-                return
-            state["reveal_tick"] = t
-            _render()
-            prev_tick = t
-
     async def _drip_action_beats(cur: int, token: int) -> None:
-        """Reveal a step's action beats one at a time in recorded (chronological)
-        order — multiple pieces acting on the same tick animate in sequence, not
-        all at once — popping each beat's footprint/halo/flash as it lands. The
-        full reveal is the static truth `_advance_to` already set, so a rapid Next
-        or a cursor move just interrupts (token/cursor guard) and leaves everything
-        shown. Used by both manual Next and autoplay so they behave identically."""
+        """Reveal a step's action beats **one at a time in recorded (chronological)
+        order, each given its animation window before the next** (T.12d_b) — the
+        engine resolves a tick's actions sequentially, so the view plays them the
+        same way: A moves → B moves → A attacks → B casts, every beat's glide /
+        swoosh / footprint / halo / floating number popping as it lands. The full
+        reveal is the static truth `_advance_to` already set, so a rapid Next or a
+        cursor move just interrupts (token/cursor guard) and leaves everything shown.
+        The SAME path drives manual Next and autoplay (one reveal code path). The
+        intra-tick gap is `_BEAT_GAP_S` scaled by the speed toggle."""
         step = playback.steps[cur] if 0 <= cur < playback.step_count() else None
         if step is None:
             return
         total = len(step.beats)
+        gap = _BEAT_GAP_S * _speed_factor()
         for n in range(1, total + 1):
             if not state["alive"] or state["anim_token"] != token or state["cursor"] != cur:
                 return
@@ -925,7 +982,7 @@ def build_combat_view(
             state["fp_phase"] = 1.0
             _render()
             if n < total:
-                await asyncio.sleep(_BEAT_STAGGER_S)  # gap before the next beat
+                await asyncio.sleep(gap)  # let this beat's animation play, then next
 
     def _step(delta: int) -> None:
         # Forward Next animates the landed tick's action beats in recorded order
@@ -954,8 +1011,13 @@ def build_combat_view(
         _render()
 
     async def _autoplay_loop() -> None:
-        # Real-time autoplay (1s ≈ 1s) on the flet event loop (`page.run_task`):
-        # advance one step, drip its DOTs + action paced by the tick gap.
+        """Fixed-cadence autoplay (T.12d_b, V.56): each iteration advances **one
+        step** and awaits the **same `_drip_action_beats`** the manual Next uses —
+        so the sequential intra-tick reveal + every FX play under autoplay too
+        (this replaces the old event-paced `_play_step`/dwell band-aid, B.35). A
+        larger `_TICK_GAP_S` dwell separates ticks. Wall-clock only over a
+        deterministic replay — never feeds the sim (V.2/V.14). Speed toggle scales
+        both gaps."""
         while state["alive"] and state["playing"]:
             if state["cursor"] >= _last_cursor():
                 state["playing"] = False
@@ -965,39 +1027,14 @@ def build_combat_view(
             _advance_to(state["cursor"] + 1)
             cur = state["cursor"]
             token = state["anim_token"]
-            state["reveal_tick"] = -1
-            state["fp_phase"] = 0.0  # seed the footprint pop; grows after reveal
+            state["reveal_n"] = 0  # seed: drip reveals the beats in order
             _render()
-            await _play_step(cur, token)
-            if state["anim_token"] != token:  # user interrupted mid-step
+            await _drip_action_beats(cur, token)  # sequential beats + FX (shared path)
+            if not state["alive"] or state["anim_token"] != token:
+                break  # Next/Prev/Pause/exit during the drip → abort
+            await asyncio.sleep(_TICK_GAP_S * _speed_factor())  # inter-tick dwell
+            if not state["alive"] or state["anim_token"] != token:
                 break
-            # `_play_step` reveals the action at `reveal_tick == step.tick`; `reveal_n`
-            # stays at the step's full beat count (set by `_advance_to`), so autoplay
-            # shows the tick's beats together and the FX linger. Pop the shapes/halos.
-            # NOTE: the intra-tick **stagger is a manual-Next affordance only**;
-            # staggered autoplay is deferred polish (SPEC §T.12c / §D.28) — gating
-            # autoplay's beats behind the drip made single-beat steps flash sub-frame
-            # ("no animations"). Manual Next keeps the in-order reveal.
-            step_cur = playback.steps[cur]
-            if step_cur.footprints or any(
-                b.event_type in (EVENT_HEAL, EVENT_STATUS)
-                for b in step_cur.beats
-            ):
-                state["fp_phase"] = 1.0
-                _render()
-            # Hold the fully-revealed action on screen for a real-time dwell. The
-            # canvas FX (swoosh/arrow) + floating damage numbers have NO client-side
-            # tween to commit them like the token glide — without this dwell the next
-            # iteration's `_advance_to` wipes them sub-frame, so the fight FX never
-            # paint under autoplay (movement glides fine via animate_position). Gate
-            # on an action beat so move-only steps keep their natural gliding pace.
-            if step_cur.footprints or any(
-                b.event_type in (EVENT_ATTACK, EVENT_ABILITY, EVENT_CAST, EVENT_DOT, EVENT_HEAL, EVENT_STATUS)
-                for b in step_cur.beats
-            ):
-                await asyncio.sleep(_ACTION_DWELL_S)
-                if not state["alive"] or state["anim_token"] != token:
-                    break  # Next/Prev/Pause during the dwell → stale cursor, abort
 
     def _toggle_autoplay(_e: Any) -> None:
         state["playing"] = not state["playing"]
@@ -1008,21 +1045,49 @@ def build_combat_view(
 
     autoplay_btn = ft.OutlinedButton("▶ Autoplay", on_click=_toggle_autoplay)
 
+    # Autoplay speed toggle (0.5×/1×/2×) — scales both the intra-tick beat gap and
+    # the inter-tick dwell (T.12d_b); takes effect on the next dwell (live).
+    speed_row = ft.Row(spacing=2, tight=True)
+
+    def _speed_btn(label: str) -> ft.Control:
+        active = state["speed"] == label
+        return ft.Container(
+            content=ft.Text(label, size=11,
+                            color=TEXT_PRIMARY if active else TEXT_MUTED,
+                            weight=ft.FontWeight.BOLD if active else None),
+            padding=ft.Padding(8, 4, 8, 4), border_radius=4,
+            bgcolor=ft.Colors.with_opacity(0.25, ACCENT) if active else SURFACE_ELEVATED,
+            on_click=lambda _e, lbl=label: _set_speed(lbl),
+            tooltip=f"Autoplay speed {label}",
+        )
+
+    def _build_speed() -> None:
+        speed_row.controls = [ft.Text("Speed", size=10, color=TEXT_MUTED),
+                              *[_speed_btn(k) for k in _SPEED_FACTORS]]
+
+    def _set_speed(label: str) -> None:
+        state["speed"] = label
+        _build_speed()
+        page.update()
+
+    _build_speed()
+
+    # `wrap` so the controls flow onto a second line on a narrow window instead of
+    # overflowing the centre column (which pushed Exit off-screen, under the inspect
+    # panel). No expand spacer — that forced Exit to the far edge + broke wrapping.
     controls_row = ft.Row([
         ft.OutlinedButton("◀ Prev", on_click=lambda _e: _step(-1)),
         ft.FilledButton("Next ▶", on_click=lambda _e: _step(1)),
         autoplay_btn,
+        speed_row,
         ft.OutlinedButton("⏭ End", on_click=lambda _e: _fast_forward()),
         ft.TextButton("↺ Restart", on_click=lambda _e: _restart()),
-        ft.Container(expand=True),
         ft.TextButton("Exit", on_click=lambda _e: on_exit(result)),
-    ], spacing=SPACING_SM)
+    ], spacing=SPACING_SM, wrap=True, run_spacing=SPACING_XS)
 
-    # ---------- layout ----------
+    # ---------- layout (mirrors Prep: top bar · queue strip · 3-column body) ----
     header = ft.Row([
         ft.Text("Combat", size=18, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
-        ft.Container(width=SPACING_LG),
-        ft.Text(f"weather: {session.weather.value}", size=12, color=TEXT_MUTED),
         ft.Container(width=SPACING_MD),
         sudden_death_badge,
         ft.Container(expand=True),
@@ -1037,6 +1102,7 @@ def build_combat_view(
         )
 
     legend = ft.Column([
+        ft.Text("Damage", size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
         ft.Row([
             _legend_dot(DANGER, "Phys"), _legend_dot(ACCENT, "Magic"),
             _legend_dot(TEXT_PRIMARY, "True"), _legend_dot(DOT_DAMAGE, "DoT"),
@@ -1044,29 +1110,49 @@ def build_combat_view(
         ], spacing=SPACING_MD, wrap=True),
         ft.Text("→/↵ Next · ← Prev · Space play · F end · R restart · Esc exit",
                 size=10, color=TEXT_MUTED),
-    ], spacing=SPACING_XS, width=_BOARD_W)
+    ], spacing=SPACING_XS)
 
-    left = ft.Column([
-        queue_row,
-        board_container,
+    # Left rail — static for the fight (weather · team synergies · augments ·
+    # legend). The synergies panel + augments moved out of the inspect column so
+    # the right column is purely the selected piece's infocard.
+    augs = list(getattr(session.run_mods, "augments", []) or [])
+    _aug_state = getattr(session.run_mods, "augment_state", None) or {}
+    team_previews = preview_team_traits(
+        list(session.team), bonus_counts=_aug_state.get("trait_bonus"))
+    left_children: list[ft.Control] = [weather_badge(weather=session.weather, size="sm")]
+    if team_previews:
+        left_children.append(trait_synergies_panel(team_previews, title="Synergies"))
+    left_children.append(ft.Text(
+        "Augments: " + (", ".join(augs) if augs else "none"),
+        size=11, color=TEXT_MUTED, selectable=True))
+    left_children.append(legend)
+    left_col = ft.Column(left_children, spacing=SPACING_MD, width=250,
+                         scroll=ft.ScrollMode.AUTO)
+
+    center_col = ft.Column([
+        ft.Container(board_container, alignment=ft.Alignment.CENTER),
         controls_row,
-        legend,
-    ], spacing=SPACING_MD)
+    ], spacing=SPACING_MD, expand=True,
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER, scroll=ft.ScrollMode.AUTO)
 
-    body = ft.Row([
-        left,
-        ft.Container(
-            content=inspect_col, bgcolor=SURFACE, border_radius=8,
-            padding=SPACING_MD, width=320, expand=True,
-        ),
-    ], spacing=SPACING_LG, vertical_alignment=ft.CrossAxisAlignment.START, expand=True)
+    right_col = ft.Container(
+        content=inspect_col, bgcolor=SURFACE, border_radius=8,
+        padding=SPACING_MD, width=320,
+    )
+
+    body = ft.Column([
+        header,
+        ft.Divider(height=1, color=SURFACE_ELEVATED),
+        # Full-width queue strip: a fixed-height Container (stretches to the Column's
+        # width) holding the horizontally-scrolling chip Row.
+        ft.Container(content=queue_row, height=64),
+        ft.Row([left_col, center_col, right_col], spacing=SPACING_LG,
+               vertical_alignment=ft.CrossAxisAlignment.START, expand=True),
+    ], spacing=SPACING_MD, expand=True)
 
     root = ft.Container(
         bgcolor=BG, padding=SPACING_LG, expand=True,
-        content=ft.Column([
-            header,
-            ft.Stack([body, end_overlay], expand=True),
-        ], spacing=SPACING_MD, expand=True),
+        content=ft.Stack([body, end_overlay], expand=True),
     )
 
     def _on_key(e: ft.KeyboardEvent) -> None:

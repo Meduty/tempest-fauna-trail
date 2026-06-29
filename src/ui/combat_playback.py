@@ -22,7 +22,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.game.ability_text import TICKS_PER_SECOND
 from src.game.combat import (
     EVENT_ATTACK,
     EVENT_CAST,
@@ -102,20 +101,7 @@ def classify_intent(ability_id: str) -> Intent:
         kind = "damage"
     return Intent(kind=kind, control=control)
 
-# Real-time playback pacing (T.12b, user-set 1s ≈ 1s). The delay before a moment
-# at `tick` = (tick − prev_tick)/TICKS_PER_SECOND × SPEED, clamped so a huge idle
-# gap can't freeze the loop. Shared by the DOT drip + action autoplay.
-PLAYBACK_SPEED = 1.0
-PLAYBACK_MAX_DELAY_S = 2.5
 SUDDEN_DEATH_TICK = MAX_TICKS  # = engine.SUDDEN_DEATH_TICK_START; the sudden-death threshold
-
-
-def playback_delay_s(prev_tick: int, tick: int) -> float:
-    """Real-time delay before the moment at `tick` (1 game-second ≈ 1 real-second,
-    clamped). Pure; used for both the DOT drip and autoplay pacing (V.39 feel,
-    V.56 event-paced)."""
-    gap = max(0, tick - prev_tick) / TICKS_PER_SECOND
-    return min(PLAYBACK_MAX_DELAY_S, gap * PLAYBACK_SPEED)
 
 
 def is_sudden_death(tick: int) -> bool:
@@ -210,17 +196,26 @@ class Playback:
         return self.steps[cursor].tick
 
     def queue(self, cursor: int) -> list[QueueEntry]:
-        """Upcoming actions from the cursor's tick forward, spanning the current
-        round + the next `QUEUE_LOOKAHEAD_ROUNDS` (round-split markers come from
-        each entry's `round`). Slides forward as the cursor crosses a round
-        boundary."""
+        """**Strictly-upcoming** actions (T.12d_b): everything at a tick *after* the
+        resolved cursor tick, spanning the current round + the next
+        `QUEUE_LOOKAHEAD_ROUNDS` (round-split markers come from each entry's
+        `round`). `> now` (not `>=`) drops the just-resolved tick's entries off the
+        rail as the cursor lands on them. At `cursor = -1`/tick 0 every real action
+        is `tick > 0`, so the opening rail is full."""
         now = self.tick_at(cursor)
         cur_round = now // ROUND_TICKS
         max_round = cur_round + QUEUE_LOOKAHEAD_ROUNDS
         return [
             e for e in self._actions
-            if e.tick >= now and e.round <= max_round
+            if e.tick > now and e.round <= max_round
         ]
+
+    def next_action_tick(self, cursor: int) -> int | None:
+        """The lowest upcoming action tick (the **next step**'s tick) — the queue
+        chips at this tick are the ones a single Next press resolves, so the view
+        highlights them as "next up". None when nothing is upcoming."""
+        q = self.queue(cursor)
+        return q[0].tick if q else None
 
 
 def _entry(event: BattleEvent) -> QueueEntry:

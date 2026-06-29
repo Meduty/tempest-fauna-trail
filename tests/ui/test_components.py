@@ -339,3 +339,79 @@ class TestIconography:
         row = inline_effect_text(text)
         words = " ".join(c.value for c in row.controls if isinstance(c, ft.Text))
         assert words == text
+
+
+class TestInfocardCore:
+    """Shared Prep/Combat infocard core (T.12d_a, V.82)."""
+
+    def _aurion_info(self):
+        from src.game.content import CHAMPION_ROSTER
+        from src.ui.components.infocard import PieceInfo
+        champ = CHAMPION_ROSTER["champ_aurion"]
+        return PieceInfo(
+            name=champ.name, affinity=champ.affinity, role=champ.role,
+            traits=tuple(champ.traits),
+            primary_stats=(("HP", f"{champ.max_hp}"), ("STR", f"{champ.strength}")),
+            premium_stats=(("MS", f"{champ.move_speed}"),),
+            actives=tuple(champ.active_abilities), passive=champ.passive_ability or "",
+            stat_src=champ, subtitle=f"{champ.affinity.value} · {champ.role}",
+        )
+
+    @staticmethod
+    def _walk(ctrl):
+        yield ctrl
+        for attr in ("controls", "content"):
+            child = getattr(ctrl, attr, None)
+            if isinstance(child, list):
+                for c in child:
+                    yield from TestInfocardCore._walk(c)
+            elif child is not None:
+                yield from TestInfocardCore._walk(child)
+
+    def _glyphs(self, ctrl):
+        return [c for c in self._walk(ctrl) if isinstance(c, (ft.Icon, ft.Image))]
+
+    def test_header_emits_role_affinity_and_trait_glyphs(self):
+        from src.ui.components.infocard import infocard_header
+        info = self._aurion_info()
+        glyphs = self._glyphs(infocard_header(info))
+        # affinity marker + one glyph per trait (+ role glyph when the role is known)
+        assert len(glyphs) >= 1 + len(info.traits)
+
+    def test_stat_grid_is_two_columns(self):
+        from src.ui.components.infocard import infocard_stat_grid
+        grid = infocard_stat_grid(self._aurion_info())
+        assert isinstance(grid, ft.Row)
+        assert len(grid.controls) == 2
+
+    def test_abilities_route_blurbs_through_inline_effect_text(self):
+        from src.ui.components.infocard import infocard_abilities
+        out = infocard_abilities(self._aurion_info())
+        # inline_effect_text returns a wrapping Row — each rendered blurb is one.
+        assert any(isinstance(c, ft.Row) and c.wrap for c in out)
+
+    def test_abilities_carry_section_headers(self):
+        from src.ui.components.infocard import infocard_abilities
+        texts = [c.value for c in infocard_abilities(self._aurion_info())
+                 if isinstance(c, ft.Text)]
+        assert "Actives" in texts or "Passive" in texts
+
+
+class TestInfocardSharedByBothViews:
+    """Drift guard (V.82): Prep AND Combat render their champion infocard through
+    the one shared core — neither re-implements header/stat-grid/ability code."""
+
+    def test_both_views_call_the_core_builders(self):
+        # AST-check that the builders appear as actual Call nodes (not just an
+        # import / comment / docstring mention), so the guard catches real drift.
+        import ast
+        import inspect as _inspect
+        from src.ui.views import combat, prep
+        for mod in (combat, prep):
+            called = {
+                node.func.id
+                for node in ast.walk(ast.parse(_inspect.getsource(mod)))
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+            }
+            for fn in ("infocard_header", "infocard_stat_grid", "infocard_abilities"):
+                assert fn in called, f"{mod.__name__} does not call {fn}()"

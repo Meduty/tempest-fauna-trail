@@ -27,7 +27,6 @@ from typing import Callable
 
 import flet as ft
 
-from src.game.ability_text import render_for
 from src.game.combat import BOARD_HEIGHT
 from src.game.content import CHAMPION_DEF_BY_ID, build_champion_at_level
 from src.game.economy import (
@@ -71,11 +70,13 @@ from src.ui.components.iconography import (
     clash_legend,
     clash_marker,
     favor_tone,
-    inline_effect_text,
     rich_tooltip,
-    role_glyph,
-    stat_glyph,
-    trait_glyph,
+)
+from src.ui.components.infocard import (
+    PieceInfo,
+    infocard_abilities,
+    infocard_header,
+    infocard_stat_grid,
 )
 from src.ui.components.trait_synergies import trait_synergies_panel
 from src.ui.components.weather_badge import weather_badge
@@ -88,7 +89,6 @@ from src.ui.theme import (
     FONT_SIZE_BODY,
     FONT_SIZE_CAPTION,
     FONT_SIZE_DISPLAY,
-    FONT_MONO,
     FONT_SIZE_H3,
     SPACING_LG,
     SPACING_MD,
@@ -776,16 +776,6 @@ def build_prep_view(
         ], spacing=SPACING_XS)
 
     # --- stat inspect (tooltip panel) ------------------------------------------
-    def _stat_row(label: str, value: str) -> ft.Control:
-        glyph = stat_glyph(label, size=12)
-        icon_cell: ft.Control = glyph if glyph is not None else ft.Container(width=12)
-        return ft.Row(
-            [icon_cell,
-             ft.Text(label, size=11, color=TEXT_MUTED, width=50),
-             ft.Text(value, size=11, color=TEXT_PRIMARY)],
-            spacing=SPACING_XS,
-        )
-
     def _item_chip(item_id: str, *, equipped: bool, count: int = 0) -> ft.Control:
         kind = _item_kind(item_id)
         # Authored name + blurb + derived stat line via the shared render-layer
@@ -833,38 +823,33 @@ def build_prep_view(
             else (lambda _e, i=item_id: _equip(i)),
         )
 
-    def _piece_icon_cluster(champ: Champion) -> ft.Control:
-        """Top-right identity glyphs on a piece infocard: the affinity glyph (in its
-        affinity color) + one glyph per synergy trait, each tooltipped by name."""
-        aff = affinity_marker(champ.affinity, size=18)
-        aff.tooltip = champ.affinity.value.capitalize()
-        glyphs: list[ft.Control] = [aff]
-        for t in champ.traits:
-            g = trait_glyph(t, size=16, color=TEXT_PRIMARY)
-            g.tooltip = t
-            glyphs.append(g)
-        return ft.Row(glyphs, spacing=SPACING_XS, tight=True, wrap=False)
+    def _champ_info(champ: Champion) -> PieceInfo:
+        """Normalize a `Champion` into the shared `PieceInfo` the infocard core
+        consumes (V.82). Stats are pre-formatted here; numbers render against
+        `champ` (Champion exposes `.stat()`, V.38)."""
+        rc = f" [{champ.role_code}]" if champ.role_code else ""
+        return PieceInfo(
+            name=champ.name,
+            affinity=champ.affinity,
+            role=champ.role,
+            traits=tuple(champ.traits),
+            primary_stats=(("HP", f"{champ.max_hp}"), ("STR", f"{champ.strength}"),
+                           ("INT", f"{champ.intelligence}"),
+                           ("AS", f"{champ.attack_speed:.1f}"),
+                           ("range", f"{champ.attack_range}")),
+            premium_stats=(("armor", f"{champ.armor}"), ("res", f"{champ.resistance}"),
+                           ("MS", f"{champ.move_speed}"), ("MR", f"{champ.mana_regen}"),
+                           ("crit", f"{champ.crit_chance * 100:.0f}%")),
+            actives=tuple(champ.active_abilities),
+            passive=champ.passive_ability or "",
+            stat_src=champ,
+            subtitle=f"{champ.affinity.value} · {champ.role}{rc} · L{champ.level} T{champ.tier}",
+        )
 
     def _champ_header(champ: Champion) -> list[ft.Control]:
-        """Name + role line — affinity · role [role_code] · level/tier; identity
-        glyphs (affinity + traits) pinned top-right."""
-        rc = f" [{champ.role_code}]" if champ.role_code else ""
-        role_ic = role_glyph(champ.role, size=16, color=AFFINITY_COLORS[champ.affinity])
-        name_row: list[ft.Control] = [
-            ft.Text(champ.name, size=FONT_SIZE_H3,
-                    color=AFFINITY_COLORS[champ.affinity],
-                    weight=ft.FontWeight.BOLD, expand=True),
-            _piece_icon_cluster(champ),
-        ]
-        if role_ic is not None:
-            name_row.insert(0, role_ic)
-        return [
-            ft.Row(name_row, spacing=SPACING_XS,
-                   vertical_alignment=ft.CrossAxisAlignment.START),
-            ft.Text(f"{champ.affinity.value} · {champ.role}{rc} · L{champ.level} T{champ.tier}",
-                    size=FONT_SIZE_CAPTION, color=TEXT_MUTED),
-            _level_line(champ.id),
-        ]
+        """Shared identity header (role glyph + name + affinity/trait cluster +
+        subtitle, V.82) plus Prep's copy-level line underneath."""
+        return [infocard_header(_champ_info(champ)), _level_line(champ.id)]
 
     def _traits_chips(champ: Champion) -> list[ft.Control]:
         """Trait tags as chips (Kinship/Calling + any authored tags). Shown in the
@@ -898,42 +883,12 @@ def build_prep_view(
         return ft.Text(txt, size=10, color=ACCENT)
 
     def _stat_grid(champ: Champion) -> ft.Control:
-        primary = [("HP", f"{champ.max_hp}"), ("STR", f"{champ.strength}"),
-                   ("INT", f"{champ.intelligence}"), ("AS", f"{champ.attack_speed:.1f}"),
-                   ("range", f"{champ.attack_range}")]
-        premium = [("armor", f"{champ.armor}"), ("res", f"{champ.resistance}"),
-                   ("MS", f"{champ.move_speed}"), ("MR", f"{champ.mana_regen}"),
-                   ("crit", f"{champ.crit_chance * 100:.0f}%")]
-        return ft.Row([
-            ft.Column([_stat_row(lbl, v) for lbl, v in primary], spacing=2, expand=True),
-            ft.Column([_stat_row(lbl, v) for lbl, v in premium], spacing=2, expand=True),
-        ], spacing=SPACING_SM)
+        return infocard_stat_grid(_champ_info(champ))
 
     def _ability_block(champ: Champion) -> list[ft.Control]:
-        """Actives + passive, each with name + live-rendered blurb + formula.
-        Numbers render against ``champ`` (Champion exposes ``.stat()``, V.38)."""
-        out: list[ft.Control] = []
-        for header, ids in (("Actives", list(champ.active_abilities)),
-                            ("Passive", [champ.passive_ability])):
-            ids = [a for a in ids if a]
-            if not ids:
-                continue
-            out.append(ft.Text(header, size=11, color=TEXT_MUTED, weight=ft.FontWeight.BOLD))
-            for aid in ids:
-                rendered = render_for(aid, champ)
-                if rendered is None:
-                    out.append(ft.Text(f"• {aid}", size=11, color=TEXT_MUTED))
-                    continue
-                out.append(ft.Text(rendered.name, size=11, color=ACCENT,
-                                   weight=ft.FontWeight.BOLD))
-                # Blurb with inline effect glyphs — the icon sits right after the
-                # keyword (physical damage ⚔, movement runner, heal, …).
-                out.append(inline_effect_text(rendered.text, size=11,
-                                              color=TEXT_PRIMARY))
-                if rendered.formula:
-                    out.append(ft.Text(rendered.formula, size=10, color=TEXT_MUTED,
-                                       font_family=FONT_MONO))
-        return out
+        """Actives + passive via the shared core (name + inline-iconed blurb +
+        formula, V.82). Numbers render against ``champ`` (V.38)."""
+        return infocard_abilities(_champ_info(champ))
 
     def _build_shop_preview(cid: str) -> ft.Control:
         cdef = CHAMPION_DEF_BY_ID.get(cid)

@@ -63,6 +63,7 @@ class Piece:
     level: int = 1  # In-tier level (1-3) carried from the source model; read by level-scaling passives
     affinity: WeatherState = WeatherState.CLEAR
     traits: list[str] = field(default_factory=list)
+    role: str = ""  # display-only identity (V.82) — surfaced on PieceView for the combat infocard; never read by combat math
     is_enemy: bool = False
     actives: list[ActiveSlot] = field(default_factory=list)
     passives: list[str] = field(default_factory=list)
