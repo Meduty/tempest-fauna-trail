@@ -380,11 +380,12 @@ def build_combat_view(
         content=board_stack, bgcolor=SURFACE, border_radius=8,
         padding=SPACING_SM, width=_BOARD_W + SPACING_MD, height=_BOARD_H + SPACING_MD,
     )
-    # Full-width top strip (T.12d_a moved it out of the left column) — `expand` so
-    # it uses the whole header width, with horizontal overflow scroll for long
-    # queues (more chips visible before scrolling).
+    # Full-width top strip (T.12d_a moved it out of the left column). Fixed height +
+    # horizontal overflow scroll; wrapped in a full-width Container at assembly so it
+    # uses the whole header width WITHOUT `expand` (which, on a Row inside a Column,
+    # expands the *main* (vertical) axis and ballooned the strip's height).
     queue_row = ft.Row(spacing=SPACING_SM, scroll=ft.ScrollMode.AUTO, height=64,
-                       expand=True, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+                       vertical_alignment=ft.CrossAxisAlignment.CENTER)
     inspect_col = ft.Column(spacing=SPACING_SM, width=300, scroll=ft.ScrollMode.AUTO)
     status_text = ft.Text("", size=12, color=TEXT_MUTED)
     sudden_death_badge = ft.Container(
@@ -1142,7 +1143,9 @@ def build_combat_view(
     body = ft.Column([
         header,
         ft.Divider(height=1, color=SURFACE_ELEVATED),
-        queue_row,
+        # Full-width queue strip: a fixed-height Container (stretches to the Column's
+        # width) holding the horizontally-scrolling chip Row.
+        ft.Container(content=queue_row, height=64),
         ft.Row([left_col, center_col, right_col], spacing=SPACING_LG,
                vertical_alignment=ft.CrossAxisAlignment.START, expand=True),
     ], spacing=SPACING_MD, expand=True)
