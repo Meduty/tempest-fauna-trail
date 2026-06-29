@@ -22,9 +22,16 @@ import flet as ft
 import flet.canvas as cv
 
 from src.game.ability_text import TICKS_PER_SECOND, render_for
+from src.game.describe import render_item
 from src.game.traits import preview_team_traits
-from src.ui.components.iconography import affinity_marker
+from src.ui.components.infocard import (
+    PieceInfo,
+    infocard_abilities,
+    infocard_header,
+    infocard_stat_grid,
+)
 from src.ui.components.trait_synergies import trait_synergies_panel
+from src.ui.components.weather_badge import weather_badge
 from src.ui.components.board_geometry import (
     BOARD_H,
     BOARD_W,
@@ -302,12 +309,19 @@ def build_combat_view(
     name_by_id: dict[str, str] = {c.id: c.name for c in session.team}
     name_by_id.update({e.id: e.name for e in session.enemies})
     champ_by_id = {c.id: c for c in session.team}
-    # Ability ids per piece (active + passive) for hover tooltips.
+    # Ability ids per piece — `abilities_by_id` (active+passive flat) for hover
+    # tooltips; `actives_by_id`/`passive_by_id` split for the shared infocard core.
     abilities_by_id: dict[str, list[str]] = {}
+    actives_by_id: dict[str, tuple[str, ...]] = {}
+    passive_by_id: dict[str, str] = {}
     for _unit in (*session.team, *session.enemies):
-        ids = list(getattr(_unit, "active_abilities", []) or [])
-        if getattr(_unit, "passive_ability", ""):
-            ids.append(_unit.passive_ability)
+        acts = tuple(getattr(_unit, "active_abilities", []) or [])
+        passive = getattr(_unit, "passive_ability", "") or ""
+        actives_by_id[_unit.id] = acts
+        passive_by_id[_unit.id] = passive
+        ids = list(acts)
+        if passive:
+            ids.append(passive)
         abilities_by_id[_unit.id] = ids
 
     def _ability_tooltip(pv: PieceView) -> str:
@@ -738,97 +752,69 @@ def build_combat_view(
             spacing=SPACING_SM,
         )
 
+    def _piece_info(pv: PieceView) -> PieceInfo:
+        """Normalize a live `PieceView` into the shared `PieceInfo` (V.82). Stats
+        format the piece's current *effective* values; abilities render against
+        `_ViewStatSource(pv)` so blurbs track the live STR/AS ramp (V.38/V.57)."""
+        def _fmt(key: str) -> str:
+            v = pv.stats.get(key, 0.0)
+            if key in ("crit_chance", "penetration_pct"):
+                return f"{v * 100:.0f}%"
+            return f"{v:.0f}"
+
+        role_part = f" · {pv.role}" if pv.role else ""
+        subtitle = (f"{pv.affinity.value}{role_part} · {'enemy' if pv.is_enemy else 'ally'}"
+                    + (" · summon" if pv.summon else ""))
+        return PieceInfo(
+            name=name_by_id.get(pv.id, pv.id),
+            affinity=pv.affinity, role=pv.role, traits=tuple(pv.traits),
+            primary_stats=(("STR", _fmt("strength")), ("INT", _fmt("intelligence")),
+                           ("AS", _fmt("attack_speed")), ("armor", _fmt("armor")),
+                           ("res", _fmt("resistance")), ("range", _fmt("attack_range"))),
+            premium_stats=(("MS", _fmt("move_speed")), ("MR", _fmt("mana_regen")),
+                           ("crit", _fmt("crit_chance")), ("pen", _fmt("penetration")),
+                           ("pen%", _fmt("penetration_pct")), ("threat", _fmt("threat"))),
+            actives=actives_by_id.get(pv.id, ()), passive=passive_by_id.get(pv.id, ""),
+            stat_src=_ViewStatSource(pv), subtitle=subtitle,
+        )
+
     def _build_inspect(pieces: list[PieceView]) -> None:
         controls: list[ft.Control] = []
         sel = state["selected"]
         pv = next((p for p in pieces if p.id == sel), None)
         if pv is not None:
-            aff_glyph = affinity_marker(pv.affinity, size=18)
-            aff_glyph.tooltip = pv.affinity.value.capitalize()
-            controls.append(ft.Row([
-                ft.Text(
-                    name_by_id.get(pv.id, pv.id), size=15, weight=ft.FontWeight.BOLD,
-                    color=AFFINITY_COLORS.get(pv.affinity, TEXT_PRIMARY), expand=True,
-                ),
-                aff_glyph,
-            ], vertical_alignment=ft.CrossAxisAlignment.START))
-            controls.append(ft.Text(
-                f"{pv.affinity.value} · {'enemy' if pv.is_enemy else 'ally'}"
-                + (" · summon" if pv.summon else ""),
-                size=11, color=TEXT_MUTED,
-            ))
+            info = _piece_info(pv)
+            # Shared identity header (role/affinity/trait glyphs, V.82) + the live
+            # current-HP/barrier line (a combat-only extra over the core).
+            controls.append(infocard_header(info))
             controls.append(_stat_row("HP", f"{pv.hp} / {pv.max_hp}"))
             if pv.barrier_total:
                 controls.append(_stat_row("barrier", str(pv.barrier_total)))
-
-            # Two-column stat block: primary (combat) | premium (mr/pen/crit/…).
-            def _fmt(key: str) -> str:
-                v = pv.stats.get(key, 0.0)
-                if key in ("crit_chance", "penetration_pct"):
-                    return f"{v * 100:.0f}%"
-                return f"{v:.0f}"
-
-            primary = [("STR", "strength"), ("INT", "intelligence"), ("AS", "attack_speed"),
-                       ("armor", "armor"), ("res", "resistance"), ("range", "attack_range")]
-            premium = [("MS", "move_speed"), ("MR", "mana_regen"), ("crit", "crit_chance"),
-                       ("pen", "penetration"), ("pen%", "penetration_pct"), ("threat", "threat")]
-            controls.append(ft.Row([
-                ft.Column([_stat_row(lbl, _fmt(k), label_w=48) for lbl, k in primary],
-                          spacing=SPACING_XS, expand=True),
-                ft.Column([_stat_row(lbl, _fmt(k), label_w=48) for lbl, k in premium],
-                          spacing=SPACING_XS, expand=True),
-            ], spacing=SPACING_SM))
+            # Shared effective-stat grid, then live per-slot mana + statuses.
+            controls.append(infocard_stat_grid(info))
             for i, slot in enumerate(pv.mana):
                 controls.append(_stat_row(
                     f"mana[{i}]", f"{slot.current_mana} / {slot.max_mana} (cost {slot.mana_cost})"))
             for st in pv.statuses:
                 controls.append(_stat_row(
                     st.status_id, f"x{st.stacks} · {_secs(st.remaining_ticks)}"))
-            # Abilities (active + passive) with live-rendered descriptions — for
-            # any piece (team or enemy), against its current effective stats.
-            abil_ids = abilities_by_id.get(pv.id, [])
-            if abil_ids:
-                src = _ViewStatSource(pv)
+            # Shared ability blurbs (inline effect icons, live stats, V.82).
+            abil = infocard_abilities(info)
+            if abil:
                 controls.append(ft.Divider(height=8))
-                controls.append(ft.Text("Abilities", size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY))
-                for aid in abil_ids:
-                    rendered = render_for(aid, src)
-                    if rendered is None:
-                        continue
-                    controls.append(ft.Text(rendered.name, size=11, weight=ft.FontWeight.BOLD, color=ACCENT))
-                    controls.append(ft.Text(rendered.text, size=11, color=TEXT_MUTED))
-                    if rendered.formula:
-                        controls.append(ft.Text(
-                            rendered.formula, size=10, color=TEXT_MUTED, font_family=FONT_MONO))
+                controls.extend(abil)
+            # Items — read-only authored names (Prep keeps the interactive chips).
             champ = champ_by_id.get(pv.id)
-            if champ is not None:
-                if champ.items:
-                    controls.append(ft.Divider(height=8))
-                    controls.append(ft.Text("Items", size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY))
-                    controls.extend(ft.Text(f"• {i}", size=11, color=TEXT_MUTED) for i in champ.items)
-                if champ.traits:
-                    controls.append(ft.Text("Traits", size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY))
-                    controls.extend(ft.Text(f"• {t}", size=11, color=TEXT_MUTED) for t in champ.traits)
+            if champ is not None and champ.items:
+                controls.append(ft.Divider(height=8))
+                controls.append(ft.Text("Items", size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY))
+                for iid in champ.items:
+                    rendered = render_item(iid)
+                    controls.append(ft.Text(
+                        f"• {rendered.name if rendered is not None else iid}",
+                        size=11, color=TEXT_MUTED))
         else:
             controls.append(ft.Text("Click a piece to inspect.", size=12, color=TEXT_MUTED))
-
-        # global panel: active augments + cleared traits
-        controls.append(ft.Divider(height=12))
-        controls.append(ft.Text("Team", size=13, weight=ft.FontWeight.BOLD, color=ACCENT))
-        augs = list(getattr(session.run_mods, "augments", []) or [])
-        controls.append(ft.Text(
-            "Augments: " + (", ".join(augs) if augs else "none"),
-            size=11, color=TEXT_MUTED, selectable=True,
-        ))
-        # Trait synergies for the fielded team — same TFT-style panel as Prep,
-        # so active vs dormant reads identically across views. Pass the augment
-        # Crest/Crown trait bonus (same source loadout uses, V.21) so the panel
-        # matches what combat actually cleared.
-        _aug_state = getattr(session.run_mods, "augment_state", None) or {}
-        team_previews = preview_team_traits(
-            list(session.team), bonus_counts=_aug_state.get("trait_bonus"))
-        if team_previews:
-            controls.append(trait_synergies_panel(team_previews, title="Synergies"))
         inspect_col.controls = controls
 
     # ---------- combat-end panel ----------
@@ -1018,11 +1004,9 @@ def build_combat_view(
         ft.TextButton("Exit", on_click=lambda _e: on_exit(result)),
     ], spacing=SPACING_SM)
 
-    # ---------- layout ----------
+    # ---------- layout (mirrors Prep: top bar · queue strip · 3-column body) ----
     header = ft.Row([
         ft.Text("Combat", size=18, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
-        ft.Container(width=SPACING_LG),
-        ft.Text(f"weather: {session.weather.value}", size=12, color=TEXT_MUTED),
         ft.Container(width=SPACING_MD),
         sudden_death_badge,
         ft.Container(expand=True),
@@ -1037,6 +1021,7 @@ def build_combat_view(
         )
 
     legend = ft.Column([
+        ft.Text("Damage", size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY),
         ft.Row([
             _legend_dot(DANGER, "Phys"), _legend_dot(ACCENT, "Magic"),
             _legend_dot(TEXT_PRIMARY, "True"), _legend_dot(DOT_DAMAGE, "DoT"),
@@ -1044,29 +1029,47 @@ def build_combat_view(
         ], spacing=SPACING_MD, wrap=True),
         ft.Text("→/↵ Next · ← Prev · Space play · F end · R restart · Esc exit",
                 size=10, color=TEXT_MUTED),
-    ], spacing=SPACING_XS, width=_BOARD_W)
+    ], spacing=SPACING_XS)
 
-    left = ft.Column([
-        queue_row,
-        board_container,
+    # Left rail — static for the fight (weather · team synergies · augments ·
+    # legend). The synergies panel + augments moved out of the inspect column so
+    # the right column is purely the selected piece's infocard.
+    augs = list(getattr(session.run_mods, "augments", []) or [])
+    _aug_state = getattr(session.run_mods, "augment_state", None) or {}
+    team_previews = preview_team_traits(
+        list(session.team), bonus_counts=_aug_state.get("trait_bonus"))
+    left_children: list[ft.Control] = [weather_badge(weather=session.weather, size="sm")]
+    if team_previews:
+        left_children.append(trait_synergies_panel(team_previews, title="Synergies"))
+    left_children.append(ft.Text(
+        "Augments: " + (", ".join(augs) if augs else "none"),
+        size=11, color=TEXT_MUTED, selectable=True))
+    left_children.append(legend)
+    left_col = ft.Column(left_children, spacing=SPACING_MD, width=250,
+                         scroll=ft.ScrollMode.AUTO)
+
+    center_col = ft.Column([
+        ft.Container(board_container, alignment=ft.Alignment.CENTER),
         controls_row,
-        legend,
-    ], spacing=SPACING_MD)
+    ], spacing=SPACING_MD, expand=True,
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER, scroll=ft.ScrollMode.AUTO)
 
-    body = ft.Row([
-        left,
-        ft.Container(
-            content=inspect_col, bgcolor=SURFACE, border_radius=8,
-            padding=SPACING_MD, width=320, expand=True,
-        ),
-    ], spacing=SPACING_LG, vertical_alignment=ft.CrossAxisAlignment.START, expand=True)
+    right_col = ft.Container(
+        content=inspect_col, bgcolor=SURFACE, border_radius=8,
+        padding=SPACING_MD, width=320,
+    )
+
+    body = ft.Column([
+        header,
+        ft.Divider(height=1, color=SURFACE_ELEVATED),
+        queue_row,
+        ft.Row([left_col, center_col, right_col], spacing=SPACING_LG,
+               vertical_alignment=ft.CrossAxisAlignment.START, expand=True),
+    ], spacing=SPACING_MD, expand=True)
 
     root = ft.Container(
         bgcolor=BG, padding=SPACING_LG, expand=True,
-        content=ft.Column([
-            header,
-            ft.Stack([body, end_overlay], expand=True),
-        ], spacing=SPACING_MD, expand=True),
+        content=ft.Stack([body, end_overlay], expand=True),
     )
 
     def _on_key(e: ft.KeyboardEvent) -> None:

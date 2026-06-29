@@ -69,6 +69,10 @@ class PieceView:
     stats: Mapping[str, float]   # read-only (MappingProxyType) — honours frozen
     mana: tuple[SlotView, ...]
     statuses: tuple[StatusView, ...]
+    # Display-only identity for the combat infocard (V.82) — never read by combat
+    # math. role from compile_loadout; traits = the fielded set incl. emblems.
+    role: str = ""
+    traits: tuple[str, ...] = ()
 
 
 def _view(piece: Any) -> PieceView:
@@ -92,6 +96,8 @@ def _view(piece: Any) -> PieceView:
             StatusView(s.status_id, s.stacks, s.remaining_ticks)
             for s in piece.statuses
         ),
+        role=piece.role,
+        traits=tuple(piece.traits),
     )
 
 

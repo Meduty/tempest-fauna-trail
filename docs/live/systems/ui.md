@@ -283,6 +283,13 @@ Every render reads **live `PieceView`s** off the stepper — HP/barrier/per-slot
 mana/effective stats/`(q,r)` — so bars move correctly through ability bursts, not
 just basic attacks.
 
+Layout mirrors Prep (T.12d_a): header → divider → **action-queue strip** (where
+Prep has the shop) → a **3-column body** — **left rail** (≈250: `weather_badge` +
+the **shared trait-synergy panel** + active-augments line + the damage-type legend,
+all static for the fight) · **centre** (hex board + the Prev/Next/Autoplay/End/
+Restart/Exit controls) · **right** (≈320: the selected piece's infocard). The whole
+body sits in a `Stack` under the `end_overlay`.
+
 Zones (views_spec §7.3):
 
 - **Top — action queue:** `Playback.queue(cursor)` chips, round-split markers,
@@ -297,14 +304,19 @@ Zones (views_spec §7.3):
   white / dot purple / heal green; crit = trailing `!` + size bump, not colour) and
   render as overlay controls on top of the tokens. **Click-to-select** via the token
   overlay (robust hit-test — no canvas gesture math).
-- **Side — inspect (read-only):** selected piece → live stats (stepper), mana,
-  statuses, **ability descriptions** (`render_for` against a `PieceView` stat-shim
-  → name + live blurb + formula, for team *and* enemy pieces), equipped
-  `champion.items`, `champion.traits`; a global sub-panel shows active augments
-  (`session.run_mods.augments`) + the **shared trait-synergy panel** (the same
-  `trait_synergies_panel` Prep uses, over `preview_team_traits(session.team,
-  bonus_counts=run_mods.augment_state['trait_bonus'])`) so active vs dormant reads
-  identically across views. Hover a token for the same ability blurbs as a tooltip.
+- **Right — infocard (read-only):** selected piece → the **shared `infocard_core`**
+  (`src/ui/components/infocard.py`, T.12d_a/V.82) that **both** Prep and Combat render
+  through: `infocard_header` (role glyph + affinity-coloured name + affinity/trait
+  glyph cluster + subtitle), `infocard_stat_grid` (two-column glyph + label + value),
+  `infocard_abilities` (name + **inline-iconed** blurb via `inline_effect_text` +
+  formula, `render_for` against the stat source). Combat builds a `PieceInfo` from a
+  live `PieceView` (`stat_src = _ViewStatSource(pv)` → blurbs track the live STR/AS
+  ramp, V.38/V.57; `role`/`traits` off the `PieceView`, V.82) and wraps the core with
+  its **combat-only extras** — current HP/barrier line, per-slot mana, status rows,
+  read-only `render_item` item names; Prep builds the same `PieceInfo` from a
+  `Champion` and wraps it with the copy-level line / interactive item chips. The team
+  augments + synergy panel moved to the **left rail** (static for the fight). Hover a
+  token for the same ability blurbs as a tooltip.
 - **Floating numbers:** the step's `pre_beats` (interstitial DOTs) reveal by a
   **tick cutoff** (`state["reveal_tick"]`) — same-tick DOTs pop together, paced
   **real-time** (`playback_delay_s`, 1 game-s ≈ 1 real-s) via `_play_step`/
@@ -483,23 +495,28 @@ glance). Pure presentation; canonical token maps live in `theme.py`, behaviour i
   **inline** at the keyword (`"deal 120 physical damage ⚔ to the target"`), via a
   word-walk + two-word phrase map (`physical damage`, `move speed`, …) laid out in a
   wrapping Row.
-- **Consumers:** Prep (enemy preview, weather panel, shop slots, item tooltips,
-  infocard role/affinity/trait glyphs + stat-grid + inline ability blurbs), Combat
-  (trait panel + inspect affinity glyph), Trail (enemy preview), `affinity_chip`,
-  `weather_badge`, `trait_synergies_panel`.
+- **Consumers:** Prep + Combat (both via the **shared `infocard_core`** —
+  `infocard_header`/`infocard_stat_grid`/`infocard_abilities`, T.12d_a/V.82), Trail
+  (enemy preview), `affinity_chip`, `weather_badge`, `trait_synergies_panel`.
 - **Drift guards (tests):** every `TRAIT_REGISTRY` trait has a `TRAIT_ICONS` entry,
   every `WeatherState` an `AFFINITY_ICONS` entry, every roster role an icon in
-  `ROLE_ICONS`/`ROLE_ICON_ASSETS`, and the sword asset exists on disk.
-- **Combat infocard gap:** the combat inspect renders `PieceView` (no `role`/
-  `traits`/ability blurbs — abilities are a string tooltip), so it only gets the
-  affinity glyph today; full parity with the Prep infocard waits on the combat-view
-  rework (plumb role/traits onto `PieceView` or share an infocard component).
+  `ROLE_ICONS`/`ROLE_ICON_ASSETS`, the sword asset exists on disk, and **Prep and
+  Combat both call the `infocard_*` core** (`TestInfocardSharedByBothViews`, V.82).
+- **Shared infocard core (`src/ui/components/infocard.py`, T.12d_a/V.82):** a
+  `PieceInfo` struct (built per-view from `Champion` / `PieceView`) feeds three pure
+  builders — `infocard_header`, `infocard_stat_grid`, `infocard_abilities` — so the
+  combat inspect and the Prep sheet render **identical** identity + stats + ability
+  blurbs and cannot re-drift. `PieceView` now carries display-only `role` + `traits`
+  (set in `compile_loadout` via `Piece.role`; never read by combat math). Each view
+  wraps the core with its own extras (Prep: copy-level line / interactive items;
+  Combat: live HP/barrier/mana/status / read-only item names).
 
 ## File map
 
 | Concern | File |
 |---|---|
 | Shared iconography (glyph/tone helpers, inline effect text) | `src/ui/components/iconography.py`, `src/ui/theme.py` |
+| Shared champion infocard core (Prep + Combat, V.82) | `src/ui/components/infocard.py` |
 | `CombatSession` + pure cue/queue model (`build_playback`) | `src/ui/combat_playback.py` |
 | Combat view (canvas board, stepper drive loop, inspect, end panel) | `src/ui/views/combat.py` |
 | Prep view (placement + shop + bench + preview + tooltips, T.23a) | `src/ui/views/prep.py` |
