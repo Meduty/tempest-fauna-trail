@@ -402,9 +402,16 @@ class TestInfocardSharedByBothViews:
     the one shared core — neither re-implements header/stat-grid/ability code."""
 
     def test_both_views_call_the_core_builders(self):
+        # AST-check that the builders appear as actual Call nodes (not just an
+        # import / comment / docstring mention), so the guard catches real drift.
+        import ast
         import inspect as _inspect
         from src.ui.views import combat, prep
         for mod in (combat, prep):
-            src = _inspect.getsource(mod)
+            called = {
+                node.func.id
+                for node in ast.walk(ast.parse(_inspect.getsource(mod)))
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+            }
             for fn in ("infocard_header", "infocard_stat_grid", "infocard_abilities"):
-                assert fn in src, f"{mod.__name__} does not call {fn}"
+                assert fn in called, f"{mod.__name__} does not call {fn}()"
