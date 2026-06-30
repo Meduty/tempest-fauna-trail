@@ -99,8 +99,8 @@ and resolves combat **only** by building a `CombatSession` — it recomputes no
 Amber/cost/level/encounter number.
 
 - **TFT-style layout (T.40):** **shop on top** (full-width 5-slot rail), then three
-  columns — **left rail** = combat-weather · traits · augments · item-bench · shop-odds
-  panels; **center** = the hex board ("map") + bench below + the action row (Auto-Place /
+  columns — **left rail** = combat-weather · affinity-clash heatmap · traits · augments ·
+  item-bench · shop-odds panels; **center** = the hex board ("map") + bench below + the action row (Auto-Place /
   Reset / Start Combat); **right** = the champion sheet (inspect) + enemy preview. Each
   panel is a `_render()`-rebuilt holder.
 - **Placement → `Run.team_positions` (persisted, V.76):** the player arranges the team on
@@ -152,6 +152,20 @@ Amber/cost/level/encounter number.
   the team fields that affinity; below it the per-stat deltas from
   `weather_effects.combat_modifier(affinity, weather)` render as **discrete chips** (one per
   stat, so they size to content and never char-wrap in the narrow rail). CLEAR ⇒ "no affinity favored".
+- **Affinity-clash heatmap (`viz/affinity_clash_heatmap.py`):** the per-hit damage triangle
+  as a 6×6 colored matrix — rows = attacker affinity, cols = defender affinity, each cell =
+  `weather_effects.damage_modifier(atk, def)` read **live** (source-of-truth, can't drift from
+  combat; mirrors V.38). Two layers like the other viz: `clash_matrix_specs(order)` (pure,
+  Flet-free, test-asserted `tests/viz/test_affinity_clash_heatmap.py`) → `ClashCellSpec`
+  (`mult`/`relation`/`tone`/`category`), and `build_affinity_clash_heatmap(highlight, order)`
+  laying the specs out as colored `ft.Container` cells (a heatmap = boxes, **not** a `flet.canvas`
+  chart — V.72's canvas rule targets the Flet-removed bar/line/pie widgets only). **Tone follows
+  the multiplier** (green `>1.0` favor / gray `=1.0` neutral / red `<1.0` clash), *not* the ring
+  relation (a SELF matchup is buff-side but deals ×1.0 → reads neutral); intensity grades by
+  relation strength (primary > secondary). Prep passes `highlight={c.affinity for c in run.roster}`
+  so the team's **attacker rows** are accent-marked ("◀"). Static rule — independent of node
+  weather (the Combat-weather panel above covers the weather-dependent Favor). Scrolls
+  horizontally inside the narrow rail.
 - **Shop tier-odds panel:** renders the current Tempest rank's tier distribution from
   `shop.RANK_TIER_WEIGHTS[run.tempest_rank]` (normalized to %), beside the **next rank's**
   for comparison. Odds are **rank-gated** (V.74) — ranking up both widens the team cap
@@ -536,6 +550,7 @@ glance). Pure presentation; canonical token maps live in `theme.py`, behaviour i
 | Reward view (post-fight panel, T.15a) | `src/ui/views/reward.py` |
 | Reward orchestrator (`apply_node_result`, V.69) | `src/game/economy.py` |
 | Run-summary view + canvas damage chart (T.13, V.72) | `src/ui/views/summary.py`, `src/viz/run_summary.py` |
+| Affinity-clash heatmap viz (Prep left rail) | `src/viz/affinity_clash_heatmap.py` |
 | Shared hex-board pixel geometry (combat + Prep) | `src/ui/components/board_geometry.py` |
 | Dev harness launcher → `CombatSession` | `src/ui/views/dev_harness.py` |
 | Main menu (`/`, T.9) — New Run/Continue/Playfight/Quit | `src/ui/views/menu.py` |
