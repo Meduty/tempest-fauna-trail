@@ -731,14 +731,32 @@ def build_prep_view(
             ))
         return ft.Column(rows, spacing=SPACING_XS)
 
-    # --- affinity-clash heatmap (T.2 viz) --------------------------------------
-    def _build_clash_heatmap() -> ft.Control:
-        """The Affinity Clash damage triangle (per-hit `damage_modifier`) as a
-        colored matrix. The team's affinities accent their attacker rows so the
-        player reads their own damage stakes. Static rule — independent of the
-        node weather (which the separate Weather Favor panel covers)."""
+    # --- affinity-clash heatmap (T.2 viz) — on-demand dialog -------------------
+    def _open_clash_heatmap(_e: object = None) -> None:
+        """Open the full Affinity Clash matrix in a dialog. Kept out of the left
+        rail (which was overloaded + clipped the wide grid) — a button reveals it
+        on demand, fully visible. The team's affinities accent their attacker rows.
+        Static rule — independent of node weather (the Weather Favor panel covers
+        the weather-dependent half)."""
         team_affs = {c.affinity for c in run.roster}
-        return build_affinity_clash_heatmap(highlight=team_affs)
+        dlg = ft.AlertDialog(
+            content=ft.Container(
+                ft.Column([build_affinity_clash_heatmap(highlight=team_affs)],
+                          tight=True, scroll=ft.ScrollMode.AUTO),
+                width=380, height=420, padding=SPACING_SM,
+            ),
+            actions=[ft.TextButton("Close", on_click=lambda _e: page.pop_dialog())],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.show_dialog(dlg)
+
+    def _clash_button() -> ft.Control:
+        return ft.OutlinedButton(
+            "▦ Affinity Clash table",
+            icon=ft.Icons.GRID_ON,
+            on_click=_open_clash_heatmap,
+            tooltip="Show the per-hit damage multiplier for every affinity matchup.",
+        )
 
     # --- shop tier-odds panel (SPEC §D.15 / §V.20) -----------------------------
     def _tier_pct(rank: int) -> list[tuple[int, float]]:
@@ -978,7 +996,6 @@ def build_prep_view(
     shop_holder = _panel()
     odds_holder = _panel()
     weather_holder = _panel()
-    clash_holder = _panel()
     augments_holder = _panel()
     traits_holder = _panel()
     items_holder = _panel()
@@ -1016,7 +1033,6 @@ def build_prep_view(
         shop_holder.content = _build_shop()
         odds_holder.content = _build_shop_odds()
         weather_holder.content = _build_weather_panel()
-        clash_holder.content = _build_clash_heatmap()
         augments_holder.content = _build_augments()
         traits_holder.content = _build_traits()
         items_holder.content = _build_items()
@@ -1061,7 +1077,7 @@ def build_prep_view(
     # --- assembly (TFT-style: shop on top · left info · center board · right sheet)
     # Left rail — weather + synergies + augments + item bench + shop odds.
     left_col = ft.Column(
-        [weather_holder, clash_holder, traits_holder, augments_holder,
+        [weather_holder, _clash_button(), traits_holder, augments_holder,
          items_holder, odds_holder],
         spacing=SPACING_MD, width=250, scroll=ft.ScrollMode.AUTO,
     )

@@ -99,7 +99,7 @@ and resolves combat **only** by building a `CombatSession` — it recomputes no
 Amber/cost/level/encounter number.
 
 - **TFT-style layout (T.40):** **shop on top** (full-width 5-slot rail), then three
-  columns — **left rail** = combat-weather · affinity-clash heatmap · traits · augments ·
+  columns — **left rail** = combat-weather · affinity-clash table button · traits · augments ·
   item-bench · shop-odds panels; **center** = the hex board ("map") + bench below + the action row (Auto-Place /
   Reset / Start Combat); **right** = the champion sheet (inspect) + enemy preview. Each
   panel is a `_render()`-rebuilt holder.
@@ -164,8 +164,11 @@ Amber/cost/level/encounter number.
   relation (a SELF matchup is buff-side but deals ×1.0 → reads neutral); intensity grades by
   relation strength (primary > secondary). Prep passes `highlight={c.affinity for c in run.roster}`
   so the team's **attacker rows** are accent-marked ("◀"). Static rule — independent of node
-  weather (the Combat-weather panel above covers the weather-dependent Favor). Scrolls
-  horizontally inside the narrow rail.
+  weather (the Combat-weather panel above covers the weather-dependent Favor). **Surfaced
+  on-demand:** the left rail shows only a **"▦ Affinity Clash table" button** (`_clash_button`);
+  clicking it opens the full matrix in an `ft.AlertDialog` (`page.show_dialog` / `page.pop_dialog`,
+  Flet 0.85) sized to fully show the grid — keeps the rail uncluttered and avoids clipping the
+  wide matrix in the 250px column.
 - **Shop tier-odds panel:** renders the current Tempest rank's tier distribution from
   `shop.RANK_TIER_WEIGHTS[run.tempest_rank]` (normalized to %), beside the **next rank's**
   for comparison. Odds are **rank-gated** (V.74) — ranking up both widens the team cap
