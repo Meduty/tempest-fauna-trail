@@ -12,11 +12,11 @@
 ## Three scaling classes (T.33, V.34)
 Every base stat is in exactly one class; both curves ride the same `power` curve at a different exponent:
 
-| class | stats | exponent | per-tier | T1L1→T10L3 |
-|---|---|---|---|---|
-| `PRIMARY_SCALABLE_STATS` | `max_hp` `strength` `intelligence` `armor` `resistance` | `PRIMARY_EXPONENT=0.5` (`sqrt(power)`) | ≈ ×1.122 | ×8 |
-| `SECONDARY_SCALABLE_STATS` | `attack_speed` `move_speed` `mana_regen` `threat` | `SECONDARY_EXPONENT=0.0857` | ≈ ×1.02 | ×1.428 |
-| `FLAT_STATS` | `attack_range` | — | — | — |
+| class — stats | exponent | per-tier | T1L1→T10L3 |
+|---|---|---|---|
+| `PRIMARY_SCALABLE_STATS` — `max_hp` `strength` `intelligence` `armor` `resistance` | `PRIMARY_EXPONENT=0.5` (`sqrt(power)`) | ≈ ×1.122 | ×8 |
+| `SECONDARY_SCALABLE_STATS` — `attack_speed` `move_speed` `mana_regen` `threat` | `SECONDARY_EXPONENT=0.0857` | ≈ ×1.02 | ×1.428 |
+| `FLAT_STATS` — `attack_range` | — | — | — |
 
 `crit_chance`/`penetration`/`penetration_pct` are ratios, off the scaling model. `SCALABLE_STATS` is a deprecated alias of the primary tuple. `level_scale_stats(stats, tier, level)` applies both curves in place — the single source of truth for the four builders (`content._build_champion`/`_build_enemy`, `encounter._instantiate_enemy`/`_champion_def_to_enemy`). `threat`/`move_speed` stay **off** the HP·DPS power budget (V.33, B.6).
 
