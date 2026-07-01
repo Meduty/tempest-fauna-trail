@@ -80,6 +80,7 @@ from src.ui.components.infocard import (
 )
 from src.ui.components.trait_synergies import trait_synergies_panel
 from src.ui.components.weather_badge import weather_badge
+from src.viz.affinity_clash_heatmap import build_affinity_clash_heatmap
 from src.ui.theme import (
     ACCENT,
     AFFINITY_COLORS,
@@ -730,6 +731,33 @@ def build_prep_view(
             ))
         return ft.Column(rows, spacing=SPACING_XS)
 
+    # --- affinity-clash heatmap (T.2 viz) — on-demand dialog -------------------
+    def _open_clash_heatmap(_e: object = None) -> None:
+        """Open the full Affinity Clash matrix in a dialog. Kept out of the left
+        rail (which was overloaded + clipped the wide grid) — a button reveals it
+        on demand, fully visible. The team's affinities accent their attacker rows.
+        Static rule — independent of node weather (the Weather Favor panel covers
+        the weather-dependent half)."""
+        team_affs = {c.affinity for c in run.roster}
+        dlg = ft.AlertDialog(
+            content=ft.Container(
+                ft.Column([build_affinity_clash_heatmap(highlight=team_affs)],
+                          tight=True, scroll=ft.ScrollMode.AUTO),
+                width=380, height=420, padding=SPACING_SM,
+            ),
+            actions=[ft.TextButton("Close", on_click=lambda _e: page.pop_dialog())],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.show_dialog(dlg)
+
+    def _clash_button() -> ft.Control:
+        return ft.OutlinedButton(
+            "▦ Affinity Clash table",
+            icon=ft.Icons.GRID_ON,
+            on_click=_open_clash_heatmap,
+            tooltip="Show the per-hit damage multiplier for every affinity matchup.",
+        )
+
     # --- shop tier-odds panel (SPEC §D.15 / §V.20) -----------------------------
     def _tier_pct(rank: int) -> list[tuple[int, float]]:
         """Normalized per-tier draw probability at a Tempest rank (weights → %)."""
@@ -1049,7 +1077,8 @@ def build_prep_view(
     # --- assembly (TFT-style: shop on top · left info · center board · right sheet)
     # Left rail — weather + synergies + augments + item bench + shop odds.
     left_col = ft.Column(
-        [weather_holder, traits_holder, augments_holder, items_holder, odds_holder],
+        [weather_holder, _clash_button(), traits_holder, augments_holder,
+         items_holder, odds_holder],
         spacing=SPACING_MD, width=250, scroll=ft.ScrollMode.AUTO,
     )
     # Center — the hex board (the "map"), the bench below it, then the actions.
