@@ -291,6 +291,36 @@ def apply_node_result(run: "Run", result: "BattleResult") -> NodeResultSummary:
     )
 
 
+def resolve_nonfight_node(run: "Run") -> NodeResultSummary:
+    """Resolve a non-combat node (AUGMENT/SUPPLY) — the single game-side
+    orchestrator for nodes that have no fight (V.83), the non-combat sibling of
+    :func:`apply_node_result`.
+
+    Marks the current node CLEARED + ``advance_to_next_node``. Grants **no**
+    income/tempest and touches **no** Hearts or ``battle_log`` — no combat
+    occurred. The node's *pick* (augment / supply recruit) is applied separately
+    by the view through ``apply_augment`` / ``take_supply_champion`` (V.63)
+    before this advance; the producer autosaves after (V.65).
+
+    Pure progression — no Flet, no I/O. A non-fight node is never the final route
+    node (the last node is a BOSS_FIGHT), so ``terminal`` is effectively False,
+    but the field is derived from ``run.is_complete()`` for symmetry.
+    """
+    node = run.current_node()
+    if node is None:
+        raise ValueError("resolve_nonfight_node requires an in-progress run with a current node.")
+    run.mark_current_node_cleared()
+    run.advance_to_next_node()
+    return NodeResultSummary(
+        won=True,                       # non-fight nodes always "succeed" (no loss path)
+        amber_gained=0,
+        tempest_gained=0,
+        terminal=run.is_complete(),
+        status=run.status,
+        hearts_remaining=run.hearts,
+    )
+
+
 def recruit_challenge_offer(run: "Run", champion_id: str) -> bool:
     """Recruit a CHALLENGE ``champion_offer`` to the bench (T.38, V.70).
 

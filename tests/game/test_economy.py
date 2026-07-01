@@ -17,6 +17,7 @@ from src.game.economy import (
     interest,
     node_income,
     recruit_challenge_offer,
+    resolve_nonfight_node,
 )
 from src.game.encounter import generate_challenge, generate_reward_loot
 from src.game.models import CombatOutcome, NodeState, NodeType, RunStatus
@@ -264,3 +265,34 @@ def test_deterministic_income_and_reward():
     assert (sa.amber_gained, sa.tempest_gained) == (sb.amber_gained, sb.tempest_gained)
     assert sa.item_ids == sb.item_ids and sa.champion_offer == sb.champion_offer
     assert a.amber == b.amber and a.tempest == b.tempest and a.inventory == b.inventory
+
+
+# --------------------------------------------------------------------- non-fight
+
+def test_resolve_nonfight_node_clears_and_advances():
+    """AUGMENT/SUPPLY nodes resolve through resolve_nonfight_node (V.83): mark
+    cleared + advance, no income/tempest/Hearts/battle_log mutation."""
+    run = _run()
+    node_index = _node_of_type(run, NodeType.AUGMENT)
+    node = _set_current(run, node_index)
+    amber0, tempest0, hearts0 = run.amber, run.tempest, run.hearts
+
+    summary = resolve_nonfight_node(run)
+
+    assert node.state == NodeState.CLEARED
+    assert run.current_node_index > node_index          # advanced
+    assert (run.amber, run.tempest, run.hearts) == (amber0, tempest0, hearts0)
+    assert run.battle_log == []                          # no combat recorded
+    assert summary.won is True and summary.amber_gained == 0
+    assert summary.tempest_gained == 0
+
+
+def test_resolve_nonfight_node_requires_current_node():
+    import pytest
+
+    run = _run()
+    run.status = RunStatus.VICTORY  # no current node
+    for n in run.route:
+        n.state = NodeState.CLEARED
+    with pytest.raises(ValueError):
+        resolve_nonfight_node(run)

@@ -316,7 +316,7 @@ def _prompt_augment(run, stage_idx: int, node_index: int, offer: list):
         if choice == "r" and not rerolled:
             rerolled = True
             offer = generate_augment_offer(run.seed, node_index, stage_idx,
-                                           rerolled=True, exclude=tuple(run.active_augments))
+                                           reroll_count=1, exclude=tuple(run.active_augments))
             continue
         if choice in ("1", "2", "3"):
             idx = int(choice) - 1

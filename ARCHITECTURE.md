@@ -223,7 +223,7 @@ inert in both. The 6 weather states (V.5) map 1:1 to OpenWeather id groups.
 | Ability tooltips — `AbilityMeta` + `Magnitude` family + renderer (T.34/T.35) | `src/game/registries.py`, `src/game/ability_text.py` |
 | Synergy traits (Kinship / Calling / Affinity) | `docs/design/content/trait_catalog.md` → `game/traits/` (T.28 ✅) |
 | Items | `game/items/` (T.29a-d ✅ — components, combined, emblems, special run-actions, mana primitive, multi-slot) |
-| Augments | `game/augments.py` (T.31 📋 — planned) |
+| Augments | `game/augments.py` (T.31 ✅ — model + ~50 catalog + offers/reroll; picked in-game at AUGMENT nodes via `ui/views/augment.py` + `economy.resolve_nonfight_node`, T.42a) |
 
 Content **vocabulary lives with content** (V.8): synergy tags are open-ended strings the
 engine treats as opaque labels. The roster has a history of drifting from the catalog

@@ -118,6 +118,33 @@ def _push_prep(page: ft.Page, run, node) -> None:
     page.update()
 
 
+def _push_augment(page: ft.Page, run, node) -> None:
+    """Augment-node landing (T.42a) — the 1-of-3 augment-pick view over the
+    finished augment backend (V.83/V.84). The view resolves the node
+    (`resolve_nonfight_node`) + autosaves on pick/skip; on done we drop back to a
+    fresh Trail at the advanced node (the augment node is non-terminal, V.83)."""
+    from src.ui.views.augment import build_augment_view
+
+    def _done() -> None:
+        _pop_to_root(page)   # drop augment + stale trail → menu base
+        _push_trail(page, run)  # fresh Trail at the new current node
+
+    page.views.append(build_augment_view(page, run, node, on_done=_done))
+    page.update()
+
+
+def _play_node(page: ft.Page, run, node) -> None:
+    """Trail → node dispatch (T.42a) — route by `node.node_type`. Non-fight nodes
+    (AUGMENT/SUPPLY) get their own producer; fight-types land in Prep. (SUPPLY
+    stays fight-prep as an interim until T.42b wires `ui/views/supply.py`.)"""
+    from src.game.models import NodeType
+
+    if node.node_type == NodeType.AUGMENT:
+        _push_augment(page, run, node)
+    else:
+        _push_prep(page, run, node)
+
+
 def _push_trail(page: ft.Page, run) -> None:
     """Push the Trail view (T.11) — route map + node focus + team summary + live
     weather. Play Next → Prep; Save & Exit autosaves the run and returns to menu."""
@@ -132,7 +159,7 @@ def _push_trail(page: ft.Page, run) -> None:
     page.views.append(
         build_trail_view(
             page, run,
-            on_play_next=lambda node: _push_prep(page, run, node),
+            on_play_next=lambda node: _play_node(page, run, node),
             on_save_exit=_save_exit,
         )
     )
