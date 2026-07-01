@@ -18,6 +18,18 @@ secondary **predators** (mod 5). `ring_relation(a, b)` returns `a`'s relation to
 `PRIMARY_PREY`, or `NEUTRAL` whenever either side is `CLEAR`. Both systems key
 off this one function.
 
+The full ring (each member's prey/predators, `CYCLE_ORDER` order):
+
+| weather | primary prey | secondary prey | secondary predator | primary predator |
+|---|---|---|---|---|
+| `Mist` | Thunder | Snow | Rain | Cloudy |
+| `Cloudy` | Mist | Thunder | Snow | Rain |
+| `Rain` | Cloudy | Mist | Thunder | Snow |
+| `Snow` | Rain | Cloudy | Mist | Thunder |
+| `Thunder` | Snow | Rain | Cloudy | Mist |
+
+(`Clear` is off-ring — `NEUTRAL` to everything.)
+
 ## 1. Weather Favor — `combat_modifier`
 
 "Does the node weather suit my affinity?" A 5-tier stat buff/debuff
@@ -56,6 +68,21 @@ debuff** (SELF tier never debuffs). The strong-tier packs
 `attack_range_delta` is an `add` (rounded): `-1` survives the medium tier
 (`round(-0.6) = -1`) and vanishes at the weak tier (`round(-0.3) = 0`).
 
+**Favor matrix** — a piece's affinity (row) against the node weather (column).
+`combat_modifier` reads `ring_relation(affinity, weather)`: `buff +++` = `SELF`
+(scalar 1.0), `buff ++` = `PRIMARY_PREDATOR` (0.6), `buff +` = `SECONDARY_PREDATOR`
+(0.3); `deb −−` = `PRIMARY_PREY` (0.6), `deb −` = `SECONDARY_PREY` (0.3); `·` =
+`NEUTRAL`/inert (`_BUFF_RELATIONS` = SELF + both predators; debuffs = both prey):
+
+| affinity \ weather | Clear | Mist | Cloudy | Rain | Snow | Thunder |
+|---|---|---|---|---|---|---|
+| `Clear` | · | · | · | · | · | · |
+| `Mist` | · | buff +++ | deb −− | deb − | buff + | buff ++ |
+| `Cloudy` | · | buff ++ | buff +++ | deb −− | deb − | buff + |
+| `Rain` | · | buff + | buff ++ | buff +++ | deb −− | deb − |
+| `Snow` | · | deb − | buff + | buff ++ | buff +++ | deb −− |
+| `Thunder` | · | deb −− | deb − | buff + | buff ++ | buff +++ |
+
 ## 2. Affinity Clash — `damage_modifier`
 
 "Do I beat this enemy?" A per-hit multiplier `damage_modifier(attacker_affinity,
@@ -71,6 +98,18 @@ The multiplier by ring relation of attacker→defender (`DAMAGE_MULT`):
 | `SELF` / `NEUTRAL` | 1.00 |
 | `SECONDARY_PREY` | 0.88 |
 | `PRIMARY_PREY` | 0.70 |
+
+**Clash matrix** — attacker affinity (row) vs defender affinity (column), the
+per-hit `damage_modifier` multiplier (`DAMAGE_MULT[ring_relation(atk, def)]`):
+
+| atk \ def | Clear | Mist | Cloudy | Rain | Snow | Thunder |
+|---|---|---|---|---|---|---|
+| `Clear` | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| `Mist` | 1.00 | 1.00 | 0.70 | 0.88 | 1.12 | 1.30 |
+| `Cloudy` | 1.00 | 1.30 | 1.00 | 0.70 | 0.88 | 1.12 |
+| `Rain` | 1.00 | 1.12 | 1.30 | 1.00 | 0.70 | 0.88 |
+| `Snow` | 1.00 | 0.88 | 1.12 | 1.30 | 1.00 | 0.70 |
+| `Thunder` | 1.00 | 0.70 | 0.88 | 1.12 | 1.30 | 1.00 |
 
 ## Why decoupled
 
