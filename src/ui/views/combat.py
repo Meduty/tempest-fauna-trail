@@ -473,12 +473,14 @@ def build_combat_view(
             animate_position=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
         )
 
-    def _status_pips(p: PieceView, cx: float, cy: float) -> ft.Control | None:
+    def _status_pips(p: PieceView, cx: float, *, top: float) -> ft.Control | None:
+        """Status pips row, positioned at ``top`` (below the piece's full HP+mana
+        bar stack — the caller computes it so extra mana bars don't overlap)."""
         if not p.statuses:
             return None
         pips = [
             ft.Container(
-                width=11, height=11, border_radius=5,
+                width=10, height=10, border_radius=5,
                 bgcolor=_STATUS_COLORS.get(st.status_id, TEXT_MUTED),
                 alignment=ft.Alignment.CENTER,
                 content=ft.Text(str(st.stacks), size=7, color="#111111") if st.stacks > 1 else None,
@@ -487,7 +489,7 @@ def build_combat_view(
             for st in p.statuses[:5]
         ]
         return ft.Container(
-            key=f"st-{p.id}", left=cx - _BAR_W / 2, top=cy + _TOKEN_R + 16,
+            key=f"st-{p.id}", left=cx - _BAR_W / 2, top=top,
             content=ft.Row(pips, spacing=2, tight=True),
             animate_position=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
         )
@@ -679,20 +681,25 @@ def build_combat_view(
                 continue  # no HP/mana/status bars on a defeated body
             ox, oy = lunge.get(p.id, (0.0, 0.0))
             overlays.append(_token(p, cx, cy, ox, oy))
+            # Under-token resource stack: HP bar, then ONE mana bar per active
+            # slot (multicasters field >1 — B.63), then the status pips below the
+            # whole stack. Each row is positioned off a running `bar_y` so extra
+            # mana bars push the pips down instead of overlapping them.
             overlays.append(ft.Container(
                 key=f"hp-{p.id}", left=cx - _BAR_W / 2, top=cy + _TOKEN_R + 2,
-                content=meter_bar(current=p.hp, maximum=max(1, p.max_hp), height=5, width=_BAR_W),
+                content=meter_bar(current=p.hp, maximum=max(1, p.max_hp), height=4, width=_BAR_W),
                 animate_position=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
             ))
-            if p.mana:
-                slot = p.mana[0]
+            bar_y = cy + _TOKEN_R + 2 + 4 + 1          # below the HP bar (+gap)
+            for i, slot in enumerate(p.mana):
                 overlays.append(ft.Container(
-                    key=f"mp-{p.id}", left=cx - _BAR_W / 2, top=cy + _TOKEN_R + 9,
+                    key=f"mp-{p.id}-{i}", left=cx - _BAR_W / 2, top=bar_y,
                     content=_mana_bar(slot.current_mana, slot.mana_cost, slot.max_mana,
-                                      width=_BAR_W, height=4),
+                                      width=_BAR_W, height=3),
                     animate_position=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
                 ))
-            pips = _status_pips(p, cx, cy)
+                bar_y += 3 + 1                         # mana bar height + gap
+            pips = _status_pips(p, cx, top=bar_y + 1)
             if pips is not None:
                 overlays.append(pips)
 
