@@ -1,6 +1,16 @@
--- Give every table content-proportional wrapping columns that sum to the text
--- width, so wide source tables (ARCHITECTURE / docs/live) wrap instead of
--- overflowing the right margin in the PDF.
+-- Table + inline-code handling for the documentation PDF build.
+--
+-- (1) Table: give every table content-proportional wrapping columns that sum to
+--     the text width, so wide source tables (ARCHITECTURE / docs/live) wrap
+--     instead of overflowing the right margin in the PDF.
+-- (2) Code: pandoc renders inline code as `\texttt{...}`, which does NOT break --
+--     a long identifier (ABILITY_REGISTRY, beast/skyborn/...) wider than its
+--     column overprints the next column. Insert `\allowbreak` after `_` and `/`
+--     so long ids wrap inside narrow cells. Additive (only adds break points),
+--     so it never changes layout unless a token would otherwise overflow.
+--
+-- The filter runs top-down so the Table width pass measures the ORIGINAL code
+-- text (via stringify) before Code rewrites it to raw LaTeX.
 
 local stringify = pandoc.utils.stringify
 
@@ -17,7 +27,7 @@ local function scan(rows, maxlen)
   end
 end
 
-function Table(tbl)
+local function Table(tbl)
   local ncol = #tbl.colspecs
   local maxlen = {}
   scan(tbl.head.rows, maxlen)
@@ -40,3 +50,25 @@ function Table(tbl)
   end
   return tbl
 end
+
+local function tex_escape(s)
+  return (s:gsub('.', function(c)
+    local m = {
+      ['\\'] = '\\textbackslash{}', ['{'] = '\\{', ['}'] = '\\}',
+      ['$'] = '\\$', ['&'] = '\\&', ['#'] = '\\#', ['%'] = '\\%',
+      ['_'] = '\\_', ['~'] = '\\textasciitilde{}', ['^'] = '\\textasciicircum{}',
+    }
+    return m[c] or c
+  end))
+end
+
+local function Code(el)
+  local esc = tex_escape(el.text)
+  esc = esc:gsub('\\_', '\\_\\allowbreak{}')  -- break after SNAKE_CASE underscores
+  esc = esc:gsub('/', '/\\allowbreak{}')       -- break after path/kinship slashes
+  return pandoc.RawInline('latex', '\\texttt{' .. esc .. '}')
+end
+
+return {
+  { traverse = 'topdown', Table = Table, Code = Code },
+}

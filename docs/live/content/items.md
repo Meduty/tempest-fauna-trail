@@ -13,7 +13,7 @@
 
 **`ITEM_REGISTRY` = 50** combat items (`id → Callable[[Piece], EffectBundle]`):
 
-| Group | Count | File | IDs |
+| Group | # | File | IDs |
 |---|---|---|---|
 | Base components | 8 | `base.py` (`BASE_COMPONENTS`) + factories in `combined.py` | `fang`, `talon`, `heartseed`, `springtear`, `old_hide`, `stoneplate`, `wardpelt`, `keen_claw` |
 | Same-component combines | 8 | `combined.py` | e.g. `apex_fang` (fang+fang), `deepwell` (springtear+springtear) |
