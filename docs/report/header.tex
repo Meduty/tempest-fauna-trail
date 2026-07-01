@@ -5,6 +5,10 @@
 \usepackage{xcolor}
 \definecolor{codebg}{HTML}{F5F5F5}
 \definecolor{codeframe}{HTML}{DDDDDD}
+% meta.yaml sets link/urlcolor to RoyalBlue, a dvipsnames name that isn't
+% available unless xcolor was loaded with [dvipsnames]. Define it explicitly so
+% the PDF build never fails with an "undefined color" error.
+\definecolor{RoyalBlue}{HTML}{4169E1}
 
 % Wrap long lines in verbatim/code so ASCII diagrams and long ids don't overflow.
 \fvset{breaklines=true,breakanywhere=true,fontsize=\small}

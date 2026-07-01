@@ -17,6 +17,8 @@ toccolor: black
 toc: true
 toc-depth: 2
 numbersections: true
-monofont: "Consolas"
-monofontoptions: "Scale=0.82"
+# Latin Modern Mono ships with every TeX distribution (and tectonic's bundle),
+# so the build is reproducible everywhere — unlike Consolas (Windows-only).
+monofont: "Latin Modern Mono"
+monofontoptions: "Scale=0.90"
 ---
