@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert mega3_analysis_report.md -> LaTeX -> PDF (xelatex).
+"""Convert ../reports/mega3_analysis_report.md -> LaTeX -> PDF (xelatex).
 
 Targeted converter for THIS report's markdown subset: headings, pipe tables,
 images, blockquotes, bullet lists, horizontal rules, **bold**, `code`,
@@ -14,7 +14,7 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-MD = os.path.join(HERE, "mega3_analysis_report.md")
+MD = os.path.join(HERE, "..", "reports", "mega3_analysis_report.md")
 TEX = os.path.join(HERE, "mega3_analysis_report.tex")
 
 # unicode glyph -> LaTeX (applied to text AFTER special-char escaping, via tokens)

@@ -476,7 +476,7 @@ Route (staged nodes) → Node[weather] → Combat(team, enemies, weather) → Ba
   CSV cell, aggregators skip NA / recompute from raw per-weather win rates.
   Touches `tools/simulation/ratings.py`, `tools/simulation/report.py`,
   `tests/tools/simulation/test_ratings.py`, `reviews/mega_sim/11_mega7.R`,
-  `reviews/mega7_analysis_report.md`.
+  `reviews/reports/mega7_analysis_report.md`.
 
 - B.13 [2026-06-04] Axis-count drift: `t5_content_plan.md` documents "**4
   orthogonal axes**" but `content.py` ships **5** (`speed` was added after the

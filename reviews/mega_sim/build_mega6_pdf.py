@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert reviews/mega6_analysis_report.md -> LaTeX -> PDF (xelatex).
+"""Convert reviews/reports/mega6_analysis_report.md -> LaTeX -> PDF (xelatex).
 
 Adapted from build_pdf.py. Run from repo root:
     python3 reviews/mega_sim/build_mega6_pdf.py
@@ -15,7 +15,7 @@ import sys
 # repo root is two levels up from this file
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 HERE = os.path.join(REPO, "reviews", "mega_sim")
-MD   = os.path.join(REPO, "reviews", "mega6_analysis_report.md")
+MD   = os.path.join(REPO, "reviews", "reports", "mega6_analysis_report.md")
 TEX  = os.path.join(HERE, "mega6_analysis_report.tex")
 
 GLYPH = {
