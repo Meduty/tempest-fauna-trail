@@ -82,3 +82,30 @@ def test_single_caster_renders_one_mana_bar():
 def test_enemy_ids_are_stable():
     """Guard the roster ids the smoke relies on still exist."""
     assert "enemy_conscript" in ENEMY_ROSTER
+
+
+def test_base_id_strips_instance_suffix():
+    """`_base_id` maps a uniquified instance id back to the roster/def id so the
+    view's base-id-keyed metadata dicts resolve for twins (B.65 review)."""
+    from src.ui.views.combat import _base_id
+
+    assert _base_id("enemy_conscript#1") == "enemy_conscript"
+    assert _base_id("enemy_conscript#2") == "enemy_conscript"
+    assert _base_id("enemy_conscript") == "enemy_conscript"      # no suffix → unchanged
+    assert _base_id("champ_ember_salamander") == "champ_ember_salamander"
+
+
+def test_twin_enemies_get_unique_token_keys():
+    """Two enemies of the same type render with distinct control keys (the base id
+    + a `#n`-suffixed instance id), so the client no longer animates one piece's
+    token/bars between its twins (B.65)."""
+    team = [build_champion_at_level(_first_single_caster(), 2)]
+    enemies = [build_enemy_at_level("enemy_conscript", 1),
+               build_enemy_at_level("enemy_conscript", 1)]
+    session = CombatSession(team=team, enemies=enemies, weather=WeatherState.CLEAR)
+    view = build_combat_view(_FakePage(), session, on_exit=lambda _r: None)
+    keys = _keys(view, [])
+    tok = sorted(k for k in keys if k.startswith("tok-enemy_conscript"))
+    assert tok == ["tok-enemy_conscript", "tok-enemy_conscript#1"]
+    # ...and no key collides (every token/bar key is unique).
+    assert len(keys) == len(set(keys))

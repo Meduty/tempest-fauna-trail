@@ -379,6 +379,10 @@ Zones (views_spec §7.3):
   (`tok-{id}`/`hp-{id}`/`mp-{id}-{i}`/`st-{id}`); because `compile_loadout` uniquifies
   duplicate piece ids (`id#n` for the 2nd+ twin, B.65, `loadout.py:344`), these keys
   no longer collide across same-type enemies, so bars/FX stop bleeding between twins.
+  The view's name/ability/champion metadata dicts (`name_by_id`/`abilities_by_id`/
+  `champ_by_id`) are keyed by the **base session id**, so every lookup by a
+  `PieceView.id`/event `actor_id` goes through `_base_id()` (strips the `#n` suffix) —
+  twins share a def, so both resolve the same name + tooltips + infocard (B.65 review).
   Floating
   damage/heal numbers are coloured **by damage type** (phys red / magic blue / true
   white / dot purple / heal green; crit = trailing `!` + size bump, not colour) and
