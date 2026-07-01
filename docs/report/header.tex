@@ -1,0 +1,21 @@
+% Extra LaTeX preamble for the documentation PDF (xelatex/tectonic).
+
+% Tighter, boxed code blocks with light background.
+\usepackage{fvextra}
+\usepackage{xcolor}
+\definecolor{codebg}{HTML}{F5F5F5}
+\definecolor{codeframe}{HTML}{DDDDDD}
+
+% Wrap long lines in verbatim/code so ASCII diagrams and long ids don't overflow.
+\fvset{breaklines=true,breakanywhere=true,fontsize=\small}
+
+% Keep headings from being orphaned at the bottom of a page.
+\usepackage{needspace}
+
+% Better table handling (long tables that span pages).
+\usepackage{longtable}
+\usepackage{booktabs}
+
+% Don't hyphenate code-ish words in body text as aggressively.
+\hyphenpenalty=2000
+\tolerance=1000
