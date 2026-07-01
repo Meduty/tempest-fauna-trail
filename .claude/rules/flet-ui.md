@@ -19,5 +19,5 @@ paths:
 - Style via `src/ui/theme.py` constants — no hardcoded color strings
 - Event handlers: `lambda _: do_thing()` for click callbacks
 - Use `expand=True` for responsive layouts
-- Set `wrap=True` on long Text controls
+- `ft.Text` **wraps by default** — do NOT pass `wrap=` (it has no such arg; `Text.__init__() got an unexpected keyword argument 'wrap'` crashes at render, invisible to the logic-only test suite). Use `no_wrap=True` to force a single line; constrain width via a parent `Container`/`expand`. `wrap=True` is a **`Row`/`Column`** arg only.
 - Image assets referenced as relative paths from `src/assets/`

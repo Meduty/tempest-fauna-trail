@@ -224,6 +224,47 @@ is what closes a node — not the view:
    router (`main.py::_finish_combat`): a continuing run pops to the menu and pushes a **fresh
    Trail** at the new current node; a terminal run pushes the **Summary** view → menu (T.15b).
 
+## Augment (T.42a) — `ui/views/augment.py` + `economy.resolve_nonfight_node`
+
+The augment-node pick screen (route `/augment`). AUGMENT and SUPPLY are **non-fight**
+nodes — the run loop resolves them through their own producer, not Prep. Dispatch:
+`main.py::_play_node` branches on `node.node_type` (AUGMENT → `_push_augment`, SUPPLY
+→ `_push_supply`, else → `_push_prep`).
+
+1. `build_augment_view(page, run, node, *, on_done)` — pure presentation (V.63): a
+   deterministic **1-of-3 offer** (`augments.generate_augment_offer(run.seed,
+   node.index, stage_of(node.index).index, exclude=active)`), one card per augment
+   (quality chip + scope + name + blurb; quality→color local map). **Choose** →
+   `augments.apply_augment`; **Reroll** → `augments.reroll_augment_offer` (1 base free
+   + `augment_state["banked_rerolls"]`, V.84; button shows `rerolls_available` and
+   disables at 0); **Skip** → no augment.
+2. On pick/skip the view resolves the node via `economy.resolve_nonfight_node(run)`
+   (the non-combat sibling of `apply_node_result`, V.83): `mark_current_node_cleared`
+   + `advance_to_next_node`, **no** income/tempest/Hearts/`battle_log` mutation. Then
+   autosaves (`save.save_run`, V.65) **after** the interactive pick and calls
+   `on_done()` — the producer pops to menu + pushes a **fresh Trail** at the advanced
+   node (a non-fight node is never terminal, V.83).
+
+Reroll seed determinism (V.84): `augment_seed(run_seed, node_index, reroll_count)` —
+`reroll_count ∈ {0,1}` are the legacy `CH_AUGMENT`/`CH_REROLL` draws byte-identically,
+`≥2` fold into a strided sub-seed (`AUGMENT_REROLL_STRIDE`) for awarded/banked rerolls.
+
+> **Flet gotcha (B.37):** `ft.Text` has **no `wrap` arg** (it wraps by default; `wrap=`
+> is Row/Column-only) — passing it crashes at render, invisible to the logic-only
+> suite. Both node views carry a `tests/ui/test_*.py` **render-smoke** (`_FakePage`
+> construction, like `test_reward.py`) so a bad control kwarg fails a test.
+
+## Supply (T.42b) — `ui/views/supply.py` + `economy.resolve_nonfight_node`
+
+The supply-node free-recruit screen (route `/supply`). Reuses the augment node's
+non-fight seam (V.83). `build_supply_view(page, run, node, *, on_done)` renders a
+deterministic **1-of-5 champion offer** (`shop.generate_supply_offer(run.seed,
+node.index, run.tempest_rank)` — rank-gated, V.74) as cards (affinity + name + tier +
+owned badge). **Recruit (free)** → `shop.take_supply_champion` (no Amber; disabled
+when a copy is maxed); **Skip** → no recruit. Either path resolves the node via
+`economy.resolve_nonfight_node` + autosave (V.65) → fresh Trail — identical to the
+augment producer, no duplicate orchestrator.
+
 ## Summary (T.13) — `viz/run_summary.py` + `ui/views/summary.py`
 
 The run-end screen (route `/summary`). Mirrors the route-map's graded-viz shape
@@ -478,8 +519,11 @@ Trail opens (Settings is reached from the menu, so no Trail is live to re-init).
 `_game_ui` is the default shell (no env gate): a `page.views` stack rooted at the
 menu (`/`). **Playfight** pushes the dev harness (`_push_playfight`) whose
 `open_combat` pushes the combat view; `_pop` / `page.on_view_pop` unwind the
-stack (firing the combat view's on-pop to stop autoplay). `TEMPEST_DEV=1` is a
-**legacy shortcut** that lands directly in Playfight; `TEMPEST_ADMIN=1` still
+stack (firing the combat view's on-pop to stop autoplay). The Trail's Play-Next
+routes through `_play_node`, which dispatches on `node.node_type` — **AUGMENT** →
+`_push_augment` (T.42a augment-pick view), **SUPPLY** → `_push_supply` (T.42b
+free-recruit view), everything else → `_push_prep` (fight-prep). `TEMPEST_DEV=1`
+is a **legacy shortcut** that lands directly in Playfight; `TEMPEST_ADMIN=1` still
 opens the admin panel. Quit → `page.window.destroy()`.
 
 ## Invariants this layer owns
@@ -499,6 +543,14 @@ opens the admin panel. Quit → `page.window.destroy()`.
 - **V.69** — the run-loop applies a fought node's outcome only through
   `economy.apply_node_result(run, result)` (once per fight, never re-resolving);
   combat exits via `on_exit(result)` (commit-on-start). Extends V.64.
+- **V.83** — non-fight nodes (AUGMENT/SUPPLY) resolve only through
+  `economy.resolve_nonfight_node(run)` (mark-cleared + advance, no
+  income/tempest/Hearts); the pick mutates `Run` only via `apply_augment` /
+  `take_supply_champion`; `main.py` dispatches on `node.node_type`. Extends V.63.
+- **V.84** — the augment offer + reroll are seed-deterministic via
+  `augment_seed(run_seed, node_index, reroll_count)` (`{0,1}` legacy-identical, `≥2`
+  strided); reroll availability = 1 base free + `augment_state["banked_rerolls"]`,
+  all RNG-free. Amends V.19.
 - **V.72** — graded viz (`route_map`, `run_summary`) is hand-drawn on `flet.canvas`
   (pure `*_specs` data fn + canvas builder, asserts data not pixels); no dependency on
   Flet's removed core chart widgets (`ft.BarChart`/`LineChart`/`PieChart`, ≥0.85).
@@ -552,6 +604,9 @@ glance). Pure presentation; canonical token maps live in `theme.py`, behaviour i
 | Prep view (placement + shop + bench + preview + tooltips, T.23a) | `src/ui/views/prep.py` |
 | Reward view (post-fight panel, T.15a) | `src/ui/views/reward.py` |
 | Reward orchestrator (`apply_node_result`, V.69) | `src/game/economy.py` |
+| Augment node view (1-of-3 pick + reroll, T.42a) | `src/ui/views/augment.py` |
+| Supply node view (1-of-5 free recruit, T.42b) | `src/ui/views/supply.py` |
+| Non-fight node orchestrator (`resolve_nonfight_node`, V.83) | `src/game/economy.py` |
 | Run-summary view + canvas damage chart (T.13, V.72) | `src/ui/views/summary.py`, `src/viz/run_summary.py` |
 | Affinity-clash heatmap viz (Prep left rail) | `src/viz/affinity_clash_heatmap.py` |
 | Shared hex-board pixel geometry (combat + Prep) | `src/ui/components/board_geometry.py` |

@@ -110,8 +110,18 @@ def test_offer_excludes_active():
 
 def test_reroll_differs():
     base = generate_augment_offer(8, 6, 4)
-    rerolled = generate_augment_offer(8, 6, 4, rerolled=True)
+    rerolled = generate_augment_offer(8, 6, 4, reroll_count=1)
     assert [x.id for x in base] != [x.id for x in rerolled]
+
+
+def test_offer_reroll_count_deterministic_and_distinct():
+    # V.84: each reroll_count is deterministic and distinct from the others.
+    offers = [generate_augment_offer(8, 6, 4, reroll_count=k) for k in range(4)]
+    for k in range(4):
+        again = generate_augment_offer(8, 6, 4, reroll_count=k)
+        assert [x.id for x in offers[k]] == [x.id for x in again]  # deterministic
+    # count 0 (fresh) distinct from count 1 (first reroll)
+    assert [x.id for x in offers[0]] != [x.id for x in offers[1]]
 
 
 def test_prismatic_gated_stage1():
@@ -134,6 +144,63 @@ def test_quality_curve_monotone_prismatic():
     weights = [quality_weights_for_stage(s)[AugmentQuality.PRISMATIC] for s in range(1, 7)]
     assert weights[0] == 0
     assert weights == sorted(weights)
+
+
+# ---------------------------------------------------------------------------
+# Reroll bookkeeping (T.42a, V.84) — 1 base free + banked/awarded rerolls
+# ---------------------------------------------------------------------------
+
+
+def test_rerolls_available_base_free_only():
+    from src.game.augments import rerolls_available
+
+    run = _fresh_run()
+    assert rerolls_available(run, 0) == 1   # one free reroll on a fresh node
+    assert rerolls_available(run, 1) == 0   # no banked → nothing after the free one
+
+
+def test_rerolls_available_counts_banked():
+    from src.game.augments import rerolls_available
+
+    run = _fresh_run()
+    run.augment_state["banked_rerolls"] = 2
+    assert rerolls_available(run, 0) == 3   # free + 2 banked
+    assert rerolls_available(run, 1) == 2   # free spent, 2 banked remain
+
+
+def test_reroll_augment_offer_consumes_free_then_banked():
+    from src.game.augments import reroll_augment_offer
+
+    run = _fresh_run()
+    run.augment_state["banked_rerolls"] = 1
+
+    # First reroll: free base, banked untouched.
+    offer1, count1, left1 = reroll_augment_offer(run, 4, 3, 0)
+    assert count1 == 1
+    assert run.augment_state["banked_rerolls"] == 1  # free one spent, not banked
+    assert left1 == 1
+
+    # Second reroll: spends the banked one.
+    offer2, count2, left2 = reroll_augment_offer(run, 4, 3, count1)
+    assert count2 == 2
+    assert run.augment_state["banked_rerolls"] == 0
+    assert left2 == 0
+
+    # Exhausted → None.
+    assert reroll_augment_offer(run, 4, 3, count2) is None
+
+    # Offers are the deterministic generate_augment_offer draws for each count.
+    assert [x.id for x in offer1] == [
+        x.id for x in generate_augment_offer(7, 4, 3, reroll_count=1, exclude=())
+    ]
+    assert [x.id for x in offer2] != [x.id for x in offer1]
+
+
+def test_reroll_augment_offer_none_when_exhausted():
+    from src.game.augments import reroll_augment_offer
+
+    run = _fresh_run()  # no banked rerolls
+    assert reroll_augment_offer(run, 4, 3, 1) is None  # already used the free one
 
 
 # ---------------------------------------------------------------------------

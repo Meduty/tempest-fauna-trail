@@ -42,9 +42,16 @@ balance sims) is **byte-for-byte identical** — guarded by `test_augments.py::t
 
 ## Offers, reroll, quality curve
 
-- `generate_augment_offer(run_seed, node_index, stage_index, *, rerolled=False, exclude=())`
-  — deterministic 1-of-3 via `augment_seed` (`CH_AUGMENT`/`CH_REROLL`). Rolls a quality by
-  the stage curve, then a uniform unpicked augment of that quality. No dups; excludes active.
+- `generate_augment_offer(run_seed, node_index, stage_index, *, reroll_count=0, exclude=())`
+  — deterministic 1-of-3 via `augment_seed(run_seed, node_index, reroll_count)` (V.84).
+  Rolls a quality by the stage curve, then a uniform unpicked augment of that quality. No
+  dups; excludes active. `reroll_count` selects the draw: `0` = fresh offer, `1` = first
+  reroll (legacy `CH_AUGMENT`/`CH_REROLL` byte-identical), `≥2` strided via
+  `AUGMENT_REROLL_STRIDE` for awarded/banked rerolls (T.42a).
+- `rerolls_available(run, reroll_count)` / `reroll_augment_offer(run, node_index, stage_index,
+  reroll_count)` — game-side reroll bookkeeping (1 base free + `augment_state["banked_rerolls"]`);
+  the latter consumes one and returns `(new_offer, new_count, left)` or `None` when exhausted
+  (V.84, keeps the view Flet-free of game logic per V.63).
 - **Prismatic gated to stage ≥ 2** (D3).
 - `quality_weights_for_stage(i)` — per-stage Common→Prismatic weights (`_STAGE_WEIGHTS`,
   §5 curve; tuning surface). Prismatic 0 at stage 1, non-decreasing after.

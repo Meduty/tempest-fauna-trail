@@ -58,6 +58,12 @@ CH_REWARD: Final[int] = 8  # Seed channel for REWARD-node loot rolls (T.29a)
 # above any realistic per-node reroll count (each reroll costs Amber).
 SHOP_REROLL_STRIDE: Final[int] = 1000
 
+# Augment reroll stride (T.42a, V.84). reroll_count 0/1 keep the legacy
+# CH_AUGMENT/CH_REROLL channels byte-identically; count >= 2 folds into the node
+# arg like SHOP_REROLL_STRIDE so awarded/banked rerolls stay deterministic and
+# distinct without colliding across nodes.
+AUGMENT_REROLL_STRIDE: Final[int] = 1000
+
 # ---------------------------------------------------------------------------
 # Content version (populated from roster hash, used by save/load T14)
 # ---------------------------------------------------------------------------
@@ -554,10 +560,22 @@ def generate_reward_loot(
 # ---------------------------------------------------------------------------
 
 
-def augment_seed(run_seed: int, node_index: int, rerolled: bool = False) -> int:
-    """Return the sub-seed for augment offer generation."""
-    channel = CH_REROLL if rerolled else CH_AUGMENT
-    return derive_seed(run_seed, node_index, channel)
+def augment_seed(run_seed: int, node_index: int, reroll_count: int = 0) -> int:
+    """Return the sub-seed for augment offer generation (T.42a, V.84).
+
+    ``reroll_count`` folds the reroll index into the sub-seed so awarded/banked
+    rerolls (beyond the single legacy reroll) stay deterministic + distinct.
+    ``0`` (fresh offer) and ``1`` (first reroll) reproduce the legacy
+    ``CH_AUGMENT``/``CH_REROLL`` draws **byte-identically** (no determinism
+    re-baseline); ``>= 2`` strides into the node arg like ``shop_seed``.
+    """
+    if reroll_count <= 0:
+        return derive_seed(run_seed, node_index, CH_AUGMENT)
+    if reroll_count == 1:
+        return derive_seed(run_seed, node_index, CH_REROLL)
+    return derive_seed(
+        run_seed, node_index * AUGMENT_REROLL_STRIDE + reroll_count, CH_REROLL
+    )
 
 
 def supply_seed(run_seed: int, node_index: int, rerolled: bool = False) -> int:

@@ -1022,7 +1022,7 @@ def generate_augment_offer(
     node_index: int,
     stage_index: int,
     *,
-    rerolled: bool = False,
+    reroll_count: int = 0,
     exclude: tuple[str, ...] = (),
 ) -> list[Augment]:
     """Deterministic 1-of-3 augment offer (V.2/V.14).
@@ -1030,8 +1030,12 @@ def generate_augment_offer(
     Picks 3 distinct augments: roll a quality by the stage curve, then a uniform
     unpicked augment of that quality. Excludes `exclude` (already-active) ids and
     avoids duplicates within the offer. Prismatic gated to stage ≥ 2 (D3).
+
+    ``reroll_count`` selects the offer draw (V.84): ``0`` = the fresh node offer,
+    ``1`` = the first reroll (legacy byte-identical), ``>= 2`` = awarded/banked
+    rerolls. Purely seed-driven — RNG-free selection, so replays stay stable.
     """
-    rng = SeededRng(augment_seed(run_seed, node_index, rerolled))
+    rng = SeededRng(augment_seed(run_seed, node_index, reroll_count))
     excluded = set(exclude)
     weights = quality_weights_for_stage(stage_index)
 
@@ -1056,6 +1060,52 @@ def generate_augment_offer(
         chosen = lst.pop(rng.randint(0, len(lst) - 1))
         offer.append(chosen)
     return offer
+
+
+# ===========================================================================
+# Reroll bookkeeping (T.42a, V.84) — game-side so the view stays Flet-free of
+# game logic (V.63). 1 base free reroll per node visit + any awarded/banked
+# rerolls in `augment_state["banked_rerolls"]`.
+# ===========================================================================
+
+
+def rerolls_available(run: Run, reroll_count: int) -> int:
+    """How many more rerolls the player may take, given rerolls already used.
+
+    The first reroll of a node visit (``reroll_count == 0``) is free; every
+    reroll after that spends one banked/awarded reroll (V.84).
+    """
+    banked = run.augment_state.get("banked_rerolls", 0)
+    free = 1 if reroll_count == 0 else 0
+    return free + banked
+
+
+def reroll_augment_offer(
+    run: Run, node_index: int, stage_index: int, reroll_count: int
+) -> tuple[list[Augment], int, int] | None:
+    """Consume one reroll and return ``(new_offer, new_reroll_count, left)``.
+
+    ``reroll_count`` is how many rerolls the view has already taken this node
+    visit. Returns ``None`` when no reroll is available (the view disables the
+    button). The free base reroll is spent first; subsequent rerolls decrement
+    ``augment_state["banked_rerolls"]``. Deterministic (V.2/V.14) — the new offer
+    comes straight from ``generate_augment_offer`` at ``reroll_count + 1``.
+    """
+    if rerolls_available(run, reroll_count) <= 0:
+        return None
+    if reroll_count >= 1:  # the free base reroll is count 0 -> 1; later ones bank
+        run.augment_state["banked_rerolls"] = (
+            run.augment_state.get("banked_rerolls", 0) - 1
+        )
+    new_count = reroll_count + 1
+    offer = generate_augment_offer(
+        run.seed,
+        node_index,
+        stage_index,
+        reroll_count=new_count,
+        exclude=tuple(run.active_augments),
+    )
+    return offer, new_count, rerolls_available(run, new_count)
 
 
 # ===========================================================================

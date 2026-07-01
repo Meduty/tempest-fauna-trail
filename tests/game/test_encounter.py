@@ -193,7 +193,23 @@ class TestSeedHelpers:
         assert augment_seed(42, 5) == augment_seed(42, 5)
 
     def test_augment_reroll_differs(self):
-        assert augment_seed(42, 5, rerolled=False) != augment_seed(42, 5, rerolled=True)
+        assert augment_seed(42, 5, 0) != augment_seed(42, 5, 1)
+
+    def test_augment_seed_reroll_count_backcompat(self):
+        # V.84: reroll_count 0/1 must equal the legacy CH_AUGMENT/CH_REROLL draws
+        # byte-identically (no determinism re-baseline) — pin against derive_seed.
+        from src.game.encounter import CH_AUGMENT, CH_REROLL, derive_seed
+
+        assert augment_seed(42, 5, 0) == derive_seed(42, 5, CH_AUGMENT)
+        assert augment_seed(42, 5, 1) == derive_seed(42, 5, CH_REROLL)
+        assert augment_seed(42, 5) == augment_seed(42, 5, 0)  # default == fresh offer
+
+    def test_augment_seed_reroll_count_ge2_distinct(self):
+        # reroll_count >= 2 folds into a strided sub-seed — distinct from 0/1 and
+        # from each other; different nodes never collide at the same count.
+        seeds = [augment_seed(42, 5, k) for k in range(5)]
+        assert len(set(seeds)) == len(seeds)
+        assert augment_seed(42, 5, 3) != augment_seed(42, 6, 3)
 
     def test_supply_seed_deterministic(self):
         assert supply_seed(42, 5) == supply_seed(42, 5)
