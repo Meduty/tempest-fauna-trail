@@ -2,11 +2,14 @@
 
 > **Status:** ✅ for the main menu (T.9), combat view core + dev harness (T.12a),
 > **RunStart (T.10)**, **Trail (T.11)**, **Prep (T.23a/b — full economy + items)**,
-> **Reward + result-out seam (T.15a)**, **Summary (T.13 — canvas damage chart)**,
-> **routing + Continue (T.15b)**, **Prep items (T.23b)**. The **full menu→…→menu loop
-> is live**: New Run → RunStart → Trail → Prep → Combat → Reward → Trail, terminal →
-> **Summary** → menu; **Continue** loads the latest save into the Trail. **MVP run-loop
-> slice complete.** FROZEN design:
+> **Reward + result-out seam (T.15a/T.38 Hearts)**, **Summary (T.13 — canvas damage
+> chart)**, **routing + Continue (T.15b)**, **Prep items (T.23b)**, **non-fight node
+> views (T.42a Augment pick, T.42b Supply recruit)**, **Settings (in-app API key)**.
+> The **full menu→…→menu loop is live**: New Run → RunStart → Trail → (Prep → Combat →
+> Reward | Augment | Supply) → Trail, terminal → **Summary** → menu; **Continue** loads
+> the latest save into the Trail. The Trail dispatches each node by `node.node_type`
+> (`main.py::_play_node`): FIGHT-types → Prep, AUGMENT → Augment view, SUPPLY → Supply
+> view. **MVP run-loop slice complete.** FROZEN design:
 > [`views_spec.md`](../../design/systems/views_spec.md). Audited by `/check`.
 
 ## RunStart (T.10) — `game/run_init.py` + `ui/views/run_start.py`
@@ -114,8 +117,13 @@ Amber/cost/level/encounter number.
 - **Auto-Place / Reset** = the default packing `champion i → (i // 7, i % 7)`, mirroring
   `engine.assign_spawns` so it's **byte-identical** to `positions=None` (V.62/V.2).
 - **Shared geometry:** the hex pixel layout lives in `ui/components/board_geometry.py`
-  (`cell_xy`, `COL_W`, `ROW_H`, `BOARD_W/H`), reused by the combat view — one coordinate
-  source, no drift.
+  (`cell_xy`, `COL_W=46`, `ROW_H=64`, `MARGIN_X/Y`, `BOARD_W/H` from `BOARD_WIDTH/HEIGHT`),
+  reused by the combat view — one coordinate source, no drift. Pure Flet-free math (no
+  `flet` import) so it stays trivially testable. `ROW_H` is **64** (tile padding, B.63):
+  it leaves vertical room under each token for the combat view's resource stack (HP bar
+  + up to 2 mana bars + the status pip row) so the stack of one tile never overlaps the
+  token below; Prep places bar-less tokens on the same grid so the extra height is just
+  breathing room. Odd columns stagger down half a row (`cell_xy`).
 - **Shop top rail (T.40) + freeze (V.75):** horizontal 5-slot rail (`run.shop_offers`, cost
   via `champion_cost`, owned-copy `●N` badge from `run.champion_copies`). The shop
   **auto-rerolls on every Prep entry** (`refresh_shop(run)` at view build) — frozen slots
@@ -291,8 +299,14 @@ Flet core ≥0.85).
 
 ```
 CombatSession(team: list[Champion], enemies: list[Enemy], weather: WeatherState,
-              run_mods=None, node_id="")
+              run_mods=None, node_id="", map_effect_id="",
+              positions: dict[str, tuple[int, int]] | None = None)
 ```
+
+(frozen dataclass, `src/ui/combat_playback.py`.) `map_effect_id` (default `""` =
+non-boss) drives the boss board tinting; `positions` (piece-id → `(q, r)`) is the
+hand-placement override (Prep board / dev harness) — `None` = the deterministic
+default formation (`engine.assign_spawns`).
 
 **Two producers, one session:** the dev harness builds it from selectors; the Prep
 `Start Combat` flow (T.23a) builds the **identical** object → same view. The view owns
@@ -354,10 +368,18 @@ Zones (views_spec §7.3):
   slides forward as rounds complete.
 - **Centre — hex board:** `flet.canvas` 10×7 (`BOARD_WIDTH`×`BOARD_HEIGHT`); each
   living piece a token (`cv.Circle` tinted `AFFINITY_COLORS[affinity]` + initials,
-  ally/enemy outline) at its **stepped `(q,r)`**, with `meter_bar` HP + a custom
-  **mana bar (`_mana_bar`)** overlaid beneath. The mana bar draws a **cast-threshold
-  tick at each `k×mana_cost`** (since `max_mana` = 2×cost, V.48, the fill alone
-  doesn't show readiness) and a **ready highlight** once `current ≥ cost`. Floating
+  ally/enemy outline) at its **stepped `(q,r)`**. Beneath each token an **under-token
+  resource stack** stacks off a running `bar_y`: a `meter_bar` HP bar first, then
+  **one mana bar (`_mana_bar`) per active slot** — a multicaster fields >1 so it shows
+  two mana bars (B.63) — then the **status pips row below the whole stack** (each mana
+  bar pushes the pips down instead of overlapping). Each mana bar draws a
+  **cast-threshold tick at each `k×mana_cost`** (since `max_mana` = 2×cost, V.48, the
+  fill alone doesn't show readiness) and a **ready highlight** (`SUCCESS` border) once
+  `current ≥ cost`. Every overlay control is keyed per piece
+  (`tok-{id}`/`hp-{id}`/`mp-{id}-{i}`/`st-{id}`); because `compile_loadout` uniquifies
+  duplicate piece ids (`id#n` for the 2nd+ twin, B.65, `loadout.py:344`), these keys
+  no longer collide across same-type enemies, so bars/FX stop bleeding between twins.
+  Floating
   damage/heal numbers are coloured **by damage type** (phys red / magic blue / true
   white / dot purple / heal green; crit = trailing `!` + size bump, not colour) and
   render as overlay controls on top of the tokens. **Click-to-select** via the token
@@ -554,6 +576,12 @@ opens the admin panel. Quit → `page.window.destroy()`.
 - **V.72** — graded viz (`route_map`, `run_summary`) is hand-drawn on `flet.canvas`
   (pure `*_specs` data fn + canvas builder, asserts data not pixels); no dependency on
   Flet's removed core chart widgets (`ft.BarChart`/`LineChart`/`PieChart`, ≥0.85).
+- **V.82** — Prep and Combat render the champion sheet through the **one shared
+  `infocard_core`** (`infocard_header`/`infocard_stat_grid`/`infocard_abilities`,
+  `src/ui/components/infocard.py`) fed a per-view `PieceInfo`, so identity + stats +
+  ability blurbs cannot re-drift; `PieceView` carries display-only `role`/`traits`
+  (set in `compile_loadout`, never read by combat math). Guarded by
+  `TestInfocardSharedByBothViews`.
 
 ## Iconography — `ui/components/iconography.py` + `ui/theme.py` maps
 
@@ -601,8 +629,10 @@ glance). Pure presentation; canonical token maps live in `theme.py`, behaviour i
 | Shared champion infocard core (Prep + Combat, V.82) | `src/ui/components/infocard.py` |
 | `CombatSession` + pure cue/queue model (`build_playback`) | `src/ui/combat_playback.py` |
 | Combat view (canvas board, stepper drive loop, inspect, end panel) | `src/ui/views/combat.py` |
+| RunStart view (seed-deterministic 1-of-3 champion pick, T.10) | `src/ui/views/run_start.py`, `src/game/run_init.py` |
+| Trail view (route map + node focus + team + live weather, T.11) | `src/ui/views/trail.py`, `src/viz/route_map.py` |
 | Prep view (placement + shop + bench + preview + tooltips, T.23a) | `src/ui/views/prep.py` |
-| Reward view (post-fight panel, T.15a) | `src/ui/views/reward.py` |
+| Reward view (post-fight panel, T.15a/T.38) | `src/ui/views/reward.py` |
 | Reward orchestrator (`apply_node_result`, V.69) | `src/game/economy.py` |
 | Augment node view (1-of-3 pick + reroll, T.42a) | `src/ui/views/augment.py` |
 | Supply node view (1-of-5 free recruit, T.42b) | `src/ui/views/supply.py` |
@@ -611,6 +641,8 @@ glance). Pure presentation; canonical token maps live in `theme.py`, behaviour i
 | Affinity-clash heatmap viz (Prep left rail) | `src/viz/affinity_clash_heatmap.py` |
 | Shared hex-board pixel geometry (combat + Prep) | `src/ui/components/board_geometry.py` |
 | Dev harness launcher → `CombatSession` | `src/ui/views/dev_harness.py` |
-| Main menu (`/`, T.9) — New Run/Continue/Playfight/Quit | `src/ui/views/menu.py` |
-| App shell — menu↔harness↔run-loop `page.views` nav | `src/main.py` |
-| Design tokens / shared components (`meter_bar`, chips, …) | `src/ui/theme.py`, `src/ui/components/` |
+| Main menu (`/`, T.9) — New Run/Continue/Playfight/Settings/Quit | `src/ui/views/menu.py` |
+| Settings view (in-app OpenWeather API key, `/settings`) | `src/ui/views/settings.py`, `src/app_config.py` |
+| Playtest admin panel (`TEMPEST_ADMIN=1` gate, not in the run loop) | `src/ui/views/admin.py` |
+| App shell — menu↔harness↔run-loop `page.views` nav + node dispatch | `src/main.py` |
+| Design tokens / shared components (`meter_bar`, `chips`, `champion_card`, `weather_badge`) | `src/ui/theme.py`, `src/ui/components/` |

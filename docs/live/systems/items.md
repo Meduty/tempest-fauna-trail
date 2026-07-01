@@ -2,7 +2,7 @@
 
 > **Status: LIVING** — must match `src/game/items/`, `src/game/loadout.py`,
 > `src/game/models.py`, `src/game/encounter.py`, `src/game/registries.py`.
-> Audited by `/check`. **Last reconciled: 2026-06-16** (T.29a-d complete —
+> Audited by `/check`. **Last reconciled: 2026-07-01** (T.29a-d complete —
 > components, combined, emblems, special run-actions, mana primitive, multi-slot).
 >
 > Design rationale (frozen): `docs/design/tasks/t29_item_engine_plan.md`.
@@ -12,17 +12,28 @@
 
 ```
 src/game/items/
-  __init__.py     — re-exports BASE_COMPONENTS, SPIRIT_GEM, RECIPE_MAP, combine;
-                    importing this module triggers all @register_item side-effects
-  base.py         — BASE_COMPONENTS: frozenset[str] (8 component IDs), SPIRIT_GEM
+  __init__.py     — re-exports BASE_COMPONENTS, SPIRIT_GEM, KINSHIP_OF, kinship_of,
+                    RECIPE_MAP, combine; importing this module triggers all
+                    @register_item / @register_run_action side-effects
+  base.py         — BASE_COMPONENTS: frozenset[str] (8 component IDs), SPIRIT_GEM,
+                    KINSHIP_OF (6 component→Kinship), kinship_of()
   recipes.py      — RECIPE_MAP: dict[frozenset[str], str] (36 entries), combine()
   combined.py     — @register_item factories: 8 raw components + 16 core + 20
                     combined (T.29b) = 44 in ITEM_REGISTRY
   emblems.py      — 6 Kinship emblems (T.29b; ITEM_REGISTRY total = 50)
-  special.py      — 5 RUN_ACTION_REGISTRY special items (T.29b, operate on Run)
+  special.py      — 5 RUN_ACTION_REGISTRY special items (T.29b, operate on Run) +
+                    decompose() helper; Spirit Gem handled inline by combine()
+  meta.py         — ITEM_META: name + blurb for all 50 ids (T.41a; see content doc)
 ```
 
-`ITEM_REGISTRY` (in `src/game/registries.py`) maps `item_id → Callable[[Piece], EffectBundle]`.
+Two registries in `src/game/registries.py` (populated by the `@register_*`
+decorators when `src.game.items` is imported):
+
+- **`ITEM_REGISTRY`** = **50** — `item_id → Callable[[Piece], EffectBundle]`.
+  The combat-facing factories (`register_item`).
+- **`RUN_ACTION_REGISTRY`** = **5** — `item_id → Callable[[Run, *args], None]`.
+  Special run-actions (`register_run_action`) that mutate `Run` and **never enter
+  combat** (V.24). Kept separate so `game/combat/` never sees them.
 
 ## Data structures
 
@@ -72,36 +83,77 @@ through `game/inventory.py` (V.63 — never inline):
 
 ## Equip pipeline (combat-side)
 
-`compile_loadout` (loadout.py) applies items at **step 2.5** — after weather
-modifiers (step 2) but before trait resolution (step 3).
+`compile_loadout` (`loadout.py`) applies items at **step 2.5** — after weather
+modifiers (step 2) but before trait resolution (step 3). The full pass order
+(§10.1) is:
 
 ```
-step 1: compose_stats
-step 2: weather modifiers
-step 2.5: item bundles      ← NEW (T.29a)
-step 3: trait resolution
-...
+step 1   : build pieces from Champion/Enemy models
+step 1b  : uniquify duplicate piece ids (B.65: e.g. enemy twins → id, id#1, …)
+step 2   : weather-favor modifiers (source="weather:<state>", V.42)
+step 2.5 : item bundles          ← T.29a  (emblem granted_traits must land here)
+step 3   : trait breakpoint resolution (player team only, V.22)
+step 3.5 : Built-Different active-synergy flag (augment filter, T.31)
+step 6   : active augment bundles (TEAM/PIECE, T.31)
+step 7   : champion/enemy passive bundles
+step 8   : boss phase / on-death hooks
+step 9   : quest trackers (Run-level bus subscribers)
 ```
 
-Flow:
+Flow at step 2.5:
 1. `piece_from_champion` copies `champion.items → piece.items` (Piece.items is a
    `list[str]`; defaults to `[]`).
-2. At step 2.5, `compile_loadout` imports `src.game.items` (triggers registry
-   population) then iterates `piece.items`; for each item ID calls
-   `ITEM_REGISTRY[item_id](piece)` → `EffectBundle`, then `apply_bundle(piece, bundle)`.
-3. Modifiers from item bundles use `Lifetime.COMBAT` (pieces are rebuilt each
-   combat — no cross-combat accumulation).
+2. `compile_loadout` imports `src.game.items` (triggers registry population) then
+   iterates `piece.items`; for each item ID it strips a `heartwood:` prefix if
+   present, looks up `ITEM_REGISTRY[base_id](piece)` → `EffectBundle`
+   (`_heartwood_scale`d ×1.5 if it was a Heartwood), then
+   `apply_bundle(piece, bundle, bus)`.
+3. `apply_bundle` (`loadout.py:122`) appends `granted_traits`, `modifiers`, and
+   `statuses` to the piece and `bus.subscribe`s each `Hook`. Item modifiers use
+   `Lifetime.COMBAT` (pieces are rebuilt each combat — no cross-combat
+   accumulation).
 
-Enemies carry **no items**; `piece_from_enemy` is unchanged.
+Item `granted_traits` (emblems) land at 2.5 **before** trait resolution (step 3) so
+an emblem wearer counts toward that Kinship's breakpoints. Enemies carry **no
+items**; `piece_from_enemy` is unchanged.
 
-## Item factories (@register_item)
+## Item factories (@register_item) — the modifier + hook pattern
 
-Each factory in `combined.py` is a `Callable[[Piece], EffectBundle]` registered
-via `@register_item(item_id)`. A factory returns an `EffectBundle` containing:
-- **`modifiers`**: flat stat deltas (`Modifier(stat, delta, Lifetime.COMBAT)`).
-- **`hooks`**: `list[Hook]` — each `Hook(event_name, fn, scope)` is registered on
-  the EventBus; closures capturing `owner: Piece` for
-  per-instance state (one-shot flags, cadence counters).
+Each factory in `combined.py` / `emblems.py` is a `Callable[[Piece], EffectBundle]`
+registered via `@register_item(item_id)`. A **fresh** `EffectBundle` (with fresh
+hook closures) is returned on every call, so per-combat state resets automatically.
+A factory returns an `EffectBundle` containing any of:
+
+- **`modifiers`**: stat deltas via `Modifier(stat, op, value, Lifetime.COMBAT, source)`
+  — `op="mul"` (e.g. `1.12` = ×1.12 the composed stat) or `op="add"` (flat).
+- **`hooks`**: `list[Hook]` — each `Hook(event_name, fn, scope)` is subscribed to the
+  EventBus; `fn(ctx, ev)` closures capture `owner: Piece` for per-instance state
+  (one-shot flags, **deterministic** cadence counters — never RNG, V.2/V.14).
+- **`granted_traits`**: Kinship strings (emblems only) appended to `piece.traits`.
+
+A pure stat-stick returns just `modifiers`; an active-proc item pairs a `Modifier`
+with a `Hook`. Concrete example (`combined.py`):
+
+```python
+@register_item("apex_fang")               # fang + fang
+def apex_fang(owner: Any) -> EffectBundle:
+    def on_kill(ctx, ev):                  # +5% current STR on every kill (compounds)
+        if ev.killer is not owner:
+            return
+        bonus = owner.stat("strength") * 0.05
+        ctx.apply_modifier(owner, Modifier("strength", "add", bonus, Lifetime.COMBAT, "item:apex_fang"))
+    return EffectBundle(
+        modifiers=[Modifier("strength", "mul", 1.24, Lifetime.COMBAT, "item:apex_fang")],
+        hooks=[Hook("on_kill", on_kill, scope=HookScope.PER_HIT)],
+    )
+```
+
+Hooks fire on engine events: `on_combat_start`, `on_tick`, `on_attack_landed`
+(an `AttackEvent`, no `tag` field — real basics only), `on_damage_dealt`,
+`on_damage_taken`, `on_cast`, `on_kill`. `ctx` is the `CombatContext` mutator API
+(`deal_damage`, `heal`, `apply_status`, `apply_modifier`, `grant_barrier`,
+`gain_mana`, `cast_ability`, `enemies_of`, …). Every `source`/`source_id` is
+tagged `"item:<id>"` for `stat_breakdown` attribution (V.45).
 
 ### Raw components (8)
 

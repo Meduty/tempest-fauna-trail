@@ -1,18 +1,25 @@
 # Weather API — fetch, cache, refresher
 
 > **Status: LIVING** — must match `src/api/weather.py`, `api/cache.py`, `api/refresher.py`. Audited by `/check`.
-> **Scope:** OpenWeather client, per-city cache states, and the 3-stream tick refresher (≤3 calls/min). **Reconciled:** 2026-06-05.
+> **Scope:** OpenWeather client, per-city cache states, and the 3-stream tick refresher (≤3 calls/min). **Reconciled:** 2026-07-01.
 >
 > Citations by symbol, not line. Design (frozen): `docs/design/tasks/t6_*`, `t7_*`. This layer is the *only* I/O in the project — `src/game/` never touches it (V.1).
 
 ## Client — `api/weather.py`
 
-`WeatherClient(api_key=None)` reads `OPENWEATHER_API_KEY` from env (never logged,
-V.3). `fetch_weather(...)` hits OpenWeather by lat/lon and returns a frozen
-`WeatherResult` (the mapped `WeatherState` + metadata). On any error it returns
-`_fallback_result(fallback, error)` — a `WeatherResult` flagged `is_fallback`
-(the city-default weather) rather than raising. The OpenWeather id → `WeatherState`
-mapping lives on `WeatherState.from_openweather_id` (`models.py`).
+`WeatherClient(api_key=None)` reads `OPENWEATHER_API_KEY` from env (raises
+`ValueError` if neither arg nor env is set; the key is never logged, V.3).
+`fetch_weather(lat, lon, *, fallback=WeatherState.CLEAR)` hits OpenWeather
+(`/data/2.5/weather`, `units=metric`, 10 s timeout) and returns a **frozen**
+`WeatherResult(state, temperature, icon_code, description, weather_id,
+is_fallback=False, error=None)`. On **any** exception (network, HTTP status,
+parse) it logs a warning and returns `_fallback_result(fallback, error=str(exc))`
+— a `WeatherResult` flagged `is_fallback=True` carrying the caller's `fallback`
+state (`fetch_and_cache` passes the city's `default_weather`) — it **never
+raises** (V.3/V.4). The OpenWeather condition-id → `WeatherState` mapping lives on
+`WeatherState.from_openweather_id` (`models.py`); each fallback state has a
+canned `(icon_code, weather_id)` in `_FALLBACK_WEATHER` (e.g. `RAIN → ("10d",
+500)`, `THUNDER → ("11d", 200)`).
 
 ## Cache — `api/cache.py`
 
@@ -34,11 +41,21 @@ city_id, ...)` does the round trip — success → `set_live`, `is_fallback` →
 thread (HTTP off the main thread, V.4). Each `tick()` picks **≤3 unique** cities
 across three streams and fetches each, returning the fetched `city_id`s:
 
-- **A** — full round-robin over all cities.
+- **A** — full round-robin over all cities (`_a_pointer`).
 - **B** — round-robin within the window `[current+1 .. current+6]` (`_b_pointer`).
+  `get_current_node_index()` returns the **1-based** `Run.current_node_index`;
+  the refresher converts to a 0-based list offset internally.
 - **C** — uniform random (seedable via `rng_seed` for tests).
 
-Dedupe across streams keeps it to ≤3 API calls/min.
+Dedupe across streams (a `seen` set; B and C only append if unseen) keeps it to
+≤3 API calls/min (V.11 — ≤50 min staleness via stream A). `start()` arms a
+daemon `threading.Timer` that re-arms itself each tick; `stop()` is idempotent;
+`running` reflects timer state. Each `tick()` fetches via `fetch_and_cache`
+(exceptions per city are logged, never propagated) and then fires the optional
+`on_tick(fetched_ids)` callback (T.11) on the worker thread so a UI can repaint
+when entries flip LIVE/SUBSTITUTE — a callback exception is logged, never
+allowed to kill the refresher. `on_tick=None` (default) keeps every existing
+caller byte-identical.
 
 ## Node weather lifecycle — persisted on the `Run` (T.39, V.73)
 

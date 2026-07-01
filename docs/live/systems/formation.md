@@ -45,9 +45,19 @@ formation imports **no** piece model, keeping it pure (V.1).
 | `MIDLINE` | `COL_MID` (8) | `reach == "melee"` (else) |
 | `BACKLINE` | `COL_BACK` (9) | ranged (fallthrough) |
 
-Rows fill center-out (`_center_out_rows`); overflow spills to adjacent columns;
-`_nearest_free` is the last-resort packer. Bosses (tier 10) take the per-boss
-authored `boss_position` via `_place_boss`.
+The planner runs a fixed, deterministic pass order (enemies pre-sorted by
+`piece_id` first): **frontline → flankers → midline → backline → boss**. Each
+band is placed by `_place_band`, which fills its primary column center-out
+(`_center_out_rows`), spills to `overflow_cols` when the column is full, and
+falls back to `_nearest_free` as a last resort. Flankers are placed by
+`_place_flankers` at the four board corners — edge rows `(0, board_height-1)` of
+columns 8–9 — so assassins slip around the frontline toward the backline.
+
+Bosses (tier 10) are detected up front and placed **last** by `_place_boss` at
+the per-boss authored `boss_position` (default `(COL_BACK, board_height // 2)` =
+center-back when none is given); a boss **displaces** any occupant of that cell,
+relocating it via `_nearest_free`. An enemy whose `piece_id` has no matching
+`EnemyDef` falls back to the `MIDLINE` bucket.
 
 ## File map
 
@@ -57,6 +67,8 @@ authored `boss_position` via `_place_boss`.
 | Role classification | `formation.classify_role` → `formation.PlacementRole` |
 | Input contract | `formation.FormationPiece` (Protocol: `piece_id`/`tier`/`formation_index`) |
 | Columns | `formation.COL_FRONT`/`COL_MID`/`COL_BACK` |
+| Band placement (column + overflow) | `formation._place_band` |
+| Flanker placement (corner edge rows) | `formation._place_flankers` |
 | Row packing | `formation._center_out_rows`, `formation._nearest_free` |
-| Boss slot | `formation._place_boss` |
+| Boss slot (displaces occupant) | `formation._place_boss` |
 | Caller (builds `_FormationEnemy`, writes coords) | `combat/engine.py::assign_spawns` |

@@ -1,11 +1,13 @@
 # Stat scaling
 
 > **Status: LIVING** — must match `src/game/scaling.py` + `content.py` stat curves. Audited by `/check`.
-> **Scope:** the power curve P(tier,level), the three stat-scaling classes, baseline parity, and the combat tie-break. **Reconciled:** 2026-06-05 (T.33a/b).
+> **Scope:** the power curve P(tier,level), the three stat-scaling classes, baseline parity, and the combat tie-break. **Reconciled:** 2026-07-01 (T.33a/b).
 
 ## Power curve
-- `power(tier, level) = 2 ** ((tier-1)/3 + triplings[level])`, `triplings = {1:0, 2:1, 3:3}` (T.18).
-- `stat_multiplier(tier, level, exponent=PRIMARY_EXPONENT) = power(tier, level) ** exponent`.
+- `power(tier, level) = 2 ** ((tier-1)/3 + triplings[level])`, `triplings = {1:0, 2:1, 3:3}` (T.18). `tier ∈ [1,10]`, `level ∈ [1,3]` — out of range raises `ValueError`.
+- Level-ups are a **tripling** mechanic (mirrors TFT 3-to-1): 3 copies → L2 (1 tripling), 9 → L3 (3 triplings). Accelerating: L1→L2 is `√2` in stats, L2→L3 is `×2`. `LEVEL_UP_MOD = 2.0`, `TIER_UP_MOD = 2**(1/3) ≈ 1.26` (three tier-ups = one tripling of power); `LEVEL_STEP`/`TIER_STEP` are back-compat aliases.
+- `stat_multiplier(tier, level, exponent=PRIMARY_EXPONENT) = power(tier, level) ** exponent`. At the default `0.5` this is `sqrt(power)`, so HP·DPS ∝ P and encounter budgets stay **linear** in P.
+- `scale_stat(base, tier, level) -> int` — one-shot `round(base * stat_multiplier(...))` for a single primary value (used where a full dict isn't in play).
 
 ## Three scaling classes (T.33, V.34)
 Every base stat is in exactly one class; both curves ride the same `power` curve at a different exponent:
@@ -33,7 +35,7 @@ Same-tick action order is the canonical side-independent total order in `_event_
 - `load_order` — a seeded, side-independent permutation assigned in `compile_loadout` (never team-block-then-enemy), so equal-AS ties never systematically favour the player team (the old B.14 bug). Renamed from the overloaded `speed_tiebreaker`; the formation-position key is now `formation_index`.
 
 ## Where it lives
-- `scaling.py` — power curve, the three class tuples + exponents, `stat_multiplier`, `level_scale_stats`.
+- `scaling.py` — power curve, the three class tuples + exponents, `stat_multiplier`, `level_scale_stats`, `scale_stat`.
 - `content.py` — base stat blocks, axis multipliers, `compose_stats` (`attack_speed` kept float), `_ABILITY_COST`.
 - `combat/engine.py` — `_event_sort_key`. `loadout.py` — `load_order`/`formation_index` assignment, weather application.
 - `tools/gen_role_matrix.py` — regenerates `docs/design/tasks/t32_role_matrix.txt`.

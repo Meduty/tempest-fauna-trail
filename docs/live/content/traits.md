@@ -43,14 +43,63 @@
 - `content.py` — `KINSHIP_TAGS` (6) / `CALLING_TAGS` (13) / `ALL_TRAIT_TAGS`;
   `Champion.traits`.
 
-## The 25 traits
-- **6 Kinships** (`KINSHIP_TAGS`): Beast, Spirit, Skyborn, Scaled, Tidekin, Swarm.
-- **6 Affinities** (derived from `affinity`, never stored): Sunlit/Overcast/
-  Shrouded/Stormfed/Frostbound/Galvanized = Clear/Cloudy/Mist/Rain/Snow/Thunder.
-- **13 Callings** (`CALLING_TAGS`): Hunter, Guardian, Mystic, Warden, Stalker,
-  Bruiser, Skirmisher, Channeler, Mender, Trickster, Packmate, Primordial,
-  **Multicaster** (T.29d — quick-caster on multi-slot champs; @2/3/4 per-trait,
-  `cast_momentum` stacks `attack_speed`+`mana_regen` per cast; ~6-carrier pool).
+## The 25 traits — three families
+A *trait* is a synergy tag whose breakpoints grant `EffectBundle`s when enough
+tag-sharing **unique champions** are fielded. `len(TRAIT_REGISTRY) == 25`, split
+into three families:
+
+- **6 Kinships** (`KINSHIP_TAGS`, authored on `Champion.traits`): Beast, Spirit,
+  Skyborn, Scaled, Tidekin, Swarm. Each champion carries **exactly one** Kinship
+  (the "what animal" axis). One **Tier-10 anchor per kinship** (see Roster below).
+- **6 Affinities** (derived from `affinity`, **never stored** on `traits`):
+  Sunlit/Overcast/Shrouded/Stormfed/Frostbound/Galvanized = Clear/Cloudy/Mist/
+  Rain/Snow/Thunder. `traits/__init__.affinity_trait(affinity)` maps the piece's
+  single `affinity` field (V.6) to its synthetic tag at resolution; it never reads
+  node weather. Because affinity is the same axis the weather triangle uses, the
+  affinity trait ladder is weather-independent.
+- **13 Callings** (`CALLING_TAGS`, authored on `Champion.traits`): Hunter,
+  Guardian, Mystic, Warden, Stalker, Bruiser, Skirmisher, Channeler, Mender,
+  Trickster, Packmate, Primordial, **Multicaster**. Callings are the "how it
+  fights" axis; a champion carries one or more.
+
+`ALL_TRAIT_TAGS` (19) = Kinships ∪ Callings — the **authorable** vocabulary
+(affinities are excluded because they're derived, not authored). `content.py`
+self-asserts every `Champion.traits` tag ∈ `ALL_TRAIT_TAGS` and resolves in
+`TRAIT_REGISTRY` (V.22).
+
+**Multicaster** (T.29d) is the quick-caster Calling on **multi-slot champs**
+(pieces with 2 active slots / a registered `.active2`; ~6-carrier pool). Rungs
+@2/3/4 are all `PER_TRAIT_PIECE`; each cast stacks `cast_momentum` (`attack_speed`
++ `mana_regen` muls, capped) — no team apex (apex = `min(pool, cap)`, V.37).
+**Primordial** is the six Tier-10 legendaries' Calling; it's **augment-gated**
+(V.37) and ships with its stat pack live but its @1 signature mechanic + @3
+tier-up deferred (D.20).
+
+## Rung authoring — `define_trait` (`_packs.py`)
+Every trait is a stack of `TraitBreakpoint(count, scope, bundle_factory)` rungs.
+`define_trait(trait_id, *rungs)` takes rung tuples `(count, scope, muls[, adds[,
+hook_builders]])`:
+- `count` — the min unique-carrier count to clear the rung. An `int`, **or** a
+  `DynamicThreshold` `callable(team, board_cap) -> int` (Packmate's `@full-board`
+  apex = `lambda team, cap: cap`).
+- `scope` — `TraitScope.PER_TRAIT_PIECE` (carriers only) or `TEAM_WIDE` (whole
+  player team). `_PER` / `_TEAM` shorthands in the factory files.
+- `muls` — `{stat: fraction}`, `0.08` ⇒ `×1.08`; `adds` — `{stat: amount}` flat.
+  Built into `Modifier`s by `stat_pack_bundle` (`mul`→`1+pct`, `add`→flat, both
+  `Lifetime.COMBAT`, `source_id = "trait:<id>@<label>"`).
+- `hook_builders` — optional 5th element: a list of builders
+  `(owner, source_id) -> list[Hook]` (the mechanic riders from `mechanics.py`),
+  appended to the rung's bundle.
+
+`define_trait` also records each rung's raw `(label, muls, adds)` in
+**`TRAIT_STAT_PACKS`** so the description layer derives a rung's stat line from the
+**same numbers** the bundle applies (T.41b, V.79 — can't drift). Registration is a
+side effect: `register_trait(trait_id)(lambda: breakpoints)`.
+
+**RNG-free cadence rule (V.2/V.14/V.37).** Every "every Nth cast", "chance", or
+ramp in a rider uses a **deterministic cadence counter** or an HP/geometry
+threshold — never RNG — so sims stay byte-identical. Trait resolution itself is
+pure and counted once at loadout (below).
 
 ## Resolution (in `compile_loadout`, step 3)
 1. After weather (step 2), before passives (step 7).
@@ -68,6 +117,19 @@
 
 Pure + RNG-free → replay-stable (V.21). Counting is at loadout; mid-combat
 spawns/revives never raise a count.
+
+### Virtual carriers — emblems & augments (V.21)
+A tag's carrier count can be raised without a native carrier, deterministically:
+- **Emblems (T.29b items):** an item's `granted_traits` adds a tag to the wearer.
+  Item bundles apply in `compile_loadout` step 2.5, **before** trait resolution
+  (step 3), so an emblem wearer counts toward the tag's Kinship/Calling count like
+  a native carrier (it's a real piece with an extra tag).
+- **Augment Crest/Crown/Worldroot (T.31):** injected as `bonus_counts:
+  dict[str, int]` — **virtual** carriers added to a tag's count in `_resolve_traits`
+  *before* breakpoint selection. `bonus_counts` can light up a tag with **zero**
+  fielded carriers (`carriers.setdefault(tag, set())`). Both `_resolve_traits` and
+  the UI `preview_team_traits` accept `bonus_counts` so the preview matches what
+  combat clears.
 
 ## Breakpoint shapes (apex = `min(pool, cap)`, V.37)
 Ladders are single-step-leaning with `@1` entries on supports/casters/kiters; see
