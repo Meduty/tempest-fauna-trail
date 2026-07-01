@@ -341,6 +341,22 @@ def compile_loadout(
     for enemy in enemies:
         pieces.append(piece_from_enemy(enemy))
 
+    # 1b. Uniquify duplicate piece ids (B.65). Encounters routinely field several
+    # enemies of the same type (and challenge squads reuse champion ids), so
+    # `piece.id` (= the def id) collides across twins. Combat resolves by object
+    # identity so the fight itself is unaffected, but the recorded event stream,
+    # the per-id damage tallies, and the combat view's control keys (`tok-`/`mp-`/
+    # `hp-`/`st-`) all key on the string id — collisions made the view animate one
+    # piece's bars/FX between its twins ("glitching from piece to piece") and drew
+    # swooshes from the wrong twin. Suffix the 2nd+ occurrence deterministically
+    # (assembly order ⇒ reproducible, V.2), before any hook closes over the piece.
+    _seen: dict[str, int] = {}
+    for piece in pieces:
+        n = _seen.get(piece.id, 0)
+        _seen[piece.id] = n + 1
+        if n:
+            piece.id = f"{piece.id}#{n}"
+
     # 2. Apply Weather Favor as source="weather:<state>" modifiers (V.42). First
     # mark Scaled @8 carriers so their weather is overridden to the favorable pack
     # (T.28d — resolved before step 2 so the weather modifiers land ahead of the

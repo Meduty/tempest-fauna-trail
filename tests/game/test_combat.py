@@ -781,3 +781,37 @@ def test_positions_override_rejects_unknown_piece_id():
     enemies = [_enemy(id="mob")]
     with pytest.raises(ValueError):
         resolve_combat(team, enemies, WeatherState.CLEAR, positions={"typo_id": (3, 3)})
+
+
+# --- B.65: duplicate piece ids get uniquified in compile_loadout --------------
+
+def test_compile_loadout_uniquifies_duplicate_piece_ids():
+    """Encounters field several enemies of the same type; `piece.id` (= def id)
+    would collide, which made the combat view key controls ambiguously (bars/FX
+    glitching between twins) and collapsed per-id damage tallies. compile_loadout
+    suffixes duplicates deterministically so every piece id is unique + stable."""
+    from src.game.loadout import compile_loadout
+
+    team = [_champ(id="champ_a")]
+    enemies = [_enemy(id="enemy"), _enemy(id="enemy"), _enemy(id="enemy")]
+    pieces, _bus, _acts = compile_loadout(team, enemies, WeatherState.CLEAR)
+
+    ids = [p.id for p in pieces]
+    assert len(ids) == len(set(ids)), f"duplicate piece ids: {ids}"
+    # First occurrence keeps the base id; 2nd/3rd get deterministic suffixes.
+    enemy_ids = [i for i in ids if i.startswith("enemy")]
+    assert enemy_ids == ["enemy", "enemy#1", "enemy#2"]
+    # Team id (unique to begin with) is untouched.
+    assert "champ_a" in ids
+
+
+def test_compile_loadout_uniquify_is_deterministic():
+    from src.game.loadout import compile_loadout
+
+    def _ids():
+        team = [_champ(id="champ_a")]
+        enemies = [_enemy(id="enemy"), _enemy(id="enemy")]
+        pieces, _b, _a = compile_loadout(team, enemies, WeatherState.CLEAR)
+        return [p.id for p in pieces]
+
+    assert _ids() == _ids()  # same assembly order ⇒ same ids (V.2)
