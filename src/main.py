@@ -133,14 +133,30 @@ def _push_augment(page: ft.Page, run, node) -> None:
     page.update()
 
 
+def _push_supply(page: ft.Page, run, node) -> None:
+    """Supply-node landing (T.42b) — the 1-of-5 free-recruit view over the finished
+    SUPPLY backend (V.83). Reuses the augment node's non-fight seam: the view
+    recruits (`take_supply_champion`) + resolves (`resolve_nonfight_node`) +
+    autosaves on recruit/skip, then drops back to a fresh Trail at the advanced node."""
+    from src.ui.views.supply import build_supply_view
+
+    def _done() -> None:
+        _pop_to_root(page)
+        _push_trail(page, run)
+
+    page.views.append(build_supply_view(page, run, node, on_done=_done))
+    page.update()
+
+
 def _play_node(page: ft.Page, run, node) -> None:
-    """Trail → node dispatch (T.42a) — route by `node.node_type`. Non-fight nodes
-    (AUGMENT/SUPPLY) get their own producer; fight-types land in Prep. (SUPPLY
-    stays fight-prep as an interim until T.42b wires `ui/views/supply.py`.)"""
+    """Trail → node dispatch (T.42a/T.42b) — route by `node.node_type`. Non-fight
+    nodes (AUGMENT/SUPPLY) get their own producer; fight-types land in Prep."""
     from src.game.models import NodeType
 
     if node.node_type == NodeType.AUGMENT:
         _push_augment(page, run, node)
+    elif node.node_type == NodeType.SUPPLY:
+        _push_supply(page, run, node)
     else:
         _push_prep(page, run, node)
 

@@ -287,6 +287,20 @@ def test_resolve_nonfight_node_clears_and_advances():
     assert summary.tempest_gained == 0
 
 
+def test_resolve_nonfight_node_supply_shares_seam():
+    """SUPPLY nodes resolve through the same orchestrator as AUGMENT (V.83, T.42b)
+    — the recruit itself is applied separately by the view (take_supply_champion)."""
+    run = _run()
+    node_index = _node_of_type(run, NodeType.SUPPLY)
+    node = _set_current(run, node_index)
+
+    summary = resolve_nonfight_node(run)
+
+    assert node.state == NodeState.CLEARED
+    assert run.current_node_index > node_index
+    assert run.battle_log == [] and summary.amber_gained == 0
+
+
 def test_resolve_nonfight_node_requires_current_node():
     import pytest
 
