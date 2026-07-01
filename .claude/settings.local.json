@@ -8,7 +8,8 @@
       "WebSearch",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "WebFetch(domain:flet.dev)"
+      "WebFetch(domain:flet.dev)",
+      "WebFetch(domain:polyformproject.org)"
     ]
   }
 }
