@@ -73,7 +73,8 @@ def build_augment_view(
     node_index = node.index
     stage_index = stage_of(node_index).index
 
-    # Mutable playback state held in a list so the nested handlers can rebind it.
+    # Mutable playback state in a dict so the nested handlers can mutate its
+    # entries (offer + reroll_count) without a `nonlocal` per field.
     state = {
         "offer": generate_augment_offer(
             run.seed, node_index, stage_index, exclude=tuple(run.active_augments)
