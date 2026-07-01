@@ -65,3 +65,20 @@ def test_supply_recruit_applies_and_advances():
     assert node.state == NodeState.CLEARED                            # resolved (V.83)
     assert run.current_node_index > node_index                       # advanced
     assert calls["done"] == 1
+
+
+def test_supply_double_recruit_resolves_once():
+    """Re-entrancy guard: a stray second Recruit click must not recruit a 2nd
+    copy or advance a 2nd node (F1 review finding)."""
+    run, node = _run_on_supply_node()
+    node_index = node.index
+    copies_before = sum(run.champion_copies.values())
+    calls = {"done": 0}
+    view = build_supply_view(_FakePage(), run, node,
+                             on_done=lambda: calls.__setitem__("done", calls["done"] + 1))
+    btn = _find(view, lambda c: isinstance(c, ft.FilledButton))[0]
+    btn.on_click(None)
+    btn.on_click(None)
+    assert sum(run.champion_copies.values()) == copies_before + 1   # not +2
+    assert run.current_node_index > node_index
+    assert calls["done"] == 1

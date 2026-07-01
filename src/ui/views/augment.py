@@ -83,9 +83,13 @@ def build_augment_view(
 
     offer_slot = ft.Container()
     controls_slot = ft.Container()
+    acted = {"done": False}   # re-entrancy guard: resolve the node exactly once
 
     def _resolve_and_leave() -> None:
         """Advance past the node (V.83) + autosave (V.65), then route on."""
+        if acted["done"]:     # a second Choose/Skip click must not advance twice
+            return
+        acted["done"] = True
         from src.game.save import default_save_dir, save_run
 
         resolve_nonfight_node(run)
@@ -93,6 +97,8 @@ def build_augment_view(
         on_done()
 
     def _pick(aug: Augment) -> None:
+        if acted["done"]:     # guard before apply, so a double-click can't apply twice
+            return
         apply_augment(run, aug)
         _resolve_and_leave()
 

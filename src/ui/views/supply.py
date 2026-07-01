@@ -54,8 +54,12 @@ def build_supply_view(
     (recruit or skip), routing back to the Trail.
     """
     offer_ids = generate_supply_offer(run.seed, node.index, run.tempest_rank)
+    acted = {"done": False}   # re-entrancy guard: resolve the node exactly once
 
     def _resolve_and_leave() -> None:
+        if acted["done"]:     # a second Recruit/Skip click must not advance twice
+            return
+        acted["done"] = True
         from src.game.save import default_save_dir, save_run
 
         resolve_nonfight_node(run)
@@ -63,6 +67,8 @@ def build_supply_view(
         on_done()
 
     def _recruit(cid: str) -> None:
+        if acted["done"]:     # guard before recruit, so a double-click can't recruit twice
+            return
         take_supply_champion(run, cid)   # game-side guards unknown/tier-10/maxed
         _resolve_and_leave()
 

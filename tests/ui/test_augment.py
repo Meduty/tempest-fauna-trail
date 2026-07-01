@@ -69,6 +69,23 @@ def test_augment_pick_applies_and_advances():
     assert calls["done"] == 1
 
 
+def test_augment_double_pick_resolves_once():
+    """Re-entrancy guard: a second Choose click must not apply a 2nd augment or
+    advance a 2nd node (F1 review finding)."""
+    run, node = _run_on_augment_node()
+    node_index = node.index
+    calls = {"done": 0}
+    view = build_augment_view(_FakePage(), run, node,
+                              on_done=lambda: calls.__setitem__("done", calls["done"] + 1))
+    btn = _find(view, lambda c: isinstance(c, ft.FilledButton))[0]
+    btn.on_click(None)
+    btn.on_click(None)   # simulate a stray second click before the view pops
+    assert len(run.active_augments) == 1              # not 2
+    assert run.current_node_index > node_index        # advanced
+    assert node.state == NodeState.CLEARED
+    assert calls["done"] == 1                          # resolved exactly once
+
+
 def test_augment_reroll_button_present_and_fires():
     run, node = _run_on_augment_node()
     view = build_augment_view(_FakePage(), run, node, on_done=lambda: None)
