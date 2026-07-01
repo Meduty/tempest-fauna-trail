@@ -117,7 +117,9 @@ income, tempest, Hearts, or `battle_log`** (V.83). See [economy](../../SPEC.md).
 `spawn_position`), the `BOSS_DEFS` registry, and `BossEncounterResult`
 (`.all_enemies` property = boss + adds, `.map_effect_id`). Combat wiring for a
 boss fight (attach the map effect before the loop) is
-`tools/playtest/_common.py::resolve_boss_combat` — see [combat.md](combat.md).
+`combat/resolve.py::resolve_boss_combat` (the single src-side entry, V.59; the
+`tools/playtest/_common.py` function is a shim that delegates to it) — see
+[combat.md](combat.md).
 
 ## Board & map effects
 

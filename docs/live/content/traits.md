@@ -269,8 +269,8 @@ omitted from the apex, mirroring the `on_death_spawn` `trait`-guard.
 - Kinship pools (sum 60): Beast 14, Spirit 11, Skyborn 9, Scaled 9, Tidekin 9,
   Swarm 8. One **Tier-10 anchor per kinship**: Mournhollow→Beast, Aurion→Spirit,
   Aerion→Skyborn, Umbra→Scaled, Nerei→Tidekin, Borealis→Swarm.
-- Calling pools (sum ~87): Guardian 9; Hunter/Mystic/Bruiser/Skirmisher/Packmate
-  8; Stalker/Channeler 7; Warden/Trickster/Mender/Primordial 6.
+- Calling pools (sum 96): Bruiser 10; Guardian 9; Hunter/Mystic/Skirmisher/Packmate/Stalker
+  8; Channeler 7; Warden/Trickster/Mender/Primordial/Multicaster 6.
 - `CALLING_TAGS` dropped the 4 dead T.5 tags (Bulwark/Drifter/Harbinger/Emissary)
   and added **Packmate** (8 cheap T1–3 secondary carriers). Hunter spread toward
   lower tiers (e.g. Dusk Bat T2). Primordial shop access is augment-gated (T.31);

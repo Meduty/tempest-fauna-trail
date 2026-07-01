@@ -161,8 +161,8 @@ tagged `"item:<id>"` for `stat_breakdown` attribution (V.45).
 |---|---|
 | `fang` | +12% STR (multiply) |
 | `keen_claw` | +15% crit chance (additive) |
-| `talon` | +12% AS (`attack_speed` + `milli_AS` paired) |
-| `wardpelt` | +14% MR |
+| `talon` | +12% AS (single float `attack_speed` Modifier) |
+| `wardpelt` | +14% RES (`resistance`) |
 | `stoneplate` | +14% Armor |
 | `old_hide` | +12% HP |
 | `heartseed` | +12% INT |
@@ -202,10 +202,12 @@ factories represent the scale factor (e.g. `1.12` = ×1.12 the base stat).
 avoid triggering on bonus damage from the same item (preventing infinite loops).
 
 **`ability_can_crit`** is set in an `on_combat_start` hook (matching the
-`ability_crit()` idiom in `traits/mechanics.py:268–273`).
+`ability_crit()` idiom in `traits/mechanics.py:287–292`).
 
-**`milli_AS`** pairing: every item that modifies `attack_speed` also modifies
-`milli_AS` (V.34 / sort-order invariant).
+**`attack_speed` sort order:** items grant a single float `attack_speed` Modifier —
+the old separate int `milli_AS` field is **gone** (removed in T.29-pre, B.18).
+Sub-integer tiebreak order now **derives** from the float `attack_speed` itself
+(V.34), so there is no paired field to keep in sync.
 
 ## REWARD-node drops (encounter.py)
 

@@ -10,7 +10,7 @@ Flet (Python) roguelike — animal champions travel real-world cities, live Open
 - **Tests**: `uv run pytest` (add `-m integration` for live API)
 - **Playtest CLI** (no UI required): `uv run python -m tools.playtest.sim_fight --help` — see [docs/design/playtesting/plan.md](docs/design/playtesting/plan.md). Scripts: `sim_fight`, `sim_node`, `sim_run`, `inspect`, `inspect_node`.
 - **Python**: 3.10+
-- **Deps**: see [pyproject.toml](pyproject.toml) (canonical) — runtime: `flet`, `requests`; dev: `python-dotenv`, flet CLI/desktop/web
+- **Deps**: see [pyproject.toml](pyproject.toml) (canonical) — runtime: `flet`, `requests`, `tqdm`; dev: `pytest`, `python-dotenv`, flet CLI/desktop/web
 - **API key**: `cp .env.example .env`, set `OPENWEATHER_API_KEY`
 
 ## Documentation Map
@@ -75,58 +75,76 @@ Invoke `/plan` ([.claude/skills/plan](.claude/skills/plan/SKILL.md)) — it writ
 
 ```
 src/
-├── main.py                 # Flet entry point (placeholder shell)
+├── main.py                 # Flet entry point — page routing (menu→…→summary), admin/dev-harness modes, .env bootstrap
+├── app_config.py           # API-key resolution (env → config.json → none) + local config persistence
 ├── api/
 │   ├── weather.py          # OpenWeather client (T.6)
 │   ├── cache.py            # Stateless per-city cache (T.7)
 │   └── refresher.py        # 3-stream tick refresher (T.7)
 ├── game/
-│   ├── models.py           # Champion, Enemy, Node, Run, BattleResult (T.1)
+│   ├── models.py           # Champion, Enemy, Node, Run, BattleResult (T.1); persisted node weather lifecycle (T.39)
 │   ├── combat/             # Unified tick-based engine (T.3 + T.20 + T.26)
 │   │   ├── __init__.py     #   re-exports resolve_combat, CombatContext, run
-│   │   ├── resolve.py      #   resolve_combat public entry → engine + recorder
+│   │   ├── resolve.py      #   resolve_combat / resolve_boss_combat / build_combat public entry
 │   │   ├── engine.py       #   unified tick loop (meters, pathing, casts)
 │   │   ├── context.py      #   CombatContext mutator API (T.20)
-│   │   └── recorder.py     #   BattleResultRecorder (T.26)
+│   │   ├── recorder.py     #   BattleResultRecorder (T.26)
+│   │   └── replay.py       #   CombatReplay forward stepper + inspect_at_tick (T.12/T.37)
 │   ├── combat_log.py       # Render BattleResult → text lines
 │   ├── content.py          # Champion / enemy rosters (T.5)
 │   ├── scaling.py          # Power scaling P = 2^((T-1)/3 + triplings(L)) (T.18)
 │   ├── route.py            # 50-city route, 6 stages (T.4)
 │   ├── weather_effects.py  # Stat packs + affinity damage triangle (T.2)
 │   ├── encounter.py        # Seed-deterministic encounter gen (T.19, T.21)
-│   ├── abilities/          # Ability + passive content (T.20, T.21)
+│   ├── run_init.py         # New-Run construction (roster + route seeding)
+│   ├── abilities/          # Ability + passive content: champions, enemies, bosses, reference (T.20, T.30, T.34)
+│   ├── ability_text.py     # Ability blurb rendering (T.34/T.41)
+│   ├── describe.py         # Human-readable piece/stat descriptions
 │   ├── bosses/             # Authored boss kits (T.21)
-│   ├── effects.py          # EventBus, EffectBundle, Modifier (T.20)
+│   ├── effects.py          # EventBus, EffectBundle, Modifier, compute_stat (T.20)
 │   ├── events.py           # Typed combat event payloads (T.20)
 │   ├── status.py           # Status defs + gates (T.20)
-│   ├── registries.py       # ABILITY_REGISTRY + PASSIVE_REGISTRY (T.20)
+│   ├── registries.py       # ABILITY_REGISTRY + PASSIVE_REGISTRY + ABILITY_META + ABILITY_MANA (T.20/T.34)
 │   ├── piece.py            # Piece runtime state (T.20)
 │   ├── board.py            # Board cell modifier state (T.21)
 │   ├── map_effects.py      # Boss map effects (T.21)
 │   ├── targeting.py        # Targeting helpers (T.20)
 │   ├── formation.py        # Role-aware enemy formation (T.24)
 │   ├── loadout.py          # compile_loadout (content ↔ combat boundary)
+│   ├── economy.py          # Amber economy + Tempest team-size cap (T.22)
+│   ├── augments.py         # Augment content + RunModifiers (T.22/T.31)
+│   ├── shop.py             # Shop roll / buy (T.22)
+│   ├── inventory.py        # Run inventory + equip seam (T.23b)
+│   ├── items/              # Item catalog: base, combined, recipes, emblems, special, meta (T.29)
+│   ├── traits/             # Trait system: affinities, callings, kinships, mechanics, meta, types (T.28/T.41)
+│   ├── save.py             # JSON save/load of Run (T.14)
 │   └── rng.py              # Seeded RNG helper
-├── ui/                     # Theme tokens + reusable Flet components (T.8)
+├── ui/                     # Theme tokens + reusable Flet components + views (T.8–T.15, T.23, T.40, T.42)
 │   ├── theme.py            # Design tokens (colors, typography, spacing, animation)
-│   ├── components/         # Shared components (champion_card, weather_badge, meter_bar, chips)
-│   └── views/
-└── viz/                    # Stub (__init__.py only)
+│   ├── combat_playback.py  # Combat replay playback driver (T.12/T.37)
+│   ├── components/         # champion_card, weather_badge, meter_bar, chips, infocard, iconography, board_geometry, trait_synergies
+│   └── views/              # menu, run_start, trail, prep, combat, augment, supply, reward, summary, settings, admin, dev_harness
+└── viz/                    # Hand-drawn Canvas viz (V.72)
+    ├── route_map.py        # Route-map node-line Canvas (T.11)
+    ├── run_summary.py      # Run-summary damage-per-battle Canvas (T.13)
+    └── affinity_clash_heatmap.py  # Affinity-clash heatmap Canvas (T.42)
 tools/
 ├── playtest/               # Dev CLI: sim_fight, sim_node, sim_run, inspect, inspect_node (T.27)
 └── simulation/             # Power sim — matchup sweeps + deterministic win-rate analysis (T.25)
-tests/                      # Mirrors src/ + tools/ structure
-docs/                       # Design + journal (see Documentation Map)
+tests/                      # Mirrors src/ + tools/ structure (incl. tests/ui/, tests/viz/)
+docs/                       # Design + journal (see Documentation Map); docs/report/assemble.py builds the documentation PDF
 ```
 
-### Planned per SPEC §T (not yet built)
+### Remaining per SPEC §T
+
+The menu→trail→prep→combat→reward→summary loop is live over the finished backend, and
+every **functional** §T row is ✅ Done. The only open row:
 
 | Module | Task | Description |
 |---|---|---|
-| `game/augments.py`, `game/economy.py` | T.22 | Augments, Amber economy, Tempest team-size cap |
-| `game/save.py` | T.14 | JSON save/load of `Run` |
-| `ui/theme.py`, `ui/components/`, `ui/views/` | T.8-T.13, T.15, T.23 | Flet views + shared components |
-| `viz/route_map.py`, `viz/run_summary.py` | T.11, T.13 | Canvas route map + canvas damage-per-battle summary |
+| `README.md`, `docs/` | T.17 | Documentation — README, prompting strategy, flow chart (🔶 Partial) |
+
+Consult **[SPEC.md §T](SPEC.md)** for the authoritative per-task status; this table is a pointer, not the source of truth.
 
 ## Flet Conventions
 
@@ -161,7 +179,7 @@ docs/                       # Design + journal (see Documentation Map)
 - Unit tests for game logic (combat, weather effects, scaling, content, route, models)
 - Mock API responses with `unittest.mock.patch`
 - Live API tests marked `@pytest.mark.integration` — auto-skipped when `OPENWEATHER_API_KEY` absent
-- No UI tests — test logic only
+- UI tested at the logic seam — `tests/ui/` + `tests/viz/` cover view builders, shared components, theme, and pure `*_specs(run)` Canvas data fns (no interactive/render tests; V.56 keeps views pure over the replay backend)
 
 ## Content Budget (per §T / §D)
 

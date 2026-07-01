@@ -27,7 +27,7 @@
   - Accessors `get_champion(id)` / `get_enemy(id)`; level rebuilds
     `build_champion_at_level(id, level)` / `build_enemy_at_level(id, level)` for
     L1–L3 (`content.py:693`).
-- `bosses/data.py` — `BOSS_DEFS: dict[str, BossDef]` (kit, map effect, spawn).
+- `bosses/data.py` — `BOSS_DEFS: dict[int, BossDef]` (keyed by stage index 1–6; kit, map effect, spawn).
 
 ## Def → model build path
 

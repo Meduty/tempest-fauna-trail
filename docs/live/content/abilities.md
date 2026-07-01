@@ -208,9 +208,11 @@ imports the constant from here) converts. A coverage guard + golden formula snap
 (`tests/game/ability_formulas.snapshot.json`) pin every rendered id; regenerate
 with `UPDATE_ABILITY_SNAPSHOT=1 uv run pytest tests/game/test_ability_text.py`.
 
-Meta coverage spans **all 285 roster ability ids** (120 champion `.active` T.34a +
-120 enemy `.active` T.34b + 36 boss named-id T.34c = 276 base, **+ 9** multicaster
-`.active2` secondaries T.29d = 285 — verified `len(ABILITY_META) == 285`).
+Meta coverage spans **all 285 roster ability ids**: 120 champion (60 `.active` T.34a +
+60 `.passive`) + 120 enemy (60 `.active` T.34b + 60 `.passive`) + 36 boss named-id
+T.34c + **9** multicaster `.active2` secondaries T.29d = 285 — verified
+`len(ABILITY_META) == 285`. (Suffix histogram: `.active` 120, `.passive` 120,
+`.active2` 9, boss-named 36.)
 `tools/export_roster.py` serializes the champion/enemy (and optional boss) rosters
 with rendered descriptions to JSON.
 

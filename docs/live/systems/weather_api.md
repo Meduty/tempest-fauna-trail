@@ -31,8 +31,8 @@ canned `(icon_code, weather_id)` in `_FALLBACK_WEATHER` (e.g. `RAIN → ("10d",
 | `LIVE` | real fetch succeeded | set |
 | `SUBSTITUTE` | fetch failed → city-default weather | set |
 
-`set_live` / `set_substitute` update an entry; `fetch_and_cache(client, cache,
-city_id, ...)` does the round trip — success → `set_live`, `is_fallback` →
+`set_live` / `set_substitute` update an entry; `fetch_and_cache(cache, client,
+city_id, city_def)` does the round trip — success → `set_live`, `is_fallback` →
 `set_substitute`. Advancing to an `UNKNOWN` city triggers a synchronous fetch.
 
 ## Refresher — `api/refresher.py`

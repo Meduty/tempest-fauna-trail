@@ -7,7 +7,7 @@
 
 ## Entry point (the only one)
 
-`resolve_combat(team, enemies, weather, *, node_id="") -> BattleResult` in
+`resolve_combat(team, enemies, weather, *, node_id="", run_mods=None, positions=None) -> BattleResult` in
 `combat/resolve.py` is the **single public combat entry** (V.2). It is pure and
 deterministic: identical inputs → byte-identical `BattleResult`. It delegates the
 setup to the shared `build_combat(...)` helper (the **one** wiring path) then
@@ -127,15 +127,18 @@ the slow ~5 s action cadence (`60000/attack_speed`).
 `_apply_hit` / `ctx.deal_damage` order:
 
 ```
-raw = str_coeff·STR + int_coeff·INT
+raw = str_coeff·STR + int_coeff·INT                          # auto-attack path
+# unregistered-ability fallback instead: raw = (ABILITY_STR_COEFF + ABILITY_INT_COEFF)·max(STR,INT)
 raw ×= damage_modifier(attacker.affinity, target.affinity)   # Affinity Clash, weather.md
 if crit:  raw ×= CRIT_MULTIPLIER (1.5)                        # deterministic cadence
 mitigated = raw × (1 − mit/(mit+100)) after penetration       # _mitigated_damage
 final = max(1, round(mitigated))                              # true damage skips mitigation
 ```
 
-- Coeffs (`combat/engine.py`): auto = `AUTO_STR_COEFF` 1.0 / `AUTO_INT_COEFF` 0.2;
-  ability fallback = `ABILITY_STR_COEFF` 0.2 / `ABILITY_INT_COEFF` 4.2.
+- Coeffs (`combat/engine.py`): auto = `AUTO_STR_COEFF` 1.0·STR + `AUTO_INT_COEFF` 0.2·INT.
+  Unregistered-ability fallback sums the two ability coeffs and applies them to the
+  **primary** stat: `(ABILITY_STR_COEFF 0.2 + ABILITY_INT_COEFF 4.2)·max(STR,INT)` =
+  4.4·max(STR,INT) (T.30 §4 de-bias; `engine.py:496`), not a separate STR/INT split.
 - **Crit is not random** — `crit_counter` on the `Piece` increments per eligible
   hit and crits every `round(1/crit_chance)`-th, then resets. Shared autos/casts.
 - **Mitigation** — `magical`→resistance, `physical`→armor, `true`→unmitigated;
@@ -272,4 +275,4 @@ drives the floating *number*, the stepper drives the *bar*. The stream is
 | Targeting helpers + footprint capture | `targeting.py` (`ctx.note_footprint` in `combat/context.py`) |
 | Model → `Piece` compile + weather + passives | `loadout.py` |
 | Runtime piece | `piece.py` |
-| Boss wiring (map effect) | `tools/playtest/_common.py::resolve_boss_combat` |
+| Boss wiring (map effect) | `combat/resolve.py::resolve_boss_combat` (src-side entry, V.59; `tools/playtest/_common.py` shim delegates to it) |

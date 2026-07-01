@@ -130,7 +130,7 @@ def goldcrest_lark_passive(owner):
 `Modifier(stat, op, value, lifetime=Lifetime.COMBAT, source_id="", expires_at_tick=None)`
 (`effects.py:45`). `op ∈ {"add", "mul", "set"}`. `compute_stat` folds
 `(base + Σadds) × Πmuls`, and a `set` overrides everything (last `set` wins)
-(`effects.py:66-99`). A per-stat floor clamp applies at the tail (`attack_range ≥ 1`, V.43).
+(`effects.py:86`). A per-stat floor clamp applies at the tail (`attack_range ≥ 1`, V.43).
 
 - **`Lifetime`** (`effects.py:19`): `COMBAT` (default — cleared at combat end), `TIMED`
   (removed when `current_tick >= expires_at_tick`, so `TIMED` **requires**

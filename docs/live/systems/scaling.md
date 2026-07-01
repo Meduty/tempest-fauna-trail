@@ -36,6 +36,6 @@ Same-tick action order is the canonical side-independent total order in `_event_
 
 ## Where it lives
 - `scaling.py` — power curve, the three class tuples + exponents, `stat_multiplier`, `level_scale_stats`, `scale_stat`.
-- `content.py` — base stat blocks, axis multipliers, `compose_stats` (`attack_speed` kept float), `_ABILITY_COST`.
+- `content.py` — base stat blocks, axis multipliers, `compose_stats` (`attack_speed` kept float). Cast cost is authored per-ability via `ABILITY_MANA` / `DEFAULT_MANA_COST` in `registries.py` (the former `_ABILITY_COST` baseline).
 - `combat/engine.py` — `_event_sort_key`. `loadout.py` — `load_order`/`formation_index` assignment, weather application.
 - `tools/gen_role_matrix.py` — regenerates `docs/design/tasks/t32_role_matrix.txt`.

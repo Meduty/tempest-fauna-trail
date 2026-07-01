@@ -52,7 +52,7 @@ is dependency direction** — everything points *inward* toward pure game logic:
                          │  models, combat, weather │   (V.1)
                          │  content, economy, ...   │
                          └─────────────────────────┘
-   viz/  (charts, canvas — stub today)
+   viz/  (hand-drawn Canvas — route_map, run_summary, affinity_clash_heatmap)
 ```
 
 **Invariants that enforce this** (SPEC §V):
@@ -74,7 +74,7 @@ without a UI or network** — which is exactly what `tools/` exploits.
 Combat is a **single pure function** (V.2):
 
 ```python
-resolve_combat(team, enemies, weather, *, run_mods=None, node_id="") -> BattleResult
+resolve_combat(team, enemies, weather, *, node_id="", run_mods=None, positions=None) -> BattleResult
 ```
 
 Identical inputs → byte-identical output. No RNG, no clock, no globals. The optional

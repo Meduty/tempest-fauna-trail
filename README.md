@@ -6,10 +6,10 @@ Built with [Flet](https://flet.dev) (Python), cross-platform desktop + web. Desi
 
 ## Status
 
-**Engine + content + simulation layers are largely complete; the player-facing Flet UI is the main remaining build.**
+**Playable end to end — the full menu → trail → prep → combat → reward → summary loop runs over the finished engine. Every functional task in [SPEC.md §T](SPEC.md) is complete; the only open row is T.17 (this documentation) plus ongoing polish.**
 
-- ✅ **Done** — data models, tick combat engine (ability/passive/status framework, bosses, map effects), weather effects, 50-city route, champion/enemy/boss rosters + ability catalog, power scaling, encounter generation, economy & shop, OpenWeather client + cache + 3-stream refresher, theme/components, playtest CLI, power-simulation tooling.
-- 📋 **Planned** — most Flet views (menu, trail, prep, combat, summary), route-map + run-summary visualizations, save/load. See [SPEC.md §T](SPEC.md) for per-task status.
+- ✅ **Done** — data models, tick combat engine (ability/passive/status framework, bosses, map effects), weather effects, 50-city route, champion/enemy/boss rosters + ability catalog, power scaling, encounter generation, economy & shop, item/augment/trait systems, Prep equip seam, OpenWeather client + cache + 3-stream refresher, theme/components, Flet views (menu, run-start, trail, prep, combat, augment, supply, reward, summary, settings), route-map + run-summary + affinity-clash Canvas visualizations, save/load, playtest CLI, power-simulation tooling.
+- 📋 **Open** — T.17 documentation (partial) + ongoing polish. See [SPEC.md §T](SPEC.md) for per-task status.
 
 For how the systems fit together and where to find them, read **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
@@ -32,9 +32,11 @@ cp .env.example .env
 
 ### Weather API key (optional, but recommended)
 
-The Trail shows live weather per city, so it wants an [OpenWeather](https://openweathermap.org/api)
-key (free tier is plenty). Display only — combat resolves on the node's deterministic
-default weather (V.66), so outcomes never depend on the live feed. Configure the key
+The Trail shows live weather per city — and that live weather **shapes combat**: each
+node's weather is frozen when you enter Prep, then drives Weather Favor for the whole
+fight (V.73). Without a key the game still plays on each city's deterministic default
+weather, so runs stay reproducible either way — weather is locked *before* the fight
+resolves, so live-feed timing never breaks determinism (V.2). Configure the key
 **either** way:
 
 1. **`.env` file** (preferred for local dev) — `cp .env.example .env`, then edit the
@@ -71,9 +73,9 @@ uv run flet run               # desktop
 uv run flet run --web         # browser
 ```
 
-> **Note:** the Flet entry point is still a placeholder shell (the game views are
-> in progress — see Status). To actually exercise the game today, use the headless
-> **playtest CLI**, which drives the complete engine without a UI:
+> **Note:** `uv run flet run` launches the real game (menu → trail → … → summary).
+> For headless engine work — no UI — the **playtest CLI** drives the full engine
+> straight from the terminal:
 >
 > ```bash
 > uv run python -m tools.playtest.sim_fight --help     # resolve one fight

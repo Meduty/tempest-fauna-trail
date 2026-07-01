@@ -107,16 +107,17 @@ were built in a deliberate split — `T.28a` (framework + declarative stat packs
 `attack_speed` to float), then `T.29a`–`T.29d` delivered the item engine, the full
 catalog, the **mana primitive**, and multi-slot pieces. `T.30` implemented all 120
 roster ability handlers plus 6 boss kits; `T.31` the augment system; `T.32` the
-role/intent axis rework; `T.33a/b` the scaling classes and a fair total order;
-`T.34a–c` and `T.35a/b` the ability-description/tooltip layer and scaling
-uniformity; and `T.36a–c` the roster axis-distribution rebalance, closed with power
-sweeps. Much of this wave's value was in **design conversation and balance
+role/intent axis rework; `T.33a` the scaling classes and a fair total order
+(`T.33b` the speed-axis diversity spread 3→7); `T.34a–c` the per-roster ability
+metadata and `T.35a` the ability-description/tooltip layer (`T.35b` a dead-stat
+balance pass); and `T.36a–c` the roster axis-distribution rebalance, closed with
+power sweeps. Much of this wave's value was in **design conversation and balance
 analysis** rather than code — for example, the INT-ability damage coefficient was
 tuned empirically *and* cross-checked against a closed-form DPS-parity equilibrium
 (≈ 3.7), so the balance pass ended with math and simulation agreeing, and produced a
 reusable coefficient rule for future kits.
 
-### The player-facing UI (the largest remaining build)
+### The player-facing UI (built last, over the finished engine)
 
 With a complete engine, the view layer was built last: `T.8` theme/components →
 `T.9` menu → `T.10` run-start → `T.11` Trail view + Canvas route map → `T.12a–d` the
@@ -125,8 +126,10 @@ combat view (a forward replay stepper, animations, boss support, autoplay) →
 and full routing → `T.23a/b` the Prep view (economy, shop, board placement, item
 equip) → `T.37a–c` the replay backend that combat playback rides on → `T.38`
 node-type rewards and survivable "Hearts" → `T.39` persistent live node weather →
-`T.40` the Prep UX overhaul → `T.41a/b` the description render layer. This wave
-depended on a hard constraint — the agent cannot see rendered output — which shaped
+`T.40` the Prep UX overhaul → `T.41a/b` the description render layer → `T.42a/b`
+the augment- and supply-node UIs plus the non-fight run-loop dispatch (and the
+`viz/affinity_clash_heatmap` Canvas). With T.42 the menu→…→summary loop is complete
+end to end. This wave depended on a hard constraint — the agent cannot see rendered output — which shaped
 the collaboration lessons of the previous chapter (visual gating, self-screenshotting,
 web-vs-desktop threading traps).
 

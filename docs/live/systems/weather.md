@@ -39,8 +39,9 @@ built were removed (one source of truth).
 **Magnitude.** `WEATHER_FAVOR_MAGNITUDE = 0.3` sets the strong-tier primary
 deviation (±30%); `combat_modifier` scales that deviation from `1.0` by a
 per-relation `TIER_SCALAR` — **SELF 1.0, PRIMARY 0.6, SECONDARY 0.3**. Buffs
-reach all three tiers; debuffs only reach medium (`_DEBUFF_RELATIONS` =
-primary/secondary prey), so there is **no strong debuff**. The strong-tier packs
+reach all three tiers; debuffs reach medium **and** weak (`_DEBUFF_RELATIONS` =
+primary/secondary prey → `TIER_SCALAR` 0.6 and 0.3), so there is **no strong
+debuff** (SELF tier never debuffs). The strong-tier packs
 (`WEATHER_BUFF_BASE` / `WEATHER_DEBUFF_BASE`, `CombatModifier` fields):
 
 | weather | buff (self tier) | debuff (prey) |
