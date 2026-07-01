@@ -281,6 +281,11 @@ def bramble_carapace(owner: Any) -> EffectBundle:
     def on_damaged(ctx: Any, ev: Any) -> None:
         if ev.target is not owner:
             return
+        # Never reflect reflected/proc damage — otherwise a reflecting attacker
+        # (boss Cinder Husk, Steam Knight) and this thorns ping-pong forever and
+        # blow the stack (B.64 RecursionError on boss fights).
+        if ev.tag in (SourceTag.ITEM_PROC.value, SourceTag.REFLECT.value):
+            return
         attacker = ev.attacker
         if attacker is None or not attacker.alive:
             return
@@ -686,7 +691,11 @@ def giantsbane(owner: Any) -> EffectBundle:
     """Giantsbane — +12% STR, +15% Crit; autos deal bonus magic damage = 4% of the
     target's max HP (the anti-tank carry)."""
     def on_attack(ctx: Any, ev: Any) -> None:
-        if ev.attacker is not owner or ev.tag == SourceTag.ITEM_PROC or not ev.target.alive:
+        # on_attack_landed fires an AttackEvent (no `tag` field) and only for real
+        # basic attacks — never for ITEM_PROC damage (that is deal_damage →
+        # on_damage_dealt), so there is no recursion to guard against here. Reading
+        # `ev.tag` crashed every Giantsbane basic attack (B.64).
+        if ev.attacker is not owner or not ev.target.alive:
             return
         ctx.deal_damage(owner, ev.target, ev.target.max_hp * 0.04, SourceTag.ITEM_PROC, crit=False)
 
