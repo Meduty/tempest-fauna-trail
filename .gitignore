@@ -120,6 +120,9 @@ ipython_config.py
 #   commonly ignored for libraries.
 #   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
 *.lock
+# ...but this is a deployed app, not a library: commit uv.lock so `uv sync`
+# installs byte-identical dependency versions on every machine (reproducibility).
+!uv.lock
 
 # pdm
 #   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
