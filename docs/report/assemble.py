@@ -7,7 +7,7 @@ Cross-platform (Windows/macOS/Linux) — a Python port of the original
 build ``.md`` -> pandoc (``--pdf-engine=tectonic``) -> PDF.
 
 Run:   uv run python docs/report/assemble.py   (or plain ``python3``)
-Out:   docs/report/TempestFaunaTrail-Documentation.pdf
+Out:   docs/TempestFaunaTrail-Documentation.pdf
 Needs: ``pandoc`` + ``tectonic`` on PATH (both cross-platform; tectonic is a
        single static binary, pandoc ships static release tarballs).
 """
@@ -25,7 +25,7 @@ REPO_ROOT = REPORT_DIR.parent.parent          # docs/report -> docs -> repo root
 SECTIONS = REPORT_DIR / "sections"
 BUILD_DIR = REPORT_DIR / "build"
 COMBINED = BUILD_DIR / "combined.md"
-OUT_PDF = REPORT_DIR / "TempestFaunaTrail-Documentation.pdf"
+OUT_PDF = REPO_ROOT / "docs" / "TempestFaunaTrail-Documentation.pdf"
 LIVE = REPO_ROOT / "docs" / "live"
 
 # Map emoji/symbols that the PDF fonts don't cover to plain-text tokens. Ordered
