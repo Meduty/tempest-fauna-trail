@@ -1,0 +1,24 @@
+---
+title: "Tempest Fauna Trail"
+subtitle: "Project Documentation — a weather-driven roguelike built with AI coding agents"
+author:
+  - "Merlin Duty-Knez (Meduty)"
+  - "Adam Ebner (AdamZ0904)"
+  - "<https://github.com/Meduty/tempest-fauna-trail>"
+date: "July 2026"
+lang: en
+documentclass: report
+geometry: "margin=1in"
+fontsize: 11pt
+colorlinks: true
+linkcolor: RoyalBlue
+urlcolor: RoyalBlue
+toccolor: black
+toc: true
+toc-depth: 2
+numbersections: true
+# Latin Modern Mono ships with every TeX distribution (and tectonic's bundle),
+# so the build is reproducible everywhere — unlike Consolas (Windows-only).
+monofont: "Latin Modern Mono"
+monofontoptions: "Scale=0.90"
+---
