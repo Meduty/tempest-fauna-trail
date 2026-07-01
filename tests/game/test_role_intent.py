@@ -36,7 +36,7 @@ STATS = ("str", "int", "hybrid")
 REACHES = ("melee", "ranged")
 DURABILITIES = ("squishy", "hybrid", "tanky_hp", "tanky_arm")
 PLAYSTYLES = ("auto", "hybrid", "ability")
-SPEEDS = ("leaden", "heavy", "steady", "hybrid", "brisk", "speedy", "blinding")
+SPEEDS = ("moloch", "leaden", "heavy", "hybrid", "light", "swift", "blazing")
 INTENTS = ("damage", "hybrid", "utility")
 
 MATRIX_PATH = (
@@ -73,18 +73,18 @@ class TestClassifyRole:
     @pytest.mark.parametrize(
         ("axes", "expected"),
         [
-            (("str", "melee", "tanky_hp", "auto", "heavy", "damage"), "bruiser"),
-            (("str", "melee", "tanky_hp", "auto", "heavy", "utility"), "tank"),
-            (("str", "melee", "tanky_arm", "hybrid", "heavy", "hybrid"), "tank"),
-            (("int", "ranged", "squishy", "ability", "speedy", "damage"), "mage"),
+            (("str", "melee", "tanky_hp", "auto", "leaden", "damage"), "bruiser"),
+            (("str", "melee", "tanky_hp", "auto", "leaden", "utility"), "tank"),
+            (("str", "melee", "tanky_arm", "hybrid", "leaden", "hybrid"), "tank"),
+            (("int", "ranged", "squishy", "ability", "swift", "damage"), "mage"),
             (("str", "ranged", "hybrid", "auto", "hybrid", "damage"), "marksman"),
-            (("int", "melee", "squishy", "ability", "speedy", "damage"), "assassin"),
-            (("str", "melee", "squishy", "auto", "speedy", "damage"), "swashbuckler"),
+            (("int", "melee", "squishy", "ability", "swift", "damage"), "assassin"),
+            (("str", "melee", "squishy", "auto", "swift", "damage"), "swashbuckler"),
             (("int", "ranged", "hybrid", "ability", "hybrid", "utility"), "support"),
             (("hybrid", "ranged", "hybrid", "hybrid", "hybrid", "hybrid"), "spellblade"),
             # Spellslinger (T.36b): ranged + playstyle-hybrid + damage. Distinct
             # from marksman (auto, line above) and mage (ability).
-            (("int", "ranged", "squishy", "hybrid", "speedy", "damage"), "spellslinger"),
+            (("int", "ranged", "squishy", "hybrid", "swift", "damage"), "spellslinger"),
             (("hybrid", "ranged", "hybrid", "hybrid", "hybrid", "damage"), "spellslinger"),
         ],
     )
@@ -93,7 +93,7 @@ class TestClassifyRole:
 
     def test_spellslinger_vs_neighbours(self) -> None:
         # The three ranged-dealer playstyles split cleanly by playstyle axis.
-        base = ("int", "ranged", "squishy", None, "speedy", "damage")
+        base = ("int", "ranged", "squishy", None, "swift", "damage")
         def role(play):
             return classify_role(base[0], base[1], base[2], play, base[4], base[5])
         assert role("hybrid") == "spellslinger"  # casts AND autos
@@ -101,7 +101,7 @@ class TestClassifyRole:
         assert role("auto") == "marksman"         # autos only
 
     def test_tank_bruiser_split_is_intent(self) -> None:
-        base = ("str", "melee", "tanky_hp", "auto", "heavy")
+        base = ("str", "melee", "tanky_hp", "auto", "leaden")
         assert classify_role(*base, "damage") == "bruiser"
         assert classify_role(*base, "utility") == "tank"
         assert classify_role(*base, "hybrid") == "tank"
@@ -145,7 +145,7 @@ class TestRoleCode:
         assert build_role_code("hybrid", "melee", "hybrid", "hybrid", "hybrid", "hybrid") == "melee"
 
     def test_tag_set_membership(self) -> None:
-        code = build_role_code("str", "melee", "tanky_hp", "auto", "heavy", "damage")
+        code = build_role_code("str", "melee", "tanky_hp", "auto", "leaden", "damage")
         toks = code.split("-")
         assert "tanky_hp" in toks
         assert "damage" in toks
@@ -231,9 +231,9 @@ class TestIntentDriftGuard:
 
     def test_hybrid_intent_byte_identical_power_stats(self) -> None:
         # A hybrid-intent piece's power stats equal the un-biased composition.
-        a = compose_stats("str", "melee", "tanky_hp", "auto", "heavy", "hybrid", 5)
+        a = compose_stats("str", "melee", "tanky_hp", "auto", "leaden", "hybrid", 5)
         # Re-derive without the intent step by composing the same axes; identity.
-        b = compose_stats("str", "melee", "tanky_hp", "auto", "heavy", "hybrid", 5)
+        b = compose_stats("str", "melee", "tanky_hp", "auto", "leaden", "hybrid", 5)
         assert a == b
 
 
@@ -249,9 +249,9 @@ class TestComposerFullCompose:
         assert util["threat"] > dmg["threat"]
 
     def test_move_speed_varies_by_speed(self) -> None:
-        speedy = compose_stats("str", "melee", "hybrid", "auto", "speedy", "hybrid", 1)
-        heavy = compose_stats("str", "melee", "hybrid", "auto", "heavy", "hybrid", 1)
-        assert speedy["move_speed"] > heavy["move_speed"]
+        swift = compose_stats("str", "melee", "hybrid", "auto", "swift", "hybrid", 1)
+        leaden = compose_stats("str", "melee", "hybrid", "auto", "leaden", "hybrid", 1)
+        assert swift["move_speed"] > leaden["move_speed"]
 
     def test_dead_def_fields_removed(self) -> None:
         d = _champion_def("champ_x", "X", _CHAMPION_DEFS[0].affinity, 1, "melee", ["Beast"])
