@@ -144,7 +144,7 @@ def _cell_bg(spec: ClashCellSpec) -> str:
     return ft.Colors.with_opacity(opacity, spec.tone)
 
 
-def _header_cell(affinity: WeatherState, *, highlighted: bool) -> ft.Control:
+def _header_cell(affinity: WeatherState, *, highlighted: bool = False) -> ft.Control:
     """An axis header — affinity glyph + 3-letter label, tooltipped by name."""
     return ft.Container(
         ft.Column(
@@ -228,8 +228,10 @@ def build_affinity_clash_heatmap(
         ft.Text("atk ╲ def", size=9, color=TEXT_MUTED, text_align=ft.TextAlign.CENTER),
         width=_HEAD_W, height=_HEAD_W, alignment=ft.Alignment.CENTER,
     )
+    # Only attacker rows carry the roster accent (see docstring); defender
+    # column headers stay neutral so the highlight reads as "your damage".
     header = ft.Row(
-        [corner] + [_header_cell(d, highlighted=d in hi) for d in order],
+        [corner] + [_header_cell(d) for d in order],
         spacing=2,
     )
 
