@@ -12,10 +12,15 @@ from __future__ import annotations
 from src.game.combat import BOARD_HEIGHT, BOARD_WIDTH
 
 # Pixel layout of the offset-hex grid (odd columns stagger down half a row).
+# ROW_H leaves vertical room under each token for the resource stack the combat
+# view draws there — HP bar + up to 2 mana bars (multicasters, B.63) + a status
+# pip row — without the stack overlapping the token of the tile below. Prep only
+# places tokens on this grid (no bars), so the extra row height is just breathing
+# room there.
 MARGIN_X = 40
 MARGIN_Y = 34
 COL_W = 46
-ROW_H = 50
+ROW_H = 64
 
 # Full board pixel extent — used to size the Canvas / Stack.
 BOARD_W = MARGIN_X * 2 + (BOARD_WIDTH - 1) * COL_W

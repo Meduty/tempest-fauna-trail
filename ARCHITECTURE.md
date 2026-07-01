@@ -74,17 +74,18 @@ without a UI or network** — which is exactly what `tools/` exploits.
 Combat is a **single pure function** (V.2):
 
 ```python
-resolve_combat(team, enemies, weather, *, node_id="") -> BattleResult
+resolve_combat(team, enemies, weather, *, run_mods=None, node_id="") -> BattleResult
 ```
 
-Identical inputs → byte-identical output. No RNG, no clock, no globals. (SPEC V.2 also
-specifies an optional `run_mods: RunModifiers` arg for active augments — that's the
-planned **T.31** extension and is *not yet in the code*; today's signature is the one
-above.) It internally delegates through a fixed chain:
+Identical inputs → byte-identical output. No RNG, no clock, no globals. The optional
+`run_mods` (a `RunModifiers` from `game/augments.py`, T.31) threads active augments +
+quest state into the fight; it **defaults to `None`**, so every legacy caller and every
+sim stays byte-for-byte unchanged (V.2). It internally delegates through a fixed chain
+(the shared `build_combat` helper in `resolve.py`):
 
 ```
-compile_loadout(team, enemies, weather)      # content ↔ combat boundary
-        │  → (pieces, EventBus)
+compile_loadout(team, enemies, weather, run_mods)   # content ↔ combat boundary
+        │  → (pieces, EventBus, trait_activations)
         ▼
 CombatContext(pieces, bus, weather, seed)    # the mutator API (board_state optional)
         │
@@ -111,7 +112,7 @@ stays content-import-free; `tools/playtest/_common` delegates to it). `CombatRep
 | **Mutator API** — the *only* way content touches the world | `src/game/combat/context.py` |
 | Event → `BattleResult` reconstruction (beats + `initial_pieces` board snapshot) | `src/game/combat/recorder.py` |
 | **Replay** — `CombatReplay` steps the engine **forward** for playback; `inspect_at_tick` re-runs to a tick (random seek) on a cloned `run_mods`; both return read-only `PieceView`s, record nothing (V.55); the live state is the view's resource truth, not the event stream (V.56/V.57, B.28) | `src/game/combat/replay.py` |
-| Compile models → combat `Piece`s + wire passives/weather/**traits** | `src/game/loadout.py` |
+| Compile models → combat `Piece`s + wire passives/weather/**traits**/augments; **uniquifies duplicate piece ids** so twins in a squad get distinct `id`s (`id`, `id#1`, …) for stable combat-view/log references (B.65) | `src/game/loadout.py` |
 | **Synergy traits** — `TraitScope`/`TraitBreakpoint`/`DynamicThreshold`, `@register_trait`, `_resolve_traits` (unique-id count, affinity synthesis, apex/dynamic threshold) applied in `compile_loadout` step 3 (T.28a; primitives T.28b/c) | `src/game/traits/` |
 
 > **V.29 — there is exactly one tick loop.** `engine.py` is it. The old `loop.py` was
@@ -144,10 +145,10 @@ directly. It plugs in through three declarative primitives, then reacts through 
   `on_combat_end`. Typed payloads live in `events.py` (`AttackEvent`, `DamageEvent`, …).
 - **Registries** (`registries.py`) — `ABILITY_REGISTRY` (144) + `PASSIVE_REGISTRY` (147)
   + `TRAIT_REGISTRY` (25, T.28+Multicaster) + `ITEM_REGISTRY` (50, T.29a-d)
-  + `RUN_ACTION_REGISTRY` (5, T.29b) populated; `AUGMENT_REGISTRY`
-  is still an empty scaffold awaiting its content (T.31). Content factories self-register
-  via `@register_*` decorators; importing the content package triggers them. Lookups are
-  by **string id**.
+  + `RUN_ACTION_REGISTRY` (5, T.29b) + `AUGMENT_REGISTRY` (54, T.31 — populated by
+  `game/augments.py`, alongside a `QUEST_TRACKER_REGISTRY` for quest-scoped augments).
+  Content factories self-register via `@register_*` decorators; importing the content
+  package triggers them. Lookups are by **string id**.
 - **Presentation layer** (`registries.py` + `ability_text.py`, T.34/T.35) — a parallel
   `ABILITY_META` (285 ids) gives every roster ability a tooltip. Numeric outlets flow
   through the **closed `Magnitude` family** (`ScalingTerm` linear / `PctResource` /
@@ -267,13 +268,18 @@ trustworthy. Enemy formation (`formation.py`) is fully deterministic and role-aw
 
 | Concern | File |
 |---|---|
-| Amber income, interest, Tempest team-size progression | `src/game/economy.py` |
-| Stage-gated tier rolls, buy / sell / reroll | `src/game/shop.py` |
+| Amber income, interest, Tempest progression; **node-result orchestrators** (`apply_node_result` for fights, `resolve_nonfight_node` for AUGMENT/SUPPLY, V.83) + CHALLENGE recruit | `src/game/economy.py` |
+| Stage-gated tier rolls, buy / sell / reroll, SUPPLY free-recruit offer | `src/game/shop.py` |
+| Item equip/unequip seam (`Run.inventory` ↔ `Champion.items`, auto-combine on double-equip, V.63) | `src/game/inventory.py` |
+| Augments — `Augment`/`RunModifiers` model, ~54 catalog, offer/reroll, `apply_augment` | `src/game/augments.py` |
 
 Currency is **Amber**; team-size XP is **Tempest** (rank = deployable board cap, 1→10,
 **monotonic non-decreasing**, V.20). Shop offers are seed-deterministic
 `(run_seed, visit_index, reroll_count)` (V.19). These are the **headless economy
-substrate** the (planned) Prep UI will drive.
+substrate** the live Prep / Reward / Augment / Supply views drive: the view chooses,
+the game mutates (V.63), and the producer autosaves after (V.65). A non-fight node
+grants no income/Tempest and touches no Hearts — its pick (augment or supply recruit)
+is applied by the view, then `resolve_nonfight_node` marks the node cleared + advances.
 
 ---
 
@@ -325,27 +331,43 @@ CHALLENGE rolls) while staying byte-identical across the fight + reward (load-be
 
 ---
 
-## 11. UI & visualization (mostly planned)
+## 11. UI & visualization — the full run loop is live
+
+The player-facing Flet UI is built end-to-end: menu → run-start → the per-node loop
+(trail → prep → combat → reward, plus augment / supply nodes) → run summary.
 
 | Concern | File | Status |
 |---|---|---|
 | Design tokens (colors, type, spacing, animation) | `src/ui/theme.py` | ✅ T.8 |
-| Shared components (champion card, weather badge, meter bar, chips) | `src/ui/components/` | ✅ T.8 |
-| Playtest admin panel (dev) | `src/ui/views/admin.py` | dev tool |
-| Flet entry point — menu app shell + Playfight harness + admin | `src/main.py` | ✅ T.9 |
-| Main menu (`/`) — New Run (live) / Continue (disabled until load-into-Trail, T.15) / Playfight / Quit | `src/ui/views/menu.py` | ✅ T.9 |
+| Shared components — champion card, weather badge, meter bar, chips, **shared infocard** (Prep + Combat), **trait-synergy panel**, **hex board geometry**, **iconography glyphs** | `src/ui/components/` | ✅ T.8/T.12d/T.23a |
+| Pure Flet-free combat-playback model over the replay backend | `src/ui/combat_playback.py` | ✅ T.12a |
+| Flet entry point — menu-rooted `page.views` shell + full run router | `src/main.py` | ✅ T.9/T.42 |
+| Main menu (`/`) — New Run / **Continue** (loads latest save into Trail, T.15b) / Playfight / Quit / Settings | `src/ui/views/menu.py` | ✅ T.9 |
 | RunStart (`/run-start`) — seed-deterministic 1-of-3 champion pick → `Run` | `src/game/run_init.py`, `src/ui/views/run_start.py` | ✅ T.10 |
+| Trail (`/trail`) — route map + node focus + team summary + live weather | `src/ui/views/trail.py` | ✅ T.11 |
+| Prep (`/prep`) — shop, hex-board placement, item equip, trait preview | `src/ui/views/prep.py` | ✅ T.23 |
 | Combat view + dev/Playfight harness | `src/ui/views/combat.py`, `dev_harness.py` | ✅ T.12 |
-| Trail / Prep / Reward / Summary views | `src/ui/views/` | 🟡 T.11–T.15/T.23 |
-| Route map (Canvas), run summary (BarChart) | `src/viz/` | 📋 T.11, T.13 (stub) |
+| Reward (`/reward`) — post-fight node-result panel + CHALLENGE recruit | `src/ui/views/reward.py` | ✅ T.15a/T.38 |
+| Augment (`/augment`) — 1-of-3 pick + reroll at AUGMENT nodes | `src/ui/views/augment.py` | ✅ T.42a |
+| Supply (`/supply`) — 1-of-5 free-recruit at SUPPLY nodes | `src/ui/views/supply.py` | ✅ T.42b |
+| Run summary (`/summary`) — run-end screen + damage chart | `src/ui/views/summary.py` | ✅ T.13 |
+| Settings — set OpenWeather API key in-app | `src/ui/views/settings.py`, `src/app_config.py` | ✅ |
+| Playtest admin panel (dev) | `src/ui/views/admin.py` | dev tool |
+| Route map + run-summary chart + affinity-clash heatmap — all **hand-drawn `flet.canvas`** (V.72) | `src/viz/route_map.py`, `run_summary.py`, `affinity_clash_heatmap.py` | ✅ T.11/T.13 |
 
-**The game logic is complete; the player-facing Flet UI is the largest remaining
-build.** `main.py` is the menu-rooted `page.views` shell (T.9): **Playfight** opens
-the combat dev harness → combat view; **New Run** opens RunStart (T.10,
-`game/run_init.new_run`) → champion pick → `Run` (currently lands on a Trail stub
-until T.11); **Continue** waits on load-into-Trail (T.15); `TEMPEST_ADMIN=1` opens the admin panel and `TEMPEST_DEV=1`
-jumps straight to Playfight. See [SPEC §I Flet Routes](SPEC.md) and `views_spec.md`.
-Flet conventions live in [.claude/rules/flet-ui.md](.claude/rules/flet-ui.md) and CLAUDE.md.
+`main.py` is the menu-rooted `page.views` shell and the run router. **New Run** opens
+RunStart (`game/run_init.new_run`) → champion pick → `Run` → Trail. **Continue** loads
+the most-recent save into the Trail (T.15b; a corrupt save is skipped). From the Trail,
+`_play_node` dispatches by `node.node_type`: fight nodes go Prep → Combat → Reward →
+back to Trail; non-fight nodes go to the Augment or Supply view then `resolve_nonfight_node`
+→ Trail. **Playfight** opens the combat dev harness → combat view. `TEMPEST_ADMIN=1`
+opens the admin panel and `TEMPEST_DEV=1` jumps straight to Playfight.
+
+The **combat view is pure presentation over the replay backend** (V.56): it drives the
+Flet-free `combat_playback` model and the `CombatReplay` forward-stepper — it records
+nothing and re-derives no formation, laying out from the recorder's `initial_pieces`
+snapshot. See [SPEC §I Flet Routes](SPEC.md) and `views_spec.md`; Flet conventions live
+in [.claude/rules/flet-ui.md](.claude/rules/flet-ui.md) and CLAUDE.md.
 
 ---
 
@@ -371,6 +393,10 @@ src-side `combat/resolve.py` entry (V.59).
 - `mega.py` — runs every sweep flavour in one parallelized go
 - `ratings.py` — win-rate + power-model metrics, incl. cross-weather `weather_metrics`
 - `report.py` — CSV / console output
+- `stat_edge.py`, `weather_impact.py` — focused single-axis sweeps (stat lead, weather swing)
+
+Root-level dev scripts: `tools/export_roster.py` (dump the roster) and
+`tools/gen_role_matrix.py` (role-coverage matrix).
 
 > **Sim metric invariants:** weather-affinity metrics are **cross-weather** (V.16) and
 > **treat absent weather as NaN, never 0** (V.30) — averaging missing-as-0 once
@@ -387,9 +413,9 @@ depend on it:
 - **No RNG in mechanics.** Any "chance" / "every few hits" effect uses a **deterministic
   cadence counter** (like `crit_counter`), never `random`.
 - **All procedural generation** derives from `(run_seed, node_index, channel)`.
-- **`resolve_combat` is pure** — same inputs, byte-identical `BattleResult`. When the
-  T.31 `run_mods` arg lands it must default to `None`, leaving every existing caller (and
-  every sim) byte-for-byte unchanged (V.2).
+- **`resolve_combat` is pure** — same inputs, byte-identical `BattleResult`. Its T.31
+  `run_mods` arg defaults to `None`, leaving every existing caller (and every sim)
+  byte-for-byte unchanged (V.2).
 - **State for a view is recomputed, not recorded (V.55).** The `CombatReplay` forward
   stepper (playback) and `inspect_at_tick` (random seek) drive the same single
   `_step_combat` generator to read any piece's live state at any tick — no per-tick
@@ -413,9 +439,13 @@ depend on it:
 | Edit the route / cities | `src/game/route.py` |
 | Change enemy generation | `src/game/encounter.py`, `src/game/formation.py` |
 | Touch the economy / shop | `src/game/economy.py`, `src/game/shop.py` |
+| Add / change an augment | `src/game/augments.py` (+ register), `src/ui/views/augment.py` |
+| Add / change an item; equip logic | `src/game/items/`, `src/game/inventory.py` |
 | Add a data field to game state | `src/game/models.py` (`Run`, `Champion`, …) |
+| Change save/load | `src/game/save.py` (run) · `src/app_config.py` (settings) |
 | Change weather fetching / caching | `src/api/{weather,cache,refresher}.py` |
-| Build a UI screen | `src/ui/views/` (+ `theme.py`, `components/`) |
+| Build / edit a UI screen | `src/ui/views/` (+ `theme.py`, `components/`) |
+| Change the run flow / routing | `src/main.py` (menu shell + `_play_node` dispatch) |
 | Balance-test a change | `tools/simulation/` |
 | Manually try a fight/run | `tools/playtest/` |
 | Understand *why* a decision was made | `docs/journal/` |
@@ -429,8 +459,10 @@ depend on it:
    `formation.py` places them; the node's weather is read from the persisted `Node`
    (`node.weather` — live values written through from the cache while on the Trail, then
    **frozen by the Prep-entry lock**, T.39/V.73).
-2. `resolve_combat(team, enemies, weather)` is called.
-3. `compile_loadout` builds runtime `Piece`s, applies **Weather Favor** to base stats,
+2. `resolve_combat(team, enemies, weather, run_mods=...)` is called (`run_mods` carries
+   the run's active augments + quest state; `None` for sims/Playfight).
+3. `compile_loadout` builds runtime `Piece`s (uniquifying duplicate ids, B.65), applies
+   **Weather Favor** to base stats, resolves **synergy traits**, folds in augments,
    subscribes passive `Hook`s to a fresh `EventBus`, wires boss phase/death hooks.
 4. `CombatContext` wraps the pieces + bus + board; bosses `attach_map_effect`.
 5. `engine.run(ctx)` ticks: meters fill → pieces move (BFS pathing) / auto-attack /
@@ -442,8 +474,10 @@ depend on it:
    status/spawn/despawn, each beat one event with `hp_after`/`barrier_after` for
    HP-changing ones, T.37a) and an `initial_pieces` board snapshot + board dims so
    a combat view can lay out and animate the fight without re-deriving formation.
-7. The result flows to `Run.battle_log`; rewards (Amber / items / Tempest) are applied;
-   the next node opens.
+7. `economy.apply_node_result` folds the outcome into the `Run` — battle log, Amber /
+   Tempest income, Hearts on a loss — the Reward view shows the panel (plus any CHALLENGE
+   recruit), the producer autosaves (V.65), and the Trail reopens on the next node. (A
+   non-fight node instead runs its Augment/Supply pick → `resolve_nonfight_node`.)
 
 ---
 

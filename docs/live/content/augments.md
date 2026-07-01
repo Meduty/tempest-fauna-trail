@@ -1,6 +1,6 @@
 # Augments — run-long modifiers
 
-> **Status: LIVING** — audited by `/check`. **Reconciled:** 2026-06-22 (T.31 landed).
+> **Status: LIVING** — audited by `/check`. **Reconciled:** 2026-07-01 (T.31 + T.42a reroll).
 > **Scope:** augment model, registry, offer/reroll, quality curve, the `RunModifiers`
 > combat seam, quest trackers. Code: [`src/game/augments.py`](../../../src/game/augments.py).
 > Design: `docs/design/tasks/t31_augment_system_plan.md`, `docs/design/content/augment_catalog.md`.
@@ -20,8 +20,10 @@ frozen dataclass, registered via `@register_augment(...)` into `AUGMENT_REGISTRY
   - `state` is `RunModifiers.augment_state` — read by run-scaling augments (`the_uprising`)
     and Crest bonuses.
 - **`AugmentQuality`** = `COMMON` | `RARE` | `EPIC` | `PRISMATIC`.
-- **54 registered** (~50 catalog across 13/13/16/12 by quality + 3 Primordial-unlock RUN
-  augments). Counts: TEAM 30 · RUN 19 · PIECE 5.
+- **54 registered** = 51 catalog augments + 3 Primordial-unlock RUN augments
+  (`unlock_verdant`/`unlock_tempest`/`unlock_stoneveil`, EPIC — gate the T10 late
+  shop, T.28a/V.37). By quality: **COMMON 13 · RARE 13 · EPIC 16 · PRISMATIC 12**
+  (the 3 unlocks fall in the 16 EPIC). By scope: **TEAM 30 · RUN 19 · PIECE 5**.
 
 `Modifier.source_id` is `augment:<id>` (V.45). All handlers RNG-free (V.2/V.14). Stat
 magnitudes are **MVP `mul` values** (catalog ships concepts only) — a tuning surface (D.11).
@@ -43,20 +45,30 @@ balance sims) is **byte-for-byte identical** — guarded by `test_augments.py::t
 ## Offers, reroll, quality curve
 
 - `generate_augment_offer(run_seed, node_index, stage_index, *, reroll_count=0, exclude=())`
-  — deterministic 1-of-3 via `augment_seed(run_seed, node_index, reroll_count)` (V.84).
-  Rolls a quality by the stage curve, then a uniform unpicked augment of that quality. No
-  dups; excludes active. `reroll_count` selects the draw: `0` = fresh offer, `1` = first
-  reroll (legacy `CH_AUGMENT`/`CH_REROLL` byte-identical), `≥2` strided via
-  `AUGMENT_REROLL_STRIDE` for awarded/banked rerolls (T.42a).
+  — deterministic 1-of-3 via `augment_seed(run_seed, node_index, reroll_count)`
+  ([encounter.py](../../../src/game/encounter.py), V.84). For each of 3 slots: roll a
+  quality by the stage curve (`_weighted_quality`), then pop a uniform augment from that
+  quality's pool. No dups within the offer; `exclude` (already-active ids) filtered out;
+  qualities with weight 0 skipped. `reroll_count` selects the draw: `0` → `CH_AUGMENT`
+  (fresh node offer), `1` → `CH_REROLL` (first reroll — **both byte-identical to the
+  pre-reroll channels**), `≥2` → `CH_REROLL` strided by `AUGMENT_REROLL_STRIDE` for
+  awarded/banked rerolls (T.42a) — replaces the old `rerolled: bool` arg.
 - `rerolls_available(run, reroll_count)` / `reroll_augment_offer(run, node_index, stage_index,
-  reroll_count)` — game-side reroll bookkeeping (1 base free + `augment_state["banked_rerolls"]`);
-  the latter consumes one and returns `(new_offer, new_count, left)` or `None` when exhausted
-  (V.84, keeps the view Flet-free of game logic per V.63).
+  reroll_count)` — game-side reroll bookkeeping (**1 base free reroll per node visit** +
+  `augment_state["banked_rerolls"]`; only `component_stipend` banks one). `rerolls_available`
+  = `(1 if reroll_count == 0 else 0) + banked`. `reroll_augment_offer` spends the free reroll
+  first, then decrements `banked_rerolls`, and returns `(new_offer, new_count, left)` at
+  `reroll_count + 1` — or `None` when exhausted (view disables the button). Keeps the view
+  Flet-free of game logic per V.63.
 - **Prismatic gated to stage ≥ 2** (D3).
 - `quality_weights_for_stage(i)` — per-stage Common→Prismatic weights (`_STAGE_WEIGHTS`,
   §5 curve; tuning surface). Prismatic 0 at stage 1, non-decreasing after.
-- `apply_augment(run, augment)` — appends id to `run.active_augments`; RUN handlers fire;
-  quest augments seed `augment_state`.
+- `apply_augment(run, augment)` — appends id to `run.active_augments`; **RUN** handlers
+  fire immediately (mutate Amber/items/Tempest/state); TEAM/PIECE just record the id (their
+  bundle rebuilds fresh each combat, V.18); a `quest_tracker` seeds its `augment_state` slot.
+- **Node resolution.** Picking an augment is the AUGMENT node's *pick* — the view calls
+  `apply_augment`, then `economy.resolve_nonfight_node(run)` marks the node CLEARED +
+  advances (V.83): **no income, tempest, Hearts, or `battle_log`** (no fight occurred).
 
 ## Quest trackers (§9.3)
 

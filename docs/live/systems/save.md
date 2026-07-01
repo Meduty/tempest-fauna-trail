@@ -1,7 +1,7 @@
 # Save / serialization
 
 > **Status: LIVING** — must match `Run`/`BattleResult` (de)serialization in `src/game/models.py` + the file-I/O layer in `src/game/save.py`. Audited by `/check`.
-> **Scope:** how game state round-trips to/from JSON, the back-compat rules, and the file read/write contract. **Reconciled:** 2026-06-05.
+> **Scope:** how game state round-trips to/from JSON, the back-compat rules, and the file read/write contract. **Reconciled:** 2026-07-01.
 >
 > Citations by symbol, not line. The (de)serialization contract lives on the **model dataclasses**; the **file I/O** (atomic write, schema gate, typed errors) lives in `game/save.py` (T.14).
 
@@ -25,8 +25,14 @@ route `Node`s, the champion roster, `amber` (economy), `battle_log`
 - **`BattleResult.piece_max_hp`** — added later; `from_dict` defaults it to `{}`
   for pre-field saves (the combat-log HP trace is just empty for them). See
   [combat.md](combat.md).
+- **`Node.weather_state` / `Node.weather_locked`** (T.39) — `Node.from_dict`
+  reads `payload.get("weather_state", "unknown")` (→ `NodeWeatherState.UNKNOWN`)
+  and `payload.get("weather_locked", False)`, so pre-T.39 saves load with no
+  `schema_version` bump. See [weather_api.md](weather_api.md).
 - New optional fields follow the same pattern: `payload.get(key, default)`,
-  never a hard `payload[key]`, so old saves still load.
+  never a hard `payload[key]`, so old saves still load. The *required* keys
+  (`schema_version`, and whatever `Run.from_dict` reads unconditionally) are the
+  only ones that can raise `CorruptSaveError`.
 
 `schema_version` exists to gate breaking migrations; bump it when a change can't
 be handled by a `.get` default.

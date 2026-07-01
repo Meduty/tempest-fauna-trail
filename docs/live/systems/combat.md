@@ -35,10 +35,15 @@ return recorder.build_result(winner)                                           #
 ## The pieces
 
 - **`compile_loadout`** (`loadout.py`) — builds runtime `Piece`s from
-  `Champion`/`Enemy` models, applies **Weather Favor** to `base_stats` (see
-  [weather.md](weather.md) — the single application path), subscribes passive
-  `Hook`s to a fresh `EventBus`, wires boss phase/death hooks. Returns
-  `(pieces, bus)`.
+  `Champion`/`Enemy` models, **uniquifies duplicate piece ids** (B.65 — the 2nd+
+  occurrence of a def id gets a deterministic `#n` suffix, e.g. `wolf`,
+  `wolf#1`, `wolf#2`; done in assembly order *before* any hook closes over the
+  piece, so the fight is object-identity-based and unaffected while the recorded
+  stream / per-id tallies / view control keys stay collision-free), applies
+  **Weather Favor** to `base_stats` (see [weather.md](weather.md) — the single
+  application path), applies item/trait/augment bundles, subscribes passive
+  `Hook`s to a fresh `EventBus`, wires boss phase/death hooks, then seeds
+  per-slot start mana. Returns `(pieces, bus)`.
 - **`Piece`** (`piece.py`) — the live combat entity (the *only* combat model;
   there is no separate snapshot type). Carries `base_stats`, modifiers,
   statuses, ability slots, position, meters, `crit_counter`. Effective stats via

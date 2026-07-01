@@ -130,4 +130,7 @@ See [Flet build docs](https://flet.dev/docs/publish/) for signing + distribution
 
 ## License
 
-TBD.
+Source-available under the **PolyForm Noncommercial License 1.0.0** — free to
+use, modify, and share for any **noncommercial** purpose. **Commercial use
+requires a separate license** from the authors. See [LICENSE](LICENSE) and
+[COMMERCIAL.md](COMMERCIAL.md).

@@ -136,6 +136,16 @@ _STATUS_COLORS: dict[str, str] = {
 }
 
 
+def _base_id(piece_id: str) -> str:
+    """Strip the per-instance `#n` suffix `compile_loadout` adds to duplicate piece
+    ids (B.65) back to the roster/def id. The view's name/ability/champion metadata
+    dicts are keyed by the base session id, but pieces (and so `PieceView.id` /
+    event `actor_id`) carry the uniquified instance id — twins would otherwise miss
+    their name + tooltips. Twins share a def, so the base id resolves the same
+    shared metadata for every instance. Real roster ids never contain `#`."""
+    return piece_id.split("#", 1)[0]
+
+
 def _arrow(x1: float, y1: float, x2: float, y2: float, color: str) -> list:
     """A line from (x1,y1)→(x2,y2) with a small arrowhead at the target end
     (ranged attacks / casts)."""
@@ -349,9 +359,9 @@ def build_combat_view(
     def _ability_tooltip(pv: PieceView) -> str:
         """Token hover text: the piece's name + each ability's name + live blurb
         (rendered against the piece's current effective stats, V.38)."""
-        lines = [name_by_id.get(pv.id, pv.id)]
+        lines = [name_by_id.get(_base_id(pv.id), pv.id)]
         src = _ViewStatSource(pv)
-        for aid in abilities_by_id.get(pv.id, []):
+        for aid in abilities_by_id.get(_base_id(pv.id), []):
             rendered = render_for(aid, src)
             if rendered is not None:
                 lines.append(f"• {rendered.name}: {rendered.text}")
@@ -454,7 +464,7 @@ def build_combat_view(
                 alignment=ft.Alignment.CENTER,
                 content=ft.Text("✕", size=14, weight=ft.FontWeight.BOLD, color=TEXT_MUTED),
                 on_click=lambda _e, pid=p.id: _select(pid),
-                tooltip=f"{name_by_id.get(p.id, p.id)} — defeated",
+                tooltip=f"{name_by_id.get(_base_id(p.id), p.id)} — defeated",
                 animate_opacity=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
                 animate_position=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
             )
@@ -466,19 +476,21 @@ def build_combat_view(
             border=ft.Border.all(3, ACCENT) if selected
             else ft.Border.all(2, DANGER if p.is_enemy else SUCCESS),
             alignment=ft.Alignment.CENTER,
-            content=ft.Text(_initials(name_by_id.get(p.id, p.id)),
+            content=ft.Text(_initials(name_by_id.get(_base_id(p.id), p.id)),
                             size=11, weight=ft.FontWeight.BOLD, color="#111111"),
             on_click=lambda _e, pid=p.id: _select(pid),
             tooltip=_ability_tooltip(p),
             animate_position=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
         )
 
-    def _status_pips(p: PieceView, cx: float, cy: float) -> ft.Control | None:
+    def _status_pips(p: PieceView, cx: float, *, top: float) -> ft.Control | None:
+        """Status pips row, positioned at ``top`` (below the piece's full HP+mana
+        bar stack — the caller computes it so extra mana bars don't overlap)."""
         if not p.statuses:
             return None
         pips = [
             ft.Container(
-                width=11, height=11, border_radius=5,
+                width=10, height=10, border_radius=5,
                 bgcolor=_STATUS_COLORS.get(st.status_id, TEXT_MUTED),
                 alignment=ft.Alignment.CENTER,
                 content=ft.Text(str(st.stacks), size=7, color="#111111") if st.stacks > 1 else None,
@@ -487,7 +499,7 @@ def build_combat_view(
             for st in p.statuses[:5]
         ]
         return ft.Container(
-            key=f"st-{p.id}", left=cx - _BAR_W / 2, top=cy + _TOKEN_R + 16,
+            key=f"st-{p.id}", left=cx - _BAR_W / 2, top=top,
             content=ft.Row(pips, spacing=2, tight=True),
             animate_position=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
         )
@@ -679,20 +691,25 @@ def build_combat_view(
                 continue  # no HP/mana/status bars on a defeated body
             ox, oy = lunge.get(p.id, (0.0, 0.0))
             overlays.append(_token(p, cx, cy, ox, oy))
+            # Under-token resource stack: HP bar, then ONE mana bar per active
+            # slot (multicasters field >1 — B.63), then the status pips below the
+            # whole stack. Each row is positioned off a running `bar_y` so extra
+            # mana bars push the pips down instead of overlapping them.
             overlays.append(ft.Container(
                 key=f"hp-{p.id}", left=cx - _BAR_W / 2, top=cy + _TOKEN_R + 2,
-                content=meter_bar(current=p.hp, maximum=max(1, p.max_hp), height=5, width=_BAR_W),
+                content=meter_bar(current=p.hp, maximum=max(1, p.max_hp), height=4, width=_BAR_W),
                 animate_position=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
             ))
-            if p.mana:
-                slot = p.mana[0]
+            bar_y = cy + _TOKEN_R + 2 + 4 + 1          # below the HP bar (+gap)
+            for i, slot in enumerate(p.mana):
                 overlays.append(ft.Container(
-                    key=f"mp-{p.id}", left=cx - _BAR_W / 2, top=cy + _TOKEN_R + 9,
+                    key=f"mp-{p.id}-{i}", left=cx - _BAR_W / 2, top=bar_y,
                     content=_mana_bar(slot.current_mana, slot.mana_cost, slot.max_mana,
-                                      width=_BAR_W, height=4),
+                                      width=_BAR_W, height=3),
                     animate_position=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
                 ))
-            pips = _status_pips(p, cx, cy)
+                bar_y += 3 + 1                         # mana bar height + gap
+            pips = _status_pips(p, cx, top=bar_y + 1)
             if pips is not None:
                 overlays.append(pips)
 
@@ -759,7 +776,7 @@ def build_combat_view(
         tick) → bigger + accent highlight so the player sees what a Next press will
         resolve. The queue is strictly-upcoming (resolved entries drop off, T.12d_b)."""
         is_move = entry.is_move
-        label = _initials(name_by_id.get(entry.actor_id, entry.actor_id))
+        label = _initials(name_by_id.get(_base_id(entry.actor_id), entry.actor_id))
         icon = "→" if is_move else ("✦" if entry.kind == EVENT_CAST else "⚔")
         size = (40 if is_move else 52) if active else (34 if is_move else 44)
         return ft.Container(
@@ -774,7 +791,7 @@ def build_combat_view(
                 spacing=0, alignment=ft.MainAxisAlignment.CENTER,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER, tight=True,
             ),
-            tooltip=f"{name_by_id.get(entry.actor_id, entry.actor_id)} · {entry.kind} · {_secs(entry.tick)}"
+            tooltip=f"{name_by_id.get(_base_id(entry.actor_id), entry.actor_id)} · {entry.kind} · {_secs(entry.tick)}"
             + (" · next up" if active else ""),
             animate_size=ft.Animation(_TWEEN_MS, ft.AnimationCurve.EASE_OUT),
         )
@@ -829,7 +846,7 @@ def build_combat_view(
         subtitle = (f"{pv.affinity.value}{role_part} · {'enemy' if pv.is_enemy else 'ally'}"
                     + (" · summon" if pv.summon else ""))
         return PieceInfo(
-            name=name_by_id.get(pv.id, pv.id),
+            name=name_by_id.get(_base_id(pv.id), pv.id),
             affinity=pv.affinity, role=pv.role, traits=tuple(pv.traits),
             primary_stats=(("STR", _fmt("strength")), ("INT", _fmt("intelligence")),
                            ("AS", _fmt("attack_speed")), ("armor", _fmt("armor")),
@@ -837,7 +854,7 @@ def build_combat_view(
             premium_stats=(("MS", _fmt("move_speed")), ("MR", _fmt("mana_regen")),
                            ("crit", _fmt("crit_chance")), ("pen", _fmt("penetration")),
                            ("pen%", _fmt("penetration_pct")), ("threat", _fmt("threat"))),
-            actives=actives_by_id.get(pv.id, ()), passive=passive_by_id.get(pv.id, ""),
+            actives=actives_by_id.get(_base_id(pv.id), ()), passive=passive_by_id.get(_base_id(pv.id), ""),
             stat_src=_ViewStatSource(pv), subtitle=subtitle,
         )
 
@@ -867,7 +884,7 @@ def build_combat_view(
                 controls.append(ft.Divider(height=8))
                 controls.extend(abil)
             # Items — read-only authored names (Prep keeps the interactive chips).
-            champ = champ_by_id.get(pv.id)
+            champ = champ_by_id.get(_base_id(pv.id))
             if champ is not None and champ.items:
                 controls.append(ft.Divider(height=8))
                 controls.append(ft.Text("Items", size=12, weight=ft.FontWeight.BOLD, color=TEXT_PRIMARY))

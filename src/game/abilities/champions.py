@@ -268,6 +268,8 @@ def aegis_tortoise_passive(owner: Any) -> EffectBundle:
     def hook(ctx: Any, event: Any, value: float) -> float:
         if event.target is not owner:
             return value
+        if event.attacker is None:
+            return value  # environmental / map-effect damage has no attacker (B.64)
         from src.game.combat import hex_distance
         dist = hex_distance(
             event.attacker.position_q, event.attacker.position_r,

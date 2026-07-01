@@ -181,3 +181,7 @@ cython_debug/
 
 # Flet
 storage/
+
+# Generated roster dumps (tools/export_roster.py) — not tracked; regenerate on demand
+roster.json
+champions.json
