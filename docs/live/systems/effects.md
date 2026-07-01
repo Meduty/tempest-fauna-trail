@@ -108,12 +108,39 @@ To react to auto-attacks *with* damage attribution, subscribe to
 | `BLOCKS_MOVEMENT` | hex movement (root, frozen) |
 | `HEXPROOF` | not a meter gate — excludes the bearer from single-target acquisition (autos + targeted abilities); AoE still lands, and the piece can still act (T.28d, V.40) |
 
-`STATUS_DEFS` (`status.py`) currently registers: `stun`, `silence`, `disarm`,
-`root`, `burn`, `poison`, `slow`, `charged`, `focus_fire`, `grievous`,
-`hexproof`, `taunt`, `soaked`, `frozen`, `fear`, `sudden_death`, `grief`,
-`stone_charge`, `soul_charged`, `nerei_grudge`. Pure markers (`focus_fire`,
-`stone_charge`, `soul_charged`, `nerei_grudge`, `taunt`, …) carry no gate/DOT —
-a kit's hooks read their presence/`stacks`/`source_id` directly.
+### Status glossary
+
+`STATUS_DEFS` (`status.py`) registers **20** statuses. Mechanics columns are
+frozen `StatusDef` data (verify against `status.py`); DOT damage is per **DOT
+tick** (`dot_interval_ticks`, default 100 = 1 s), `×stk` = scales with stacks.
+
+| id | gate / kind | DOT | stk | effect |
+|---|---|---|---|---|
+| `stun` | `BLOCKS_ACTION` | — | R | Hard CC — no meter advance; can't act. |
+| `frozen` | `BLOCKS_ACTION` + `BLOCKS_MOVEMENT` | — | R | Hard CC — can't act **or** move. |
+| `fear` | `BLOCKS_ACTION` | — | R | Hard CC (terror) — can't act. |
+| `root` | `BLOCKS_MOVEMENT` | — | R | Can't move; may still attack/cast. |
+| `silence` | `BLOCKS_CAST` | — | R | Can't cast abilities; autos allowed. |
+| `disarm` | `BLOCKS_ATTACK` | — | R | Can't auto-attack; casts allowed. |
+| `hexproof` | `HEXPROOF` | — | R | Excluded from single-target acquisition (autos + targeted abilities); AoE still hits; bearer can act (V.40). |
+| `slow` | soft CC | — | S | Reduces move speed per stack (consumed by pathing); no action gate. |
+| `taunt` | marker | — | R | Forces nearby enemies to target the taunter (engine targeting). |
+| `grievous` | marker | — | R | Antiheal — incoming healing ×`GRIEVOUS_HEAL_MULT` (0.5). |
+| `burn` | DOT | 40/tick, mitigated | R | Straight damage-over-time. |
+| `poison` | DOT | 18/tick `×stk`, sheds 20%/tick | S | Stacking DOT that decays → self-limiting plateau, no hard cap. |
+| `grief` | DOT (potency) | ~STR·0.3/tick (4 s), mitigated | R | Mournhollow curse; BURN-convention DOT driven by caster `potency`. |
+| `sudden_death` | DOT (true) | 0.5/tick `×stk`, **bypasses mitigation** | S | Enrage — ramping true-damage DOT (`+3` stacks/application) that ends stalls. |
+| `charged` | marker | — | R | Static-buildup marker; consumed for a bonus proc (e.g. boss combo). |
+| `soul_charged` | marker | — | R | Self marker; spent on the next cast for an empowered effect. |
+| `stone_charge` | marker | — | S | Stacking self charge (capped); spent for a scaling bonus. |
+| `focus_fire` | marker | — | R | Target marker; the marked piece is prioritized (focus-fired). |
+| `nerei_grudge` | marker | — | S | Nerei stacking marker; accrues per hit (capped), spent for a scaling bonus. |
+| `soaked` | marker | — | R | Registered but **no live producer or consumer** — reserved/dormant. |
+
+`stk`: **R** = `REFRESH` (reapply resets duration), **S** = `STACK` (stacks
+accumulate). Pure markers (`charged`, `soul_charged`, `stone_charge`,
+`focus_fire`, `nerei_grudge`, `taunt`, `soaked`) carry no gate/DOT — a kit's
+hooks read their presence / `stacks` / `source_id` directly.
 
 A `StatusDef` is frozen data: `stack_behaviour` (`REFRESH` resets duration on
 reapply / `STACK` accumulates), `gates`, and the DOT clock — `dot_per_tick`
